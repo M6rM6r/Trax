@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useMemo } from "react";
+import { memo, useMemo, type ComponentType } from "react";
 import { Card, CardHeader, CardContent, CardTitle } from "@/components/ui/card";
 import {
   Users,
@@ -21,13 +21,8 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@radix-ui/react-separator";
 import FullPageHead from "@/components/shared/FullPageHead";
 import MainLayout from "@/components/shared/MainLayout";
-import {
-  mockDashboardStats,
-  mockAttendance,
-  mockEmployees,
-} from "@/lib/mockData/trackingMockData";
+import { mockDashboardStats, mockAttendance, mockEmployees } from "@/lib/mockData/trackingMockData";
 import dynamic from "next/dynamic";
-import type { ComponentType } from "react";
 
 const PieChart: ComponentType<any> = dynamic(
   () => import("recharts").then((mod) => mod.PieChart as ComponentType<any>),
@@ -42,10 +37,7 @@ const Cell: ComponentType<any> = dynamic(
   { ssr: false }
 );
 const ResponsiveContainer: ComponentType<any> = dynamic(
-  () =>
-    import("recharts").then(
-      (mod) => mod.ResponsiveContainer as ComponentType<any>
-    ),
+  () => import("recharts").then((mod) => mod.ResponsiveContainer as ComponentType<any>),
   { ssr: false }
 );
 const Tooltip: ComponentType<any> = dynamic(
@@ -101,9 +93,7 @@ const DashboardCard = memo(({ stat, locale }: DashboardCardProps) => {
                     stat.trend >= 0 ? "text-green-200" : "text-red-200"
                   }`}
                 >
-                  <TrendingUp
-                    className={`w-3 h-3 ${stat.trend >= 0 ? "" : "rotate-180"}`}
-                  />
+                  <TrendingUp className={`w-3 h-3 ${stat.trend >= 0 ? "" : "rotate-180"}`} />
                   <span>{Math.abs(stat.trend)}%</span>
                 </div>
               )}
@@ -112,9 +102,7 @@ const DashboardCard = memo(({ stat, locale }: DashboardCardProps) => {
         </div>
       </CardHeader>
       <CardContent className="relative z-10">
-        <p className="text-4xl font-black mb-4">
-          {stat.value.toLocaleString()}
-        </p>
+        <p className="text-4xl font-black mb-4">{stat.value.toLocaleString()}</p>
         <div className="w-full h-px bg-white/30 mb-4" />
         <Link href={stat.detailsPageUrl} className="block w-full">
           <Button
@@ -142,10 +130,7 @@ interface EnhancedPieChartProps {
 }
 
 const EnhancedPieChart = memo(({ data }: EnhancedPieChartProps) => {
-  const total = useMemo(
-    () => data.reduce((sum, item) => sum + item.value, 0),
-    [data]
-  );
+  const total = useMemo(() => data.reduce((sum, item) => sum + item.value, 0), [data]);
 
   const CustomTooltip = ({ active, payload }: any) => {
     if (active && payload && payload.length) {
@@ -153,15 +138,11 @@ const EnhancedPieChart = memo(({ data }: EnhancedPieChartProps) => {
       return (
         <div className="bg-white backdrop-blur-sm border border-gray-200 rounded-xl p-4 shadow-2xl">
           <div className="flex items-center gap-2 mb-2">
-            <div
-              className="w-3 h-3 rounded-full"
-              style={{ backgroundColor: data.color }}
-            />
+            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: data.color }} />
             <p className="font-bold text-gray-900">{data.name}</p>
           </div>
           <p className="text-sm text-gray-600">
-            العدد:{" "}
-            <span className="font-semibold">{data.value.toLocaleString()}</span>
+            العدد: <span className="font-semibold">{data.value.toLocaleString()}</span>
           </p>
           <p className="text-xs text-gray-500 mt-1">
             {((data.value / total) * 100).toFixed(1)}% من الإجمالي
@@ -213,9 +194,7 @@ const EnhancedPieChart = memo(({ data }: EnhancedPieChartProps) => {
 
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0">
             <div className="text-center">
-              <div className="text-2xl font-black text-gray-900">
-                {total.toLocaleString()}
-              </div>
+              <div className="text-2xl font-black text-gray-900">{total.toLocaleString()}</div>
               <div className="text-xs font-medium text-gray-500">الإجمالي</div>
             </div>
           </div>
@@ -238,16 +217,12 @@ const EnhancedPieChart = memo(({ data }: EnhancedPieChartProps) => {
                     <Icon className="w-4 h-4" style={{ color: item.color }} />
                   </div>
                   <div>
-                    <div className="font-semibold text-gray-900 text-sm">
-                      {item.name}
-                    </div>
+                    <div className="font-semibold text-gray-900 text-sm">{item.name}</div>
                     <div className="text-xs text-gray-500">{percentage}%</div>
                   </div>
                 </div>
                 <div className="text-right">
-                  <div className="font-bold text-gray-900">
-                    {item.value.toLocaleString()}
-                  </div>
+                  <div className="font-bold text-gray-900">{item.value.toLocaleString()}</div>
                 </div>
               </div>
             );
@@ -274,9 +249,7 @@ const InsightsBarChart = memo(({ data }: InsightsBarChartProps) => {
         </div>
         <div>
           <h3 className="text-lg font-bold text-gray-900">مقارنة الحضور</h3>
-          <p className="text-sm text-gray-600">
-            مقارنة مرئية بين الحالات المختلفة
-          </p>
+          <p className="text-sm text-gray-600">مقارنة مرئية بين الحالات المختلفة</p>
         </div>
       </div>
 
@@ -286,12 +259,8 @@ const InsightsBarChart = memo(({ data }: InsightsBarChartProps) => {
           return (
             <div key={item.name} className="space-y-2">
               <div className="flex justify-between items-center">
-                <span className="font-medium text-gray-700 text-sm">
-                  {item.name}
-                </span>
-                <span className="font-bold text-gray-900">
-                  {item.value.toLocaleString()}
-                </span>
+                <span className="font-medium text-gray-700 text-sm">{item.name}</span>
+                <span className="font-bold text-gray-900">{item.value.toLocaleString()}</span>
               </div>
               <div className="w-full bg-gray-200 rounded-full h-3">
                 <div
@@ -399,10 +368,7 @@ export default function DashboardPage() {
     [stats]
   );
 
-  const recentAttendance = useMemo(
-    () => mockAttendance.slice(0, 5),
-    []
-  );
+  const recentAttendance = useMemo(() => mockAttendance.slice(0, 5), []);
 
   return (
     <MainLayout>
@@ -416,9 +382,7 @@ export default function DashboardPage() {
               <Clock className="w-5 h-5 text-sky-700" />
               <span className="font-semibold text-gray-700">
                 متوسط وقت الحضور:{" "}
-                <span className="text-sky-700 font-bold">
-                  {stats.avgCheckInTime}
-                </span>
+                <span className="text-sky-700 font-bold">{stats.avgCheckInTime}</span>
               </span>
             </div>
           }
@@ -476,11 +440,21 @@ export default function DashboardPage() {
                 <table className="w-full">
                   <thead>
                     <tr className="border-b border-gray-200">
-                      <th className="text-right py-3 px-4 text-sm font-semibold text-gray-600">الموظف</th>
-                      <th className="text-right py-3 px-4 text-sm font-semibold text-gray-600">القسم</th>
-                      <th className="text-right py-3 px-4 text-sm font-semibold text-gray-600">وقت الحضور</th>
-                      <th className="text-right py-3 px-4 text-sm font-semibold text-gray-600">الحالة</th>
-                      <th className="text-right py-3 px-4 text-sm font-semibold text-gray-600">الموقع</th>
+                      <th className="text-right py-3 px-4 text-sm font-semibold text-gray-600">
+                        الموظف
+                      </th>
+                      <th className="text-right py-3 px-4 text-sm font-semibold text-gray-600">
+                        القسم
+                      </th>
+                      <th className="text-right py-3 px-4 text-sm font-semibold text-gray-600">
+                        وقت الحضور
+                      </th>
+                      <th className="text-right py-3 px-4 text-sm font-semibold text-gray-600">
+                        الحالة
+                      </th>
+                      <th className="text-right py-3 px-4 text-sm font-semibold text-gray-600">
+                        الموقع
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
@@ -488,23 +462,31 @@ export default function DashboardPage() {
                       const employee = mockEmployees.find((e) => e.id === record.employeeId);
                       return (
                         <tr key={record.id} className="border-b border-gray-100 hover:bg-gray-50">
-                          <td className="py-3 px-4 text-sm font-medium text-gray-900">{record.employeeName}</td>
-                          <td className="py-3 px-4 text-sm text-gray-600">{employee?.department || "-"}</td>
-                          <td className="py-3 px-4 text-sm text-gray-600">{record.checkInTime || "-"}</td>
+                          <td className="py-3 px-4 text-sm font-medium text-gray-900">
+                            {record.employeeName}
+                          </td>
+                          <td className="py-3 px-4 text-sm text-gray-600">
+                            {employee?.department || "-"}
+                          </td>
+                          <td className="py-3 px-4 text-sm text-gray-600">
+                            {record.checkInTime || "-"}
+                          </td>
                           <td className="py-3 px-4">
                             <span
                               className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                                 record.status === "present"
                                   ? "bg-green-100 text-green-800"
                                   : record.status === "late"
-                                  ? "bg-amber-100 text-amber-800"
-                                  : "bg-red-100 text-red-800"
+                                    ? "bg-amber-100 text-amber-800"
+                                    : "bg-red-100 text-red-800"
                               }`}
                             >
                               {statusLabels[record.status] || record.status}
                             </span>
                           </td>
-                          <td className="py-3 px-4 text-sm text-gray-600">{record.geofenceName || "-"}</td>
+                          <td className="py-3 px-4 text-sm text-gray-600">
+                            {record.geofenceName || "-"}
+                          </td>
                         </tr>
                       );
                     })}

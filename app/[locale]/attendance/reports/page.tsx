@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, type ComponentType } from "react";
 import MainLayout from "@/components/shared/MainLayout";
 import FullPageHead from "@/components/shared/FullPageHead";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,7 +8,6 @@ import { BarChart3, Download, TrendingUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { mockAttendance } from "@/lib/mockData/trackingMockData";
 import dynamic from "next/dynamic";
-import type { ComponentType } from "react";
 
 const BarChart: ComponentType<any> = dynamic(
   () => import("recharts").then((mod) => mod.BarChart as ComponentType<any>),

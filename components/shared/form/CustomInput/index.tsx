@@ -1,15 +1,9 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 "use client";
 import { EyeInput, EyeSlash, InfoCircle } from "@/public/SVG";
-import type React from "react";
+import React, { useState } from "react";
 
-import {
-  ErrorMessage,
-  Field,
-  type FormikProps,
-  useFormikContext,
-} from "formik";
-import { useState } from "react";
+import { ErrorMessage, Field, type FormikProps, useFormikContext } from "formik";
 
 const Index = ({
   type,
@@ -100,11 +94,7 @@ const Index = ({
 
       // Prevent leading zeros (except 0.x)
       if (preventLeadingZero) {
-        if (
-          value.length > 1 &&
-          value.startsWith("0") &&
-          !value.startsWith("0.")
-        ) {
+        if (value.length > 1 && value.startsWith("0") && !value.startsWith("0.")) {
           value = value.replace(/^0+/, "");
         }
       }
@@ -113,7 +103,7 @@ const Index = ({
       setFieldValue(name, value);
       return; // Don't call the default Formik handler
     }
-    
+
     // For non-number types, let Formik handle it via setFieldValue
     setFieldValue(name, value);
   };
@@ -144,20 +134,8 @@ const Index = ({
         const decimalPosition = currentValue.indexOf(".");
 
         // If cursor is after decimal point and we're at max decimals, prevent input
-        if (
-          cursorPosition > decimalPosition &&
-          decimalPart.length >= maxDecimals
-        ) {
-          if (
-            ![
-              "Backspace",
-              "Delete",
-              "ArrowLeft",
-              "ArrowRight",
-              "Tab",
-              "Enter",
-            ].includes(e.key)
-          ) {
+        if (cursorPosition > decimalPosition && decimalPart.length >= maxDecimals) {
+          if (!["Backspace", "Delete", "ArrowLeft", "ArrowRight", "Tab", "Enter"].includes(e.key)) {
             e.preventDefault();
           }
         }
@@ -204,10 +182,7 @@ const Index = ({
 
   return (
     <div className={`flex flex-col gap-2 ${containerClassName}`}>
-      <label
-        htmlFor={name}
-        className={`text-16 text-primarySlate700 font-[600] ${labelStyle}`}
-      >
+      <label htmlFor={name} className={`text-16 text-primarySlate700 font-[600] ${labelStyle}`}>
         {label}
         {required && <span className="text-red-500 ml-1">*</span>}
       </label>
@@ -272,11 +247,7 @@ const Index = ({
           <span className="text-12 text-textSubText">اختياري</span>
         </div>
       )}
-      <ErrorMessage
-        component={"div"}
-        name={name}
-        className="text-14 text-red-500"
-      />
+      <ErrorMessage component={"div"} name={name} className="text-14 text-red-500" />
     </div>
   );
 };

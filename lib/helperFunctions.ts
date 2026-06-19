@@ -6,9 +6,7 @@ export function DateFormat(dateString?: string) {
   // Validate input format (e.g., "2025-09-28 08:51 PM")
   const regex = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2} (AM|PM)$/;
   if (!regex.test(dateString)) {
-    throw new Error(
-      "Invalid date string format. Expected 'YYYY-MM-DD HH:MM AM/PM'"
-    );
+    throw new Error("Invalid date string format. Expected 'YYYY-MM-DD HH:MM AM/PM'");
   }
 
   // Split date and time
@@ -129,22 +127,18 @@ export function getServiceSettingsValue(
   // First try to find item with matching key and subtype (if subtype is provided)
   if (service_subtype) {
     const itemWithSubtype = data.find(
-      (item) => item.key == key && item.service_subtype == service_subtype
+      (item) => item.key === key && item.service_subtype === service_subtype
     );
     if (itemWithSubtype) {
       return itemWithSubtype.value;
     }
     // If no match with subtype, fallback to general value (service_subtype == null)
-    const fallbackItem = data.find(
-      (item) => item.key === key && item.service_subtype == null
-    );
+    const fallbackItem = data.find((item) => item.key === key && item.service_subtype === null);
     return fallbackItem ? fallbackItem.value : 0;
   }
 
   // If no subtype provided, look for item with just matching key
-  const item = data.find(
-    (item) => item.key === key && item.service_subtype == null
-  );
+  const item = data.find((item) => item.key === key && item.service_subtype === null);
 
   return item ? item.value : 0;
 }

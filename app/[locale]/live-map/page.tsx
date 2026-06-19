@@ -20,7 +20,9 @@ import { mockLiveTracking, mockGeofences } from "@/lib/mockData/trackingMockData
 
 export default function LiveMapPage() {
   const mapRef = useRef<HTMLDivElement>(null);
-  const [selectedEmployee, setSelectedEmployee] = useState<typeof mockLiveTracking[0] | null>(null);
+  const [selectedEmployee, setSelectedEmployee] = useState<(typeof mockLiveTracking)[0] | null>(
+    null
+  );
 
   useEffect(() => {
     if (!mapRef.current) return;
@@ -68,7 +70,7 @@ export default function LiveMapPage() {
 
     // Add employee markers
     mockLiveTracking.forEach((emp) => {
-      if (emp.lat == null || emp.lng == null) return;
+      if (emp.lat === null || emp.lng === null) return;
       const point = fromLonLat([emp.lng, emp.lat]);
       const feature = new Feature({
         geometry: new Point(point),
@@ -77,7 +79,11 @@ export default function LiveMapPage() {
       });
 
       const color =
-        emp.status === "inside_geofence" ? "#16A34A" : emp.status === "outside_geofence" ? "#F59E0B" : "#9CA3AF";
+        emp.status === "inside_geofence"
+          ? "#16A34A"
+          : emp.status === "outside_geofence"
+            ? "#F59E0B"
+            : "#9CA3AF";
 
       feature.setStyle(
         new Style({
@@ -102,10 +108,7 @@ export default function LiveMapPage() {
 
     const map = new Map({
       target: mapRef.current,
-      layers: [
-        new TileLayer({ source: new OSM() }),
-        vectorLayer,
-      ],
+      layers: [new TileLayer({ source: new OSM() }), vectorLayer],
       view: new View({
         center: fromLonLat([46.6753, 24.7136]),
         zoom: 12,
@@ -185,7 +188,9 @@ export default function LiveMapPage() {
                     </div>
                     <div>
                       <h3 className="font-bold text-gray-900">{selectedEmployee.name}</h3>
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${statusColors[selectedEmployee.status]}`}>
+                      <span
+                        className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${statusColors[selectedEmployee.status]}`}
+                      >
                         {statusLabels[selectedEmployee.status]}
                       </span>
                     </div>
@@ -193,27 +198,38 @@ export default function LiveMapPage() {
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between">
                       <span className="text-gray-500">الموقع:</span>
-                      <span className="font-medium text-gray-900">{selectedEmployee.geofenceName || "خارج النطاق"}</span>
+                      <span className="font-medium text-gray-900">
+                        {selectedEmployee.geofenceName || "خارج النطاق"}
+                      </span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-500">آخر ظهور:</span>
                       <span className="font-medium text-gray-900">
-                        {new Date(selectedEmployee.lastSeen).toLocaleTimeString("ar-SA", { hour: "2-digit", minute: "2-digit" })}
+                        {new Date(selectedEmployee.lastSeen).toLocaleTimeString("ar-SA", {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
                       </span>
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-gray-500">البطارية:</span>
-                      <span className={`font-medium ${selectedEmployee.battery < 20 ? "text-red-600" : "text-gray-900"}`}>
+                      <span
+                        className={`font-medium ${selectedEmployee.battery < 20 ? "text-red-600" : "text-gray-900"}`}
+                      >
                         {selectedEmployee.battery}%
                       </span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-500">خط العرض:</span>
-                      <span className="font-medium text-gray-900">{selectedEmployee.lat.toFixed(4)}</span>
+                      <span className="font-medium text-gray-900">
+                        {selectedEmployee.lat.toFixed(4)}
+                      </span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-500">خط الطول:</span>
-                      <span className="font-medium text-gray-900">{selectedEmployee.lng.toFixed(4)}</span>
+                      <span className="font-medium text-gray-900">
+                        {selectedEmployee.lng.toFixed(4)}
+                      </span>
                     </div>
                   </div>
                 </CardContent>
@@ -253,9 +269,15 @@ export default function LiveMapPage() {
                           <Battery className="w-3 h-3" />
                           {emp.battery}%
                         </span>
-                        <span className={`w-2 h-2 rounded-full ${
-                          emp.status === "inside_geofence" ? "bg-green-500" : emp.status === "outside_geofence" ? "bg-amber-500" : "bg-gray-400"
-                        }`} />
+                        <span
+                          className={`w-2 h-2 rounded-full ${
+                            emp.status === "inside_geofence"
+                              ? "bg-green-500"
+                              : emp.status === "outside_geofence"
+                                ? "bg-amber-500"
+                                : "bg-gray-400"
+                          }`}
+                        />
                       </div>
                     </div>
                   ))}
