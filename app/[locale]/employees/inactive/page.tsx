@@ -4,7 +4,7 @@ import MainLayout from "@/components/shared/MainLayout";
 import FullPageHead from "@/components/shared/FullPageHead";
 import { Card, CardContent } from "@/components/ui/card";
 import { Users, Mail, Phone } from "lucide-react";
-import { mockEmployees } from "@/lib/mockData/trackingMockData";
+import { useInactiveEmployees } from "@/hooks/useApi";
 
 const roleLabels: Record<string, string> = {
   manager: "مدير",
@@ -13,7 +13,7 @@ const roleLabels: Record<string, string> = {
 };
 
 export default function InactiveEmployeesPage() {
-  const inactiveEmployees = mockEmployees.filter((e) => e.status === "inactive");
+  const { data: inactiveEmployees = [] } = useInactiveEmployees();
 
   return (
     <MainLayout>
@@ -27,18 +27,24 @@ export default function InactiveEmployeesPage() {
         <Card className="border-0 shadow-lg">
           <CardContent className="p-0">
             {inactiveEmployees.length === 0 ? (
-              <div className="text-center py-12 text-gray-500">
-                لا يوجد موظفون غير نشطين
-              </div>
+              <div className="text-center py-12 text-gray-500">لا يوجد موظفون غير نشطين</div>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead>
                     <tr className="border-b border-gray-200 bg-gray-50">
-                      <th className="text-right py-3 px-4 text-sm font-semibold text-gray-600">الموظف</th>
-                      <th className="text-right py-3 px-4 text-sm font-semibold text-gray-600">القسم</th>
-                      <th className="text-right py-3 px-4 text-sm font-semibold text-gray-600">الدور</th>
-                      <th className="text-right py-3 px-4 text-sm font-semibold text-gray-600">التواصل</th>
+                      <th className="text-right py-3 px-4 text-sm font-semibold text-gray-600">
+                        الموظف
+                      </th>
+                      <th className="text-right py-3 px-4 text-sm font-semibold text-gray-600">
+                        القسم
+                      </th>
+                      <th className="text-right py-3 px-4 text-sm font-semibold text-gray-600">
+                        الدور
+                      </th>
+                      <th className="text-right py-3 px-4 text-sm font-semibold text-gray-600">
+                        التواصل
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
@@ -60,8 +66,14 @@ export default function InactiveEmployeesPage() {
                         </td>
                         <td className="py-3 px-4">
                           <div className="flex flex-col gap-1 text-xs text-gray-400">
-                            <span className="flex items-center gap-1"><Mail className="w-3 h-3" />{emp.email}</span>
-                            <span className="flex items-center gap-1"><Phone className="w-3 h-3" />{emp.phone}</span>
+                            <span className="flex items-center gap-1">
+                              <Mail className="w-3 h-3" />
+                              {emp.email}
+                            </span>
+                            <span className="flex items-center gap-1">
+                              <Phone className="w-3 h-3" />
+                              {emp.phone}
+                            </span>
                           </div>
                         </td>
                       </tr>

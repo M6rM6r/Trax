@@ -6,11 +6,12 @@ import FullPageHead from "@/components/shared/FullPageHead";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { MapPin, Plus, Trash2, Edit } from "lucide-react";
-import { mockGeofences } from "@/lib/mockData/trackingMockData";
-import { Geofence } from "@/lib/types/trackingTypes";
+import { useGeofences, useCreateGeofence, useDeleteGeofence } from "@/hooks/useApi";
 
 export default function GeofencesPage() {
-  const [geofences, setGeofences] = useState<Geofence[]>(mockGeofences);
+  const { data: geofences = [] } = useGeofences();
+  const createGeofence = useCreateGeofence();
+  const deleteGeofence = useDeleteGeofence();
   const [showAddForm, setShowAddForm] = useState(false);
   const [newGeofence, setNewGeofence] = useState({
     name: "",
@@ -22,17 +23,20 @@ export default function GeofencesPage() {
   });
 
   const handleAdd = () => {
-    const id = Math.max(...geofences.map((g) => g.id), 0) + 1;
-    setGeofences([
-      ...geofences,
-      { ...newGeofence, id, active: true },
-    ]);
+    createGeofence.mutate({ ...newGeofence, active: true });
     setShowAddForm(false);
-    setNewGeofence({ name: "", address: "", lat: 24.7136, lng: 46.6753, radius: 100, color: "#2563EB" });
+    setNewGeofence({
+      name: "",
+      address: "",
+      lat: 24.7136,
+      lng: 46.6753,
+      radius: 100,
+      color: "#2563EB",
+    });
   };
 
   const handleDelete = (id: number) => {
-    setGeofences(geofences.filter((g) => g.id !== id));
+    deleteGeofence.mutate(id);
   };
 
   return (
@@ -82,31 +86,43 @@ export default function GeofencesPage() {
                   />
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-gray-700 mb-1 block">خط العرض (Lat)</label>
+                  <label className="text-sm font-medium text-gray-700 mb-1 block">
+                    خط العرض (Lat)
+                  </label>
                   <input
                     type="number"
                     step="0.0001"
                     value={newGeofence.lat}
-                    onChange={(e) => setNewGeofence({ ...newGeofence, lat: Number(e.target.value) })}
+                    onChange={(e) =>
+                      setNewGeofence({ ...newGeofence, lat: Number(e.target.value) })
+                    }
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-gray-700 mb-1 block">خط الطول (Lng)</label>
+                  <label className="text-sm font-medium text-gray-700 mb-1 block">
+                    خط الطول (Lng)
+                  </label>
                   <input
                     type="number"
                     step="0.0001"
                     value={newGeofence.lng}
-                    onChange={(e) => setNewGeofence({ ...newGeofence, lng: Number(e.target.value) })}
+                    onChange={(e) =>
+                      setNewGeofence({ ...newGeofence, lng: Number(e.target.value) })
+                    }
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-gray-700 mb-1 block">نصف القطر (متر)</label>
+                  <label className="text-sm font-medium text-gray-700 mb-1 block">
+                    نصف القطر (متر)
+                  </label>
                   <input
                     type="number"
                     value={newGeofence.radius}
-                    onChange={(e) => setNewGeofence({ ...newGeofence, radius: Number(e.target.value) })}
+                    onChange={(e) =>
+                      setNewGeofence({ ...newGeofence, radius: Number(e.target.value) })
+                    }
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
@@ -121,8 +137,12 @@ export default function GeofencesPage() {
                 </div>
               </div>
               <div className="flex gap-3 mt-4">
-                <Button variant="primary" onClick={handleAdd}>حفظ</Button>
-                <Button variant="outline" onClick={() => setShowAddForm(false)}>إلغاء</Button>
+                <Button variant="primary" onClick={handleAdd}>
+                  حفظ
+                </Button>
+                <Button variant="outline" onClick={() => setShowAddForm(false)}>
+                  إلغاء
+                </Button>
               </div>
             </CardContent>
           </Card>
@@ -131,10 +151,7 @@ export default function GeofencesPage() {
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {geofences.map((geo) => (
             <Card key={geo.id} className="border-0 shadow-lg overflow-hidden">
-              <div
-                className="h-2"
-                style={{ backgroundColor: geo.color }}
-              />
+              <div className="h-2" style={{ backgroundColor: geo.color }} />
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
@@ -180,9 +197,7 @@ export default function GeofencesPage() {
                     <span className="text-gray-500">الحالة:</span>
                     <span
                       className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
-                        geo.active
-                          ? "bg-green-100 text-green-800"
-                          : "bg-gray-100 text-gray-600"
+                        geo.active ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-600"
                       }`}
                     >
                       {geo.active ? "نشط" : "متوقف"}

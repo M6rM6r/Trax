@@ -6,9 +6,10 @@ import FullPageHead from "@/components/shared/FullPageHead";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { BarChart3, Download, TrendingUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { mockAttendance } from "@/lib/mockData/trackingMockData";
+import { useAttendanceReports } from "@/hooks/useApi";
 import dynamic from "next/dynamic";
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
 const BarChart: ComponentType<any> = dynamic(
   () => import("recharts").then((mod) => mod.BarChart as ComponentType<any>),
   { ssr: false }
@@ -37,15 +38,18 @@ const Cell: ComponentType<any> = dynamic(
   () => import("recharts").then((mod) => mod.Cell as ComponentType<any>),
   { ssr: false }
 );
+/* eslint-enable @typescript-eslint/no-explicit-any */
 
 export default function AttendanceReportsPage() {
-  const presentCount = mockAttendance.filter((r) => r.status === "present").length;
-  const lateCount = mockAttendance.filter((r) => r.status === "late").length;
-  const absentCount = mockAttendance.filter((r) => r.status === "absent").length;
-  const onTimeRate = ((presentCount / mockAttendance.length) * 100).toFixed(1);
+  const { data: attendance = [] } = useAttendanceReports();
+  const presentCount = attendance.filter((r) => r.status === "present").length;
+  const lateCount = attendance.filter((r) => r.status === "late").length;
+  const absentCount = attendance.filter((r) => r.status === "absent").length;
+  const onTimeRate =
+    attendance.length > 0 ? ((presentCount / attendance.length) * 100).toFixed(1) : "0";
   const avgLateMinutes = Math.round(
-    mockAttendance.filter((r) => r.lateMinutes > 0).reduce((sum, r) => sum + r.lateMinutes, 0) /
-      Math.max(mockAttendance.filter((r) => r.lateMinutes > 0).length, 1)
+    attendance.filter((r) => r.lateMinutes > 0).reduce((sum, r) => sum + r.lateMinutes, 0) /
+      Math.max(attendance.filter((r) => r.lateMinutes > 0).length, 1)
   );
 
   const chartData = useMemo(
@@ -100,7 +104,7 @@ export default function AttendanceReportsPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-gray-600">إجمالي السجلات</p>
-                  <p className="text-3xl font-black text-blue-600 mt-1">{mockAttendance.length}</p>
+                  <p className="text-3xl font-black text-blue-600 mt-1">{attendance.length}</p>
                 </div>
                 <BarChart3 className="w-8 h-8 text-blue-400" />
               </div>

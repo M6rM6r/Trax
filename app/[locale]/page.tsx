@@ -21,9 +21,12 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@radix-ui/react-separator";
 import FullPageHead from "@/components/shared/FullPageHead";
 import MainLayout from "@/components/shared/MainLayout";
-import { mockDashboardStats, mockAttendance, mockEmployees } from "@/lib/mockData/trackingMockData";
+import { useDashboardStats, useAttendance } from "@/hooks/useApi";
+import { mockEmployees } from "@/lib/mockData/trackingMockData";
+import type { DashboardStats } from "@/lib/types/trackingTypes";
 import dynamic from "next/dynamic";
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
 const PieChart: ComponentType<any> = dynamic(
   () => import("recharts").then((mod) => mod.PieChart as ComponentType<any>),
   { ssr: false }
@@ -44,6 +47,7 @@ const Tooltip: ComponentType<any> = dynamic(
   () => import("recharts").then((mod) => mod.Tooltip as ComponentType<any>),
   { ssr: false }
 );
+/* eslint-enable @typescript-eslint/no-explicit-any */
 
 const COLORS = {
   present: "#16A34A",
@@ -283,13 +287,25 @@ InsightsBarChart.displayName = "InsightsBarChart";
 
 export default function DashboardPage() {
   const locale = useLocale();
-  const stats = mockDashboardStats;
+  const { data: stats } = useDashboardStats();
+  const { data: attendanceData } = useAttendance();
+
+  const safeStats: DashboardStats = stats ?? {
+    totalEmployees: 0,
+    presentToday: 0,
+    absentToday: 0,
+    lateToday: 0,
+    checkedOutToday: 0,
+    onTimeRate: 0,
+    avgCheckInTime: "N/A",
+    totalGeofences: 0,
+  };
 
   const dashboardCards = useMemo(
     () => [
       {
         title: "إجمالي الموظفين",
-        value: stats.totalEmployees,
+        value: safeStats.totalEmployees,
         detailsPageUrl: `/${locale}/employees`,
         icon: Users,
         gradient: "from-indigo-500 via-purple-600 to-blue-700",
@@ -298,7 +314,7 @@ export default function DashboardPage() {
       },
       {
         title: "حاضرون اليوم",
-        value: stats.presentToday,
+        value: safeStats.presentToday,
         detailsPageUrl: `/${locale}/attendance`,
         icon: UserCheck,
         gradient: "from-emerald-500 via-green-600 to-teal-700",
@@ -307,7 +323,7 @@ export default function DashboardPage() {
       },
       {
         title: "متأخرون اليوم",
-        value: stats.lateToday,
+        value: safeStats.lateToday,
         detailsPageUrl: `/${locale}/attendance`,
         icon: Clock,
         gradient: "from-amber-500 via-orange-600 to-red-600",
@@ -316,7 +332,7 @@ export default function DashboardPage() {
       },
       {
         title: "غائبون اليوم",
-        value: stats.absentToday,
+        value: safeStats.absentToday,
         detailsPageUrl: `/${locale}/attendance`,
         icon: UserX,
         gradient: "from-red-500 via-rose-600 to-pink-700",
@@ -325,7 +341,7 @@ export default function DashboardPage() {
       },
       {
         title: "النطاقات الجغرافية",
-        value: stats.totalGeofences,
+        value: safeStats.totalGeofences,
         detailsPageUrl: `/${locale}/geofences`,
         icon: MapPin,
         gradient: "from-cyan-500 via-blue-600 to-indigo-700",
@@ -333,7 +349,7 @@ export default function DashboardPage() {
       },
       {
         title: "نسبة الالتزام بالوقت",
-        value: stats.onTimeRate,
+        value: safeStats.onTimeRate,
         detailsPageUrl: `/${locale}/attendance/reports`,
         icon: Target,
         gradient: "from-violet-500 via-purple-600 to-fuchsia-700",
@@ -341,34 +357,34 @@ export default function DashboardPage() {
         trend: 5.0,
       },
     ],
-    [stats, locale]
+    [safeStats, locale]
   );
 
   const attendanceDistribution = useMemo(
     () => [
       {
         name: statusLabels.present,
-        value: stats.presentToday,
+        value: safeStats.presentToday,
         icon: UserCheck,
         color: COLORS.present,
       },
       {
         name: statusLabels.late,
-        value: stats.lateToday,
+        value: safeStats.lateToday,
         icon: Clock,
         color: COLORS.late,
       },
       {
         name: statusLabels.absent,
-        value: stats.absentToday,
+        value: safeStats.absentToday,
         icon: UserX,
         color: COLORS.absent,
       },
     ],
-    [stats]
+    [safeStats]
   );
 
-  const recentAttendance = useMemo(() => mockAttendance.slice(0, 5), []);
+  const recentAttendance = useMemo(() => (attendanceData ?? []).slice(0, 5), [attendanceData]);
 
   return (
     <MainLayout>
@@ -382,7 +398,7 @@ export default function DashboardPage() {
               <Clock className="w-5 h-5 text-sky-700" />
               <span className="font-semibold text-gray-700">
                 متوسط وقت الحضور:{" "}
-                <span className="text-sky-700 font-bold">{stats.avgCheckInTime}</span>
+                <span className="text-sky-700 font-bold">{safeStats.avgCheckInTime}</span>
               </span>
             </div>
           }

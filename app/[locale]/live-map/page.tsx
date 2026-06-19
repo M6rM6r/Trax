@@ -16,13 +16,14 @@ import { Point, Circle as CircleGeom } from "ol/geom";
 import Feature from "ol/Feature";
 import { Style, Stroke, Fill, Circle as CircleStyle, Text } from "ol/style";
 import "ol/ol.css";
-import { mockLiveTracking, mockGeofences } from "@/lib/mockData/trackingMockData";
+import { useLiveTracking, useGeofences } from "@/hooks/useApi";
+import type { LiveTrackingEmployee, Geofence } from "@/lib/types/trackingTypes";
 
 export default function LiveMapPage() {
   const mapRef = useRef<HTMLDivElement>(null);
-  const [selectedEmployee, setSelectedEmployee] = useState<(typeof mockLiveTracking)[0] | null>(
-    null
-  );
+  const { data: liveTracking = [] } = useLiveTracking();
+  const { data: geofences = [] } = useGeofences();
+  const [selectedEmployee, setSelectedEmployee] = useState<LiveTrackingEmployee | null>(null);
 
   useEffect(() => {
     if (!mapRef.current) return;
@@ -30,7 +31,7 @@ export default function LiveMapPage() {
     const vectorSource = new VectorSource();
 
     // Add geofence circles
-    mockGeofences.forEach((geo) => {
+    geofences.forEach((geo: Geofence) => {
       const center = fromLonLat([geo.lng, geo.lat]);
       const circleFeature = new Feature({
         geometry: new CircleGeom(center, geo.radius * 10),
@@ -69,7 +70,7 @@ export default function LiveMapPage() {
     });
 
     // Add employee markers
-    mockLiveTracking.forEach((emp) => {
+    liveTracking.forEach((emp) => {
       if (emp.lat === null || emp.lng === null) return;
       const point = fromLonLat([emp.lng, emp.lat]);
       const feature = new Feature({
@@ -121,7 +122,7 @@ export default function LiveMapPage() {
         const type = feature.get("type");
         if (type === "employee") {
           const empId = feature.get("employeeId");
-          const emp = mockLiveTracking.find((e) => e.id === empId);
+          const emp = liveTracking.find((e) => e.id === empId);
           if (emp) {
             setSelectedEmployee(emp);
             clicked = true;
@@ -132,7 +133,7 @@ export default function LiveMapPage() {
     });
 
     return () => map.setTarget(undefined);
-  }, []);
+  }, [geofences, liveTracking]);
 
   const statusLabels: Record<string, string> = {
     inside_geofence: "داخل النطاق",
@@ -247,7 +248,7 @@ export default function LiveMapPage() {
               <CardContent className="pt-6">
                 <h3 className="font-bold text-gray-900 mb-4">الموظفون المتصلون</h3>
                 <div className="space-y-2 max-h-[300px] overflow-y-auto">
-                  {mockLiveTracking.map((emp) => (
+                  {liveTracking.map((emp) => (
                     <div
                       key={emp.id}
                       onClick={() => setSelectedEmployee(emp)}

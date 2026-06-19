@@ -6,8 +6,8 @@ import FullPageHead from "@/components/shared/FullPageHead";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Users, UserPlus, Edit, Trash2, Phone, Mail, MapPin } from "lucide-react";
-import { mockEmployees, mockGeofences } from "@/lib/mockData/trackingMockData";
-import { Employee } from "@/lib/types/trackingTypes";
+import { useEmployees, useGeofences, useCreateEmployee, useDeleteEmployee } from "@/hooks/useApi";
+import type { EmployeeRole } from "@/lib/types/trackingTypes";
 
 const roleLabels: Record<string, string> = {
   manager: "مدير",
@@ -16,42 +16,47 @@ const roleLabels: Record<string, string> = {
 };
 
 export default function EmployeesPage() {
-  const [employees, setEmployees] = useState<Employee[]>(mockEmployees);
+  const { data: employees = [] } = useEmployees();
+  const { data: geofences = [] } = useGeofences();
+  const createEmployee = useCreateEmployee();
+  const deleteEmployee = useDeleteEmployee();
   const [showAddForm, setShowAddForm] = useState(false);
   const [newEmployee, setNewEmployee] = useState({
     name: "",
     email: "",
     phone: "",
     department: "",
-    role: "employee" as const,
+    role: "employee" as EmployeeRole,
     geofenceId: 1,
   });
 
   const handleAdd = () => {
-    const id = Math.max(...employees.map((e) => e.id), 0) + 1;
-    setEmployees([
-      ...employees,
-      {
-        ...newEmployee,
-        id,
-        avatar: null,
-        status: "active",
-        currentLat: null,
-        currentLng: null,
-        lastSeen: null,
-      },
-    ]);
+    createEmployee.mutate({
+      ...newEmployee,
+      avatar: null,
+      status: "active",
+      currentLat: null,
+      currentLng: null,
+      lastSeen: null,
+    });
     setShowAddForm(false);
-    setNewEmployee({ name: "", email: "", phone: "", department: "", role: "employee", geofenceId: 1 });
+    setNewEmployee({
+      name: "",
+      email: "",
+      phone: "",
+      department: "",
+      role: "employee",
+      geofenceId: 1,
+    });
   };
 
   const handleDelete = (id: number) => {
-    setEmployees(employees.filter((e) => e.id !== id));
+    deleteEmployee.mutate(id);
   };
 
   const getGeofenceName = (id: number | null) => {
     if (!id) return "-";
-    return mockGeofences.find((g) => g.id === id)?.name || "-";
+    return geofences.find((g) => g.id === id)?.name || "-";
   };
 
   return (
@@ -91,7 +96,9 @@ export default function EmployeesPage() {
                   />
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-gray-700 mb-1 block">البريد الإلكتروني</label>
+                  <label className="text-sm font-medium text-gray-700 mb-1 block">
+                    البريد الإلكتروني
+                  </label>
                   <input
                     type="email"
                     value={newEmployee.email}
@@ -124,7 +131,9 @@ export default function EmployeesPage() {
                   <label className="text-sm font-medium text-gray-700 mb-1 block">الدور</label>
                   <select
                     value={newEmployee.role}
-                    onChange={(e) => setNewEmployee({ ...newEmployee, role: e.target.value as any })}
+                    onChange={(e) =>
+                      setNewEmployee({ ...newEmployee, role: e.target.value as EmployeeRole })
+                    }
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500"
                   >
                     <option value="employee">موظف</option>
@@ -133,21 +142,31 @@ export default function EmployeesPage() {
                   </select>
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-gray-700 mb-1 block">النطاق الجغرافي</label>
+                  <label className="text-sm font-medium text-gray-700 mb-1 block">
+                    النطاق الجغرافي
+                  </label>
                   <select
                     value={newEmployee.geofenceId}
-                    onChange={(e) => setNewEmployee({ ...newEmployee, geofenceId: Number(e.target.value) })}
+                    onChange={(e) =>
+                      setNewEmployee({ ...newEmployee, geofenceId: Number(e.target.value) })
+                    }
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500"
                   >
-                    {mockGeofences.map((g) => (
-                      <option key={g.id} value={g.id}>{g.name}</option>
+                    {geofences.map((g) => (
+                      <option key={g.id} value={g.id}>
+                        {g.name}
+                      </option>
                     ))}
                   </select>
                 </div>
               </div>
               <div className="flex gap-3 mt-4">
-                <Button variant="primary" onClick={handleAdd}>حفظ</Button>
-                <Button variant="outline" onClick={() => setShowAddForm(false)}>إلغاء</Button>
+                <Button variant="primary" onClick={handleAdd}>
+                  حفظ
+                </Button>
+                <Button variant="outline" onClick={() => setShowAddForm(false)}>
+                  إلغاء
+                </Button>
               </div>
             </CardContent>
           </Card>
@@ -159,13 +178,27 @@ export default function EmployeesPage() {
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-gray-200 bg-gray-50">
-                    <th className="text-right py-3 px-4 text-sm font-semibold text-gray-600">الموظف</th>
-                    <th className="text-right py-3 px-4 text-sm font-semibold text-gray-600">القسم</th>
-                    <th className="text-right py-3 px-4 text-sm font-semibold text-gray-600">الدور</th>
-                    <th className="text-right py-3 px-4 text-sm font-semibold text-gray-600">التواصل</th>
-                    <th className="text-right py-3 px-4 text-sm font-semibold text-gray-600">النطاق الجغرافي</th>
-                    <th className="text-right py-3 px-4 text-sm font-semibold text-gray-600">الحالة</th>
-                    <th className="text-right py-3 px-4 text-sm font-semibold text-gray-600">إجراءات</th>
+                    <th className="text-right py-3 px-4 text-sm font-semibold text-gray-600">
+                      الموظف
+                    </th>
+                    <th className="text-right py-3 px-4 text-sm font-semibold text-gray-600">
+                      القسم
+                    </th>
+                    <th className="text-right py-3 px-4 text-sm font-semibold text-gray-600">
+                      الدور
+                    </th>
+                    <th className="text-right py-3 px-4 text-sm font-semibold text-gray-600">
+                      التواصل
+                    </th>
+                    <th className="text-right py-3 px-4 text-sm font-semibold text-gray-600">
+                      النطاق الجغرافي
+                    </th>
+                    <th className="text-right py-3 px-4 text-sm font-semibold text-gray-600">
+                      الحالة
+                    </th>
+                    <th className="text-right py-3 px-4 text-sm font-semibold text-gray-600">
+                      إجراءات
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
@@ -187,8 +220,14 @@ export default function EmployeesPage() {
                       </td>
                       <td className="py-3 px-4">
                         <div className="flex flex-col gap-1 text-xs text-gray-500">
-                          <span className="flex items-center gap-1"><Mail className="w-3 h-3" />{emp.email}</span>
-                          <span className="flex items-center gap-1"><Phone className="w-3 h-3" />{emp.phone}</span>
+                          <span className="flex items-center gap-1">
+                            <Mail className="w-3 h-3" />
+                            {emp.email}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <Phone className="w-3 h-3" />
+                            {emp.phone}
+                          </span>
                         </div>
                       </td>
                       <td className="py-3 px-4 text-sm text-gray-600">
@@ -210,7 +249,10 @@ export default function EmployeesPage() {
                       </td>
                       <td className="py-3 px-4">
                         <div className="flex items-center gap-2">
-                          <button className="p-1.5 rounded-lg hover:bg-blue-50 text-blue-600" title="تعديل">
+                          <button
+                            className="p-1.5 rounded-lg hover:bg-blue-50 text-blue-600"
+                            title="تعديل"
+                          >
                             <Edit className="w-4 h-4" />
                           </button>
                           <button

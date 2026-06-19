@@ -19,10 +19,6 @@ export default function NotFound() {
 
   const goHome = () => router.push("/");
   const goBack = () => router.back();
-  const searchSite = () => {
-    // You can implement search functionality or redirect to search page
-    router.push("/search");
-  };
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-yellow-50 to-amber-100 p-4 transition-colors duration-300">
@@ -53,9 +49,7 @@ export default function NotFound() {
         </div>
 
         {/* Main Content */}
-        <h1 className="text-2xl md:text-3xl font-bold text-gray-800 mb-4">
-          🗺️ الصفحة غير موجودة
-        </h1>
+        <h1 className="text-2xl md:text-3xl font-bold text-gray-800 mb-4">🗺️ الصفحة غير موجودة</h1>
 
         <p className="text-gray-600 mb-3 text-lg leading-relaxed">
           عذراً، لم نتمكن من العثور على الصفحة التي تبحث عنها.
@@ -80,10 +74,7 @@ export default function NotFound() {
         <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-6">
           <p className="text-yellow-700 text-sm font-medium">
             سيتم تحويلك تلقائياً إلى الصفحة الرئيسية خلال{" "}
-            <span className="font-bold text-yellow-800 text-lg">
-              {countdown}
-            </span>{" "}
-            ثانية
+            <span className="font-bold text-yellow-800 text-lg">{countdown}</span> ثانية
           </p>
         </div>
 
@@ -93,12 +84,7 @@ export default function NotFound() {
             onClick={goHome}
             className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl shadow-lg transition-all duration-300 transform hover:scale-105 flex items-center justify-center gap-2 font-medium"
           >
-            <svg
-              className="w-5 h-5"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -113,12 +99,7 @@ export default function NotFound() {
             onClick={goBack}
             className="bg-gray-600 hover:bg-gray-700 text-white px-6 py-3 rounded-xl shadow-lg transition-all duration-300 transform hover:scale-105 flex items-center justify-center gap-2 font-medium"
           >
-            <svg
-              className="w-5 h-5"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -133,8 +114,7 @@ export default function NotFound() {
         {/* Current Path Info */}
         <div className="mt-6">
           <p className="text-xs text-gray-400">
-            المسار الحالي:{" "}
-            {typeof window !== "undefined" ? window.location.pathname : ""}
+            المسار الحالي: {typeof window !== "undefined" ? window.location.pathname : ""}
           </p>
         </div>
       </div>
