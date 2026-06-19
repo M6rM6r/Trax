@@ -118,62 +118,72 @@ export default function EmployeesPage() {
         />
 
         {showAddForm && (
-          <Card className="border-0 shadow-lg">
+          <Card className="border-0 shadow-lg dark:bg-slate-800">
             <CardHeader>
-              <CardTitle className="text-lg font-bold">إضافة موظف جديد</CardTitle>
+              <CardTitle className="text-lg font-bold text-gray-900 dark:text-slate-100">
+                إضافة موظف جديد
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="text-sm font-medium text-gray-700 mb-1 block">الاسم</label>
+                  <label className="text-sm font-medium text-gray-700 dark:text-slate-300 mb-1 block">
+                    الاسم
+                  </label>
                   <input
                     type="text"
                     value={newEmployee.name}
                     onChange={(e) => setNewEmployee({ ...newEmployee, name: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-transparent dark:bg-slate-900 text-gray-900 dark:text-slate-100"
                     placeholder="اسم الموظف"
                   />
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-gray-700 mb-1 block">
+                  <label className="text-sm font-medium text-gray-700 dark:text-slate-300 mb-1 block">
                     البريد الإلكتروني
                   </label>
                   <input
                     type="email"
                     value={newEmployee.email}
                     onChange={(e) => setNewEmployee({ ...newEmployee, email: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-transparent dark:bg-slate-900 text-gray-900 dark:text-slate-100"
                     placeholder="email@trax.com"
                   />
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-gray-700 mb-1 block">الهاتف</label>
+                  <label className="text-sm font-medium text-gray-700 dark:text-slate-300 mb-1 block">
+                    الهاتف
+                  </label>
                   <input
                     type="tel"
                     value={newEmployee.phone}
                     onChange={(e) => setNewEmployee({ ...newEmployee, phone: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-transparent dark:bg-slate-900 text-gray-900 dark:text-slate-100"
                     placeholder="+966..."
                   />
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-gray-700 mb-1 block">القسم</label>
+                  <label className="text-sm font-medium text-gray-700 dark:text-slate-300 mb-1 block">
+                    القسم
+                  </label>
                   <input
                     type="text"
                     value={newEmployee.department}
                     onChange={(e) => setNewEmployee({ ...newEmployee, department: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-transparent dark:bg-slate-900 text-gray-900 dark:text-slate-100"
                     placeholder="القسم"
                   />
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-gray-700 mb-1 block">الدور</label>
+                  <label className="text-sm font-medium text-gray-700 dark:text-slate-300 mb-1 block">
+                    الدور
+                  </label>
                   <select
                     value={newEmployee.role}
                     onChange={(e) =>
                       setNewEmployee({ ...newEmployee, role: e.target.value as EmployeeRole })
                     }
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-transparent dark:bg-slate-900 text-gray-900 dark:text-slate-100"
                   >
                     <option value="employee">موظف</option>
                     <option value="supervisor">مشرف</option>
@@ -181,7 +191,7 @@ export default function EmployeesPage() {
                   </select>
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-gray-700 mb-1 block">
+                  <label className="text-sm font-medium text-gray-700 dark:text-slate-300 mb-1 block">
                     النطاق الجغرافي
                   </label>
                   <select
@@ -189,7 +199,7 @@ export default function EmployeesPage() {
                     onChange={(e) =>
                       setNewEmployee({ ...newEmployee, geofenceId: Number(e.target.value) })
                     }
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-transparent dark:bg-slate-900 text-gray-900 dark:text-slate-100"
                   >
                     {geofences.map((g) => (
                       <option key={g.id} value={g.id}>

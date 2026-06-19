@@ -37,41 +37,43 @@ export default function AttendancePage() {
         />
 
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <Card className="border-0 shadow-md">
+          <Card className="border-0 shadow-md dark:bg-slate-800 animate-stagger-1">
             <CardContent className="pt-6">
               <div className="text-center">
-                <p className="text-3xl font-black text-green-600">
+                <p className="text-3xl font-black text-green-600 dark:text-green-400">
                   {attendance.filter((r) => r.status === "present").length}
                 </p>
-                <p className="text-sm text-gray-600 mt-1">حاضر</p>
+                <p className="text-sm text-gray-600 dark:text-slate-400 mt-1">حاضر</p>
               </div>
             </CardContent>
           </Card>
-          <Card className="border-0 shadow-md">
+          <Card className="border-0 shadow-md dark:bg-slate-800 animate-stagger-2">
             <CardContent className="pt-6">
               <div className="text-center">
-                <p className="text-3xl font-black text-amber-600">
+                <p className="text-3xl font-black text-amber-600 dark:text-amber-400">
                   {attendance.filter((r) => r.status === "late").length}
                 </p>
-                <p className="text-sm text-gray-600 mt-1">متأخر</p>
+                <p className="text-sm text-gray-600 dark:text-slate-400 mt-1">متأخر</p>
               </div>
             </CardContent>
           </Card>
-          <Card className="border-0 shadow-md">
+          <Card className="border-0 shadow-md dark:bg-slate-800 animate-stagger-3">
             <CardContent className="pt-6">
               <div className="text-center">
-                <p className="text-3xl font-black text-red-600">
+                <p className="text-3xl font-black text-red-600 dark:text-red-400">
                   {attendance.filter((r) => r.status === "absent").length}
                 </p>
-                <p className="text-sm text-gray-600 mt-1">غائب</p>
+                <p className="text-sm text-gray-600 dark:text-slate-400 mt-1">غائب</p>
               </div>
             </CardContent>
           </Card>
-          <Card className="border-0 shadow-md">
+          <Card className="border-0 shadow-md dark:bg-slate-800 animate-stagger-4">
             <CardContent className="pt-6">
               <div className="text-center">
-                <p className="text-3xl font-black text-gray-600">{attendance.length}</p>
-                <p className="text-sm text-gray-600 mt-1">الإجمالي</p>
+                <p className="text-3xl font-black text-gray-600 dark:text-slate-300">
+                  {attendance.length}
+                </p>
+                <p className="text-sm text-gray-600 dark:text-slate-400 mt-1">الإجمالي</p>
               </div>
             </CardContent>
           </Card>

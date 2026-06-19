@@ -23,8 +23,9 @@ import FullPageHead from "@/components/shared/FullPageHead";
 import MainLayout from "@/components/shared/MainLayout";
 import { useDashboardStats, useAttendance } from "@/hooks/useApi";
 import { LoadingSkeleton, ErrorState } from "@/components/shared/StateViews";
+import { DataTable, type Column } from "@/components/shared/DataTable/DataTable";
 import { mockEmployees } from "@/lib/mockData/trackingMockData";
-import type { DashboardStats } from "@/lib/types/trackingTypes";
+import type { DashboardStats, AttendanceRecord } from "@/lib/types/trackingTypes";
 import dynamic from "next/dynamic";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -395,11 +396,13 @@ export default function DashboardPage() {
           description="نظرة شاملة على حضور الموظفين وتتبعهم في الوقت الحقيقي"
           Icon={<ChartSpline className="w-7 h-7" />}
           LeftSection={
-            <div className="flex items-center gap-2 text-sm bg-gray-50 px-4 py-2 rounded-xl border border-gray-200 shadow-sm">
-              <Clock className="w-5 h-5 text-sky-700" />
-              <span className="font-semibold text-gray-700">
+            <div className="flex items-center gap-2 text-sm bg-gray-50 dark:bg-slate-800 px-4 py-2 rounded-xl border border-gray-200 dark:border-slate-700 shadow-sm">
+              <Clock className="w-5 h-5 text-sky-700 dark:text-sky-400" />
+              <span className="font-semibold text-gray-700 dark:text-slate-300">
                 متوسط وقت الحضور:{" "}
-                <span className="text-sky-700 font-bold">{safeStats.avgCheckInTime}</span>
+                <span className="text-sky-700 dark:text-sky-400 font-bold">
+                  {safeStats.avgCheckInTime}
+                </span>
               </span>
             </div>
           }
@@ -425,10 +428,10 @@ export default function DashboardPage() {
                     <Target className="w-5 h-5 text-white" />
                   </div>
                   <div>
-                    <CardTitle className="text-2xl font-bold text-gray-900">
+                    <CardTitle className="text-2xl font-bold text-gray-900 dark:text-slate-100">
                       نظرة عامة على الحضور
                     </CardTitle>
-                    <p className="text-sm text-gray-600 mt-1">
+                    <p className="text-sm text-gray-600 dark:text-slate-400 mt-1">
                       تحليل شامل لإحصائيات الحضور والانصراف
                     </p>
                   </div>
@@ -443,78 +446,89 @@ export default function DashboardPage() {
               </CardContent>
             </Card>
 
-            <Card className="border-0 shadow-lg">
+            <Card className="border-0 shadow-lg dark:bg-slate-800">
               <CardHeader>
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl bg-green-500 flex items-center justify-center">
                     <UserCheck className="w-5 h-5 text-white" />
                   </div>
                   <div>
-                    <CardTitle className="text-lg font-bold text-gray-900">
+                    <CardTitle className="text-lg font-bold text-gray-900 dark:text-slate-100">
                       أحدث سجلات الحضور
                     </CardTitle>
-                    <p className="text-sm text-gray-600">آخر عمليات تسجيل الحضور اليوم</p>
+                    <p className="text-sm text-gray-600 dark:text-slate-400">
+                      آخر عمليات تسجيل الحضور اليوم
+                    </p>
                   </div>
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead>
-                      <tr className="border-b border-gray-200">
-                        <th className="text-right py-3 px-4 text-sm font-semibold text-gray-600">
-                          الموظف
-                        </th>
-                        <th className="text-right py-3 px-4 text-sm font-semibold text-gray-600">
-                          القسم
-                        </th>
-                        <th className="text-right py-3 px-4 text-sm font-semibold text-gray-600">
-                          وقت الحضور
-                        </th>
-                        <th className="text-right py-3 px-4 text-sm font-semibold text-gray-600">
-                          الحالة
-                        </th>
-                        <th className="text-right py-3 px-4 text-sm font-semibold text-gray-600">
-                          الموقع
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {recentAttendance.map((record) => {
-                        const employee = mockEmployees.find((e) => e.id === record.employeeId);
-                        return (
-                          <tr key={record.id} className="border-b border-gray-100 hover:bg-gray-50">
-                            <td className="py-3 px-4 text-sm font-medium text-gray-900">
-                              {record.employeeName}
-                            </td>
-                            <td className="py-3 px-4 text-sm text-gray-600">
-                              {employee?.department || "-"}
-                            </td>
-                            <td className="py-3 px-4 text-sm text-gray-600">
-                              {record.checkInTime || "-"}
-                            </td>
-                            <td className="py-3 px-4">
-                              <span
-                                className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                                  record.status === "present"
-                                    ? "bg-green-100 text-green-800"
-                                    : record.status === "late"
-                                      ? "bg-amber-100 text-amber-800"
-                                      : "bg-red-100 text-red-800"
-                                }`}
-                              >
-                                {statusLabels[record.status] || record.status}
-                              </span>
-                            </td>
-                            <td className="py-3 px-4 text-sm text-gray-600">
-                              {record.geofenceName || "-"}
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
+                <DataTable<AttendanceRecord>
+                  columns={[
+                    {
+                      key: "employeeName",
+                      header: "الموظف",
+                      sortable: true,
+                      filterable: true,
+                      sortValue: (r) => r.employeeName,
+                      cell: (r) => (
+                        <span className="text-sm font-medium text-gray-900 dark:text-slate-100">
+                          {r.employeeName}
+                        </span>
+                      ),
+                    },
+                    {
+                      key: "department",
+                      header: "القسم",
+                      sortable: true,
+                      filterable: true,
+                      sortValue: (r) => {
+                        const emp = mockEmployees.find((e) => e.id === r.employeeId);
+                        return emp?.department || "-";
+                      },
+                      cell: (r) => {
+                        const emp = mockEmployees.find((e) => e.id === r.employeeId);
+                        return emp?.department || "-";
+                      },
+                    },
+                    {
+                      key: "checkInTime",
+                      header: "وقت الحضور",
+                      sortable: true,
+                      sortValue: (r) => r.checkInTime || "",
+                      cell: (r) => r.checkInTime || "-",
+                    },
+                    {
+                      key: "status",
+                      header: "الحالة",
+                      sortable: true,
+                      sortValue: (r) => r.status,
+                      cell: (r) => (
+                        <span
+                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                            r.status === "present"
+                              ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400"
+                              : r.status === "late"
+                                ? "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400"
+                                : "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400"
+                          }`}
+                        >
+                          {statusLabels[r.status] || r.status}
+                        </span>
+                      ),
+                    },
+                    {
+                      key: "geofenceName",
+                      header: "الموقع",
+                      filterable: true,
+                      sortValue: (r) => r.geofenceName || "",
+                      cell: (r) => r.geofenceName || "-",
+                    },
+                  ]}
+                  data={recentAttendance}
+                  searchPlaceholder="بحث في السجلات..."
+                  pageSize={5}
+                />
               </CardContent>
             </Card>
           </div>

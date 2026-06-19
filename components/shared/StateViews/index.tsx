@@ -13,7 +13,7 @@ export function LoadingSkeleton({ variant }: { variant: SkeletonVariant }) {
     return (
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
         {Array.from({ length: 6 }).map((_, i) => (
-          <Card key={i} className="border-0 shadow-lg">
+          <Card key={i} className="border-0 shadow-lg dark:bg-slate-800">
             <CardHeader>
               <div className="flex items-center gap-3">
                 <Skeleton className="w-12 h-12 rounded-xl" />
@@ -36,12 +36,12 @@ export function LoadingSkeleton({ variant }: { variant: SkeletonVariant }) {
 
   if (variant === "table") {
     return (
-      <Card className="border-0 shadow-lg">
+      <Card className="border-0 shadow-lg dark:bg-slate-800">
         <CardContent className="p-0">
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="border-b border-gray-200 bg-gray-50">
+                <tr className="border-b border-gray-200 bg-gray-50 dark:bg-slate-700 dark:border-slate-600">
                   {Array.from({ length: 6 }).map((_, i) => (
                     <th key={i} className="py-3 px-4">
                       <Skeleton className="h-4 w-20" />
@@ -71,7 +71,10 @@ export function LoadingSkeleton({ variant }: { variant: SkeletonVariant }) {
     return (
       <div className="space-y-3">
         {Array.from({ length: 5 }).map((_, i) => (
-          <div key={i} className="flex items-center gap-3 p-3 rounded-xl border border-gray-200">
+          <div
+            key={i}
+            className="flex items-center gap-3 p-3 rounded-xl border border-gray-200 dark:border-slate-700"
+          >
             <Skeleton className="w-10 h-10 rounded-full" />
             <div className="flex-1 space-y-2">
               <Skeleton className="h-4 w-32" />
@@ -88,12 +91,12 @@ export function LoadingSkeleton({ variant }: { variant: SkeletonVariant }) {
     return (
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2">
-          <Card className="border-0 shadow-lg overflow-hidden">
+          <Card className="border-0 shadow-lg overflow-hidden dark:bg-slate-800">
             <Skeleton className="h-[600px] w-full rounded-none" />
           </Card>
         </div>
         <div className="space-y-4">
-          <Card className="border-0 shadow-lg">
+          <Card className="border-0 shadow-lg dark:bg-slate-800">
             <CardContent className="pt-6 space-y-4">
               <Skeleton className="h-12 w-12 rounded-full" />
               <Skeleton className="h-4 w-full" />
@@ -101,14 +104,14 @@ export function LoadingSkeleton({ variant }: { variant: SkeletonVariant }) {
               <Skeleton className="h-4 w-1/2" />
             </CardContent>
           </Card>
-          <Card className="border-0 shadow-lg">
+          <Card className="border-0 shadow-lg dark:bg-slate-800">
             <CardContent className="pt-6">
               <Skeleton className="h-5 w-32 mb-4" />
               <div className="space-y-2">
                 {Array.from({ length: 4 }).map((_, i) => (
                   <div
                     key={i}
-                    className="flex items-center justify-between p-3 rounded-xl border border-gray-100"
+                    className="flex items-center justify-between p-3 rounded-xl border border-gray-100 dark:border-slate-700"
                   >
                     <Skeleton className="h-8 w-8 rounded-full" />
                     <Skeleton className="h-4 w-20" />
@@ -147,8 +150,8 @@ export function EmptyState({
         <div className="w-16 h-16 rounded-full bg-gray-100 dark:bg-slate-700 flex items-center justify-center mb-4">
           <Icon className="w-8 h-8 text-gray-400 dark:text-slate-500" />
         </div>
-        <h3 className="text-lg font-bold text-gray-700 mb-2">{title}</h3>
-        <p className="text-sm text-gray-500 mb-6">{description}</p>
+        <h3 className="text-lg font-bold text-gray-700 dark:text-slate-200 mb-2">{title}</h3>
+        <p className="text-sm text-gray-500 dark:text-slate-400 mb-6">{description}</p>
         {actionLabel && onAction && (
           <Button variant="primary" onClick={onAction} className="flex items-center gap-2">
             {actionLabel}

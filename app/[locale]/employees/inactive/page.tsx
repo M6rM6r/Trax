@@ -6,6 +6,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Users, Mail, Phone } from "lucide-react";
 import { useInactiveEmployees } from "@/hooks/useApi";
 import { LoadingSkeleton, EmptyState, ErrorState } from "@/components/shared/StateViews";
+import { DataTable, type Column } from "@/components/shared/DataTable/DataTable";
+import type { Employee } from "@/lib/types/trackingTypes";
 
 const roleLabels: Record<string, string> = {
   manager: "مدير",
@@ -35,62 +37,66 @@ export default function InactiveEmployeesPage() {
           />
         )}
         {!isLoading && !isError && inactiveEmployees.length > 0 && (
-          <Card className="border-0 shadow-lg">
-            <CardContent className="p-0">
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b border-gray-200 bg-gray-50">
-                      <th className="text-right py-3 px-4 text-sm font-semibold text-gray-600">
-                        الموظف
-                      </th>
-                      <th className="text-right py-3 px-4 text-sm font-semibold text-gray-600">
-                        القسم
-                      </th>
-                      <th className="text-right py-3 px-4 text-sm font-semibold text-gray-600">
-                        الدور
-                      </th>
-                      <th className="text-right py-3 px-4 text-sm font-semibold text-gray-600">
-                        التواصل
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {inactiveEmployees.map((emp) => (
-                      <tr key={emp.id} className="border-b border-gray-100 hover:bg-gray-50">
-                        <td className="py-3 px-4">
-                          <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-full bg-gray-300 flex items-center justify-center text-white font-bold text-sm">
-                              {emp.name.charAt(0)}
-                            </div>
-                            <span className="text-sm font-medium text-gray-700">{emp.name}</span>
-                          </div>
-                        </td>
-                        <td className="py-3 px-4 text-sm text-gray-500">{emp.department}</td>
-                        <td className="py-3 px-4">
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
-                            {roleLabels[emp.role]}
-                          </span>
-                        </td>
-                        <td className="py-3 px-4">
-                          <div className="flex flex-col gap-1 text-xs text-gray-400">
-                            <span className="flex items-center gap-1">
-                              <Mail className="w-3 h-3" />
-                              {emp.email}
-                            </span>
-                            <span className="flex items-center gap-1">
-                              <Phone className="w-3 h-3" />
-                              {emp.phone}
-                            </span>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </CardContent>
-          </Card>
+          <DataTable<Employee>
+            columns={[
+              {
+                key: "name",
+                header: "الموظف",
+                sortable: true,
+                filterable: true,
+                sortValue: (emp) => emp.name,
+                cell: (emp) => (
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-gray-300 dark:bg-slate-600 flex items-center justify-center text-white font-bold text-sm">
+                      {emp.name.charAt(0)}
+                    </div>
+                    <span className="text-sm font-medium text-gray-700 dark:text-slate-200">
+                      {emp.name}
+                    </span>
+                  </div>
+                ),
+              },
+              {
+                key: "department",
+                header: "القسم",
+                sortable: true,
+                filterable: true,
+                sortValue: (emp) => emp.department,
+                cell: (emp) => (
+                  <span className="text-gray-500 dark:text-slate-400">{emp.department}</span>
+                ),
+              },
+              {
+                key: "role",
+                header: "الدور",
+                sortable: true,
+                sortValue: (emp) => emp.role,
+                cell: (emp) => (
+                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600 dark:bg-slate-700 dark:text-slate-300">
+                    {roleLabels[emp.role]}
+                  </span>
+                ),
+              },
+              {
+                key: "contact",
+                header: "التواصل",
+                cell: (emp) => (
+                  <div className="flex flex-col gap-1 text-xs text-gray-400 dark:text-slate-500">
+                    <span className="flex items-center gap-1">
+                      <Mail className="w-3 h-3" />
+                      {emp.email}
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <Phone className="w-3 h-3" />
+                      {emp.phone}
+                    </span>
+                  </div>
+                ),
+              },
+            ]}
+            data={inactiveEmployees}
+            searchPlaceholder="بحث بالاسم أو القسم..."
+          />
         )}
       </div>
     </MainLayout>

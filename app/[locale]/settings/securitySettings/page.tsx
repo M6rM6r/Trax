@@ -12,7 +12,7 @@ export default function SecuritySettingsPage() {
           Icon={<Shield className="w-7 h-7" />}
         />
         <div className="flex items-center justify-center min-h-[400px]">
-          <p className="text-gray-500">جاري التنفيذ</p>
+          <p className="text-gray-500 dark:text-slate-400">جاري التنفيذ</p>
         </div>
       </div>
     </MainLayout>

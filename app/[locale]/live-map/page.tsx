@@ -185,14 +185,16 @@ export default function LiveMapPage() {
 
             <div className="space-y-4">
               {selectedEmployee ? (
-                <Card className="border-0 shadow-lg">
+                <Card className="border-0 shadow-lg dark:bg-slate-800">
                   <CardContent className="pt-6 space-y-4">
                     <div className="flex items-center gap-3">
                       <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold">
                         {selectedEmployee.name.charAt(0)}
                       </div>
                       <div>
-                        <h3 className="font-bold text-gray-900">{selectedEmployee.name}</h3>
+                        <h3 className="font-bold text-gray-900 dark:text-slate-100">
+                          {selectedEmployee.name}
+                        </h3>
                         <span
                           className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${statusColors[selectedEmployee.status]}`}
                         >
@@ -202,14 +204,14 @@ export default function LiveMapPage() {
                     </div>
                     <div className="space-y-2 text-sm">
                       <div className="flex justify-between">
-                        <span className="text-gray-500">الموقع:</span>
-                        <span className="font-medium text-gray-900">
+                        <span className="text-gray-500 dark:text-slate-400">الموقع:</span>
+                        <span className="font-medium text-gray-900 dark:text-slate-100">
                           {selectedEmployee.geofenceName || "خارج النطاق"}
                         </span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-gray-500">آخر ظهور:</span>
-                        <span className="font-medium text-gray-900">
+                        <span className="text-gray-500 dark:text-slate-400">آخر ظهور:</span>
+                        <span className="font-medium text-gray-900 dark:text-slate-100">
                           {new Date(selectedEmployee.lastSeen).toLocaleTimeString("ar-SA", {
                             hour: "2-digit",
                             minute: "2-digit",
@@ -217,22 +219,22 @@ export default function LiveMapPage() {
                         </span>
                       </div>
                       <div className="flex justify-between items-center">
-                        <span className="text-gray-500">البطارية:</span>
+                        <span className="text-gray-500 dark:text-slate-400">البطارية:</span>
                         <span
-                          className={`font-medium ${selectedEmployee.battery < 20 ? "text-red-600" : "text-gray-900"}`}
+                          className={`font-medium ${selectedEmployee.battery < 20 ? "text-red-600 dark:text-red-400" : "text-gray-900 dark:text-slate-100"}`}
                         >
                           {selectedEmployee.battery}%
                         </span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-gray-500">خط العرض:</span>
-                        <span className="font-medium text-gray-900">
+                        <span className="text-gray-500 dark:text-slate-400">خط العرض:</span>
+                        <span className="font-medium text-gray-900 dark:text-slate-100">
                           {selectedEmployee.lat.toFixed(4)}
                         </span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-gray-500">خط الطول:</span>
-                        <span className="font-medium text-gray-900">
+                        <span className="text-gray-500 dark:text-slate-400">خط الطول:</span>
+                        <span className="font-medium text-gray-900 dark:text-slate-100">
                           {selectedEmployee.lng.toFixed(4)}
                         </span>
                       </div>
@@ -240,29 +242,33 @@ export default function LiveMapPage() {
                   </CardContent>
                 </Card>
               ) : (
-                <Card className="border-0 shadow-lg">
-                  <CardContent className="pt-6 text-center text-gray-500">
-                    <MapPin className="w-10 h-10 mx-auto mb-2 text-gray-300" />
+                <Card className="border-0 shadow-lg dark:bg-slate-800">
+                  <CardContent className="pt-6 text-center text-gray-500 dark:text-slate-400">
+                    <MapPin className="w-10 h-10 mx-auto mb-2 text-gray-300 dark:text-slate-600" />
                     <p className="text-sm">انقر على موظف على الخريطة لعرض تفاصيله</p>
                   </CardContent>
                 </Card>
               )}
 
-              <Card className="border-0 shadow-lg">
+              <Card className="border-0 shadow-lg dark:bg-slate-800">
                 <CardContent className="pt-6">
-                  <h3 className="font-bold text-gray-900 mb-4">الموظفون المتصلون</h3>
+                  <h3 className="font-bold text-gray-900 dark:text-slate-100 mb-4">
+                    الموظفون المتصلون
+                  </h3>
                   <div className="space-y-2 max-h-[300px] overflow-y-auto">
                     {liveTracking.map((emp) => (
                       <div
                         key={emp.id}
                         onClick={() => setSelectedEmployee(emp)}
-                        className="flex items-center justify-between p-3 rounded-xl border border-gray-100 hover:bg-gray-50 cursor-pointer transition-all"
+                        className="flex items-center justify-between p-3 rounded-xl border border-gray-100 hover:bg-gray-50 dark:border-slate-700 dark:hover:bg-slate-700/50 cursor-pointer transition-all"
                       >
                         <div className="flex items-center gap-2">
                           <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-xs font-bold">
                             {emp.name.charAt(0)}
                           </div>
-                          <span className="text-sm font-medium text-gray-900">{emp.name}</span>
+                          <span className="text-sm font-medium text-gray-900 dark:text-slate-100">
+                            {emp.name}
+                          </span>
                         </div>
                         <div className="flex items-center gap-2">
                           {emp.status === "offline" ? (
@@ -270,7 +276,7 @@ export default function LiveMapPage() {
                           ) : (
                             <Wifi className="w-4 h-4 text-green-500" />
                           )}
-                          <span className="text-xs text-gray-500 flex items-center gap-1">
+                          <span className="text-xs text-gray-500 dark:text-slate-400 flex items-center gap-1">
                             <Battery className="w-3 h-3" />
                             {emp.battery}%
                           </span>

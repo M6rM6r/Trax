@@ -89,31 +89,33 @@ export default function CheckInPage() {
         />
 
         <div className="max-w-2xl mx-auto space-y-6">
-          <Card className="border-0 shadow-xl">
+          <Card className="border-0 shadow-xl dark:bg-slate-800">
             <CardHeader>
-              <CardTitle className="text-lg font-bold flex items-center gap-2">
-                <Navigation className="w-5 h-5 text-blue-600" />
+              <CardTitle className="text-lg font-bold flex items-center gap-2 text-gray-900 dark:text-slate-100">
+                <Navigation className="w-5 h-5 text-blue-600 dark:text-blue-400" />
                 موقعك الحالي
               </CardTitle>
             </CardHeader>
             <CardContent>
               {locationError ? (
-                <div className="flex items-center gap-3 bg-red-50 p-4 rounded-xl">
-                  <XCircle className="w-6 h-6 text-red-600" />
-                  <p className="text-sm text-red-700">{locationError}</p>
+                <div className="flex items-center gap-3 bg-red-50 dark:bg-red-900/20 p-4 rounded-xl">
+                  <XCircle className="w-6 h-6 text-red-600 dark:text-red-400" />
+                  <p className="text-sm text-red-700 dark:text-red-300">{locationError}</p>
                 </div>
               ) : !currentLocation ? (
-                <div className="flex items-center gap-3 bg-blue-50 p-4 rounded-xl">
-                  <div className="w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
-                  <p className="text-sm text-blue-700">جاري تحديد موقعك...</p>
+                <div className="flex items-center gap-3 bg-blue-50 dark:bg-blue-900/20 p-4 rounded-xl">
+                  <div className="w-5 h-5 border-2 border-blue-600 dark:border-blue-400 border-t-transparent rounded-full animate-spin" />
+                  <p className="text-sm text-blue-700 dark:text-blue-300">جاري تحديد موقعك...</p>
                 </div>
               ) : (
                 <div className="space-y-3">
-                  <div className="flex items-center gap-3 bg-green-50 p-4 rounded-xl">
-                    <MapPin className="w-6 h-6 text-green-600" />
+                  <div className="flex items-center gap-3 bg-green-50 dark:bg-green-900/20 p-4 rounded-xl">
+                    <MapPin className="w-6 h-6 text-green-600 dark:text-green-400" />
                     <div>
-                      <p className="text-sm font-medium text-green-900">تم تحديد موقعك</p>
-                      <p className="text-xs text-green-700 mt-0.5">
+                      <p className="text-sm font-medium text-green-900 dark:text-green-300">
+                        تم تحديد موقعك
+                      </p>
+                      <p className="text-xs text-green-700 dark:text-green-400 mt-0.5">
                         خط العرض: {currentLocation.lat.toFixed(4)} | خط الطول:{" "}
                         {currentLocation.lng.toFixed(4)}
                       </p>
@@ -124,8 +126,8 @@ export default function CheckInPage() {
                     <div
                       className={`p-4 rounded-xl ${
                         isInside
-                          ? "bg-green-50 border-2 border-green-200"
-                          : "bg-amber-50 border-2 border-amber-200"
+                          ? "bg-green-50 dark:bg-green-900/20 border-2 border-green-200 dark:border-green-800"
+                          : "bg-amber-50 dark:bg-amber-900/20 border-2 border-amber-200 dark:border-amber-800"
                       }`}
                     >
                       <div className="flex items-center gap-3">
@@ -139,13 +141,13 @@ export default function CheckInPage() {
                           />
                         </div>
                         <div className="flex-1">
-                          <p className="text-sm font-bold text-gray-900">
+                          <p className="text-sm font-bold text-gray-900 dark:text-slate-100">
                             {nearestGeofence.geofence.name}
                           </p>
-                          <p className="text-xs text-gray-600">
+                          <p className="text-xs text-gray-600 dark:text-slate-400">
                             {nearestGeofence.geofence.address}
                           </p>
-                          <p className="text-xs text-gray-500 mt-1">
+                          <p className="text-xs text-gray-500 dark:text-slate-500 mt-1">
                             المسافة: {Math.round(nearestGeofence.distance)} متر | النطاق:{" "}
                             {nearestGeofence.geofence.radius} متر
                           </p>
@@ -164,19 +166,21 @@ export default function CheckInPage() {
           </Card>
 
           {checkInStatus === "success" && (
-            <Card className="border-0 shadow-xl bg-gradient-to-br from-green-50 to-emerald-50">
+            <Card className="border-0 shadow-xl bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 dark:bg-slate-800 animate-scale-in">
               <CardContent className="pt-6">
                 <div className="text-center space-y-3">
                   <div className="w-16 h-16 rounded-full bg-green-500 flex items-center justify-center mx-auto">
                     <CheckCircle className="w-8 h-8 text-white" />
                   </div>
-                  <h3 className="text-xl font-bold text-green-900">تم تسجيل الحضور بنجاح!</h3>
-                  <div className="flex items-center justify-center gap-2 text-green-700">
+                  <h3 className="text-xl font-bold text-green-900 dark:text-green-300">
+                    تم تسجيل الحضور بنجاح!
+                  </h3>
+                  <div className="flex items-center justify-center gap-2 text-green-700 dark:text-green-400">
                     <Clock className="w-5 h-5" />
                     <span className="text-lg font-semibold">{checkInTime}</span>
                   </div>
                   {nearestGeofence && (
-                    <p className="text-sm text-green-600">
+                    <p className="text-sm text-green-600 dark:text-green-400">
                       الموقع: {nearestGeofence.geofence.name}
                     </p>
                   )}
@@ -186,14 +190,16 @@ export default function CheckInPage() {
           )}
 
           {checkInStatus === "outside" && (
-            <Card className="border-0 shadow-xl bg-gradient-to-br from-amber-50 to-orange-50">
+            <Card className="border-0 shadow-xl bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 dark:bg-slate-800 animate-scale-in">
               <CardContent className="pt-6">
                 <div className="text-center space-y-3">
                   <div className="w-16 h-16 rounded-full bg-amber-500 flex items-center justify-center mx-auto">
                     <XCircle className="w-8 h-8 text-white" />
                   </div>
-                  <h3 className="text-xl font-bold text-amber-900">أنت خارج النطاق الجغرافي</h3>
-                  <p className="text-sm text-amber-700">
+                  <h3 className="text-xl font-bold text-amber-900 dark:text-amber-300">
+                    أنت خارج النطاق الجغرافي
+                  </h3>
+                  <p className="text-sm text-amber-700 dark:text-amber-400">
                     يجب أن تكون ضمن نطاق {nearestGeofence?.geofence.name} لتسجيل الحضور. المسافة
                     الحالية: {Math.round(nearestGeofence?.distance || 0)} متر
                   </p>

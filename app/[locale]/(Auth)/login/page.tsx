@@ -101,9 +101,7 @@ const Page = () => {
   };
 
   const loginSchema = Yup.object({
-    email: Yup.string()
-      .email("البريد الإلكتروني غير صحيح")
-      .required("البريد الإلكتروني مطلوب"),
+    email: Yup.string().email("البريد الإلكتروني غير صحيح").required("البريد الإلكتروني مطلوب"),
     password: Yup.string()
       .min(8, "كلمة المرور يجب أن تكون 8 أحرف على الأقل")
       .required("كلمة المرور مطلوبة"),
@@ -111,12 +109,7 @@ const Page = () => {
 
   return (
     <section className="w-screen h-screen flex items-center justify-center relative bg-primaryColor">
-      <Image
-        src={loginBG}
-        alt="loginBG"
-        fill
-        className="object-center object-cover z-0"
-      />
+      <Image src={loginBG} alt="loginBG" fill className="object-center object-cover z-0" />
       <LogoWhite className="absolute left-1/2 -translate-x-1/2 -top-5" />
 
       <Formik<LoginValues>
@@ -125,7 +118,7 @@ const Page = () => {
         onSubmit={handleSubmit}
       >
         {(props) => (
-          <Form className="bg-white rounded-16 p-5 flex flex-col gap-5 m-5 w-full max-w-[557px] relative z-10">
+          <Form className="bg-white dark:bg-slate-800 rounded-16 p-5 flex flex-col gap-5 m-5 w-full max-w-[557px] relative z-10">
             <h1 className="text-24 font-[700] bg-clip-text text-transparent bg-[linear-gradient(270deg,#3C7EE7_0%,#10489B_100%)]">
               تسجيل الدخول — Trax
             </h1>
@@ -142,8 +135,8 @@ const Page = () => {
                 }}
                 className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl border-2 transition-all ${
                   selectedRole === "boss"
-                    ? "border-blue-500 bg-blue-50 text-blue-700"
-                    : "border-gray-200 text-gray-500 hover:border-gray-300"
+                    ? "border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400"
+                    : "border-gray-200 dark:border-slate-600 text-gray-500 dark:text-slate-400 hover:border-gray-300 dark:hover:border-slate-500"
                 }`}
               >
                 <Briefcase className="w-4 h-4" />
@@ -157,8 +150,8 @@ const Page = () => {
                 }}
                 className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl border-2 transition-all ${
                   selectedRole === "employee"
-                    ? "border-green-500 bg-green-50 text-green-700"
-                    : "border-gray-200 text-gray-500 hover:border-gray-300"
+                    ? "border-green-500 bg-green-50 text-green-700 dark:bg-green-900/20 dark:text-green-400"
+                    : "border-gray-200 dark:border-slate-600 text-gray-500 dark:text-slate-400 hover:border-gray-300 dark:hover:border-slate-500"
                 }`}
               >
                 <User className="w-4 h-4" />
@@ -181,9 +174,7 @@ const Page = () => {
             <div className="flex items-center gap-2">
               <Checkbox
                 id="terms"
-                onCheckedChange={(value) =>
-                  props.setFieldValue("rememberMe", value)
-                }
+                onCheckedChange={(value) => props.setFieldValue("rememberMe", value)}
                 disabled={props.isSubmitting}
               />
               <label
@@ -193,14 +184,10 @@ const Page = () => {
                 تذكرنى
               </label>
             </div>
-            <Button
-              type="submit"
-              variant={"primary"}
-              disabled={props.isSubmitting}
-            >
+            <Button type="submit" variant={"primary"} disabled={props.isSubmitting}>
               تسجيل الدخول
             </Button>
-            <p className="text-xs text-gray-400 text-center">
+            <p className="text-xs text-gray-400 dark:text-slate-500 text-center">
               تجريبي: boss@trax.com / employee@trax.com — كلمة المرور: 12345678
             </p>
           </Form>

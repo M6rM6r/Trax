@@ -34,7 +34,7 @@ export default function ConfirmDialog({
 }: ConfirmDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[516px] p-6 rounded-16 flex flex-col">
+      <DialogContent className="max-w-[516px] p-6 rounded-16 flex flex-col dark:bg-slate-800 dark:border dark:border-slate-700">
         <DialogClose className="absolute top-6 left-6">
           <CloseCircle />
         </DialogClose>

@@ -89,34 +89,40 @@ export default function GeofencesPage() {
         />
 
         {showAddForm && (
-          <Card className="border-0 shadow-lg">
+          <Card className="border-0 shadow-lg dark:bg-slate-800">
             <CardHeader>
-              <CardTitle className="text-lg font-bold">إضافة نطاق جغرافي جديد</CardTitle>
+              <CardTitle className="text-lg font-bold text-gray-900 dark:text-slate-100">
+                إضافة نطاق جغرافي جديد
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="text-sm font-medium text-gray-700 mb-1 block">الاسم</label>
+                  <label className="text-sm font-medium text-gray-700 dark:text-slate-300 mb-1 block">
+                    الاسم
+                  </label>
                   <input
                     type="text"
                     value={newGeofence.name}
                     onChange={(e) => setNewGeofence({ ...newGeofence, name: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-transparent dark:bg-slate-900 text-gray-900 dark:text-slate-100"
                     placeholder="اسم الموقع"
                   />
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-gray-700 mb-1 block">العنوان</label>
+                  <label className="text-sm font-medium text-gray-700 dark:text-slate-300 mb-1 block">
+                    العنوان
+                  </label>
                   <input
                     type="text"
                     value={newGeofence.address}
                     onChange={(e) => setNewGeofence({ ...newGeofence, address: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-transparent dark:bg-slate-900 text-gray-900 dark:text-slate-100"
                     placeholder="العنوان"
                   />
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-gray-700 mb-1 block">
+                  <label className="text-sm font-medium text-gray-700 dark:text-slate-300 mb-1 block">
                     خط العرض (Lat)
                   </label>
                   <input
@@ -126,11 +132,11 @@ export default function GeofencesPage() {
                     onChange={(e) =>
                       setNewGeofence({ ...newGeofence, lat: Number(e.target.value) })
                     }
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-transparent dark:bg-slate-900 text-gray-900 dark:text-slate-100"
                   />
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-gray-700 mb-1 block">
+                  <label className="text-sm font-medium text-gray-700 dark:text-slate-300 mb-1 block">
                     خط الطول (Lng)
                   </label>
                   <input
@@ -140,11 +146,11 @@ export default function GeofencesPage() {
                     onChange={(e) =>
                       setNewGeofence({ ...newGeofence, lng: Number(e.target.value) })
                     }
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-transparent dark:bg-slate-900 text-gray-900 dark:text-slate-100"
                   />
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-gray-700 mb-1 block">
+                  <label className="text-sm font-medium text-gray-700 dark:text-slate-300 mb-1 block">
                     نصف القطر (متر)
                   </label>
                   <input
@@ -153,16 +159,18 @@ export default function GeofencesPage() {
                     onChange={(e) =>
                       setNewGeofence({ ...newGeofence, radius: Number(e.target.value) })
                     }
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-transparent dark:bg-slate-900 text-gray-900 dark:text-slate-100"
                   />
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-gray-700 mb-1 block">اللون</label>
+                  <label className="text-sm font-medium text-gray-700 dark:text-slate-300 mb-1 block">
+                    اللون
+                  </label>
                   <input
                     type="color"
                     value={newGeofence.color}
                     onChange={(e) => setNewGeofence({ ...newGeofence, color: e.target.value })}
-                    className="w-full h-10 border border-gray-300 rounded-lg cursor-pointer"
+                    className="w-full h-10 border border-gray-300 dark:border-slate-600 rounded-lg cursor-pointer bg-transparent dark:bg-slate-900"
                   />
                 </div>
               </div>
@@ -208,7 +216,9 @@ export default function GeofencesPage() {
                       </div>
                       <div>
                         <CardTitle className="text-base font-bold">{geo.name}</CardTitle>
-                        <p className="text-xs text-gray-500 mt-0.5">{geo.address}</p>
+                        <p className="text-xs text-gray-500 dark:text-slate-400 mt-0.5">
+                          {geo.address}
+                        </p>
                       </div>
                     </div>
                     <div className="flex items-center gap-1">
@@ -227,22 +237,30 @@ export default function GeofencesPage() {
                 <CardContent>
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between">
-                      <span className="text-gray-500">نصف القطر:</span>
-                      <span className="font-medium text-gray-900">{geo.radius} متر</span>
+                      <span className="text-gray-500 dark:text-slate-400">نصف القطر:</span>
+                      <span className="font-medium text-gray-900 dark:text-slate-100">
+                        {geo.radius} متر
+                      </span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-gray-500">خط العرض:</span>
-                      <span className="font-medium text-gray-900">{geo.lat}</span>
+                      <span className="text-gray-500 dark:text-slate-400">خط العرض:</span>
+                      <span className="font-medium text-gray-900 dark:text-slate-100">
+                        {geo.lat}
+                      </span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-gray-500">خط الطول:</span>
-                      <span className="font-medium text-gray-900">{geo.lng}</span>
+                      <span className="text-gray-500 dark:text-slate-400">خط الطول:</span>
+                      <span className="font-medium text-gray-900 dark:text-slate-100">
+                        {geo.lng}
+                      </span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-gray-500">الحالة:</span>
+                      <span className="text-gray-500 dark:text-slate-400">الحالة:</span>
                       <span
                         className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
-                          geo.active ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-600"
+                          geo.active
+                            ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400"
+                            : "bg-gray-100 text-gray-600 dark:bg-slate-700 dark:text-slate-400"
                         }`}
                       >
                         {geo.active ? "نشط" : "متوقف"}

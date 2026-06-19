@@ -91,7 +91,7 @@ export function DataTable<T extends { id: number | string }>({
   const hasFilterable = filterableKeys.length > 0;
 
   return (
-    <Card className="border-0 shadow-lg">
+    <Card className="border-0 shadow-lg dark:bg-slate-800">
       {hasFilterable && (
         <div className="p-4 border-b border-gray-200 dark:border-slate-700">
           <div className="relative max-w-sm">
