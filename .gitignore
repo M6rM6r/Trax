@@ -1,0 +1,51 @@
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+# dependencies
+/node_modules
+/.pnp
+.pnp.js
+.yarn/install-state.gz
+
+# testing
+/coverage
+
+# next.js
+/.next/
+/out/
+
+# production
+/build
+
+# misc
+.DS_Store
+*.pem
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# local env files
+*.env
+.env*.local
+
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+
+FINAL_STATUS.txt
+# Ignore all markdown files
+*.md
+
+.qodo
+.claude/settings.local.json
+package-lock.json
+
+# But do NOT ignore README.md and DOCUMENTATION folder
+!README.md
+!DOCUMENTATION/
+!DOCUMENTATION/**/*.md
+DOCUMENTATION/TASKS.md

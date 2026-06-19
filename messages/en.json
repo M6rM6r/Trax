@@ -1,0 +1,23 @@
+{
+  "HomePage": {
+    "title": "Hello world!",
+    "about": "Go to the about page"
+  },
+  "NotFound": {
+    "title": "Page Not Found",
+    "subtitle": "Oops! The page you're looking for doesn't exist.",
+    "description": "The page you are looking for might have been moved, deleted, or you entered the wrong URL.",
+    "suggestions": {
+      "title": "Suggestions:",
+      "checkUrl": "Make sure the URL is correct",
+      "goBack": "Use the back button to return to the previous page",
+      "goHome": "Go to the homepage and explore the site",
+      "search": "Use the search feature to find what you need"
+    },
+    "redirectMessage": "You will be automatically redirected to the homepage in",
+    "seconds": "seconds",
+    "goHome": "Go Home",
+    "goBack": "Go Back",
+    "currentPath": "Current path:"
+  }
+}
