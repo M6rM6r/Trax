@@ -1,0 +1,41 @@
+{
+  "name": "Trax — Employee Tracking",
+  "short_name": "Trax",
+  "description": "Real-time employee tracking and attendance management system",
+  "start_url": "/ar",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#ffffff",
+  "theme_color": "#3C7EE7",
+  "dir": "rtl",
+  "lang": "ar",
+  "categories": ["business", "productivity", "utilities"],
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "تسجيل الحضور",
+      "short_name": "حضور",
+      "url": "/ar/check-in",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "الخريطة المباشرة",
+      "short_name": "خريطة",
+      "url": "/ar/live-map",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    }
+  ]
+}

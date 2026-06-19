@@ -6,6 +6,8 @@ import { Cairo } from "next/font/google";
 import { Toaster } from "@/components/ui/toaster";
 import AppPreloader from "@/components/shared/AppPreloader";
 import ErrorBoundary from "@/components/shared/ErrorBoundary";
+import { QueryProvider } from "@/components/providers/QueryProvider";
+import { PWARegistrar } from "@/components/shared/PWARegistrar";
 
 const cairo = Cairo({
   subsets: ["latin"],
@@ -34,11 +36,14 @@ export default async function LocaleLayout({
     <html lang={locale} dir={locale === "ar" ? "rtl" : "ltr"}>
       <body className={`${cairo.className} relative`}>
         <NextIntlClientProvider messages={messages}>
-          <ErrorBoundary>
-            <AppPreloader />
-            {children}
-            <Toaster />
-          </ErrorBoundary>
+          <QueryProvider>
+            <ErrorBoundary>
+              <PWARegistrar />
+              <AppPreloader />
+              {children}
+              <Toaster />
+            </ErrorBoundary>
+          </QueryProvider>
         </NextIntlClientProvider>
       </body>
     </html>
