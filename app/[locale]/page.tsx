@@ -22,6 +22,7 @@ import { Separator } from "@radix-ui/react-separator";
 import FullPageHead from "@/components/shared/FullPageHead";
 import MainLayout from "@/components/shared/MainLayout";
 import { useDashboardStats, useAttendance } from "@/hooks/useApi";
+import { LoadingSkeleton, ErrorState } from "@/components/shared/StateViews";
 import { mockEmployees } from "@/lib/mockData/trackingMockData";
 import type { DashboardStats } from "@/lib/types/trackingTypes";
 import dynamic from "next/dynamic";
@@ -287,7 +288,7 @@ InsightsBarChart.displayName = "InsightsBarChart";
 
 export default function DashboardPage() {
   const locale = useLocale();
-  const { data: stats } = useDashboardStats();
+  const { data: stats, isLoading, isError, refetch } = useDashboardStats();
   const { data: attendanceData } = useAttendance();
 
   const safeStats: DashboardStats = stats ?? {
@@ -405,113 +406,119 @@ export default function DashboardPage() {
         />
 
         <Separator />
-        <div className="space-y-8">
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {dashboardCards.map((stat, index) => (
-              <DashboardCard key={index} stat={stat} locale={locale} />
-            ))}
+        {isLoading && <LoadingSkeleton variant="cards" />}
+        {isError && <ErrorState onRetry={() => refetch()} />}
+        {!isLoading && !isError && (
+          <div className="space-y-8 animate-fade-in">
+            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+              {dashboardCards.map((stat, index) => (
+                <div key={index} className={`animate-stagger-${index + 1}`}>
+                  <DashboardCard stat={stat} locale={locale} />
+                </div>
+              ))}
+            </div>
+
+            <Card className="border-0 shadow-xl bg-gradient-to-br from-white to-gray-50/50 dark:from-slate-800 dark:to-slate-900 animate-slide-up">
+              <CardHeader className="pb-6">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
+                    <Target className="w-5 h-5 text-white" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-2xl font-bold text-gray-900">
+                      نظرة عامة على الحضور
+                    </CardTitle>
+                    <p className="text-sm text-gray-600 mt-1">
+                      تحليل شامل لإحصائيات الحضور والانصراف
+                    </p>
+                  </div>
+                </div>
+              </CardHeader>
+
+              <CardContent className="space-y-8">
+                <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                  <EnhancedPieChart data={attendanceDistribution} />
+                  <InsightsBarChart data={attendanceDistribution} />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="border-0 shadow-lg">
+              <CardHeader>
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-green-500 flex items-center justify-center">
+                    <UserCheck className="w-5 h-5 text-white" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-lg font-bold text-gray-900">
+                      أحدث سجلات الحضور
+                    </CardTitle>
+                    <p className="text-sm text-gray-600">آخر عمليات تسجيل الحضور اليوم</p>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b border-gray-200">
+                        <th className="text-right py-3 px-4 text-sm font-semibold text-gray-600">
+                          الموظف
+                        </th>
+                        <th className="text-right py-3 px-4 text-sm font-semibold text-gray-600">
+                          القسم
+                        </th>
+                        <th className="text-right py-3 px-4 text-sm font-semibold text-gray-600">
+                          وقت الحضور
+                        </th>
+                        <th className="text-right py-3 px-4 text-sm font-semibold text-gray-600">
+                          الحالة
+                        </th>
+                        <th className="text-right py-3 px-4 text-sm font-semibold text-gray-600">
+                          الموقع
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {recentAttendance.map((record) => {
+                        const employee = mockEmployees.find((e) => e.id === record.employeeId);
+                        return (
+                          <tr key={record.id} className="border-b border-gray-100 hover:bg-gray-50">
+                            <td className="py-3 px-4 text-sm font-medium text-gray-900">
+                              {record.employeeName}
+                            </td>
+                            <td className="py-3 px-4 text-sm text-gray-600">
+                              {employee?.department || "-"}
+                            </td>
+                            <td className="py-3 px-4 text-sm text-gray-600">
+                              {record.checkInTime || "-"}
+                            </td>
+                            <td className="py-3 px-4">
+                              <span
+                                className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                  record.status === "present"
+                                    ? "bg-green-100 text-green-800"
+                                    : record.status === "late"
+                                      ? "bg-amber-100 text-amber-800"
+                                      : "bg-red-100 text-red-800"
+                                }`}
+                              >
+                                {statusLabels[record.status] || record.status}
+                              </span>
+                            </td>
+                            <td className="py-3 px-4 text-sm text-gray-600">
+                              {record.geofenceName || "-"}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </CardContent>
+            </Card>
           </div>
-
-          <Card className="border-0 shadow-xl bg-gradient-to-br from-white to-gray-50/50">
-            <CardHeader className="pb-6">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
-                  <Target className="w-5 h-5 text-white" />
-                </div>
-                <div>
-                  <CardTitle className="text-2xl font-bold text-gray-900">
-                    نظرة عامة على الحضور
-                  </CardTitle>
-                  <p className="text-sm text-gray-600 mt-1">
-                    تحليل شامل لإحصائيات الحضور والانصراف
-                  </p>
-                </div>
-              </div>
-            </CardHeader>
-
-            <CardContent className="space-y-8">
-              <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-                <EnhancedPieChart data={attendanceDistribution} />
-                <InsightsBarChart data={attendanceDistribution} />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="border-0 shadow-lg">
-            <CardHeader>
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-green-500 flex items-center justify-center">
-                  <UserCheck className="w-5 h-5 text-white" />
-                </div>
-                <div>
-                  <CardTitle className="text-lg font-bold text-gray-900">
-                    أحدث سجلات الحضور
-                  </CardTitle>
-                  <p className="text-sm text-gray-600">آخر عمليات تسجيل الحضور اليوم</p>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b border-gray-200">
-                      <th className="text-right py-3 px-4 text-sm font-semibold text-gray-600">
-                        الموظف
-                      </th>
-                      <th className="text-right py-3 px-4 text-sm font-semibold text-gray-600">
-                        القسم
-                      </th>
-                      <th className="text-right py-3 px-4 text-sm font-semibold text-gray-600">
-                        وقت الحضور
-                      </th>
-                      <th className="text-right py-3 px-4 text-sm font-semibold text-gray-600">
-                        الحالة
-                      </th>
-                      <th className="text-right py-3 px-4 text-sm font-semibold text-gray-600">
-                        الموقع
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {recentAttendance.map((record) => {
-                      const employee = mockEmployees.find((e) => e.id === record.employeeId);
-                      return (
-                        <tr key={record.id} className="border-b border-gray-100 hover:bg-gray-50">
-                          <td className="py-3 px-4 text-sm font-medium text-gray-900">
-                            {record.employeeName}
-                          </td>
-                          <td className="py-3 px-4 text-sm text-gray-600">
-                            {employee?.department || "-"}
-                          </td>
-                          <td className="py-3 px-4 text-sm text-gray-600">
-                            {record.checkInTime || "-"}
-                          </td>
-                          <td className="py-3 px-4">
-                            <span
-                              className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                                record.status === "present"
-                                  ? "bg-green-100 text-green-800"
-                                  : record.status === "late"
-                                    ? "bg-amber-100 text-amber-800"
-                                    : "bg-red-100 text-red-800"
-                              }`}
-                            >
-                              {statusLabels[record.status] || record.status}
-                            </span>
-                          </td>
-                          <td className="py-3 px-4 text-sm text-gray-600">
-                            {record.geofenceName || "-"}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+        )}
       </div>
     </MainLayout>
   );

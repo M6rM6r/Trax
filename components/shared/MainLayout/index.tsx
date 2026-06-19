@@ -1,5 +1,5 @@
 "use client";
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { NavMain } from "@/components/Sidebar/nav-main";
 import { usePathname, useRouter } from "next/navigation";
 import {
@@ -25,24 +25,18 @@ import bill from "@/public/images/bill.jpg";
 import { cn } from "@/lib/utils";
 import { useLocale } from "next-intl";
 import Image from "next/image";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Link } from "@/i18n/navigation";
 import { Separator } from "@/components/ui/separator";
-import {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogTrigger,
-} from "@/components/ui/dialog";
+import { Dialog, DialogClose, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { deleteCookie } from "cookies-next";
 import { useToast } from "@/hooks/use-toast";
 import { useAuthStore } from "@/stores/useAuthStore";
 import UserAvatar from "../Avatar";
+import ThemeToggle from "../ThemeToggle";
+import Breadcrumb from "../Breadcrumb";
+import MobileBottomNav from "../MobileBottomNav";
 
 const Index = ({
   children,
@@ -58,6 +52,18 @@ const Index = ({
   const router = useRouter();
 
   const { user, role, clearUser } = useAuthStore();
+
+  useEffect(() => {
+    setIsSidebarOpen(false);
+  }, [pathname]);
+
+  useEffect(() => {
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setIsSidebarOpen(false);
+    };
+    window.addEventListener("keydown", handleEsc);
+    return () => window.removeEventListener("keydown", handleEsc);
+  }, []);
 
   // Memoized callback for sidebar toggle
   const toggleSidebar = useCallback(() => {
@@ -78,12 +84,21 @@ const Index = ({
   const towing = false;
   return (
     <section>
-      <nav className="fixed top-0 z-[49] w-full bg-white ">
-        <header className=" flex items-center flex-wrap gap-x-5 md:gap-5 p-5 border-b border-b-gray-200 relative ">
+      <nav className="fixed top-0 z-[49] w-full bg-background dark:bg-slate-900">
+        <header className=" flex items-center flex-wrap gap-x-5 md:gap-5 p-5 border-b border-b-gray-200 dark:border-b-slate-700 relative">
           {/* Menu Icon with onClick handler */}
           <Menu
-            className="w-5 text-gray900 lg:hidden me-auto md:me-0 cursor-pointer"
-            onClick={toggleSidebar} // Toggle sidebar on click
+            className="w-5 text-gray900 dark:text-slate-100 lg:hidden me-auto md:me-0 cursor-pointer"
+            onClick={toggleSidebar}
+            aria-label="فتح/إغلاق القائمة"
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                toggleSidebar();
+              }
+            }}
           />
           <Link href="/">
             <Logo className="w-[120px] md:w-auto" />
@@ -92,18 +107,12 @@ const Index = ({
             <UserAvatar user={user} />
             <div>
               <p className="text-20 text-black font-[600]"> {user?.name}</p>
-              <p className="text-16 text-gray500">
-                {role === "employee" ? "موظف" : "المدير"}
-              </p>
+              <p className="text-16 text-gray500">{role === "employee" ? "موظف" : "المدير"}</p>
             </div>
           </div>
           <div className="grow xxsm:max-w-[260px] xsm:max-w-[300px] sm:max-w-[400px] bg-gray-50 border border-gray300 rounded-12 h-[43px] flex items-center md:hidden px-3">
             <Search />
-            <input
-              type="text"
-              className="w-full h-full px-3 outline-none "
-              placeholder="بحث"
-            />
+            <input type="text" className="w-full h-full px-3 outline-none " placeholder="بحث" />
           </div>
           <Popover>
             <PopoverTrigger asChild disabled>
@@ -115,9 +124,7 @@ const Index = ({
             <PopoverContent className=" max-w-[372px] max-h-[500px] rounded-12 p-0 overflow-auto hideScrollbar">
               <div className=" flex items-center justify-between gap-5 py-4 px-6 ">
                 <p className="text-16 text-textMain font-[600]">الإشعارات</p>
-                <button className="text-14 text-primaryColor">
-                  تحديد الكل كمقروء
-                </button>
+                <button className="text-14 text-primaryColor">تحديد الكل كمقروء</button>
               </div>
               <Separator className="h-[1px]" />
               <div className=" py-8 px-6 flex flex-col gap-4">
@@ -132,18 +139,14 @@ const Index = ({
                 <div className=" flex items-center gap-5">
                   <Warning />
                   <div>
-                    <p className="text-14 text-textMain">
-                      تم حظر المستخدم بنجاح.
-                    </p>
+                    <p className="text-14 text-textMain">تم حظر المستخدم بنجاح.</p>
                     <p className="text-14 text-gray500"> min ago 5</p>
                   </div>
                 </div>
                 <div className=" flex items-center gap-5">
                   <Notepad />
                   <div>
-                    <p className="text-14 text-textMain">
-                      تم تحديث خطة التسعير الخاصة بالعميل.
-                    </p>
+                    <p className="text-14 text-textMain">تم تحديث خطة التسعير الخاصة بالعميل.</p>
                     <p className="text-14 text-gray500"> min ago 5</p>
                   </div>
                 </div>
@@ -152,9 +155,7 @@ const Index = ({
                   <div key={index} className=" flex items-center gap-5">
                     <Notepad />
                     <div>
-                      <p className="text-14 text-textMain">
-                        تم تحديث خطة التسعير الخاصة بالعميل.
-                      </p>
+                      <p className="text-14 text-textMain">تم تحديث خطة التسعير الخاصة بالعميل.</p>
                       <p className="text-14 text-gray500"> min ago 5</p>
                     </div>
                   </div>
@@ -164,6 +165,7 @@ const Index = ({
           </Popover>
 
           <div className=" hidden md:block">
+            <ThemeToggle />
             <Popover>
               <PopoverTrigger className=" flex items-center gap-2 cursor-not-allowed" disabled>
                 <SaudiFlag className="w-[33px] h-[24px]" />
@@ -185,109 +187,119 @@ const Index = ({
         </header>
       </nav>
 
+      {showSidebar && isSidebarOpen && (
+        <div
+          className="fixed inset-0 z-30 bg-black/50 lg:hidden transition-opacity duration-300"
+          onClick={() => setIsSidebarOpen(false)}
+        />
+      )}
+
       {showSidebar && (
         <aside
           id="logo-sidebar"
           className={cn(
-            `fixed top-0 ${locale === "ar"
-              ? "right-0 translate-x-full lg:translate-x-0"
-              : "left-0 -translate-x-full lg:translate-x-0"
-            } z-40 w-64 h-screen pt-[11rem] lg:pt-[7rem] transition-transform bg-white border-l border-gray-200`,
+            `fixed top-0 ${
+              locale === "ar"
+                ? "right-0 translate-x-full lg:translate-x-0"
+                : "left-0 -translate-x-full lg:translate-x-0"
+            } z-40 w-64 h-screen pt-[11rem] lg:pt-[7rem] transition-transform duration-300 ease-in-out bg-background dark:bg-slate-900 border-l border-gray-200 dark:border-slate-700`,
             isSidebarOpen && "translate-x-0" // Show sidebar when isSidebarOpen is true
           )}
           aria-label="Sidebar"
         >
-          <div className="h-full px-3 pb-4 overflow-y-auto bg-white flex flex-col gap-2 ">
+          <div className="h-full px-3 pb-4 overflow-y-auto bg-background dark:bg-slate-900 flex flex-col gap-2 ">
             <NavMain
-              items={role === "employee" ? [
-                {
-                  title: "تسجيل الحضور",
-                  url: `/${locale}/check-in`,
-                  icon: CheckCircle,
-                  isActive: pathname.includes("/check-in"),
-                },
-              ] : [
-                {
-                  title: "لوحة التحكم",
-                  url: "/",
-                  icon: Category,
-                  isActive: pathname === `/${locale}`,
-                },
-                {
-                  title: "الموظفون",
-                  url: `/${locale}/employees`,
-                  icon: Profile,
-                  isActive: pathname.includes("/employees"),
-                  items: [
-                    {
-                      title: "جميع الموظفين",
-                      url: `/${locale}/employees`,
-                      active: pathname === `/${locale}/employees`,
-                    },
-                    {
-                      title: "الموظفون غير النشطين",
-                      url: `/${locale}/employees/inactive`,
-                      active: pathname === `/${locale}/employees/inactive`,
-                    },
-                  ],
-                },
-                {
-                  title: "تتبع مباشر",
-                  url: `/${locale}/live-map`,
-                  icon: Location,
-                  isActive: pathname.includes("/live-map"),
-                },
-                {
-                  title: "الحضور والانصراف",
-                  url: `/${locale}/attendance`,
-                  icon: ShieldTick,
-                  isActive: pathname.includes("/attendance"),
-                  items: [
-                    {
-                      title: "سجلات اليوم",
-                      url: `/${locale}/attendance`,
-                      active: pathname === `/${locale}/attendance`,
-                    },
-                    {
-                      title: "التقارير",
-                      url: `/${locale}/attendance/reports`,
-                      active: pathname === `/${locale}/attendance/reports`,
-                    },
-                  ],
-                },
-                {
-                  title: "النطاقات الجغرافية",
-                  url: `/${locale}/geofences`,
-                  icon: Location,
-                  isActive: pathname.includes("/geofences"),
-                },
-                {
-                  title: "تسجيل الحضور",
-                  url: `/${locale}/check-in`,
-                  icon: CheckCircle,
-                  isActive: pathname.includes("/check-in"),
-                },
-                {
-                  title: "إعددات عامة",
-                  url: `#`,
-                  icon: Setting2,
-                  isActive: pathname.includes(`/settings`),
-                  items: [
-                    {
-                      title: "إعدادات الأمان",
-                      url: `/${locale}/settings/securitySettings`,
-                      active:
-                        pathname === `/${locale}/settings/securitySettings`,
-                    },
-                    {
-                      title: "إعدادات الإشعارات",
-                      url: `/${locale}/settings/notificationSettings`,
-                      active:
-                        pathname === `/${locale}/settings/notificationSettings`,
-                    },
-                  ],
-                },
-              ]}
+              items={
+                role === "employee"
+                  ? [
+                      {
+                        title: "تسجيل الحضور",
+                        url: `/${locale}/check-in`,
+                        icon: CheckCircle,
+                        isActive: pathname.includes("/check-in"),
+                      },
+                    ]
+                  : [
+                      {
+                        title: "لوحة التحكم",
+                        url: "/",
+                        icon: Category,
+                        isActive: pathname === `/${locale}`,
+                      },
+                      {
+                        title: "الموظفون",
+                        url: `/${locale}/employees`,
+                        icon: Profile,
+                        isActive: pathname.includes("/employees"),
+                        items: [
+                          {
+                            title: "جميع الموظفين",
+                            url: `/${locale}/employees`,
+                            active: pathname === `/${locale}/employees`,
+                          },
+                          {
+                            title: "الموظفون غير النشطين",
+                            url: `/${locale}/employees/inactive`,
+                            active: pathname === `/${locale}/employees/inactive`,
+                          },
+                        ],
+                      },
+                      {
+                        title: "تتبع مباشر",
+                        url: `/${locale}/live-map`,
+                        icon: Location,
+                        isActive: pathname.includes("/live-map"),
+                      },
+                      {
+                        title: "الحضور والانصراف",
+                        url: `/${locale}/attendance`,
+                        icon: ShieldTick,
+                        isActive: pathname.includes("/attendance"),
+                        items: [
+                          {
+                            title: "سجلات اليوم",
+                            url: `/${locale}/attendance`,
+                            active: pathname === `/${locale}/attendance`,
+                          },
+                          {
+                            title: "التقارير",
+                            url: `/${locale}/attendance/reports`,
+                            active: pathname === `/${locale}/attendance/reports`,
+                          },
+                        ],
+                      },
+                      {
+                        title: "النطاقات الجغرافية",
+                        url: `/${locale}/geofences`,
+                        icon: Location,
+                        isActive: pathname.includes("/geofences"),
+                      },
+                      {
+                        title: "تسجيل الحضور",
+                        url: `/${locale}/check-in`,
+                        icon: CheckCircle,
+                        isActive: pathname.includes("/check-in"),
+                      },
+                      {
+                        title: "إعددات عامة",
+                        url: `#`,
+                        icon: Setting2,
+                        isActive: pathname.includes(`/settings`),
+                        items: [
+                          {
+                            title: "إعدادات الأمان",
+                            url: `/${locale}/settings/securitySettings`,
+                            active: pathname === `/${locale}/settings/securitySettings`,
+                          },
+                          {
+                            title: "إعدادات الإشعارات",
+                            url: `/${locale}/settings/notificationSettings`,
+                            active: pathname === `/${locale}/settings/notificationSettings`,
+                          },
+                        ],
+                      },
+                    ]
+              }
             />
             <Dialog>
               <DialogTrigger className=" w-full shrink-0 h-[48px] flex items-center gap-1.5 bg-error50 rounded-6 px-3 text-16 text-error font-[600]">
@@ -298,17 +310,12 @@ const Index = ({
                 <DialogClose className=" absolute top-6 left-6">
                   <CloseCircle />
                 </DialogClose>
-                <Image
-                  src={bill}
-                  alt="bill"
-                  className=" mx-auto w-[128px] h-[141px] mb-8"
-                />
+                <Image src={bill} alt="bill" className=" mx-auto w-[128px] h-[141px] mb-8" />
                 <p className="text-24 text-textMain font-[600] text-center">
                   هل أنت متأكد أنك تريد تسجيل الخروج؟
                 </p>
                 <p className="text-20 text-textSubTextDarker text-center">
-                  هل أنت متأكد أنك تريد تسجيل الخروج؟ قد تفقد أي تغييرات غير
-                  محفوظة.
+                  هل أنت متأكد أنك تريد تسجيل الخروج؟ قد تفقد أي تغييرات غير محفوظة.
                 </p>
                 <div className=" flex w-full gap-4">
                   <DialogClose asChild>
@@ -335,11 +342,13 @@ const Index = ({
 
       <div
         className={cn(
-          "p-4 pt-[10rem] md:pt-[7.5rem]   flex flex-col gap-5",
+          "p-4 pt-[10rem] md:pt-[7.5rem] pb-20 lg:pb-4 flex flex-col gap-5",
           showSidebar && "lg:ms-64"
         )}
       >
+        <Breadcrumb />
         {children}
+        <MobileBottomNav />
       </div>
     </section>
   );

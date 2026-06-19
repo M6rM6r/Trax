@@ -8,6 +8,7 @@ import AppPreloader from "@/components/shared/AppPreloader";
 import ErrorBoundary from "@/components/shared/ErrorBoundary";
 import { QueryProvider } from "@/components/providers/QueryProvider";
 import { PWARegistrar } from "@/components/shared/PWARegistrar";
+import { ThemeProvider } from "next-themes";
 
 const cairo = Cairo({
   subsets: ["latin"],
@@ -33,17 +34,19 @@ export default async function LocaleLayout({
   const messages = await getMessages();
 
   return (
-    <html lang={locale} dir={locale === "ar" ? "rtl" : "ltr"}>
+    <html lang={locale} dir={locale === "ar" ? "rtl" : "ltr"} suppressHydrationWarning>
       <body className={`${cairo.className} relative`}>
         <NextIntlClientProvider messages={messages}>
-          <QueryProvider>
-            <ErrorBoundary>
-              <PWARegistrar />
-              <AppPreloader />
-              {children}
-              <Toaster />
-            </ErrorBoundary>
-          </QueryProvider>
+          <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
+            <QueryProvider>
+              <ErrorBoundary>
+                <PWARegistrar />
+                <AppPreloader />
+                {children}
+                <Toaster />
+              </ErrorBoundary>
+            </QueryProvider>
+          </ThemeProvider>
         </NextIntlClientProvider>
       </body>
     </html>

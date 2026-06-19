@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { BarChart3, Download, TrendingUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAttendanceReports } from "@/hooks/useApi";
+import { LoadingSkeleton, ErrorState } from "@/components/shared/StateViews";
 import dynamic from "next/dynamic";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -41,7 +42,7 @@ const Cell: ComponentType<any> = dynamic(
 /* eslint-enable @typescript-eslint/no-explicit-any */
 
 export default function AttendanceReportsPage() {
-  const { data: attendance = [] } = useAttendanceReports();
+  const { data: attendance = [], isLoading, isError, refetch } = useAttendanceReports();
   const presentCount = attendance.filter((r) => r.status === "present").length;
   const lateCount = attendance.filter((r) => r.status === "late").length;
   const absentCount = attendance.filter((r) => r.status === "absent").length;
@@ -76,72 +77,78 @@ export default function AttendanceReportsPage() {
           }
         />
 
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <Card className="border-0 shadow-md">
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-600">نسبة الحضور في الوقت</p>
-                  <p className="text-3xl font-black text-green-600 mt-1">{onTimeRate}%</p>
-                </div>
-                <TrendingUp className="w-8 h-8 text-green-400" />
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="border-0 shadow-md">
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-600">متوسط التأخير</p>
-                  <p className="text-3xl font-black text-amber-600 mt-1">{avgLateMinutes} د</p>
-                </div>
-                <BarChart3 className="w-8 h-8 text-amber-400" />
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="border-0 shadow-md">
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-600">إجمالي السجلات</p>
-                  <p className="text-3xl font-black text-blue-600 mt-1">{attendance.length}</p>
-                </div>
-                <BarChart3 className="w-8 h-8 text-blue-400" />
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="border-0 shadow-md">
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-600">أيام التأخير</p>
-                  <p className="text-3xl font-black text-red-600 mt-1">{lateCount}</p>
-                </div>
-                <BarChart3 className="w-8 h-8 text-red-400" />
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+        {isLoading && <LoadingSkeleton variant="cards" />}
+        {isError && <ErrorState onRetry={() => refetch()} />}
+        {!isLoading && !isError && (
+          <>
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <Card className="border-0 shadow-md">
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-gray-600">نسبة الحضور في الوقت</p>
+                      <p className="text-3xl font-black text-green-600 mt-1">{onTimeRate}%</p>
+                    </div>
+                    <TrendingUp className="w-8 h-8 text-green-400" />
+                  </div>
+                </CardContent>
+              </Card>
+              <Card className="border-0 shadow-md">
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-gray-600">متوسط التأخير</p>
+                      <p className="text-3xl font-black text-amber-600 mt-1">{avgLateMinutes} د</p>
+                    </div>
+                    <BarChart3 className="w-8 h-8 text-amber-400" />
+                  </div>
+                </CardContent>
+              </Card>
+              <Card className="border-0 shadow-md">
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-gray-600">إجمالي السجلات</p>
+                      <p className="text-3xl font-black text-blue-600 mt-1">{attendance.length}</p>
+                    </div>
+                    <BarChart3 className="w-8 h-8 text-blue-400" />
+                  </div>
+                </CardContent>
+              </Card>
+              <Card className="border-0 shadow-md">
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-gray-600">أيام التأخير</p>
+                      <p className="text-3xl font-black text-red-600 mt-1">{lateCount}</p>
+                    </div>
+                    <BarChart3 className="w-8 h-8 text-red-400" />
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
 
-        <Card className="border-0 shadow-lg">
-          <CardHeader>
-            <CardTitle className="text-lg font-bold">رسم بياني للحضور</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={chartData}>
-                <XAxis dataKey="name" />
-                <YAxis />
-                <Tooltip />
-                <Bar dataKey="value" radius={[8, 8, 0, 0]}>
-                  {chartData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
+            <Card className="border-0 shadow-lg">
+              <CardHeader>
+                <CardTitle className="text-lg font-bold">رسم بياني للحضور</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={chartData}>
+                    <XAxis dataKey="name" />
+                    <YAxis />
+                    <Tooltip />
+                    <Bar dataKey="value" radius={[8, 8, 0, 0]}>
+                      {chartData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+          </>
+        )}
       </div>
     </MainLayout>
   );

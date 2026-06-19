@@ -5,6 +5,7 @@ import FullPageHead from "@/components/shared/FullPageHead";
 import { Card, CardContent } from "@/components/ui/card";
 import { Users, Mail, Phone } from "lucide-react";
 import { useInactiveEmployees } from "@/hooks/useApi";
+import { LoadingSkeleton, EmptyState, ErrorState } from "@/components/shared/StateViews";
 
 const roleLabels: Record<string, string> = {
   manager: "مدير",
@@ -13,7 +14,7 @@ const roleLabels: Record<string, string> = {
 };
 
 export default function InactiveEmployeesPage() {
-  const { data: inactiveEmployees = [] } = useInactiveEmployees();
+  const { data: inactiveEmployees = [], isLoading, isError, refetch } = useInactiveEmployees();
 
   return (
     <MainLayout>
@@ -24,11 +25,18 @@ export default function InactiveEmployeesPage() {
           Icon={<Users className="w-7 h-7" />}
         />
 
-        <Card className="border-0 shadow-lg">
-          <CardContent className="p-0">
-            {inactiveEmployees.length === 0 ? (
-              <div className="text-center py-12 text-gray-500">لا يوجد موظفون غير نشطين</div>
-            ) : (
+        {isLoading && <LoadingSkeleton variant="table" />}
+        {isError && <ErrorState onRetry={() => refetch()} />}
+        {!isLoading && !isError && inactiveEmployees.length === 0 && (
+          <EmptyState
+            icon={Users}
+            title="لا يوجد موظفون غير نشطين"
+            description="جميع الموظفين نشطون حالياً"
+          />
+        )}
+        {!isLoading && !isError && inactiveEmployees.length > 0 && (
+          <Card className="border-0 shadow-lg">
+            <CardContent className="p-0">
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead>
@@ -81,9 +89,9 @@ export default function InactiveEmployeesPage() {
                   </tbody>
                 </table>
               </div>
-            )}
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        )}
       </div>
     </MainLayout>
   );
