@@ -8,24 +8,18 @@ import {
   Category,
   CheckCircle,
   CloseCircle,
-  Complaints,
-  Driving,
   Logo,
   Logout,
   Menu,
   Notepad,
   Notification,
   Profile,
-  Routing,
   SaudiFlag,
   Search,
   Setting2,
-  Shapes,
   ShieldTick,
-  Star,
-  UserTag,
   Warning,
-  Rewards,
+  Location,
 } from "@/public/SVG";
 import bill from "@/public/images/bill.jpg";
 import { cn } from "@/lib/utils";
@@ -210,344 +204,64 @@ const Index = ({
             <NavMain
               items={[
                 {
-                  title: "الصفحة الرئيسية",
+                  title: "لوحة التحكم",
                   url: "/",
                   icon: Category,
                   isActive: pathname === `/${locale}`,
                 },
                 {
-                  title: "العملاء",
-                  url: `/${locale}/customers`,
+                  title: "الموظفون",
+                  url: `/${locale}/employees`,
                   icon: Profile,
-                  isActive: pathname.includes("/customers"),
+                  isActive: pathname.includes("/employees"),
                   items: [
                     {
-                      title: "جميع العملاء",
-                      url: `/${locale}/customers`,
-                      active: pathname === `/${locale}/customers`,
+                      title: "جميع الموظفين",
+                      url: `/${locale}/employees`,
+                      active: pathname === `/${locale}/employees`,
                     },
                     {
-                      title: "العملاء الموقوفون",
-                      url: `/${locale}/customers/blocked`,
-                      active:
-                        pathname === `/${locale}/customers/blocked` ||
-                        pathname === `/${locale}/customers/deleted`,
-                    },
-                    {
-                      title: "الإحصائيات",
-                      url: `/${locale}/customers/analytics`,
-                      active: pathname === `/${locale}/customers/analytics`,
+                      title: "الموظفون غير النشطين",
+                      url: `/${locale}/employees/inactive`,
+                      active: pathname === `/${locale}/employees/inactive`,
                     },
                   ],
                 },
                 {
-                  title: "السائقين",
-                  url: `/${locale}/drivers`,
-                  icon: UserTag,
-                  isActive: pathname.includes("/drivers"),
-                  items: [
-                    {
-                      title: "جميع السائقين",
-                      url: `/${locale}/drivers`,
-                      active: pathname === `/${locale}/drivers`,
-                    },
-                    {
-                      title: "قواعد السائقين",
-                      url: `/${locale}/drivers/rules`,
-                      active: pathname === `/${locale}/drivers/rules`,
-                    },
-                    {
-                      title: "السائقون الموقفون",
-                      url: `/${locale}/drivers/blocked`,
-                      active:
-                        pathname === `/${locale}/drivers/blocked` ||
-                        pathname === `/${locale}/drivers/deleted`,
-                    },
-                    {
-                      title: "الإحصائيات",
-                      url: `/${locale}/drivers/analytics`,
-                      active: pathname === `/${locale}/drivers/analytics`,
-                    },
-                  ],
+                  title: "تتبع مباشر",
+                  url: `/${locale}/live-map`,
+                  icon: Location,
+                  isActive: pathname.includes("/live-map"),
                 },
                 {
-                  title: "الخدمات",
-                  url: `#`,
-                  icon: Star,
-                  isActive: pathname.includes("/services"),
-                  items: [
-                    {
-                      title: "سيارة تاكسي",
-                      url: `/${locale}/services/taxi`,
-                      active: pathname === `/${locale}/services/taxi`,
-                    },
-                    {
-                      title: "مواعيد مهمة",
-                      url: `/${locale}/services/important_dates`,
-                      active:
-                        pathname === `/${locale}/services/important_dates`,
-                    },
-                    {
-                      title: "النقل الخفيف",
-                      url: `/${locale}/services/light_transportation`,
-                      active:
-                        pathname === `/${locale}/services/light_transportation`,
-                    },
-                    {
-                      title: "سطحات ودينات ",
-                      url: `/${locale}/services/wensh`,
-                      active: pathname === `/${locale}/services/wensh`,
-                    },
-                    {
-                      title: "وايت ماء",
-                      url: `/${locale}/services/fontas`,
-                      active: pathname === `/${locale}/services/fontas`,
-                    },
-                    {
-                      title: "سائق بدون سيارة",
-                      url: `/${locale}/services/driver_without_car`,
-                      active:
-                        pathname === `/${locale}/services/driver_without_car`,
-                    },
-                    {
-                      title: "العطالات",
-                      url: `/${locale}/services/outages/fuel/settings`,
-                      active: pathname.includes("/services/fast_support"),
-                      items: [
-                        {
-                          title: "الوقود",
-                          url: `/${locale}/services/outages/fuel/settings`,
-                          active: pathname.includes("/services/outages/fuel"),
-                        },
-                        {
-                          title: "الإطارات",
-                          url: `/${locale}/services/outages/tires/settings`,
-                          active: pathname.includes("/services/outages/tires"),
-                        },
-                        {
-                          title: "العالقين فى الرمال",
-                          url: `/${locale}/services/outages/towing/settings`,
-                          active: pathname.includes("/services/outages/towing"),
-                        },
-                        {
-                          title: "الإحصائيات  ",
-                          url: `/${locale}/services/outages/analytics`,
-                          active: pathname.includes(
-                            "/services/outages/analytics"
-                          ),
-                        },
-                      ],
-                    },
-                    {
-                      title: "الإحصائيات",
-                      url: `/${locale}/services/analytics`,
-                      active: pathname.includes("/services/analytics"),
-                    },
-                  ],
-                },
-                {
-                  title: "الرحلات",
-                  url: `/${locale}/trips`,
-                  icon: Routing,
-                  isActive: pathname.includes("/trips"),
-                  items: [
-                    {
-                      title: "جميع الرحلات",
-                      url: `/${locale}/trips`,
-                      active: pathname === `/${locale}/trips`,
-                    },
-                    {
-                      title: " الإحصائيات",
-                      url: `/${locale}/trips/analytics`,
-                      active: pathname === `/${locale}/trips/analytics`,
-                    },
-                  ],
-                },
-                {
-                  title: "صلاحيات المشرفين",
-                  url: `#`,
+                  title: "الحضور والانصراف",
+                  url: `/${locale}/attendance`,
                   icon: ShieldTick,
-                  isActive:
-                    pathname.includes("/moderators") ||
-                    pathname.includes("/roles") ||
-                    pathname.includes("/categories") ||
-                    pathname.includes("/complaintsTeam"),
+                  isActive: pathname.includes("/attendance"),
                   items: [
                     {
-                      title: "المشرفين",
-                      url: `/${locale}/moderators`,
-                      active: pathname === `/${locale}/moderators`,
+                      title: "سجلات اليوم",
+                      url: `/${locale}/attendance`,
+                      active: pathname === `/${locale}/attendance`,
                     },
                     {
-                      title: "الأدوار",
-                      url: `/${locale}/roles`,
-                      active: pathname === `/${locale}/roles`,
-                    },
-                    {
-                      title: "التصنيفات",
-                      url: `/${locale}/categories`,
-                      active: pathname === `/${locale}/categories`,
-                    },
-                    {
-                      title: "إدارة فرق الشكاوى",
-                      url: `/${locale}/complaintsTeam`,
-                      active: pathname === `/${locale}/complaintsTeam`,
+                      title: "التقارير",
+                      url: `/${locale}/attendance/reports`,
+                      active: pathname === `/${locale}/attendance/reports`,
                     },
                   ],
                 },
                 {
-                  title: "بيانات المركبات",
-                  url: `#`,
-                  icon: Driving,
-                  isActive: pathname.includes("/vehicles"),
-                  items: [
-                    {
-                      title: "ماركة السيارة",
-                      url: `/${locale}/vehicles/brands`,
-                      active: pathname === `/${locale}/vehicles/brands`,
-                    },
-                    {
-                      title: "موديلات السيارة",
-                      url: `/${locale}/vehicles/models`,
-                      active: pathname === `/${locale}/vehicles/models`,
-                    },
-                    {
-                      title: "موديلات غير موجودة",
-                      url: `/${locale}/vehicles/modelsNotAvailable`,
-                      active:
-                        pathname === `/${locale}/vehicles/modelsNotAvailable`,
-                    },
-                    {
-                      title: "وحدات الفونتاس",
-                      url: `/${locale}/vehicles/units`,
-                      active: pathname === `/${locale}/vehicles/units`,
-                    },
-                    {
-                      title: "الألوان",
-                      url: `/${locale}/vehicles/colors`,
-                      active: pathname === `/${locale}/vehicles/colors`,
-                    },
-                  ],
+                  title: "النطاقات الجغرافية",
+                  url: `/${locale}/geofences`,
+                  icon: Location,
+                  isActive: pathname.includes("/geofences"),
                 },
                 {
-                  title: "إدارة الشكاوى",
-                  url: `#`,
-                  icon: Complaints,
-                  isActive: pathname.includes("/complaintsManagement"),
-                  items: [
-                    {
-                      title: "الشكاوى",
-                      url: `/${locale}/complaintsManagement/complaints`,
-                      active:
-                        pathname ===
-                        `/${locale}/complaintsManagement/complaints`,
-                    },
-                    {
-                      title: "العملاء",
-                      url: `/${locale}/complaintsManagement/customers`,
-                      active:
-                        pathname ===
-                        `/${locale}/complaintsManagement/customers`,
-                    },
-                    {
-                      title: "السائقين",
-                      url: `/${locale}/complaintsManagement/drivers`,
-                      active:
-                        pathname === `/${locale}/complaintsManagement/drivers`,
-                    },
-                    {
-                      title: "إدارة تصنيفات الشكاوى",
-                      url: `/${locale}/complaintsManagement/categories`,
-                      active:
-                        pathname ===
-                        `/${locale}/complaintsManagement/categories`,
-                    },
-                    {
-                      title: "إدراة الإجراءات",
-                      url: `/${locale}/complaintsManagement/actions`,
-                      active:
-                        pathname === `/${locale}/complaintsManagement/actions`,
-                    },
-                  ],
-                },
-
-                // Rewards
-                {
-                  title: "الدعوات والمكآفأت",
-                  url: `#`,
-                  icon: Rewards,
-                  isActive: pathname.includes("/inviteRewards"),
-                  items: [
-                    {
-                      title: "الإحصائيات",
-                      url: `/${locale}/inviteRewards/stats`,
-                      active: pathname === `/${locale}/inviteRewards/stats`,
-                    },
-                    {
-                      title: "المستخدمين",
-                      url: `/${locale}/inviteRewards/users`,
-                      active: pathname === `/${locale}/inviteRewards/users`,
-                    },
-
-                    {
-                      title: "الإعدادات",
-                      url: `/${locale}/inviteRewards/settings`,
-                      active: pathname === `/${locale}/inviteRewards/settings`,
-                    },
-                  ],
-                },
-                {
-                  title: "إدارة التطبيقات",
-                  url: `#`,
-                  icon: Shapes,
-                  isActive: pathname.includes("/apps"),
-                  items: [
-                    {
-                      title: "الصفحات",
-                      url: `/${locale}/apps/pages`,
-                      active: pathname === `/${locale}/apps/pages`,
-                    },
-                    {
-                      title: "اللافتات",
-                      url: `/${locale}/apps/banners`,
-                      active: pathname === `/${locale}/apps/banners`,
-                    },
-                    {
-                      title: "سجلات النشاط",
-                      url: `/${locale}/apps/logs`,
-                      active: pathname === `/${locale}/apps/logs`,
-                    },
-                    {
-                      title: "إشعارات",
-                      url: `/${locale}/apps/notifications/add`,
-                      active: pathname === `/${locale}/apps/notifications`,
-                    },
-                    {
-                      title: "موقع الويب الخارجي",
-                      url: `/${locale}/apps/companyWebsite`,
-                      active: pathname === `/${locale}/apps/companyWebsite`,
-                    },
-                    {
-                      title: "أسباب الإلغاء",
-                      url: `/${locale}/apps/cancellationReasons`,
-                      active: pathname === `/${locale}/apps/cancellationReasons`,
-                    },
-                  ],
-                },
-                {
-                  title: "متطلبات وزارة النقل",
-                  url: `#`,
-                  icon: ShieldTick,
-                  isActive: pathname.includes("/ministryRequirements"),
-                  items: [
-                    {
-                      title: "المتوسط الشهري للإنتظار",
-                      url: `/${locale}/ministryRequirements/monthlyWaitingAverage`,
-                      active:
-                        pathname ===
-                        `/${locale}/ministryRequirements/monthlyWaitingAverage`,
-                    },
-                  ],
+                  title: "تسجيل الحضور",
+                  url: `/${locale}/check-in`,
+                  icon: CheckCircle,
+                  isActive: pathname.includes("/check-in"),
                 },
                 {
                   title: "إعددات عامة",
