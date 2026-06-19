@@ -58,7 +58,7 @@ const Index = ({
   const { toast } = useToast();
   const router = useRouter();
 
-  const { user } = useAuthStore();
+  const { user, role, clearUser } = useAuthStore();
 
   // Memoized callback for sidebar toggle
   const toggleSidebar = useCallback(() => {
@@ -67,16 +67,14 @@ const Index = ({
 
   // Memoized callback for logout
   const logOut = useCallback(async () => {
-    try {
-      const response = await fetcherClient<any>("/logout");
-      deleteCookie("auth_token");
-      toast({
-        description: response.message,
-        variant: "default",
-      });
-      router.push(`/${locale}/login`);
-    } catch (error: unknown) { }
-  }, [locale, router, toast]);
+    deleteCookie("auth_token");
+    clearUser();
+    toast({
+      description: "تم تسجيل الخروج بنجاح",
+      variant: "default",
+    });
+    router.push(`/${locale}/login`);
+  }, [locale, router, toast, clearUser]);
 
   const towing = false;
   return (
@@ -96,7 +94,7 @@ const Index = ({
             <div>
               <p className="text-20 text-black font-[600]"> {user?.name}</p>
               <p className="text-16 text-gray500">
-                {user?.role ?? "المشرف التنفيذى"}
+                {role === "employee" ? "موظف" : "المدير"}
               </p>
             </div>
           </div>
@@ -202,7 +200,14 @@ const Index = ({
         >
           <div className="h-full px-3 pb-4 overflow-y-auto bg-white flex flex-col gap-2 ">
             <NavMain
-              items={[
+              items={role === "employee" ? [
+                {
+                  title: "تسجيل الحضور",
+                  url: `/${locale}/check-in`,
+                  icon: CheckCircle,
+                  isActive: pathname.includes("/check-in"),
+                },
+              ] : [
                 {
                   title: "لوحة التحكم",
                   url: "/",

@@ -9,15 +9,12 @@ import Image from "next/image";
 import { setCookie } from "cookies-next";
 import * as Yup from "yup";
 import { useToast } from "@/hooks/use-toast";
-import { LoginResponse } from "@/lib/types/responseTypes";
+import { AdminUser } from "@/lib/types/responseTypes";
 import { useRouter } from "next/navigation";
 import { useLocale } from "next-intl";
-import { fetcherClient } from "@/lib/fetcherClient";
-import { FetcherError } from "@/lib/fetcherTypes";
 import { useState } from "react";
-import TwoFactorMethodSelection from "@/components/shared/TwoFactorMethodSelection";
-import TwoFactorOTPVerification from "@/components/shared/TwoFactorOTPVerification";
-import { useAuthStore } from "@/stores/useAuthStore";
+import { useAuthStore, UserRole } from "@/stores/useAuthStore";
+import { Briefcase, User } from "lucide-react";
 
 interface LoginValues {
   email: string;
@@ -25,88 +22,77 @@ interface LoginValues {
   rememberMe: boolean;
 }
 
-type TwoFactorStep = "login" | "method_selection" | "otp_verification";
+const mockUsers: Record<string, { user: AdminUser; token: string; role: UserRole }> = {
+  "boss@trax.com": {
+    user: {
+      id: 1,
+      name: "المدير العام",
+      email: "boss@trax.com",
+      role: "manager",
+      permissions: [],
+      created_at: new Date().toISOString(),
+      profile_image: "",
+    },
+    token: "mock-boss-token",
+    role: "boss",
+  },
+  "employee@trax.com": {
+    user: {
+      id: 2,
+      name: "أحمد محمد",
+      email: "employee@trax.com",
+      role: "employee",
+      permissions: [],
+      created_at: new Date().toISOString(),
+      profile_image: "",
+    },
+    token: "mock-employee-token",
+    role: "employee",
+  },
+};
 
 const Page = () => {
   const { toast } = useToast();
   const router = useRouter();
   const locale = useLocale();
   const { setUser } = useAuthStore();
-
-  // 2FA state
-  const [twoFactorStep, setTwoFactorStep] = useState<TwoFactorStep>("login");
-  const [selectedMethod, setSelectedMethod] = useState<
-    "sms" | "authenticator" | null
-  >(null);
-  const [twoFactorData, setTwoFactorData] = useState<{
-    userId: number;
-    secret: string;
-    method: string;
-  } | null>(null);
+  const [selectedRole, setSelectedRole] = useState<UserRole>("boss");
 
   const handleSubmit = async (
     values: LoginValues,
     { setSubmitting }: FormikHelpers<LoginValues>
   ) => {
-    const formdata = new FormData();
-    formdata.append("email", values.email);
-    formdata.append("password", values.password);
     try {
-      const response = await fetcherClient<LoginResponse>("/login", {
-        method: "POST",
-        body: formdata,
+      const mockUser = mockUsers[values.email];
+
+      if (!mockUser || values.password !== "12345678") {
+        toast({
+          description: "البريد الإلكتروني أو كلمة المرور غير صحيحة",
+          variant: "destructive",
+        });
+        setSubmitting(false);
+        return;
+      }
+
+      setCookie("auth_token", mockUser.token, {
+        maxAge: 30 * 24 * 60 * 60,
       });
 
-      // Check if 2FA is required
-      if (response.data.pass_2fa === false) {
-        // 2FA is required
-        const userId = response.data.user_id || response.data.user.id;
-        const secret = response.data["2fa_secret"] || "";
-        const method = response.data.method || "";
+      setUser(mockUser.user, mockUser.token, mockUser.role);
 
-        if (!userId || !secret) {
-          toast({
-            description: "خطأ في بيانات التحقق الثنائي",
-            variant: "destructive",
-          });
-          setSubmitting(false);
-          return;
-        }
+      toast({
+        description: "تم تسجيل الدخول بنجاح",
+        variant: "default",
+      });
 
-        setTwoFactorData({
-          userId,
-          secret,
-          method: method.toLowerCase(),
-        });
-
-        // Check if user has multiple 2FA methods
-        if (response.data.has_multi_2fa === true) {
-          // Show method selection
-          setTwoFactorStep("method_selection");
-        } else {
-          // Go directly to OTP verification with the method from response
-          setSelectedMethod(method.toLowerCase() as "sms" | "authenticator");
-          setTwoFactorStep("otp_verification");
-        }
+      if (mockUser.role === "employee") {
+        router.push(`/${locale}/check-in`);
       } else {
-        // No 2FA required, proceed normally
-        setCookie("auth_token", response.data.token, {
-          maxAge: 30 * 24 * 60 * 60,
-        });
-
-        // Save user data in the global auth store
-        setUser(response.data.user, response.data.token);
-
-        toast({
-          description: response.message,
-          variant: "default",
-        });
         router.push(`/${locale}`);
       }
-    } catch (error: unknown) {
-      const errorMessage = (error as FetcherError)?.info?.message || "Error";
+    } catch {
       toast({
-        description: errorMessage,
+        description: "حدث خطأ أثناء تسجيل الدخول",
         variant: "destructive",
       });
     } finally {
@@ -114,74 +100,6 @@ const Page = () => {
     }
   };
 
-  const handleMethodSelectionContinue = async () => {
-    if (!selectedMethod || !twoFactorData) return;
-
-    try {
-      const formdata = new FormData();
-      formdata.append("user_id", twoFactorData.userId.toString());
-      formdata.append("2fa_secret", twoFactorData.secret);
-      formdata.append("2fa_method", selectedMethod);
-
-      await fetcherClient("/2fa/otp/send", {
-        method: "POST",
-        body: formdata,
-      });
-
-      toast({
-        description: "تم إرسال رمز التحقق بنجاح",
-        variant: "default",
-      });
-
-      // Update method and go to OTP verification
-      setTwoFactorData({
-        ...twoFactorData,
-        method: selectedMethod,
-      });
-      setTwoFactorStep("otp_verification");
-    } catch (error: unknown) {
-      const errorMessage =
-        (error as FetcherError)?.info?.message || "خطأ في إرسال رمز التحقق";
-      toast({
-        description: errorMessage,
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleOTPResend = async () => {
-    if (!selectedMethod || !twoFactorData) return;
-
-    const formdata = new FormData();
-    formdata.append("user_id", twoFactorData.userId.toString());
-    formdata.append("2fa_secret", twoFactorData.secret);
-    formdata.append("2fa_method", selectedMethod);
-
-    await fetcherClient("/2fa/otp/send", {
-      method: "POST",
-      body: formdata,
-    });
-  };
-
-  const handleOTPVerify = (token: string) => {
-    // Store the token in cookies
-    setCookie("auth_token", token, {
-      maxAge: 30 * 24 * 60 * 60,
-    });
-
-    toast({
-      description: "تم تسجيل الدخول بنجاح",
-      variant: "default",
-    });
-
-    router.push(`/${locale}`);
-  };
-
-  const handleCancel = () => {
-    setTwoFactorStep("login");
-    setSelectedMethod(null);
-    setTwoFactorData(null);
-  };
   const loginSchema = Yup.object({
     email: Yup.string()
       .email("البريد الإلكتروني غير صحيح")
@@ -190,6 +108,7 @@ const Page = () => {
       .min(8, "كلمة المرور يجب أن تكون 8 أحرف على الأقل")
       .required("كلمة المرور مطلوبة"),
   });
+
   return (
     <section className="w-screen h-screen flex items-center justify-center relative bg-primaryColor">
       <Image
@@ -200,81 +119,93 @@ const Page = () => {
       />
       <LogoWhite className="absolute left-1/2 -translate-x-1/2 -top-5" />
 
-      {twoFactorStep === "login" ? (
-        <Formik<LoginValues>
-          validationSchema={loginSchema}
-          initialValues={{ email: "", password: "", rememberMe: false }}
-          onSubmit={handleSubmit}
-        >
-          {(props) => (
-            <Form className="bg-white rounded-16 p-5 flex flex-col gap-5 m-5 w-full max-w-[557px] relative z-10">
-              <h1 className="text-24 font-[700] bg-clip-text text-transparent bg-[linear-gradient(270deg,#3C7EE7_0%,#10489B_100%)]">
-                تسجيل الدخول
-              </h1>
-              <p className="text-18 text-textSubText mb-5 -mt-4">
-                من فضلك قم بإستكمال بياناتك لتسجيل الدخول!
-              </p>
-              <CustomInput
-                type="email"
-                name="email"
-                placeholder="example@gmail.com"
-                label="بريد إلكتروني"
-              />
-              <CustomInput
-                type="password"
-                name="password"
-                placeholder="*********"
-                label="كلمة المرور"
-              />
-              <div className="flex items-center gap-2">
-                <Checkbox
-                  id="terms"
-                  onCheckedChange={(value) =>
-                    props.setFieldValue("rememberMe", value)
-                  }
-                  disabled={props.isSubmitting}
-                />
-                <label
-                  htmlFor="terms"
-                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                >
-                  تذكرنى
-                </label>
-              </div>
-              <Button
-                type="submit"
-                variant={"primary"}
-                disabled={props.isSubmitting}
+      <Formik<LoginValues>
+        validationSchema={loginSchema}
+        initialValues={{ email: "boss@trax.com", password: "12345678", rememberMe: false }}
+        onSubmit={handleSubmit}
+      >
+        {(props) => (
+          <Form className="bg-white rounded-16 p-5 flex flex-col gap-5 m-5 w-full max-w-[557px] relative z-10">
+            <h1 className="text-24 font-[700] bg-clip-text text-transparent bg-[linear-gradient(270deg,#3C7EE7_0%,#10489B_100%)]">
+              تسجيل الدخول — Trax
+            </h1>
+            <p className="text-18 text-textSubText mb-5 -mt-4">
+              من فضلك قم بإستكمال بياناتك لتسجيل الدخول!
+            </p>
+
+            <div className="flex gap-2 mb-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedRole("boss");
+                  props.setFieldValue("email", "boss@trax.com");
+                }}
+                className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl border-2 transition-all ${
+                  selectedRole === "boss"
+                    ? "border-blue-500 bg-blue-50 text-blue-700"
+                    : "border-gray-200 text-gray-500 hover:border-gray-300"
+                }`}
               >
-                تسجيل الدخول
-              </Button>
-            </Form>
-          )}
-        </Formik>
-      ) : twoFactorStep === "method_selection" ? (
-        <div className="bg-white rounded-16 p-5 flex flex-col gap-5 m-5 w-full max-w-[557px] relative z-10">
-          <TwoFactorMethodSelection
-            selectedMethod={selectedMethod}
-            onMethodChange={setSelectedMethod}
-            onContinue={handleMethodSelectionContinue}
-            onCancel={handleCancel}
-          />
-        </div>
-      ) : twoFactorStep === "otp_verification" &&
-        twoFactorData &&
-        selectedMethod ? (
-        <div className="bg-white rounded-16 p-5 flex flex-col gap-5 m-5 w-full max-w-[557px] relative z-10">
-          <TwoFactorOTPVerification
-            method={selectedMethod}
-            userId={twoFactorData.userId}
-            twoFactorSecret={twoFactorData.secret}
-            onVerify={handleOTPVerify}
-            onCancel={handleCancel}
-            onResend={handleOTPResend}
-            showResend={selectedMethod === "sms"}
-          />
-        </div>
-      ) : null}
+                <Briefcase className="w-4 h-4" />
+                <span className="text-sm font-medium">مدير</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedRole("employee");
+                  props.setFieldValue("email", "employee@trax.com");
+                }}
+                className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl border-2 transition-all ${
+                  selectedRole === "employee"
+                    ? "border-green-500 bg-green-50 text-green-700"
+                    : "border-gray-200 text-gray-500 hover:border-gray-300"
+                }`}
+              >
+                <User className="w-4 h-4" />
+                <span className="text-sm font-medium">موظف</span>
+              </button>
+            </div>
+
+            <CustomInput
+              type="email"
+              name="email"
+              placeholder="example@trax.com"
+              label="بريد إلكتروني"
+            />
+            <CustomInput
+              type="password"
+              name="password"
+              placeholder="*********"
+              label="كلمة المرور"
+            />
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="terms"
+                onCheckedChange={(value) =>
+                  props.setFieldValue("rememberMe", value)
+                }
+                disabled={props.isSubmitting}
+              />
+              <label
+                htmlFor="terms"
+                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+              >
+                تذكرنى
+              </label>
+            </div>
+            <Button
+              type="submit"
+              variant={"primary"}
+              disabled={props.isSubmitting}
+            >
+              تسجيل الدخول
+            </Button>
+            <p className="text-xs text-gray-400 text-center">
+              تجريبي: boss@trax.com / employee@trax.com — كلمة المرور: 12345678
+            </p>
+          </Form>
+        )}
+      </Formik>
     </section>
   );
 };
