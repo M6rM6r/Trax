@@ -12,10 +12,7 @@ const nextConfig = {
 
   images: {
     remotePatterns: [
-      { protocol: "https", hostname: "zeem.live" },
-      { protocol: "https", hostname: "dev.zeem.live" },
-      { protocol: "https", hostname: "stg.zeem.live" },
-      { protocol: "https", hostname: "zeem-buket.s3.eu-central-1.amazonaws.com" },
+      { protocol: "https", hostname: "**" },
     ],
   },
   webpack(config) {

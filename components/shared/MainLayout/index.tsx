@@ -39,7 +39,6 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { fetcherClient } from "@/lib/fetcherClient";
 import { deleteCookie } from "cookies-next";
 import { useToast } from "@/hooks/use-toast";
 import { useAuthStore } from "@/stores/useAuthStore";

@@ -1,6 +1,5 @@
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
-import { fetcherClient } from "./fetcherClient";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -374,35 +373,4 @@ export const getKeyByLabel = (
   return (
     Object.entries(enumObj).find(([key, val]) => val === label)?.[0] ?? null
   );
-};
-
-// Normalize trip status values (accept English key, return Arabic label)
-export const normalizeTripStatus = (value: string) => {
-  if (!value) return value;
-
-  const map: Record<string, string> = {
-    pending: "معلقة",
-    in_progress: "قيد التنفيذ",
-    completed: "الرحلة اكتملت",
-    cancelled: "ملغاة",
-    auto_cancelled: "تم الالغاء تلقائيا",
-    cancelled_by_customer: "ألغيت من قبل العميل",
-    accepted: "مقبول",
-  };
-
-  // If value is already an exact English key, return mapped Arabic
-  if (map[value as keyof typeof map]) return map[value as keyof typeof map];
-
-  // Normalize and try again (handles values like "In Progress" or "in-progress")
-  const normalized = String(value)
-    .toLowerCase()
-    .replace(/[\s-]+/g, "_");
-  if (map[normalized as keyof typeof map])
-    return map[normalized as keyof typeof map];
-
-  // If value already appears to be Arabic (one of the map values), return it
-  if (Object.values(map).includes(value)) return value;
-
-  // Fallback: return original value
-  return value;
 };

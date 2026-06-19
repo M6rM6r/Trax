@@ -34,6 +34,10 @@ const Tooltip: ComponentType<any> = dynamic(
   () => import("recharts").then((mod) => mod.Tooltip as ComponentType<any>),
   { ssr: false }
 );
+const Cell: ComponentType<any> = dynamic(
+  () => import("recharts").then((mod) => mod.Cell as ComponentType<any>),
+  { ssr: false }
+);
 
 export default function AttendanceReportsPage() {
   const presentCount = mockAttendance.filter((r) => r.status === "present").length;
@@ -128,7 +132,7 @@ export default function AttendanceReportsPage() {
                 <Tooltip />
                 <Bar dataKey="value" radius={[8, 8, 0, 0]}>
                   {chartData.map((entry, index) => (
-                    <Bar key={`bar-${index}`} fill={entry.color} />
+                    <Cell key={`cell-${index}`} fill={entry.color} />
                   ))}
                 </Bar>
               </BarChart>

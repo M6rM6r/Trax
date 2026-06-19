@@ -1,5 +1,4 @@
 import { parse, format, set, isValid } from "date-fns";
-import { ServiceSettingsData } from "./types/responseTypes";
 
 export function DateFormat(dateString?: string) {
   if (!dateString) return { time: "", dayMonthYear: "" };
@@ -123,7 +122,7 @@ export function groupByGroupToArray(array: Array<any>) {
 }
 
 export function getServiceSettingsValue(
-  data: ServiceSettingsData[],
+  data: Array<{ key: string; value: string | number; service_subtype?: string | null | number }>,
   key: string,
   service_subtype?: string | null | number
 ): string | number {
