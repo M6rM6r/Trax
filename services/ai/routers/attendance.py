@@ -2,6 +2,8 @@
 
 from fastapi import APIRouter, Request
 from schemas.schemas import AttendancePredictionInput, AttendancePredictionOutput
+from cache import cache
+from logging_config import logger
 import numpy as np
 
 router = APIRouter()
@@ -16,6 +18,11 @@ RECOMMENDATIONS = {
 
 @router.post("/predict", response_model=AttendancePredictionOutput)
 async def predict_attendance(input_data: AttendancePredictionInput, request: Request):
+    cache_key = f"{input_data.employee_id}_{input_data.day_of_week}"
+    cached = cache.get("attendance_predict", cache_key)
+    if cached:
+        return AttendancePredictionOutput(**cached)
+
     model = request.app.state.models.attendance_predictor
     features = np.array([[
         input_data.day_of_week,
@@ -30,13 +37,16 @@ async def predict_attendance(input_data: AttendancePredictionInput, request: Req
     confidence = float(max(probabilities))
 
     predicted_status = STATUS_MAP[prediction]
-
-    return AttendancePredictionOutput(
+    result = AttendancePredictionOutput(
         employee_id=input_data.employee_id,
         predicted_status=predicted_status,
         confidence=round(confidence, 4),
         recommendation=RECOMMENDATIONS[predicted_status],
     )
+
+    cache.set("attendance_predict", cache_key, result.model_dump())
+    logger.info("attendance_predicted", employee_id=input_data.employee_id, status=predicted_status)
+    return result
 
 
 @router.get("/batch/{date}")

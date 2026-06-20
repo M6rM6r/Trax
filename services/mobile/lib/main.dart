@@ -4,6 +4,7 @@ import "package:google_fonts/google_fonts.dart";
 import "providers/auth_provider.dart";
 import "providers/attendance_provider.dart";
 import "providers/location_provider.dart";
+import "services/api_service.dart";
 import "screens/login_screen.dart";
 import "screens/home_screen.dart";
 import "screens/check_in_screen.dart";
@@ -24,6 +25,7 @@ class TraxEmployeeApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => AttendanceProvider()),
         ChangeNotifierProvider(create: (_) => LocationProvider()),
+        Provider(create: (_) => ApiService()),
       ],
       child: MaterialApp(
         title: "Trax",
@@ -41,6 +43,22 @@ class TraxEmployeeApp extends StatelessWidget {
             foregroundColor: Colors.white,
           ),
         ),
+        darkTheme: ThemeData(
+          colorScheme: ColorScheme.fromSeed(
+            seedColor: const Color(0xFF3C7EE7),
+            brightness: Brightness.dark,
+          ),
+          useMaterial3: true,
+          textTheme: GoogleFonts.cairoTextTheme(ThemeData.dark().textTheme),
+          appBarTheme: AppBarTheme(
+            centerTitle: true,
+            backgroundColor: Colors.grey[900],
+            foregroundColor: Colors.white,
+          ),
+          scaffoldBackgroundColor: const Color(0xFF0F172A),
+          cardColor: const Color(0xFF1E293B),
+        ),
+        themeMode: ThemeMode.system,
         initialRoute: "/login",
         routes: {
           "/login": (ctx) => const LoginScreen(),

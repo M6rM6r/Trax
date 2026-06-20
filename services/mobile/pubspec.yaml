@@ -11,10 +11,13 @@ dependencies:
   flutter:
     sdk: flutter
   http: ^1.2.2
+  dio: ^5.7.0
   geolocator: ^13.0.1
   flutter_local_notifications: ^17.2.2
   shared_preferences: ^2.3.2
+  flutter_secure_storage: ^9.2.2
   provider: ^6.1.2
+  flutter_riverpod: ^2.5.1
   google_fonts: ^6.2.1
   flutter_svg: ^2.0.10
   intl: ^0.19.0
@@ -22,6 +25,9 @@ dependencies:
   flutter_background_geolocation: ^4.15.0
   permission_handler: ^11.3.1
   cupertino_icons: ^1.0.8
+  skeletonizer: ^1.4.3
+  fl_chart: ^0.69.2
+  cached_network_image: ^3.4.1
 
 dev_dependencies:
   flutter_test:

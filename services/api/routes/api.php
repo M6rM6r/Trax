@@ -8,8 +8,9 @@ use App\Http\Controllers\Api\DashboardController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('api')->group(function () {
-    // Public
-    Route::post('auth/login', [AuthController::class, 'login']);
+    // Public — strict rate limit on auth
+    Route::post('auth/login', [AuthController::class, 'login'])
+        ->middleware(['throttle:5,1']);
 
     // Protected
     Route::middleware('auth:api')->group(function () {
@@ -21,8 +22,13 @@ Route::prefix('api')->group(function () {
         // Dashboard
         Route::get('dashboard/stats', [DashboardController::class, 'stats']);
 
-        // Employees
-        Route::apiResource('employees', EmployeeController::class);
+        // Employees — explicit RESTful routes
+        Route::get('employees', [EmployeeController::class, 'index']);
+        Route::post('employees', [EmployeeController::class, 'store']);
+        Route::get('employees/{employee}', [EmployeeController::class, 'show']);
+        Route::put('employees/{employee}', [EmployeeController::class, 'update']);
+        Route::patch('employees/{employee}', [EmployeeController::class, 'update']);
+        Route::delete('employees/{employee}', [EmployeeController::class, 'destroy']);
         Route::get('employees/inactive/list', [EmployeeController::class, 'inactive']);
 
         // Attendance
@@ -31,8 +37,12 @@ Route::prefix('api')->group(function () {
         Route::post('attendance/check-in', [AttendanceController::class, 'checkIn']);
         Route::post('attendance/check-out', [AttendanceController::class, 'checkOut']);
 
-        // Geofences
-        Route::apiResource('geofences', GeofenceController::class);
+        // Geofences — explicit RESTful routes
+        Route::get('geofences', [GeofenceController::class, 'index']);
+        Route::post('geofences', [GeofenceController::class, 'store']);
+        Route::get('geofences/{geofence}', [GeofenceController::class, 'show']);
+        Route::put('geofences/{geofence}', [GeofenceController::class, 'update']);
+        Route::delete('geofences/{geofence}', [GeofenceController::class, 'destroy']);
         Route::post('geofences/check-inside', [GeofenceController::class, 'checkInside']);
     });
 });

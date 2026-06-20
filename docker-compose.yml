@@ -1,4 +1,16 @@
 services:
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+    volumes:
+      - ./docker/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - frontend
+      - api
+      - ai
+    restart: unless-stopped
+
   frontend:
     build:
       context: ..
@@ -41,6 +53,13 @@ services:
     environment:
       - AI_SERVICE_HOST=0.0.0.0
       - AI_SERVICE_PORT=8001
+      - REDIS_URL=redis://redis:6379/0
+      - AI_CACHE_TTL=300
+      - AI_LOG_LEVEL=INFO
+    volumes:
+      - trax-ai-models:/app/models/saved
+    depends_on:
+      - redis
     restart: unless-stopped
 
   db:
@@ -72,3 +91,4 @@ services:
 volumes:
   trax-db:
   trax-redis:
+  trax-ai-models:
