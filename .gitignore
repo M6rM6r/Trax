@@ -2,6 +2,9 @@
 
 # dependencies
 /node_modules
+services/api/vendor/
+services/mobile/.dart_tool/
+services/mobile/build/
 /.pnp
 .pnp.js
 .yarn/install-state.gz

@@ -27,26 +27,25 @@ export function NavMain({
     }[];
   }[];
 }) {
-  const [openSections, setOpenSections] = useState<Record<string, boolean>>(
-    () =>
-      items.reduce((acc, item) => {
+  const [openSections, setOpenSections] = useState<Record<string, boolean>>(() =>
+    items.reduce(
+      (acc, item) => {
         acc[item.title] = item.isActive ?? false;
         return acc;
-      }, {} as Record<string, boolean>)
+      },
+      {} as Record<string, boolean>
+    )
   );
 
   // Track open state for sub-items (nested items)
   // Initialize open state for subItems which contain an active descendant so
   // deep links preserve the expanded state.
-  const [openSubSections, setOpenSubSections] = useState<
-    Record<string, boolean>
-  >(() => {
+  const [openSubSections, setOpenSubSections] = useState<Record<string, boolean>>(() => {
     const map: Record<string, boolean> = {};
     items.forEach((item) => {
       item.items?.forEach((sub) => {
         const key = `${item.title}__${sub.title}`;
-        const hasActiveDescendant =
-          !!sub.active || !!sub.items?.some((s) => s.active);
+        const hasActiveDescendant = !!sub.active || !!sub.items?.some((s) => s.active);
         map[key] = hasActiveDescendant;
       });
     });
@@ -63,32 +62,42 @@ export function NavMain({
   };
 
   return (
-    <nav className="w-full grow">
+    <nav className="w-full grow" aria-label="القائمة الرئيسية" role="navigation">
       <ul className="space-y-2">
         {items.map((item) => (
           <li key={item.title} className="relative">
             <div
               onClick={() => toggleSection(item.title)}
               className={cn(
-                "flex items-center justify-between hover:bg-primaryColor  p-2 rounded-md group",
+                "flex items-center justify-between hover:bg-primaryColor dark:hover:bg-blue-600 p-2 rounded-md group",
                 (item.isActive || openSections[item.title]) &&
-                  "bg-primaryColor text-white"
+                  "bg-primaryColor text-white dark:bg-blue-600"
               )}
+              role="button"
+              tabIndex={0}
+              aria-expanded={openSections[item.title]}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  toggleSection(item.title);
+                }
+              }}
             >
               <Link
                 href={item.url}
                 className="flex items-center gap-2 w-full  "
+                aria-current={item.isActive ? "page" : undefined}
               >
                 <item.icon
                   width={24}
                   className={cn(
-                    "text-black group-hover:text-white z-50",
+                    "text-black dark:text-slate-100 group-hover:text-white z-50",
                     (item.isActive || openSections[item.title]) && "text-white"
                   )}
                 />
                 <span
                   className={cn(
-                    "text-16 text-black group-hover:text-white",
+                    "text-16 text-black dark:text-slate-100 group-hover:text-white",
                     (item.isActive || openSections[item.title]) && "text-white"
                   )}
                 >
@@ -97,21 +106,22 @@ export function NavMain({
               </Link>
               {item.items?.length ? (
                 <button
-                  // onClick={() => toggleSection(item.title)}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    toggleSection(item.title);
+                  }}
                   className={cn(
-                    " text-black group-hover:text-white group-hover:bg-primaryColor",
+                    " text-black dark:text-slate-100 group-hover:text-white group-hover:bg-primaryColor focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primaryColor rounded",
                     (item.isActive || openSections[item.title]) &&
-                      "bg-primaryColor text-white"
+                      "bg-primaryColor text-white dark:bg-blue-600"
                   )}
-                  aria-label="Toggle"
+                  aria-label={openSections[item.title] ? `طي ${item.title}` : `توسيع ${item.title}`}
+                  aria-expanded={openSections[item.title]}
                 >
                   <ArrowLeft
-                    className={`transition-transform w-6 text-black group-hover:text-white ${
+                    className={`transition-transform w-6 text-black dark:text-slate-100 group-hover:text-white ${
                       openSections[item.title] ? "-rotate-90" : ""
-                    } ${
-                      (item.isActive || openSections[item.title]) &&
-                      "text-white"
-                    }`}
+                    } ${(item.isActive || openSections[item.title]) && "text-white"}`}
                   />
                 </button>
               ) : null}
@@ -134,15 +144,17 @@ export function NavMain({
                         className={cn(
                           "flex items-center justify-between gap-2 text-14 px-2 py-1 rounded-md ms-3 group cursor-pointer",
                           isOpenActive
-                            ? "bg-primaryColor text-white"
+                            ? "bg-primaryColor text-white dark:bg-blue-600"
                             : subItemHasActiveChild
-                            ? "bg-primaryColorLight text-primaryColor"
-                            : "text-black hover:bg-primaryColor hover:text-white"
+                              ? "bg-primaryColorLight text-primaryColor dark:bg-blue-900/30 dark:text-blue-400"
+                              : "text-black dark:text-slate-100 hover:bg-primaryColor dark:hover:bg-blue-600 hover:text-white"
                         )}
+                        role="group"
                       >
                         <Link
                           href={subItem.url}
                           className="flex items-center gap-2 flex-1"
+                          aria-current={subItem.active ? "page" : undefined}
                         >
                           <Flash
                             className={cn(
@@ -150,7 +162,7 @@ export function NavMain({
                               isOpenActive && "text-white",
                               !isOpenActive &&
                                 subItemHasActiveChild &&
-                                "text-primaryColor"
+                                "text-primaryColor dark:text-blue-400"
                             )}
                           />
                           {subItem.title}
@@ -162,8 +174,11 @@ export function NavMain({
                               e.preventDefault();
                               toggleSubSection(item.title, subItem.title);
                             }}
-                            className="p-1"
-                            aria-label="Toggle sub-items"
+                            className="p-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primaryColor rounded"
+                            aria-label={
+                              isSubItemOpen ? `طي ${subItem.title}` : `توسيع ${subItem.title}`
+                            }
+                            aria-expanded={isSubItemOpen}
                           >
                             <ArrowLeft
                               className={cn(
@@ -171,8 +186,8 @@ export function NavMain({
                                 isOpenActive
                                   ? "text-white"
                                   : subItemHasActiveChild
-                                  ? "text-primaryColor"
-                                  : "text-black group-hover:text-white",
+                                    ? "text-primaryColor dark:text-blue-400"
+                                    : "text-black dark:text-slate-100 group-hover:text-white",
                                 isSubItemOpen && "-rotate-90"
                               )}
                             />
@@ -183,22 +198,20 @@ export function NavMain({
                       {hasSubItems && isSubItemOpen && (
                         <ul className="mr-4 mt-2 space-y-1 ">
                           {subItem.items?.map((subSubItem) => (
-                            <li
-                              key={subSubItem.title}
-                              className=" relative group "
-                            >
+                            <li key={subSubItem.title} className=" relative group ">
                               <Line className="w-10 h-[60px] absolute -top-6 -start-7" />
                               <Link
                                 href={subSubItem.url}
-                                className={`flex items-center gap-2 text-14 text-black px-2 py-1 hover:bg-primaryColor hover:text-white rounded-md ms-3 ${
+                                aria-current={subSubItem.active ? "page" : undefined}
+                                className={`flex items-center gap-2 text-14 text-black dark:text-slate-100 px-2 py-1 hover:bg-primaryColor dark:hover:bg-blue-600 hover:text-white rounded-md ms-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primaryColor ${
                                   subSubItem.active
-                                    ? " bg-primaryColorLight text-primaryColor"
+                                    ? " bg-primaryColorLight text-primaryColor dark:bg-blue-900/30 dark:text-blue-400"
                                     : ""
                                 }`}
                               >
                                 <Flash
                                   className={`w-5 h-5 ${
-                                    subSubItem.active && "text-primaryColor"
+                                    subSubItem.active && "text-primaryColor dark:text-blue-400"
                                   }`}
                                 />
                                 {subSubItem.title}

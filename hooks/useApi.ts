@@ -2,6 +2,8 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/services/api";
+import { validatedApi } from "@/lib/services/validatedApi";
+import { env } from "@/lib/config/env";
 import type {
   Employee,
   AttendanceRecord,
@@ -9,6 +11,42 @@ import type {
   DashboardStats,
   LiveTrackingEmployee,
 } from "@/lib/types/trackingTypes";
+import type { DashboardTrendsSchema } from "@/lib/schemas/dashboard.schema";
+
+const useMock = env.NEXT_PUBLIC_USE_MOCK;
+
+const mockTrends: DashboardTrendsSchema = {
+  weeklyData: [
+    { day: "السبت", present: 6, late: 1, absent: 1, avgWorkedHours: 7.5 },
+    { day: "الأحد", present: 7, late: 1, absent: 0, avgWorkedHours: 8.0 },
+    { day: "الإثنين", present: 5, late: 2, absent: 1, avgWorkedHours: 7.2 },
+    { day: "الثلاثاء", present: 6, late: 1, absent: 1, avgWorkedHours: 7.8 },
+    { day: "الأربعاء", present: 7, late: 1, absent: 0, avgWorkedHours: 8.1 },
+    { day: "الخميس", present: 5, late: 2, absent: 1, avgWorkedHours: 7.0 },
+    { day: "الجمعة", present: 3, late: 0, absent: 5, avgWorkedHours: 4.5 },
+  ],
+  peakHoursData: [
+    { hour: "6ص", count: 1 },
+    { hour: "7ص", count: 3 },
+    { hour: "8ص", count: 8 },
+    { hour: "9ص", count: 4 },
+    { hour: "10ص", count: 2 },
+    { hour: "11ص", count: 1 },
+    { hour: "12م", count: 1 },
+    { hour: "1م", count: 1 },
+    { hour: "2م", count: 1 },
+    { hour: "3م", count: 2 },
+    { hour: "4م", count: 3 },
+    { hour: "5م", count: 6 },
+    { hour: "6م", count: 4 },
+    { hour: "7م", count: 1 },
+  ],
+  employeeGrowth: 5,
+  presentChange: 8,
+  lateChange: -3,
+  absentChange: -12,
+  onTimeRateChange: 4,
+};
 
 export const queryKeys = {
   employees: ["employees"] as const,
@@ -17,15 +55,19 @@ export const queryKeys = {
   attendanceReports: ["attendance", "reports"] as const,
   geofences: ["geofences"] as const,
   dashboard: ["dashboard", "stats"] as const,
+  dashboardTrends: ["dashboard", "trends"] as const,
   tracking: ["tracking", "live"] as const,
 };
 
 export function useEmployees() {
   return useQuery<Employee[]>({
     queryKey: queryKeys.employees,
-    queryFn: async () => {
-      const res = await api.employees.list();
-      return res.data;
+    queryFn: async (): Promise<Employee[]> => {
+      if (useMock) {
+        const res = await api.employees.list();
+        return res.data;
+      }
+      return validatedApi.employees.list();
     },
   });
 }
@@ -33,9 +75,12 @@ export function useEmployees() {
 export function useInactiveEmployees() {
   return useQuery<Employee[]>({
     queryKey: queryKeys.employeesInactive,
-    queryFn: async () => {
-      const res = await api.employees.inactive();
-      return res.data;
+    queryFn: async (): Promise<Employee[]> => {
+      if (useMock) {
+        const res = await api.employees.inactive();
+        return res.data;
+      }
+      return validatedApi.employees.inactive();
     },
   });
 }
@@ -44,8 +89,27 @@ export function useCreateEmployee() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (employee: Omit<Employee, "id">) => {
-      const res = await api.employees.create(employee);
-      return res.data;
+      if (useMock) {
+        const res = await api.employees.create(employee);
+        return res.data;
+      }
+      return validatedApi.employees.create(employee);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.employees });
+    },
+  });
+}
+
+export function useUpdateEmployee() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, data }: { id: number; data: Partial<Employee> }) => {
+      if (useMock) {
+        const res = await api.employees.update(id, data);
+        return res.data;
+      }
+      return validatedApi.employees.update(id, data);
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: queryKeys.employees });
@@ -57,8 +121,11 @@ export function useDeleteEmployee() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (id: number) => {
-      const res = await api.employees.delete(id);
-      return res.data;
+      if (useMock) {
+        const res = await api.employees.delete(id);
+        return res.data;
+      }
+      return validatedApi.employees.delete(id);
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: queryKeys.employees });
@@ -69,9 +136,12 @@ export function useDeleteEmployee() {
 export function useAttendance() {
   return useQuery<AttendanceRecord[]>({
     queryKey: queryKeys.attendance,
-    queryFn: async () => {
-      const res = await api.attendance.list();
-      return res.data;
+    queryFn: async (): Promise<AttendanceRecord[]> => {
+      if (useMock) {
+        const res = await api.attendance.list();
+        return res.data;
+      }
+      return validatedApi.attendance.list();
     },
   });
 }
@@ -79,9 +149,53 @@ export function useAttendance() {
 export function useAttendanceReports() {
   return useQuery<AttendanceRecord[]>({
     queryKey: queryKeys.attendanceReports,
-    queryFn: async () => {
-      const res = await api.attendance.reports();
-      return res.data;
+    queryFn: async (): Promise<AttendanceRecord[]> => {
+      if (useMock) {
+        const res = await api.attendance.reports();
+        return res.data;
+      }
+      return validatedApi.attendance.reports();
+    },
+  });
+}
+
+export function useCheckIn() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (payload: {
+      employeeId: number;
+      lat: number;
+      lng: number;
+      geofenceId: number;
+    }) => {
+      if (useMock) {
+        const res = await api.attendance.checkIn(payload);
+        return res.data;
+      }
+      return validatedApi.attendance.checkIn(payload);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.attendance });
+      qc.invalidateQueries({ queryKey: queryKeys.dashboard });
+      qc.invalidateQueries({ queryKey: queryKeys.dashboardTrends });
+    },
+  });
+}
+
+export function useCheckOut() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (payload: { employeeId: number }) => {
+      if (useMock) {
+        const res = await api.attendance.checkOut(payload);
+        return res.data;
+      }
+      return validatedApi.attendance.checkOut(payload);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.attendance });
+      qc.invalidateQueries({ queryKey: queryKeys.dashboard });
+      qc.invalidateQueries({ queryKey: queryKeys.dashboardTrends });
     },
   });
 }
@@ -89,9 +203,12 @@ export function useAttendanceReports() {
 export function useGeofences() {
   return useQuery<Geofence[]>({
     queryKey: queryKeys.geofences,
-    queryFn: async () => {
-      const res = await api.geofences.list();
-      return res.data;
+    queryFn: async (): Promise<Geofence[]> => {
+      if (useMock) {
+        const res = await api.geofences.list();
+        return res.data;
+      }
+      return validatedApi.geofences.list();
     },
   });
 }
@@ -100,8 +217,27 @@ export function useCreateGeofence() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (geofence: Omit<Geofence, "id">) => {
-      const res = await api.geofences.create(geofence);
-      return res.data;
+      if (useMock) {
+        const res = await api.geofences.create(geofence);
+        return res.data;
+      }
+      return validatedApi.geofences.create(geofence);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.geofences });
+    },
+  });
+}
+
+export function useUpdateGeofence() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, data }: { id: number; data: Partial<Geofence> }) => {
+      if (useMock) {
+        const res = await api.geofences.update(id, data);
+        return res.data;
+      }
+      return validatedApi.geofences.update(id, data);
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: queryKeys.geofences });
@@ -113,8 +249,11 @@ export function useDeleteGeofence() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (id: number) => {
-      const res = await api.geofences.delete(id);
-      return res.data;
+      if (useMock) {
+        const res = await api.geofences.delete(id);
+        return res.data;
+      }
+      return validatedApi.geofences.delete(id);
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: queryKeys.geofences });
@@ -125,19 +264,39 @@ export function useDeleteGeofence() {
 export function useDashboardStats() {
   return useQuery<DashboardStats>({
     queryKey: queryKeys.dashboard,
-    queryFn: async () => {
-      const res = await api.dashboard.stats();
-      return res.data;
+    queryFn: async (): Promise<DashboardStats> => {
+      if (useMock) {
+        const res = await api.dashboard.stats();
+        return res.data;
+      }
+      return validatedApi.dashboard.stats();
     },
+  });
+}
+
+export function useDashboardTrends() {
+  return useQuery<DashboardTrendsSchema>({
+    queryKey: queryKeys.dashboardTrends,
+    queryFn: async (): Promise<DashboardTrendsSchema> => {
+      if (useMock) {
+        await new Promise((r) => setTimeout(r, 100));
+        return mockTrends;
+      }
+      return validatedApi.dashboard.trends();
+    },
+    staleTime: 5 * 60 * 1000,
   });
 }
 
 export function useLiveTracking() {
   return useQuery<LiveTrackingEmployee[]>({
     queryKey: queryKeys.tracking,
-    queryFn: async () => {
-      const res = await api.tracking.live();
-      return res.data;
+    queryFn: async (): Promise<LiveTrackingEmployee[]> => {
+      if (useMock) {
+        const res = await api.tracking.live();
+        return res.data;
+      }
+      return validatedApi.tracking.live();
     },
     refetchInterval: 30000,
   });

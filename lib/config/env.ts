@@ -8,6 +8,8 @@ const envSchema = z.object({
   NEXT_PUBLIC_API_URL: z.string().url().optional(),
   NEXT_PUBLIC_PRODUCTION_API_URL: z.string().url().optional(),
   NEXT_PUBLIC_BASE_URL: z.string().url().optional(),
+  NEXT_PUBLIC_WS_URL: z.string().url().optional(),
+  NEXT_PUBLIC_USE_MOCK: z.preprocess((v) => (v as string) === "true", z.boolean()).default(true),
 
   NEXT_PUBLIC_DEFAULT_MAP_LAT: z.coerce.number().default(24.7136),
   NEXT_PUBLIC_DEFAULT_MAP_LNG: z.coerce.number().default(46.6753),

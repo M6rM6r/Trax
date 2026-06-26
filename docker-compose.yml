@@ -8,8 +8,12 @@ services:
     depends_on:
       - frontend
       - api
-      - ai
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+          cpus: "0.25"
 
   frontend:
     build:
@@ -19,10 +23,18 @@ services:
       - "3000:3000"
     environment:
       - NEXT_PUBLIC_API_URL=http://localhost:8000/api
+      - NEXT_PUBLIC_WS_URL=http://localhost:8080
+      - NEXT_PUBLIC_USE_MOCK=false
       - NEXT_PUBLIC_DEFAULT_LOCALE=ar
     depends_on:
-      - api
+      api:
+        condition: service_healthy
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: "1.0"
 
   api:
     build:
@@ -38,29 +50,52 @@ services:
       - DB_USERNAME=trax
       - DB_PASSWORD=trax_secret
       - JWT_SECRET=trax_jwt_secret_change_in_production
-      - AI_SERVICE_URL=http://ai:8001
+      - BROADCAST_CONNECTION=reverb
+      - REVERB_APP_ID=trax-reverb-id
+      - REVERB_APP_KEY=trax-reverb-key
+      - REVERB_APP_SECRET=trax-reverb-secret
+      - REVERB_HOST=reverb
+      - REVERB_PORT=8080
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - TRAX_LATE_HOUR=9
+      - TRAX_LATE_MIN=0
+      - CACHE_STORE=redis
     depends_on:
       db:
         condition: service_healthy
-    restart: unless-stopped
+      redis:
+        condition: service_started
+      reverb:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/api/ping"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: "1.0"
 
-  ai:
-    build:
-      context: ..
-      dockerfile: docker/ai.Dockerfile
+  reverb:
+    image: laravel/reverb:latest
     ports:
-      - "8001:8001"
+      - "8080:8080"
     environment:
-      - AI_SERVICE_HOST=0.0.0.0
-      - AI_SERVICE_PORT=8001
-      - REDIS_URL=redis://redis:6379/0
-      - AI_CACHE_TTL=300
-      - AI_LOG_LEVEL=INFO
-    volumes:
-      - trax-ai-models:/app/models/saved
-    depends_on:
-      - redis
+      - REVERB_APP_ID=trax-reverb-id
+      - REVERB_APP_KEY=trax-reverb-key
+      - REVERB_APP_SECRET=trax-reverb-secret
+      - REVERB_HOST=0.0.0.0
+      - REVERB_PORT=8080
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: "0.5"
 
   db:
     image: mysql:8.0
@@ -79,6 +114,11 @@ services:
       timeout: 5s
       retries: 5
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: "1.0"
 
   redis:
     image: redis:7-alpine
@@ -86,9 +126,57 @@ services:
       - "6379:6379"
     volumes:
       - trax-redis:/data
+    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: "0.5"
+
+  prometheus:
+    image: prom/prometheus:latest
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./docker/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - trax-prometheus:/prometheus
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - "3001:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: trax_admin
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /etc/grafana/provisioning/dashboards/trax-overview.json
+    volumes:
+      - trax-grafana:/var/lib/grafana
+      - ./docker/grafana/provisioning:/etc/grafana/provisioning:ro
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: "0.5"
+
+  node-exporter:
+    image: prom/node-exporter:latest
+    ports:
+      - "9100:9100"
     restart: unless-stopped
 
 volumes:
   trax-db:
   trax-redis:
-  trax-ai-models:
+  trax-prometheus:
+  trax-grafana:

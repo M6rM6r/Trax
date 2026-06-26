@@ -19,6 +19,7 @@ class CheckInRequest extends FormRequest
             'lng' => ['required', 'numeric', 'between:-180,180'],
             'geofence_id' => ['required', 'exists:geofences,id'],
             'timestamp' => ['nullable', 'string'],
+            'battery_level' => ['nullable', 'integer', 'between:0,100'],
         ];
     }
 }

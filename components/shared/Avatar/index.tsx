@@ -72,12 +72,13 @@ export default function UserAvatar({
             alt={user.name}
             width={s.px}
             height={s.px}
-            className={`object-cover rounded-full w-[${s.px}px] h-[${s.px}px]`}
-            // If your avatar URLs are external, ensure next.config.js `domains` is set.
+            className="object-cover rounded-full"
+            style={{ width: s.px, height: s.px }}
+            loading="lazy"
           />
         ) : (
           <div
-            className={`flex items-center justify-center rounded-full ${fallbackBg} text-gray-800 font-semibold ${s.text}`}
+            className={`flex items-center justify-center rounded-full ${fallbackBg} dark:bg-primaryColor/20 text-gray-800 dark:text-slate-100 font-semibold ${s.text}`}
             style={{ width: s.px, height: s.px }}
             aria-hidden
           >
@@ -88,12 +89,12 @@ export default function UserAvatar({
         {/* status dot */}
         {status && (
           <span
-            className={`absolute bottom-0 right-0 block rounded-full ring-2 ring-white ${
+            className={`absolute bottom-0 right-0 block rounded-full ring-2 ring-white dark:ring-slate-800 ${
               status === "online"
                 ? "bg-green-500"
                 : status === "away"
-                ? "bg-yellow-400"
-                : "bg-gray-400"
+                  ? "bg-yellow-400"
+                  : "bg-gray-400"
             }`}
             style={{
               width: Math.round(s.px / 4),
@@ -105,12 +106,10 @@ export default function UserAvatar({
 
       {showName && (
         <div className="flex flex-col leading-none">
-          <span className="text-sm font-medium text-gray-900">
+          <span className="text-sm font-medium text-gray-900 dark:text-slate-100">
             {user?.name ?? "User"}
           </span>
-          {user?.email && (
-            <span className="text-xs text-muted-foreground">{user.email}</span>
-          )}
+          {user?.email && <span className="text-xs text-muted-foreground">{user.email}</span>}
         </div>
       )}
     </div>

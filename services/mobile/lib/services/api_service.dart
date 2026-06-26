@@ -1,12 +1,10 @@
 import 'dart:convert';
 import 'package:http/http' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import '../config/env.dart';
 
 class ApiService {
-  static const String baseUrl = String.fromEnvironment(
-    'API_BASE_URL',
-    defaultValue: 'http://localhost:8000/api',
-  );
+  static String get baseUrl => Env.apiBaseUrl;
 
   String? _token;
 

@@ -182,7 +182,10 @@ const Index = ({
 
   return (
     <div className={`flex flex-col gap-2 ${containerClassName}`}>
-      <label htmlFor={name} className={`text-16 text-primarySlate700 font-[600] ${labelStyle}`}>
+      <label
+        htmlFor={name}
+        className={`text-16 text-primarySlate700 dark:text-slate-300 font-[600] ${labelStyle}`}
+      >
         {label}
         {required && <span className="text-red-500 ml-1">*</span>}
       </label>
@@ -196,6 +199,8 @@ const Index = ({
               placeholder={placeholder}
               disabled={disabled}
               required={required}
+              aria-invalid={!!form.errors[name] && !!form.touched[name]}
+              aria-describedby={`${name}-error`}
               min={type === "number" ? 0 : undefined}
               onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
                 handleChange(e);
@@ -207,7 +212,7 @@ const Index = ({
                   handleBlur(e);
                 }
               }}
-              className={`h-[48px] grow w-full outline-none border border-textBorder bg-white rounded-6 px-3 text-textMain text-16 font-[600] ${className} ${
+              className={`h-[48px] grow w-full outline-none border border-textBorder dark:border-slate-600 bg-white dark:bg-slate-900 rounded-6 px-3 text-textMain dark:text-slate-100 text-16 font-[600] ${className} ${
                 as === "textarea" ? "pt-2 h-20" : ""
               }`}
               maxLength={maxLength || undefined}
@@ -247,7 +252,12 @@ const Index = ({
           <span className="text-12 text-textSubText">اختياري</span>
         </div>
       )}
-      <ErrorMessage component={"div"} name={name} className="text-14 text-red-500" />
+      <ErrorMessage
+        component={"div"}
+        id={`${name}-error`}
+        name={name}
+        className="text-14 text-red-500"
+      />
     </div>
   );
 };

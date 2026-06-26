@@ -4,9 +4,11 @@ import { useMemo, type ComponentType } from "react";
 import MainLayout from "@/components/shared/MainLayout";
 import FullPageHead from "@/components/shared/FullPageHead";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { BarChart3, Download, TrendingUp } from "lucide-react";
+import { BarChart3, Download, TrendingUp, FileText, FileSpreadsheet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAttendanceReports } from "@/hooks/useApi";
+import { exportAttendanceToCSV, exportAttendanceToPDF } from "@/lib/utils/exportUtils";
+import { useToast } from "@/hooks/use-toast";
 import { LoadingSkeleton, ErrorState } from "@/components/shared/StateViews";
 import dynamic from "next/dynamic";
 
@@ -41,8 +43,23 @@ const Cell: ComponentType<any> = dynamic(
 );
 /* eslint-enable @typescript-eslint/no-explicit-any */
 
+const CustomTooltip = ({ active, payload, label }: any) => {
+  if (active && payload && payload.length) {
+    return (
+      <div className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl p-3 shadow-xl">
+        <p className="font-bold text-gray-900 dark:text-slate-100 text-sm">{label}</p>
+        <p className="text-sm text-gray-600 dark:text-slate-400">
+          العدد: <span className="font-semibold">{payload[0].value}</span>
+        </p>
+      </div>
+    );
+  }
+  return null;
+};
+
 export default function AttendanceReportsPage() {
   const { data: attendance = [], isLoading, isError, refetch } = useAttendanceReports();
+  const { toast } = useToast();
   const presentCount = attendance.filter((r) => r.status === "present").length;
   const lateCount = attendance.filter((r) => r.status === "late").length;
   const absentCount = attendance.filter((r) => r.status === "absent").length;
@@ -70,10 +87,30 @@ export default function AttendanceReportsPage() {
           description="تحليلات وإحصائيات الحضور والانصراف"
           Icon={<BarChart3 className="w-7 h-7" />}
           LeftSection={
-            <Button variant="outline" className="flex items-center gap-2">
-              <Download className="w-4 h-4" />
-              تصدير التقرير
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                className="flex items-center gap-2"
+                onClick={() => {
+                  exportAttendanceToCSV(attendance);
+                  toast({ description: "تم تصدير CSV بنجاح" });
+                }}
+              >
+                <FileSpreadsheet className="w-4 h-4" />
+                CSV
+              </Button>
+              <Button
+                variant="outline"
+                className="flex items-center gap-2"
+                onClick={async () => {
+                  await exportAttendanceToPDF(attendance);
+                  toast({ description: "تم تصدير PDF بنجاح" });
+                }}
+              >
+                <FileText className="w-4 h-4" />
+                PDF
+              </Button>
+            </div>
           }
         />
 
@@ -147,9 +184,16 @@ export default function AttendanceReportsPage() {
               <CardContent>
                 <ResponsiveContainer width="100%" height={300}>
                   <BarChart data={chartData}>
-                    <XAxis dataKey="name" />
-                    <YAxis />
-                    <Tooltip />
+                    <XAxis
+                      dataKey="name"
+                      tick={{ fill: "#6B7280", fontSize: 12 }}
+                      className="dark:[&_.recharts-cartesian-axis-tick_text]:fill-slate-400"
+                    />
+                    <YAxis
+                      tick={{ fill: "#6B7280", fontSize: 12 }}
+                      className="dark:[&_.recharts-cartesian-axis-tick_text]:fill-slate-400"
+                    />
+                    <Tooltip content={<CustomTooltip />} cursor={{ fill: "rgba(0,0,0,0.05)" }} />
                     <Bar dataKey="value" radius={[8, 8, 0, 0]}>
                       {chartData.map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={entry.color} />

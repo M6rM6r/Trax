@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 export default function ThemeToggle() {
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
+  const [isAnimating, setIsAnimating] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -22,16 +23,22 @@ export default function ThemeToggle() {
 
   const isDark = theme === "dark";
 
+  const handleToggle = () => {
+    setIsAnimating(true);
+    setTheme(isDark ? "light" : "dark");
+    setTimeout(() => setIsAnimating(false), 500);
+  };
+
   return (
     <button
-      onClick={() => setTheme(isDark ? "light" : "dark")}
+      onClick={handleToggle}
       className="w-9 h-9 rounded-lg flex items-center justify-center text-gray500 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors"
       aria-label={isDark ? "تفعيل الوضع الفاتح" : "تفعيل الوضع الداكن"}
     >
       {isDark ? (
-        <Sun className="w-5 h-5 transition-transform duration-300 rotate-0 scale-100" />
+        <Sun className={`w-5 h-5 ${isAnimating ? "animate-theme-toggle" : ""}`} />
       ) : (
-        <Moon className="w-5 h-5 transition-transform duration-300 rotate-0 scale-100" />
+        <Moon className={`w-5 h-5 ${isAnimating ? "animate-theme-toggle" : ""}`} />
       )}
     </button>
   );

@@ -140,7 +140,9 @@ describe("Zod Validation Schemas", () => {
         presentToday: 40,
         lateToday: 5,
         absentToday: 5,
+        checkedOutToday: 3,
         onTimeRate: 0.89,
+        avgCheckInTime: "08:15",
         avgWorkedHours: 8.2,
         totalGeofences: 3,
       };

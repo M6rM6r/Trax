@@ -1,16 +1,42 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import MainLayout from "@/components/shared/MainLayout";
 import FullPageHead from "@/components/shared/FullPageHead";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Users, UserPlus, Edit, Trash2, Phone, Mail, MapPin } from "lucide-react";
-import { useEmployees, useGeofences, useCreateEmployee, useDeleteEmployee } from "@/hooks/useApi";
+import {
+  Users,
+  UserPlus,
+  Edit,
+  Trash2,
+  Phone,
+  Mail,
+  MapPin,
+  Download,
+  Eye,
+  X,
+  LayoutGrid,
+  LayoutList,
+  Search,
+} from "lucide-react";
+import AvatarUpload from "@/components/shared/AvatarUpload";
+import {
+  useEmployees,
+  useGeofences,
+  useCreateEmployee,
+  useDeleteEmployee,
+  useUpdateEmployee,
+} from "@/hooks/useApi";
 import { LoadingSkeleton, EmptyState, ErrorState } from "@/components/shared/StateViews";
-import { DataTable, type Column } from "@/components/shared/DataTable/DataTable";
+import { DataTable } from "@/components/shared/DataTable/DataTable";
 import ConfirmDialog from "@/components/shared/ConfirmDialog";
-import { useToast } from "@/hooks/use-toast";
+import { FormDrawer } from "@/components/shared/FormDrawer";
+import { toastSuccess, toastError, toastWithUndo } from "@/hooks/use-toast";
+import { hapticTap, hapticSuccess } from "@/lib/utils/haptics";
+import { Link } from "@/i18n/navigation";
+import { useLocale } from "next-intl";
+import { motion, AnimatePresence } from "framer-motion";
 import type { Employee, EmployeeRole } from "@/lib/types/trackingTypes";
 
 const roleLabels: Record<string, string> = {
@@ -24,10 +50,34 @@ export default function EmployeesPage() {
   const { data: geofences = [] } = useGeofences();
   const createEmployee = useCreateEmployee();
   const deleteEmployee = useDeleteEmployee();
-  const { toast } = useToast();
+  const updateEmployee = useUpdateEmployee();
+  const locale = useLocale();
+  const [viewMode, setViewMode] = useState<"table" | "grid">("table");
   const [showAddForm, setShowAddForm] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<Employee | null>(null);
+
+  useEffect(() => {
+    const stored = localStorage.getItem("trax_employees_view") as "table" | "grid" | null;
+    if (stored) setViewMode(stored);
+  }, []);
+
+  const handleViewMode = (mode: "table" | "grid") => {
+    setViewMode(mode);
+    localStorage.setItem("trax_employees_view", mode);
+  };
+  const [editTarget, setEditTarget] = useState<Employee | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Array<number | string>>([]);
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const [editAvatarPreview, setEditAvatarPreview] = useState<string | null>(null);
   const [newEmployee, setNewEmployee] = useState({
+    name: "",
+    email: "",
+    phone: "",
+    department: "",
+    role: "employee" as EmployeeRole,
+    geofenceId: 1,
+  });
+  const [editEmployee, setEditEmployee] = useState({
     name: "",
     email: "",
     phone: "",
@@ -40,7 +90,7 @@ export default function EmployeesPage() {
     createEmployee.mutate(
       {
         ...newEmployee,
-        avatar: null,
+        avatar: avatarPreview,
         status: "active",
         currentLat: null,
         currentLng: null,
@@ -48,8 +98,9 @@ export default function EmployeesPage() {
       },
       {
         onSuccess: () => {
-          toast({ description: "تم إضافة الموظف بنجاح" });
+          toastSuccess("تم إضافة الموظف بنجاح");
           setShowAddForm(false);
+          setAvatarPreview(null);
           setNewEmployee({
             name: "",
             email: "",
@@ -60,11 +111,12 @@ export default function EmployeesPage() {
           });
         },
         onError: () => {
-          toast({ description: "حدث خطأ أثناء إضافة الموظف", variant: "destructive" });
+          toastError("حدث خطأ أثناء إضافة الموظف");
         },
       }
     );
     setShowAddForm(false);
+    setAvatarPreview(null);
     setNewEmployee({
       name: "",
       email: "",
@@ -75,19 +127,109 @@ export default function EmployeesPage() {
     });
   };
 
+  const handleEdit = (emp: Employee) => {
+    hapticTap();
+    setEditTarget(emp);
+    setEditEmployee({
+      name: emp.name,
+      email: emp.email,
+      phone: emp.phone,
+      department: emp.department,
+      role: emp.role,
+      geofenceId: emp.geofenceId ?? 1,
+    });
+    setEditAvatarPreview(emp.avatar || null);
+  };
+
+  const handleUpdate = () => {
+    if (!editTarget) return;
+    updateEmployee.mutate(
+      { id: editTarget.id, data: { ...editEmployee, avatar: editAvatarPreview } },
+      {
+        onSuccess: () => {
+          toastSuccess("تم تحديث بيانات الموظف بنجاح");
+          setEditTarget(null);
+          setEditAvatarPreview(null);
+        },
+        onError: () => toastError("حدث خطأ أثناء تحديث بيانات الموظف"),
+      }
+    );
+  };
+
+  const handleBulkDelete = () => {
+    hapticTap();
+    const selectedEmployees = employees.filter((e) => selectedIds.includes(e.id));
+    selectedEmployees.forEach((emp) => {
+      deleteEmployee.mutate(emp.id);
+    });
+    toastWithUndo(`تم حذف ${selectedEmployees.length} موظف`, () => {
+      selectedEmployees.forEach((emp) => {
+        createEmployee.mutate({
+          ...emp,
+          avatar: null,
+          status: "active",
+          currentLat: null,
+          currentLng: null,
+          lastSeen: null,
+        });
+      });
+      toastSuccess("تم استرجاع الموظفين");
+    });
+    setSelectedIds([]);
+  };
+
+  const handleBulkExport = () => {
+    hapticSuccess();
+    const selected = employees.filter((e) => selectedIds.includes(e.id));
+    const headers = ["الاسم", "البريد", "الهاتف", "القسم", "الدور", "الحالة"];
+    const rows = selected.map((e) => [
+      e.name,
+      e.email,
+      e.phone,
+      e.department,
+      roleLabels[e.role],
+      e.status === "active" ? "نشط" : "غير نشط",
+    ]);
+    const csv = [headers, ...rows].map((r) => r.map((c) => `"${c}"`).join(",")).join("\n");
+    const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `employees_export_${Date.now()}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toastSuccess(`تم تصدير ${selected.length} موظف`);
+  };
+
   const handleDelete = (emp: Employee) => {
     setDeleteTarget(emp);
   };
 
   const confirmDelete = () => {
     if (!deleteTarget) return;
+    const deletedEmployee = deleteTarget;
     deleteEmployee.mutate(deleteTarget.id, {
       onSuccess: () => {
-        toast({ description: "تم حذف الموظف" });
+        toastWithUndo(`تم حذف الموظف ${deletedEmployee.name}`, () => {
+          createEmployee.mutate(
+            {
+              ...deletedEmployee,
+              avatar: null,
+              status: "active",
+              currentLat: null,
+              currentLng: null,
+              lastSeen: null,
+            },
+            {
+              onSuccess: () => toastSuccess("تم استرجاع الموظف"),
+              onError: () => toastError("تعذر استرجاع الموظف"),
+            }
+          );
+        });
         setDeleteTarget(null);
       },
       onError: () => {
-        toast({ description: "تعذر حذف الموظف", variant: "destructive" });
+        toastError("تعذر حذف الموظف");
         setDeleteTarget(null);
       },
     });
@@ -98,6 +240,33 @@ export default function EmployeesPage() {
     return geofences.find((g) => g.id === id)?.name || "-";
   };
 
+  const [search, setSearch] = useState("");
+  const [filterDept, setFilterDept] = useState("");
+  const [filterStatus, setFilterStatus] = useState("");
+
+  const departments = useMemo(() => {
+    const depts = new Set(employees.map((e) => e.department).filter(Boolean));
+    return Array.from(depts);
+  }, [employees]);
+
+  const filteredEmployees = useMemo(() => {
+    return employees.filter((e) => {
+      if (
+        search &&
+        !e.name.toLowerCase().includes(search.toLowerCase()) &&
+        !e.email.toLowerCase().includes(search.toLowerCase()) &&
+        !e.department.toLowerCase().includes(search.toLowerCase())
+      )
+        return false;
+      if (filterDept && e.department !== filterDept) return false;
+      if (filterStatus && e.status !== filterStatus) return false;
+      return true;
+    });
+  }, [employees, search, filterDept, filterStatus]);
+
+  const activeCount = employees.filter((e) => e.status === "active").length;
+  const inactiveCount = employees.filter((e) => e.status !== "active").length;
+
   return (
     <MainLayout>
       <div className="p-6 space-y-6 min-h-screen">
@@ -106,119 +275,235 @@ export default function EmployeesPage() {
           description="عرض وإدارة جميع الموظفين في النظام"
           Icon={<Users className="w-7 h-7" />}
           LeftSection={
-            <Button
-              variant="primary"
-              onClick={() => setShowAddForm(!showAddForm)}
-              className="flex items-center gap-2"
-            >
-              <UserPlus className="w-4 h-4" />
-              إضافة موظف
-            </Button>
+            <div className="flex items-center gap-2">
+              <div className="flex items-center bg-gray-100 dark:bg-slate-700 rounded-lg p-1">
+                <button
+                  onClick={() => handleViewMode("table")}
+                  className={`p-1.5 rounded-md transition-all ${
+                    viewMode === "table"
+                      ? "bg-white dark:bg-slate-800 shadow-sm text-blue-600"
+                      : "text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200"
+                  }`}
+                  aria-label="عرض جدول"
+                >
+                  <LayoutList className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => handleViewMode("grid")}
+                  className={`p-1.5 rounded-md transition-all ${
+                    viewMode === "grid"
+                      ? "bg-white dark:bg-slate-800 shadow-sm text-blue-600"
+                      : "text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200"
+                  }`}
+                  aria-label="عرض بطاقات"
+                >
+                  <LayoutGrid className="w-4 h-4" />
+                </button>
+              </div>
+              <Button
+                variant="primary"
+                onClick={() => setShowAddForm(!showAddForm)}
+                className="flex items-center gap-2"
+              >
+                <UserPlus className="w-4 h-4" />
+                إضافة موظف
+              </Button>
+            </div>
           }
         />
 
         {showAddForm && (
-          <Card className="border-0 shadow-lg dark:bg-slate-800">
-            <CardHeader>
-              <CardTitle className="text-lg font-bold text-gray-900 dark:text-slate-100">
-                إضافة موظف جديد
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="text-sm font-medium text-gray-700 dark:text-slate-300 mb-1 block">
-                    الاسم
-                  </label>
-                  <input
-                    type="text"
-                    value={newEmployee.name}
-                    onChange={(e) => setNewEmployee({ ...newEmployee, name: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-transparent dark:bg-slate-900 text-gray-900 dark:text-slate-100"
-                    placeholder="اسم الموظف"
-                  />
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-gray-700 dark:text-slate-300 mb-1 block">
-                    البريد الإلكتروني
-                  </label>
-                  <input
-                    type="email"
-                    value={newEmployee.email}
-                    onChange={(e) => setNewEmployee({ ...newEmployee, email: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-transparent dark:bg-slate-900 text-gray-900 dark:text-slate-100"
-                    placeholder="email@trax.com"
-                  />
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-gray-700 dark:text-slate-300 mb-1 block">
-                    الهاتف
-                  </label>
-                  <input
-                    type="tel"
-                    value={newEmployee.phone}
-                    onChange={(e) => setNewEmployee({ ...newEmployee, phone: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-transparent dark:bg-slate-900 text-gray-900 dark:text-slate-100"
-                    placeholder="+966..."
-                  />
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-gray-700 dark:text-slate-300 mb-1 block">
-                    القسم
-                  </label>
-                  <input
-                    type="text"
-                    value={newEmployee.department}
-                    onChange={(e) => setNewEmployee({ ...newEmployee, department: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-transparent dark:bg-slate-900 text-gray-900 dark:text-slate-100"
-                    placeholder="القسم"
-                  />
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-gray-700 dark:text-slate-300 mb-1 block">
-                    الدور
-                  </label>
-                  <select
-                    value={newEmployee.role}
-                    onChange={(e) =>
-                      setNewEmployee({ ...newEmployee, role: e.target.value as EmployeeRole })
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-transparent dark:bg-slate-900 text-gray-900 dark:text-slate-100"
-                  >
-                    <option value="employee">موظف</option>
-                    <option value="supervisor">مشرف</option>
-                    <option value="manager">مدير</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-gray-700 dark:text-slate-300 mb-1 block">
-                    النطاق الجغرافي
-                  </label>
-                  <select
-                    value={newEmployee.geofenceId}
-                    onChange={(e) =>
-                      setNewEmployee({ ...newEmployee, geofenceId: Number(e.target.value) })
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-transparent dark:bg-slate-900 text-gray-900 dark:text-slate-100"
-                  >
-                    {geofences.map((g) => (
-                      <option key={g.id} value={g.id}>
-                        {g.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+          <FormDrawer
+            open={showAddForm}
+            onOpenChange={setShowAddForm}
+            title="إضافة موظف جديد"
+            description="أدخل بيانات الموظف الجديد"
+            onSubmit={handleAdd}
+            isSubmitting={createEmployee.isPending}
+            submitLabel="حفظ"
+          >
+            {/* Avatar Upload */}
+            <div className="flex justify-center mb-6">
+              <AvatarUpload
+                currentUrl={avatarPreview}
+                name={newEmployee.name || "موظف"}
+                size={96}
+                folder="avatars"
+                onUpload={(url) => setAvatarPreview(url)}
+                onRemove={() => setAvatarPreview(null)}
+              />
+            </div>
+
+            <div className="grid grid-cols-1 gap-4">
+              <div>
+                <label className="text-sm font-medium text-gray-700 dark:text-slate-300 mb-1 block">
+                  الاسم
+                </label>
+                <input
+                  type="text"
+                  value={newEmployee.name}
+                  onChange={(e) => setNewEmployee({ ...newEmployee, name: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-transparent dark:bg-slate-900 text-gray-900 dark:text-slate-100"
+                  placeholder="اسم الموظف"
+                />
               </div>
-              <div className="flex gap-3 mt-4">
-                <Button variant="primary" onClick={handleAdd} disabled={createEmployee.isPending}>
-                  {createEmployee.isPending ? "جاري الحفظ..." : "حفظ"}
-                </Button>
-                <Button variant="outline" onClick={() => setShowAddForm(false)}>
-                  إلغاء
-                </Button>
+              <div>
+                <label className="text-sm font-medium text-gray-700 dark:text-slate-300 mb-1 block">
+                  البريد الإلكتروني
+                </label>
+                <input
+                  type="email"
+                  value={newEmployee.email}
+                  onChange={(e) => setNewEmployee({ ...newEmployee, email: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-transparent dark:bg-slate-900 text-gray-900 dark:text-slate-100"
+                  placeholder="email@trax.com"
+                />
               </div>
-            </CardContent>
-          </Card>
+              <div>
+                <label className="text-sm font-medium text-gray-700 dark:text-slate-300 mb-1 block">
+                  الهاتف
+                </label>
+                <input
+                  type="tel"
+                  value={newEmployee.phone}
+                  onChange={(e) => setNewEmployee({ ...newEmployee, phone: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-transparent dark:bg-slate-900 text-gray-900 dark:text-slate-100"
+                  placeholder="+966..."
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-700 dark:text-slate-300 mb-1 block">
+                  القسم
+                </label>
+                <input
+                  type="text"
+                  value={newEmployee.department}
+                  onChange={(e) => setNewEmployee({ ...newEmployee, department: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-transparent dark:bg-slate-900 text-gray-900 dark:text-slate-100"
+                  placeholder="القسم"
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-700 dark:text-slate-300 mb-1 block">
+                  الدور
+                </label>
+                <select
+                  value={newEmployee.role}
+                  onChange={(e) =>
+                    setNewEmployee({ ...newEmployee, role: e.target.value as EmployeeRole })
+                  }
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-transparent dark:bg-slate-900 text-gray-900 dark:text-slate-100"
+                >
+                  <option value="employee">موظف</option>
+                  <option value="supervisor">مشرف</option>
+                  <option value="manager">مدير</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-700 dark:text-slate-300 mb-1 block">
+                  النطاق الجغرافي
+                </label>
+                <select
+                  value={newEmployee.geofenceId}
+                  onChange={(e) =>
+                    setNewEmployee({ ...newEmployee, geofenceId: Number(e.target.value) })
+                  }
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-transparent dark:bg-slate-900 text-gray-900 dark:text-slate-100"
+                >
+                  {geofences.map((g) => (
+                    <option key={g.id} value={g.id}>
+                      {g.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          </FormDrawer>
+        )}
+
+        {/* Stats strip */}
+        {!isLoading && !isError && employees.length > 0 && (
+          <div className="flex items-center gap-4 flex-wrap">
+            <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800">
+              <Users className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+              <span className="text-sm font-semibold text-blue-700 dark:text-blue-300">
+                {employees.length} موظف
+              </span>
+            </div>
+            <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-green-50 dark:bg-green-900/20 border border-green-100 dark:border-green-800">
+              <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+              <span className="text-sm font-semibold text-green-700 dark:text-green-300">
+                {activeCount} نشط
+              </span>
+            </div>
+            {inactiveCount > 0 && (
+              <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-gray-50 dark:bg-slate-700 border border-gray-100 dark:border-slate-600">
+                <span className="w-2 h-2 rounded-full bg-gray-400" />
+                <span className="text-sm font-semibold text-gray-600 dark:text-slate-300">
+                  {inactiveCount} غير نشط
+                </span>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Search + filter bar */}
+        {!isLoading && !isError && employees.length > 0 && (
+          <div className="flex flex-col sm:flex-row gap-3">
+            <div className="relative flex-1">
+              <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <input
+                type="text"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="بحث بالاسم أو البريد أو القسم..."
+                className="w-full pr-9 pl-3 py-2 rounded-xl border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm text-gray-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm"
+              />
+              {search && (
+                <button
+                  onClick={() => setSearch("")}
+                  className="absolute left-3 top-1/2 -translate-y-1/2"
+                >
+                  <X className="w-3.5 h-3.5 text-gray-400 hover:text-gray-600" />
+                </button>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              <select
+                value={filterDept}
+                onChange={(e) => setFilterDept(e.target.value)}
+                className="px-3 py-2 rounded-xl border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm text-gray-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm"
+              >
+                <option value="">جميع الأقسام</option>
+                {departments.map((d) => (
+                  <option key={d} value={d}>
+                    {d}
+                  </option>
+                ))}
+              </select>
+              <select
+                value={filterStatus}
+                onChange={(e) => setFilterStatus(e.target.value)}
+                className="px-3 py-2 rounded-xl border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm text-gray-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm"
+              >
+                <option value="">جميع الحالات</option>
+                <option value="active">نشط</option>
+                <option value="inactive">غير نشط</option>
+              </select>
+              {(search || filterDept || filterStatus) && (
+                <button
+                  onClick={() => {
+                    setSearch("");
+                    setFilterDept("");
+                    setFilterStatus("");
+                  }}
+                  className="px-3 py-2 rounded-xl text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 border border-red-200 dark:border-red-800 transition-colors"
+                >
+                  مسح
+                </button>
+              )}
+            </div>
+          </div>
         )}
 
         {isLoading && <LoadingSkeleton variant="table" />}
@@ -226,122 +511,313 @@ export default function EmployeesPage() {
         {!isLoading && !isError && employees.length === 0 && (
           <EmptyState
             icon={Users}
+            illustration="employees"
             title="لا يوجد موظفون"
             description="لم يتم العثور على أي موظفين في النظام"
             actionLabel="إضافة موظف"
             onAction={() => setShowAddForm(true)}
+            secondaryActionLabel="استيراد من CSV"
+            onSecondaryAction={() => toastSuccess("سيتم إضافة الاستيراد قريباً")}
+            tip="يمكنك إضافة موظفين فرديين أو استيراد ملف CSV جماعي"
           />
         )}
-        {!isLoading && !isError && employees.length > 0 && (
-          <DataTable<Employee>
-            columns={[
-              {
-                key: "name",
-                header: "الموظف",
-                sortable: true,
-                filterable: true,
-                sortValue: (emp) => emp.name,
-                cell: (emp) => (
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm">
-                      {emp.name.charAt(0)}
+        {!isLoading && !isError && employees.length > 0 && viewMode === "grid" && (
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            <AnimatePresence>
+              {filteredEmployees.map((emp, index) => (
+                <motion.div
+                  key={emp.id}
+                  initial={{ opacity: 0, y: 16 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  transition={{ delay: Math.min(index * 0.05, 0.3), duration: 0.3 }}
+                >
+                  <Card className="border-0 shadow-md dark:bg-slate-800 hover:shadow-xl group transition-all duration-300">
+                    <CardContent className="p-4">
+                      {/* Avatar + name row */}
+                      <div className="flex items-center gap-3 mb-3">
+                        <div
+                          className={`relative w-14 h-14 shrink-0 rounded-2xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-lg overflow-hidden shadow-md ring-2 ${
+                            emp.status === "active"
+                              ? "ring-green-400"
+                              : "ring-gray-200 dark:ring-slate-600"
+                          } group-hover:scale-105 transition-transform duration-300`}
+                        >
+                          {emp.avatar ? (
+                            <img
+                              src={emp.avatar}
+                              alt={emp.name}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            emp.name.charAt(0)
+                          )}
+                          {emp.status === "active" && (
+                            <span className="absolute bottom-0.5 right-0.5 w-3 h-3 rounded-full bg-green-400 ring-2 ring-white dark:ring-slate-800">
+                              <span className="animate-ping absolute inset-0 rounded-full bg-green-400 opacity-75" />
+                            </span>
+                          )}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="font-bold text-gray-900 dark:text-slate-100 truncate">
+                            {emp.name}
+                          </p>
+                          <p className="text-xs text-gray-500 dark:text-slate-400 truncate">
+                            {emp.department}
+                          </p>
+                          <div className="flex items-center gap-1.5 mt-1">
+                            <span className="inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400">
+                              {roleLabels[emp.role] || emp.role}
+                            </span>
+                            {emp.geofenceId && (
+                              <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-50 text-indigo-700 dark:bg-indigo-900/20 dark:text-indigo-400">
+                                <MapPin className="w-2.5 h-2.5" />
+                                {getGeofenceName(emp.geofenceId)}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Contact info */}
+                      <div className="text-xs text-gray-500 dark:text-slate-400 space-y-1 mb-3 px-1">
+                        <div className="flex items-center gap-1.5">
+                          <Mail className="w-3 h-3 shrink-0" />
+                          <span className="truncate">{emp.email}</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <Phone className="w-3 h-3 shrink-0" />
+                          <span>{emp.phone}</span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-1 pt-3 border-t border-gray-100 dark:border-slate-700">
+                        <Link
+                          href={`/${locale}/employees/${emp.id}`}
+                          className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg text-xs font-medium text-gray-600 dark:text-slate-400 hover:bg-cyan-50 hover:text-cyan-600 dark:hover:bg-cyan-900/20 dark:hover:text-cyan-400 transition-colors"
+                          title="عرض الملف"
+                        >
+                          <Eye className="w-3.5 h-3.5" />
+                          عرض
+                        </Link>
+                        <div className="w-px h-5 bg-gray-100 dark:bg-slate-700" />
+                        <button
+                          onClick={() => handleEdit(emp)}
+                          className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg text-xs font-medium text-gray-600 dark:text-slate-400 hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-blue-900/20 dark:hover:text-blue-400 transition-colors"
+                          title="تعديل"
+                        >
+                          <Edit className="w-3.5 h-3.5" />
+                          تعديل
+                        </button>
+                        <div className="w-px h-5 bg-gray-100 dark:bg-slate-700" />
+                        <button
+                          onClick={() => handleDelete(emp)}
+                          className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg text-xs font-medium text-gray-600 dark:text-slate-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20 dark:hover:text-red-400 transition-colors"
+                          title="حذف"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                          حذف
+                        </button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              ))}
+            </AnimatePresence>
+          </div>
+        )}
+        {!isLoading && !isError && employees.length > 0 && viewMode === "table" && (
+          <>
+            <DataTable<Employee>
+              columns={[
+                {
+                  key: "name",
+                  header: "الموظف",
+                  sortable: true,
+                  filterable: true,
+                  sortValue: (emp) => emp.name,
+                  cell: (emp) => (
+                    <Link
+                      href={`/${locale}/employees/${emp.id}`}
+                      className="flex items-center gap-3 hover:underline"
+                    >
+                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm overflow-hidden">
+                        {emp.avatar ? (
+                          <img
+                            src={emp.avatar}
+                            alt={emp.name}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          emp.name.charAt(0)
+                        )}
+                      </div>
+                      <span className="text-sm font-medium text-gray-900 dark:text-slate-100">
+                        {emp.name}
+                      </span>
+                    </Link>
+                  ),
+                },
+                {
+                  key: "employeeNumber",
+                  header: "الرقم الوظيفي",
+                  sortable: true,
+                  filterable: true,
+                  sortValue: (emp) => emp.employeeNumber ?? "",
+                  cell: (emp) => (
+                    <span className="text-sm text-gray-600 dark:text-slate-400 font-mono">
+                      {emp.employeeNumber || "-"}
+                    </span>
+                  ),
+                },
+                {
+                  key: "department",
+                  header: "القسم",
+                  sortable: true,
+                  filterable: true,
+                  sortValue: (emp) => emp.department,
+                  cell: (emp) => emp.department,
+                },
+                {
+                  key: "role",
+                  header: "الدور",
+                  sortable: true,
+                  sortValue: (emp) => emp.role,
+                  cell: (emp) => (
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400">
+                      {roleLabels[emp.role]}
+                    </span>
+                  ),
+                },
+                {
+                  key: "contact",
+                  header: "التواصل",
+                  cell: (emp) => (
+                    <div className="flex flex-col gap-1 text-xs text-gray-500 dark:text-slate-400">
+                      <span className="flex items-center gap-1">
+                        <Mail className="w-3 h-3" />
+                        {emp.email}
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <Phone className="w-3 h-3" />
+                        {emp.phone}
+                      </span>
                     </div>
-                    <span className="text-sm font-medium text-gray-900 dark:text-slate-100">
-                      {emp.name}
-                    </span>
-                  </div>
-                ),
-              },
-              {
-                key: "department",
-                header: "القسم",
-                sortable: true,
-                filterable: true,
-                sortValue: (emp) => emp.department,
-                cell: (emp) => emp.department,
-              },
-              {
-                key: "role",
-                header: "الدور",
-                sortable: true,
-                sortValue: (emp) => emp.role,
-                cell: (emp) => (
-                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400">
-                    {roleLabels[emp.role]}
-                  </span>
-                ),
-              },
-              {
-                key: "contact",
-                header: "التواصل",
-                cell: (emp) => (
-                  <div className="flex flex-col gap-1 text-xs text-gray-500 dark:text-slate-400">
+                  ),
+                },
+                {
+                  key: "geofenceId",
+                  header: "النطاق الجغرافي",
+                  filterable: true,
+                  sortValue: (emp) => getGeofenceName(emp.geofenceId ?? null),
+                  cell: (emp) => (
                     <span className="flex items-center gap-1">
-                      <Mail className="w-3 h-3" />
-                      {emp.email}
+                      <MapPin className="w-3 h-3 text-gray-400" />
+                      {getGeofenceName(emp.geofenceId ?? null)}
                     </span>
-                    <span className="flex items-center gap-1">
-                      <Phone className="w-3 h-3" />
-                      {emp.phone}
+                  ),
+                },
+                {
+                  key: "status",
+                  header: "الحالة",
+                  sortable: true,
+                  sortValue: (emp) => emp.status,
+                  cell: (emp) => (
+                    <span
+                      className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                        emp.status === "active"
+                          ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400"
+                          : "bg-gray-100 text-gray-600 dark:bg-slate-700 dark:text-slate-400"
+                      }`}
+                    >
+                      {emp.status === "active" && (
+                        <span className="relative flex h-2 w-2">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
+                          <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500" />
+                        </span>
+                      )}
+                      {emp.status === "active" ? "نشط" : "غير نشط"}
                     </span>
-                  </div>
-                ),
-              },
-              {
-                key: "geofenceId",
-                header: "النطاق الجغرافي",
-                filterable: true,
-                sortValue: (emp) => getGeofenceName(emp.geofenceId),
-                cell: (emp) => (
-                  <span className="flex items-center gap-1">
-                    <MapPin className="w-3 h-3 text-gray-400" />
-                    {getGeofenceName(emp.geofenceId)}
-                  </span>
-                ),
-              },
-              {
-                key: "status",
-                header: "الحالة",
-                sortable: true,
-                sortValue: (emp) => emp.status,
-                cell: (emp) => (
-                  <span
-                    className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                      emp.status === "active"
-                        ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400"
-                        : "bg-gray-100 text-gray-600 dark:bg-slate-700 dark:text-slate-400"
-                    }`}
-                  >
-                    {emp.status === "active" ? "نشط" : "غير نشط"}
-                  </span>
-                ),
-              },
-              {
-                key: "actions",
-                header: "إجراءات",
-                cell: (emp) => (
-                  <div className="flex items-center gap-2">
-                    <button
-                      className="p-1.5 rounded-lg hover:bg-blue-50 text-blue-600 dark:hover:bg-blue-900/20"
-                      title="تعديل"
-                    >
-                      <Edit className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={() => handleDelete(emp)}
-                      className="p-1.5 rounded-lg hover:bg-red-50 text-red-600 dark:hover:bg-red-900/20"
-                      title="حذف"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                ),
-              },
-            ]}
-            data={employees}
-            searchPlaceholder="بحث بالاسم أو القسم أو النطاق..."
-          />
+                  ),
+                },
+                {
+                  key: "actions",
+                  header: "إجراءات",
+                  cell: (emp) => (
+                    <div className="flex items-center gap-2">
+                      <Link
+                        href={`/${locale}/employees/${emp.id}`}
+                        className="p-1.5 rounded-lg hover:bg-cyan-50 text-cyan-600 dark:hover:bg-cyan-900/20"
+                        title="عرض الملف"
+                        aria-label="عرض ملف الموظف"
+                      >
+                        <Eye className="w-4 h-4" aria-hidden />
+                      </Link>
+                      <button
+                        onClick={() => handleEdit(emp)}
+                        className="p-1.5 rounded-lg hover:bg-blue-50 text-blue-600 dark:hover:bg-blue-900/20"
+                        title="تعديل"
+                        aria-label="تعديل الموظف"
+                      >
+                        <Edit className="w-4 h-4" aria-hidden />
+                      </button>
+                      <button
+                        onClick={() => handleDelete(emp)}
+                        className="p-1.5 rounded-lg hover:bg-red-50 text-red-600 dark:hover:bg-red-900/20"
+                        title="حذف"
+                        aria-label="حذف الموظف"
+                      >
+                        <Trash2 className="w-4 h-4" aria-hidden />
+                      </button>
+                    </div>
+                  ),
+                },
+              ]}
+              data={employees}
+              searchPlaceholder="بحث بالاسم أو الرقم الوظيفي أو القسم أو النطاق..."
+              selectable
+              selectedIds={selectedIds}
+              onSelectionChange={setSelectedIds}
+            />
+          </>
         )}
+
+        {/* Bulk Actions Floating Bar */}
+        <AnimatePresence>
+          {selectedIds.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: 50 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 50 }}
+              className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-gray-200 dark:border-slate-700 px-6 py-3 flex items-center gap-4"
+            >
+              <span className="text-sm font-medium text-gray-700 dark:text-slate-200">
+                {selectedIds.length} محدد
+              </span>
+              <div className="h-6 w-px bg-gray-200 dark:bg-slate-600" />
+              <button
+                onClick={handleBulkExport}
+                className="flex items-center gap-1.5 text-sm text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 px-3 py-1.5 rounded-lg transition-colors"
+              >
+                <Download className="w-4 h-4" />
+                تصدير المحدد
+              </button>
+              <button
+                onClick={handleBulkDelete}
+                className="flex items-center gap-1.5 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 px-3 py-1.5 rounded-lg transition-colors"
+              >
+                <Trash2 className="w-4 h-4" />
+                حذف المحدد
+              </button>
+              <button
+                onClick={() => setSelectedIds([])}
+                className="text-sm text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200 px-2"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         <ConfirmDialog
           open={deleteTarget !== null}
@@ -352,6 +828,88 @@ export default function EmployeesPage() {
           cancelLabel="إلغاء"
           onConfirm={confirmDelete}
         />
+
+        {/* Edit Employee Drawer */}
+        <FormDrawer
+          open={editTarget !== null}
+          onOpenChange={(open) => !open && setEditTarget(null)}
+          title={`تعديل: ${editTarget?.name || ""}`}
+          description="تحديث بيانات الموظف"
+          onSubmit={handleUpdate}
+          isSubmitting={updateEmployee.isPending}
+          submitLabel="حفظ التعديلات"
+        >
+          <div className="flex justify-center mb-6">
+            <AvatarUpload
+              currentUrl={editAvatarPreview}
+              name={editTarget?.name ?? ""}
+              size={96}
+              folder="avatars"
+              onUpload={(url) => setEditAvatarPreview(url)}
+              onRemove={() => setEditAvatarPreview(null)}
+            />
+          </div>
+          <div className="grid grid-cols-1 gap-4">
+            {[
+              { label: "الاسم", key: "name", type: "text", placeholder: "اسم الموظف" },
+              {
+                label: "البريد الإلكتروني",
+                key: "email",
+                type: "email",
+                placeholder: "email@trax.com",
+              },
+              { label: "الهاتف", key: "phone", type: "tel", placeholder: "+966..." },
+              { label: "القسم", key: "department", type: "text", placeholder: "القسم" },
+            ].map(({ label, key, type, placeholder }) => (
+              <div key={key}>
+                <label className="text-sm font-medium text-gray-700 dark:text-slate-300 mb-1 block">
+                  {label}
+                </label>
+                <input
+                  type={type}
+                  value={editEmployee[key as keyof typeof editEmployee] as string}
+                  onChange={(e) => setEditEmployee({ ...editEmployee, [key]: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-transparent dark:bg-slate-900 text-gray-900 dark:text-slate-100"
+                  placeholder={placeholder}
+                />
+              </div>
+            ))}
+            <div>
+              <label className="text-sm font-medium text-gray-700 dark:text-slate-300 mb-1 block">
+                الدور
+              </label>
+              <select
+                value={editEmployee.role}
+                onChange={(e) =>
+                  setEditEmployee({ ...editEmployee, role: e.target.value as EmployeeRole })
+                }
+                className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-transparent dark:bg-slate-900 text-gray-900 dark:text-slate-100"
+              >
+                <option value="employee">موظف</option>
+                <option value="supervisor">مشرف</option>
+                <option value="manager">مدير</option>
+              </select>
+            </div>
+            <div>
+              <label className="text-sm font-medium text-gray-700 dark:text-slate-300 mb-1 block">
+                النطاق الجغرافي
+              </label>
+              <select
+                value={editEmployee.geofenceId}
+                onChange={(e) =>
+                  setEditEmployee({ ...editEmployee, geofenceId: Number(e.target.value) })
+                }
+                className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-transparent dark:bg-slate-900 text-gray-900 dark:text-slate-100"
+              >
+                {geofences.map((g) => (
+                  <option key={g.id} value={g.id}>
+                    {g.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+        </FormDrawer>
       </div>
     </MainLayout>
   );

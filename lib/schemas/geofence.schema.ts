@@ -9,6 +9,7 @@ export const geofenceSchema = z.object({
   radius: z.number().positive("Radius must be positive"),
   color: z.string().regex(/^#[0-9A-Fa-f]{6}$/, "Invalid hex color"),
   active: z.boolean().default(true),
+  employeesCount: z.number().optional(),
 });
 
 export const createGeofenceSchema = geofenceSchema.omit({ id: true });

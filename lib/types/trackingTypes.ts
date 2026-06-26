@@ -9,12 +9,14 @@ export interface Employee {
   phone: string;
   role: EmployeeRole;
   department: string;
-  avatar: string | null;
-  geofenceId: number | null;
+  avatar?: string | null;
+  geofenceId?: number | null;
   status: "active" | "inactive";
-  currentLat: number | null;
-  currentLng: number | null;
-  lastSeen: string | null;
+  currentLat?: number | null;
+  currentLng?: number | null;
+  lastSeen?: string | null;
+  batteryLevel?: number | null;
+  employeeNumber?: string | null;
 }
 
 export interface Geofence {
@@ -26,31 +28,39 @@ export interface Geofence {
   radius: number; // in meters
   color: string;
   active: boolean;
+  employeesCount?: number;
 }
 
 export interface AttendanceRecord {
   id: number;
   employeeId: number;
   employeeName: string;
-  date: string; // YYYY-MM-DD
-  checkInTime: string | null; // HH:mm
-  checkOutTime: string | null; // HH:mm
+  date: string;
+  checkInTime?: string | null;
+  checkOutTime?: string | null;
   status: AttendanceStatus;
-  checkInLat: number | null;
-  checkInLng: number | null;
-  geofenceName: string | null;
+  checkInLat?: number | null;
+  checkInLng?: number | null;
+  checkOutLat?: number | null;
+  checkOutLng?: number | null;
+  geofenceId?: number | null;
+  geofenceName?: string | null;
   lateMinutes: number;
   workedHours: number;
+  checkOutStatus?: "present" | "late" | "absent" | null;
 }
 
 export interface DashboardStats {
   totalEmployees: number;
+  activeEmployees: number;
+  inactiveEmployees: number;
   presentToday: number;
   absentToday: number;
   lateToday: number;
   checkedOutToday: number;
   onTimeRate: number;
   avgCheckInTime: string;
+  avgWorkedHours: number;
   totalGeofences: number;
 }
 
@@ -60,7 +70,10 @@ export interface LiveTrackingEmployee {
   lat: number;
   lng: number;
   status: "inside_geofence" | "outside_geofence" | "offline";
-  geofenceName: string | null;
+  geofenceName?: string | null;
   lastSeen: string;
-  battery: number;
+  batteryLevel: number | null;
+  role?: EmployeeRole;
+  avatar?: string | null;
+  speed?: number | null;
 }

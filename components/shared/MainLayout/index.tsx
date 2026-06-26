@@ -1,5 +1,5 @@
 "use client";
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { NavMain } from "@/components/Sidebar/nav-main";
 import { usePathname, useRouter } from "next/navigation";
 import {
@@ -8,7 +8,6 @@ import {
   Category,
   CheckCircle,
   CloseCircle,
-  Logo,
   Logout,
   Menu,
   Notepad,
@@ -21,6 +20,7 @@ import {
   Warning,
   Location,
 } from "@/public/SVG";
+import { MapPin } from "lucide-react";
 import bill from "@/public/images/bill.jpg";
 import { cn } from "@/lib/utils";
 import { useLocale } from "next-intl";
@@ -37,6 +37,17 @@ import UserAvatar from "../Avatar";
 import ThemeToggle from "../ThemeToggle";
 import Breadcrumb from "../Breadcrumb";
 import MobileBottomNav from "../MobileBottomNav";
+import PageTransition from "../PageTransition";
+import NotificationCenter from "../NotificationCenter";
+import { CommandPalette } from "../CommandPalette";
+import { OnboardingTour } from "../OnboardingTour";
+import { ShortcutsHelp } from "../ShortcutsHelp";
+import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
+import { useScrollPreservation } from "@/hooks/useScrollPreservation";
+import { useResourcePreload } from "@/hooks/useResourcePreload";
+import { TopLoadingBar } from "../TopLoadingBar";
+import { ScrollProgress } from "../ScrollProgress";
+import OfflineBanner from "../OfflineBanner";
 
 const Index = ({
   children,
@@ -48,14 +59,21 @@ const Index = ({
   const pathname = usePathname();
   const locale = useLocale();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false); // State to manage sidebar visibility
+  const touchStartX = useRef(0);
+  const touchStartY = useRef(0);
   const { toast } = useToast();
   const router = useRouter();
 
   const { user, role, clearUser } = useAuthStore();
 
+  useKeyboardShortcuts();
+  const { saveScrollPosition } = useScrollPreservation();
+  useResourcePreload();
+
   useEffect(() => {
     setIsSidebarOpen(false);
-  }, [pathname]);
+    saveScrollPosition();
+  }, [pathname, saveScrollPosition]);
 
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
@@ -70,6 +88,25 @@ const Index = ({
     setIsSidebarOpen((prev) => !prev);
   }, []);
 
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+    touchStartY.current = e.touches[0].clientY;
+  }, []);
+
+  const handleTouchEnd = useCallback(
+    (e: React.TouchEvent) => {
+      const deltaX = e.changedTouches[0].clientX - touchStartX.current;
+      const deltaY = e.changedTouches[0].clientY - touchStartY.current;
+      if (Math.abs(deltaY) > Math.abs(deltaX)) return;
+      if (deltaX < -80 && isSidebarOpen) {
+        setIsSidebarOpen(false);
+      } else if (deltaX > 80 && !isSidebarOpen && touchStartX.current < 40) {
+        setIsSidebarOpen(true);
+      }
+    },
+    [isSidebarOpen]
+  );
+
   // Memoized callback for logout
   const logOut = useCallback(async () => {
     deleteCookie("auth_token");
@@ -81,10 +118,18 @@ const Index = ({
     router.push(`/${locale}/login`);
   }, [locale, router, toast, clearUser]);
 
-  const towing = false;
   return (
     <section>
-      <nav className="fixed top-0 z-[49] w-full bg-background dark:bg-slate-900">
+      <TopLoadingBar />
+      <ScrollProgress />
+      <OfflineBanner />
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-[100] focus:px-4 focus:py-2 focus:bg-blue-600 focus:text-white focus:rounded-lg"
+      >
+        تخطي إلى المحتوى الرئيسي
+      </a>
+      <nav className="fixed top-0 z-[49] w-full bg-background dark:bg-slate-900" aria-label="الرأس">
         <header className=" flex items-center flex-wrap gap-x-5 md:gap-5 p-5 border-b border-b-gray-200 dark:border-b-slate-700 relative">
           {/* Menu Icon with onClick handler */}
           <Menu
@@ -100,86 +145,53 @@ const Index = ({
               }
             }}
           />
-          <Link href="/">
-            <Logo className="w-[120px] md:w-auto" />
+          <Link href="/" className="flex items-center gap-2 shrink-0">
+            <MapPin className="w-7 h-7 text-primaryColor" />
+            <span className="text-xl font-bold text-gray-900 dark:text-slate-100">Trax</span>
           </Link>
           <div className="hidden md:flex items-center gap-3 me-auto">
             <UserAvatar user={user} />
             <div>
-              <p className="text-20 text-black font-[600]"> {user?.name}</p>
-              <p className="text-16 text-gray500">{role === "employee" ? "موظف" : "المدير"}</p>
+              <p className="text-20 text-black dark:text-slate-100 font-[600]"> {user?.name}</p>
+              <p className="text-16 text-gray500 dark:text-slate-400">
+                {role === "employee" ? "موظف" : "المدير"}
+              </p>
             </div>
           </div>
-          <div className="grow xxsm:max-w-[260px] xsm:max-w-[300px] sm:max-w-[400px] bg-gray-50 border border-gray300 rounded-12 h-[43px] flex items-center md:hidden px-3">
+          <div className="grow xxsm:max-w-[260px] xsm:max-w-[300px] sm:max-w-[400px] bg-gray-50 dark:bg-slate-800 border border-gray300 dark:border-slate-600 rounded-12 h-[43px] flex items-center md:hidden px-3">
             <Search />
-            <input type="text" className="w-full h-full px-3 outline-none " placeholder="بحث" />
+            <input
+              type="text"
+              className="w-full h-full px-3 outline-none dark:text-slate-100 dark:placeholder-slate-500"
+              placeholder="بحث"
+              aria-label="بحث"
+            />
+            <kbd className="hidden sm:inline-block px-1.5 py-0.5 text-[10px] font-mono bg-gray-200 dark:bg-slate-700 text-gray-500 dark:text-slate-400 rounded">
+              ⌘K
+            </kbd>
           </div>
-          <Popover>
-            <PopoverTrigger asChild disabled>
-              <button className=" relative cursor-not-allowed">
-                <span className="w-[12px] h-[12px] bg-error rounded-full border border-white absolute top-0 right-0"></span>
-                <Notification />
-              </button>
-            </PopoverTrigger>
-            <PopoverContent className=" max-w-[372px] max-h-[500px] rounded-12 p-0 overflow-auto hideScrollbar">
-              <div className=" flex items-center justify-between gap-5 py-4 px-6 ">
-                <p className="text-16 text-textMain font-[600]">الإشعارات</p>
-                <button className="text-14 text-primaryColor">تحديد الكل كمقروء</button>
-              </div>
-              <Separator className="h-[1px]" />
-              <div className=" py-8 px-6 flex flex-col gap-4">
-                <p className="text-12 text-textSubText">اليوم</p>
-                <div className=" flex items-center gap-5">
-                  <CheckCircle />
-                  <div>
-                    <p className="text-14 text-textMain">هذه إشعار نجاح.</p>
-                    <p className="text-14 text-gray500"> min ago 5</p>
-                  </div>
-                </div>
-                <div className=" flex items-center gap-5">
-                  <Warning />
-                  <div>
-                    <p className="text-14 text-textMain">تم حظر المستخدم بنجاح.</p>
-                    <p className="text-14 text-gray500"> min ago 5</p>
-                  </div>
-                </div>
-                <div className=" flex items-center gap-5">
-                  <Notepad />
-                  <div>
-                    <p className="text-14 text-textMain">تم تحديث خطة التسعير الخاصة بالعميل.</p>
-                    <p className="text-14 text-gray500"> min ago 5</p>
-                  </div>
-                </div>
-                <p className="text-12 text-textSubText">أمس</p>
-                {Array.from({ length: 5 }, (_, index) => (
-                  <div key={index} className=" flex items-center gap-5">
-                    <Notepad />
-                    <div>
-                      <p className="text-14 text-textMain">تم تحديث خطة التسعير الخاصة بالعميل.</p>
-                      <p className="text-14 text-gray500"> min ago 5</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </PopoverContent>
-          </Popover>
+          <NotificationCenter />
 
           <div className=" hidden md:block">
             <ThemeToggle />
             <Popover>
-              <PopoverTrigger className=" flex items-center gap-2 cursor-not-allowed" disabled>
+              <PopoverTrigger
+                className=" flex items-center gap-2 cursor-not-allowed"
+                disabled
+                aria-label="تغيير اللغة"
+              >
                 <SaudiFlag className="w-[33px] h-[24px]" />
-                <span className="text-20 text-black">العربية</span>
+                <span className="text-20 text-black dark:text-slate-100">العربية</span>
                 <ArrowDown />
               </PopoverTrigger>
-              <PopoverContent className="max-w-[180px] flex flex-col gap-5">
+              <PopoverContent className="max-w-[180px] flex flex-col gap-5 dark:bg-slate-800 dark:border-slate-700">
                 <Link href={"/"} locale="ar" className="flex gap-2">
                   <SaudiFlag className="w-[33px] h-[24px]" />
-                  <span className="text-20 text-black">العربية</span>
+                  <span className="text-20 text-black dark:text-slate-100">العربية</span>
                 </Link>
                 <Link href={"/"} locale="en" className="flex gap-2">
                   <America className="w-[33px] h-[24px]" />
-                  <span className="text-20 text-black">الانجليزيه</span>
+                  <span className="text-20 text-black dark:text-slate-100">الانجليزيه</span>
                 </Link>
               </PopoverContent>
             </Popover>
@@ -197,6 +209,7 @@ const Index = ({
       {showSidebar && (
         <aside
           id="logo-sidebar"
+          aria-label="القائمة الجانبية"
           className={cn(
             `fixed top-0 ${
               locale === "ar"
@@ -205,7 +218,6 @@ const Index = ({
             } z-40 w-64 h-screen pt-[11rem] lg:pt-[7rem] transition-transform duration-300 ease-in-out bg-background dark:bg-slate-900 border-l border-gray-200 dark:border-slate-700`,
             isSidebarOpen && "translate-x-0" // Show sidebar when isSidebarOpen is true
           )}
-          aria-label="Sidebar"
         >
           <div className="h-full px-3 pb-4 overflow-y-auto bg-background dark:bg-slate-900 flex flex-col gap-2 ">
             <NavMain
@@ -302,19 +314,22 @@ const Index = ({
               }
             />
             <Dialog>
-              <DialogTrigger className=" w-full shrink-0 h-[48px] flex items-center gap-1.5 bg-error50 rounded-6 px-3 text-16 text-error font-[600]">
+              <DialogTrigger
+                className=" w-full shrink-0 h-[48px] flex items-center gap-1.5 bg-error50 dark:bg-red-900/20 rounded-6 px-3 text-16 text-error dark:text-red-400 font-[600]"
+                aria-label="تسجيل الخروج"
+              >
                 <Logout />
                 تسجيل الخروج
               </DialogTrigger>
-              <DialogContent className=" max-w-[516px] p-6 rounded-16 flex flex-col ">
+              <DialogContent className=" max-w-[516px] p-6 rounded-16 flex flex-col dark:bg-slate-800 dark:border-slate-700">
                 <DialogClose className=" absolute top-6 left-6">
                   <CloseCircle />
                 </DialogClose>
                 <Image src={bill} alt="bill" className=" mx-auto w-[128px] h-[141px] mb-8" />
-                <p className="text-24 text-textMain font-[600] text-center">
+                <p className="text-24 text-textMain dark:text-slate-100 font-[600] text-center">
                   هل أنت متأكد أنك تريد تسجيل الخروج؟
                 </p>
-                <p className="text-20 text-textSubTextDarker text-center">
+                <p className="text-20 text-textSubTextDarker dark:text-slate-400 text-center">
                   هل أنت متأكد أنك تريد تسجيل الخروج؟ قد تفقد أي تغييرات غير محفوظة.
                 </p>
                 <div className=" flex w-full gap-4">
@@ -322,7 +337,7 @@ const Index = ({
                     <Button
                       type="button"
                       variant={"errorOutline"}
-                      className="grow bg-error50 border-none"
+                      className="grow bg-error50 dark:bg-red-900/20 border-none"
                       onClick={logOut}
                     >
                       تأكيد تسجيل الخروج
@@ -341,15 +356,21 @@ const Index = ({
       )}
 
       <div
+        id="main-content"
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
         className={cn(
           "p-4 pt-[10rem] md:pt-[7.5rem] pb-20 lg:pb-4 flex flex-col gap-5",
           showSidebar && "lg:ms-64"
         )}
       >
         <Breadcrumb />
-        {children}
+        <PageTransition>{children}</PageTransition>
         <MobileBottomNav />
       </div>
+      <CommandPalette />
+      <OnboardingTour />
+      <ShortcutsHelp />
     </section>
   );
 };

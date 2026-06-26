@@ -22,6 +22,7 @@ class AttendanceResource extends JsonResource
             'geofenceName' => $this->whenLoaded('geofence', fn() => $this->geofence->name),
             'checkInLat' => $this->check_in_lat,
             'checkInLng' => $this->check_in_lng,
+            'checkOutStatus' => $this->check_out_status,
         ];
     }
 }

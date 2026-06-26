@@ -39,10 +39,10 @@ export default function ConfirmDialog({
           <CloseCircle />
         </DialogClose>
         <DialogHeader>
-          <DialogTitle className="text-24 text-textMain font-[600] text-center">
+          <DialogTitle className="text-24 text-textMain dark:text-slate-100 font-[600] text-center">
             {title}
           </DialogTitle>
-          <DialogDescription className="text-20 text-textSubTextDarker text-center">
+          <DialogDescription className="text-20 text-textSubTextDarker dark:text-slate-400 text-center">
             {description}
           </DialogDescription>
         </DialogHeader>

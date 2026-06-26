@@ -6,9 +6,14 @@ import { Cairo } from "next/font/google";
 import { Toaster } from "@/components/ui/toaster";
 import AppPreloader from "@/components/shared/AppPreloader";
 import ErrorBoundary from "@/components/shared/ErrorBoundary";
+import OfflineIndicator from "@/components/shared/OfflineIndicator";
 import { QueryProvider } from "@/components/providers/QueryProvider";
 import { PWARegistrar } from "@/components/shared/PWARegistrar";
 import { ThemeProvider } from "next-themes";
+import { TopLoadingBar } from "@/components/shared/TopLoadingBar";
+import { MonitoringProvider } from "@/components/providers/MonitoringProvider";
+import SettingsApplier from "@/components/providers/SettingsApplier";
+import { CommandPalette } from "@/components/shared/CommandPalette";
 
 const cairo = Cairo({
   subsets: ["latin"],
@@ -40,10 +45,16 @@ export default async function LocaleLayout({
           <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
             <QueryProvider>
               <ErrorBoundary>
-                <PWARegistrar />
-                <AppPreloader />
-                {children}
-                <Toaster />
+                <MonitoringProvider>
+                  <SettingsApplier />
+                  <PWARegistrar />
+                  <AppPreloader />
+                  <TopLoadingBar />
+                  {children}
+                  <CommandPalette />
+                  <OfflineIndicator />
+                  <Toaster />
+                </MonitoringProvider>
               </ErrorBoundary>
             </QueryProvider>
           </ThemeProvider>

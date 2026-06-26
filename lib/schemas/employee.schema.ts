@@ -13,6 +13,8 @@ export const employeeSchema = z.object({
   currentLat: z.number().nullable().optional(),
   currentLng: z.number().nullable().optional(),
   lastSeen: z.string().nullable().optional(),
+  batteryLevel: z.number().nullable().optional(),
+  employeeNumber: z.string().nullable().optional(),
 });
 
 export const createEmployeeSchema = employeeSchema.omit({ id: true });

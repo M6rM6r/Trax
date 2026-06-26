@@ -22,6 +22,7 @@ class EmployeeResource extends JsonResource
             'status' => $this->status,
             'currentLat' => $this->current_lat,
             'currentLng' => $this->current_lng,
+            'batteryLevel' => $this->battery_level,
             'lastSeen' => $this->last_seen?->toIso8601String(),
             'createdAt' => $this->created_at?->toIso8601String(),
             'updatedAt' => $this->updated_at?->toIso8601String(),

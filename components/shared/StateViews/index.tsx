@@ -5,13 +5,18 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { AlertCircle, Inbox, RefreshCw } from "lucide-react";
 import type { ComponentType } from "react";
+import { motion } from "framer-motion";
 
-type SkeletonVariant = "cards" | "table" | "list" | "map";
+type SkeletonVariant = "cards" | "table" | "list" | "map" | "chart";
 
 export function LoadingSkeleton({ variant }: { variant: SkeletonVariant }) {
   if (variant === "cards") {
     return (
-      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+      <div
+        role="status"
+        aria-label="جاري التحميل"
+        className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3"
+      >
         {Array.from({ length: 6 }).map((_, i) => (
           <Card key={i} className="border-0 shadow-lg dark:bg-slate-800">
             <CardHeader>
@@ -36,7 +41,11 @@ export function LoadingSkeleton({ variant }: { variant: SkeletonVariant }) {
 
   if (variant === "table") {
     return (
-      <Card className="border-0 shadow-lg dark:bg-slate-800">
+      <Card
+        className="border-0 shadow-lg dark:bg-slate-800"
+        role="status"
+        aria-label="جاري التحميل"
+      >
         <CardContent className="p-0">
           <div className="overflow-x-auto">
             <table className="w-full">
@@ -69,7 +78,7 @@ export function LoadingSkeleton({ variant }: { variant: SkeletonVariant }) {
 
   if (variant === "list") {
     return (
-      <div className="space-y-3">
+      <div className="space-y-3" role="status" aria-label="جاري التحميل">
         {Array.from({ length: 5 }).map((_, i) => (
           <div
             key={i}
@@ -89,7 +98,11 @@ export function LoadingSkeleton({ variant }: { variant: SkeletonVariant }) {
 
   if (variant === "map") {
     return (
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div
+        className="grid grid-cols-1 lg:grid-cols-3 gap-6"
+        role="status"
+        aria-label="جاري التحميل"
+      >
         <div className="lg:col-span-2">
           <Card className="border-0 shadow-lg overflow-hidden dark:bg-slate-800">
             <Skeleton className="h-[600px] w-full rounded-none" />
@@ -126,6 +139,37 @@ export function LoadingSkeleton({ variant }: { variant: SkeletonVariant }) {
     );
   }
 
+  if (variant === "chart") {
+    return (
+      <div className="space-y-6" role="status" aria-label="جاري التحميل">
+        <Card className="border-0 shadow-lg dark:bg-slate-800">
+          <CardHeader>
+            <div className="flex items-center gap-3">
+              <Skeleton className="w-10 h-10 rounded-xl" />
+              <div className="space-y-2">
+                <Skeleton className="h-5 w-40" />
+                <Skeleton className="h-3 w-24" />
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-end gap-2 h-64">
+              {Array.from({ length: 12 }).map((_, i) => (
+                <div key={i} className="flex-1 flex flex-col items-center gap-2">
+                  <Skeleton
+                    className="w-full rounded-t-lg"
+                    style={{ height: `${30 + Math.random() * 60}%` }}
+                  />
+                  <Skeleton className="h-3 w-8" />
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return null;
 }
 
@@ -135,7 +179,34 @@ interface EmptyStateProps {
   description?: string;
   actionLabel?: string;
   onAction?: () => void;
+  secondaryActionLabel?: string;
+  onSecondaryAction?: () => void;
+  tip?: string;
+  illustration?: "employees" | "attendance" | "geofences" | "ai" | "default";
 }
+
+const illustrationConfig: Record<string, { gradient: string; emoji: string }> = {
+  employees: {
+    gradient: "from-indigo-100 to-purple-100 dark:from-indigo-900/20 dark:to-purple-900/20",
+    emoji: "👥",
+  },
+  attendance: {
+    gradient: "from-green-100 to-teal-100 dark:from-green-900/20 dark:to-teal-900/20",
+    emoji: "📅",
+  },
+  geofences: {
+    gradient: "from-cyan-100 to-blue-100 dark:from-cyan-900/20 dark:to-blue-900/20",
+    emoji: "📍",
+  },
+  ai: {
+    gradient: "from-purple-100 to-fuchsia-100 dark:from-purple-900/20 dark:to-fuchsia-900/20",
+    emoji: "🧠",
+  },
+  default: {
+    gradient: "from-gray-100 to-slate-100 dark:from-slate-700 dark:to-slate-800",
+    emoji: "📭",
+  },
+};
 
 export function EmptyState({
   icon: Icon = Inbox,
@@ -143,19 +214,51 @@ export function EmptyState({
   description = "لم يتم العثور على أي سجلات",
   actionLabel,
   onAction,
+  secondaryActionLabel,
+  onSecondaryAction,
+  tip,
+  illustration = "default",
 }: EmptyStateProps) {
+  const config = illustrationConfig[illustration] ?? illustrationConfig.default;
   return (
-    <Card className="border-0 shadow-lg animate-scale-in">
+    <Card className="border-0 shadow-lg animate-scale-in" role="region" aria-label={title}>
       <CardContent className="py-16 flex flex-col items-center justify-center text-center">
-        <div className="w-16 h-16 rounded-full bg-gray-100 dark:bg-slate-700 flex items-center justify-center mb-4">
-          <Icon className="w-8 h-8 text-gray-400 dark:text-slate-500" />
-        </div>
+        <motion.div
+          animate={{ y: [0, -8, 0] }}
+          transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+          className={`w-24 h-24 rounded-3xl bg-gradient-to-br ${config.gradient} flex items-center justify-center mb-6 text-4xl`}
+        >
+          {config.emoji}
+        </motion.div>
         <h3 className="text-lg font-bold text-gray-700 dark:text-slate-200 mb-2">{title}</h3>
-        <p className="text-sm text-gray-500 dark:text-slate-400 mb-6">{description}</p>
-        {actionLabel && onAction && (
-          <Button variant="primary" onClick={onAction} className="flex items-center gap-2">
-            {actionLabel}
-          </Button>
+        <p className="text-sm text-gray-500 dark:text-slate-400 mb-6 max-w-sm">{description}</p>
+        <div className="flex items-center gap-3 flex-wrap justify-center">
+          {actionLabel && onAction && (
+            <Button
+              variant="primary"
+              onClick={onAction}
+              className="flex items-center gap-2"
+              aria-label={actionLabel}
+            >
+              {actionLabel}
+            </Button>
+          )}
+          {secondaryActionLabel && onSecondaryAction && (
+            <Button
+              variant="outline"
+              onClick={onSecondaryAction}
+              className="flex items-center gap-2"
+              aria-label={secondaryActionLabel}
+            >
+              {secondaryActionLabel}
+            </Button>
+          )}
+        </div>
+        {tip && (
+          <p className="text-xs text-gray-400 dark:text-slate-500 mt-6 max-w-xs">
+            <span className="font-medium">💡 نصيحة: </span>
+            {tip}
+          </p>
         )}
       </CardContent>
     </Card>
@@ -164,18 +267,23 @@ export function EmptyState({
 
 export function ErrorState({ onRetry }: { onRetry?: () => void }) {
   return (
-    <Card className="border-0 shadow-lg animate-scale-in">
+    <Card className="border-0 shadow-lg animate-scale-in" role="alert">
       <CardContent className="py-16 flex flex-col items-center justify-center text-center">
         <div className="w-16 h-16 rounded-full bg-red-50 dark:bg-red-900/20 flex items-center justify-center mb-4">
-          <AlertCircle className="w-8 h-8 text-red-500 dark:text-red-400" />
+          <AlertCircle className="w-8 h-8 text-red-500 dark:text-red-400" aria-hidden />
         </div>
         <h3 className="text-lg font-bold text-gray-700 dark:text-slate-200 mb-2">
           حدث خطأ أثناء تحميل البيانات
         </h3>
         <p className="text-sm text-gray-500 dark:text-slate-400 mb-6">يرجى المحاولة مرة أخرى</p>
         {onRetry && (
-          <Button variant="outline" onClick={onRetry} className="flex items-center gap-2">
-            <RefreshCw className="w-4 h-4" />
+          <Button
+            variant="outline"
+            onClick={onRetry}
+            className="flex items-center gap-2"
+            aria-label="إعادة المحاولة"
+          >
+            <RefreshCw className="w-4 h-4" aria-hidden />
             إعادة المحاولة
           </Button>
         )}

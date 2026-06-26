@@ -10,7 +10,15 @@ interface AuthState {
   user: AdminUser | null;
   token: string | null;
   role: UserRole | null;
-  setUser: (user: AdminUser, token: string, role?: UserRole) => void;
+  companyId: number | null;
+  companyName: string | null;
+  setUser: (
+    user: AdminUser,
+    token: string,
+    role?: UserRole,
+    companyId?: number,
+    companyName?: string
+  ) => void;
   setRole: (role: UserRole) => void;
   clearUser: () => void;
 }
@@ -21,13 +29,29 @@ export const useAuthStore = create<AuthState>()(
       user: null,
       token: null,
       role: null,
-      setUser: (user, token, role) => set({ user, token, role: role ?? null }),
+      companyId: null,
+      companyName: null,
+      setUser: (user, token, role, companyId, companyName) =>
+        set({
+          user,
+          token,
+          role: role ?? null,
+          companyId: companyId ?? null,
+          companyName: companyName ?? null,
+        }),
       setRole: (role) => set({ role }),
-      clearUser: () => set({ user: null, token: null, role: null }),
+      clearUser: () =>
+        set({ user: null, token: null, role: null, companyId: null, companyName: null }),
     }),
     {
       name: "auth-storage",
-      partialize: (state) => ({ user: state.user, token: state.token, role: state.role }),
+      partialize: (state) => ({
+        user: state.user,
+        token: state.token,
+        role: state.role,
+        companyId: state.companyId,
+        companyName: state.companyName,
+      }),
     }
   )
 );

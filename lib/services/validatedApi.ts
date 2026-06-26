@@ -8,9 +8,11 @@ import {
   type CreateEmployeeSchema,
 } from "@/lib/schemas/employee.schema";
 import {
+  attendanceRecordSchema,
   attendanceListSchema,
   type AttendanceRecordSchema,
   type CheckInSchema,
+  type CheckOutSchema,
 } from "@/lib/schemas/attendance.schema";
 import {
   geofenceListSchema,
@@ -21,14 +23,20 @@ import {
 } from "@/lib/schemas/geofence.schema";
 import {
   dashboardStatsSchema,
+  dashboardTrendsSchema,
   liveTrackingListSchema,
   type DashboardStatsSchema,
+  type DashboardTrendsSchema,
   type LiveTrackingEmployeeSchema,
 } from "@/lib/schemas/dashboard.schema";
 
-function validate<T>(data: unknown, schema: { parse: (d: unknown) => T }, endpoint: string): T {
+function validate<T>(raw: unknown, schema: { parse: (d: unknown) => T }, endpoint: string): T {
   try {
-    return schema.parse(data);
+    const payload =
+      raw !== null && typeof raw === "object" && "data" in (raw as object)
+        ? (raw as Record<string, unknown>).data
+        : raw;
+    return schema.parse(payload);
   } catch (error) {
     logger.error(`Schema validation failed for ${endpoint}`, {
       error: error instanceof Error ? error.message : String(error),
@@ -56,8 +64,16 @@ export const validatedApi = {
       const data = await httpClient.post<unknown>("/employees", validated);
       return validate(data, employeeSchema, "/employees");
     },
+    update: async (
+      id: number,
+      employee: Partial<CreateEmployeeSchema>
+    ): Promise<EmployeeSchema> => {
+      const data = await httpClient.put<unknown>(`/employees/${id}`, employee);
+      return validate(data, employeeSchema, `/employees/${id}`);
+    },
     delete: async (id: number): Promise<{ id: number }> => {
-      return httpClient.delete<{ id: number }>(`/employees/${id}`);
+      const raw = await httpClient.delete<Record<string, unknown>>(`/employees/${id}`);
+      return (raw?.data ?? raw) as { id: number };
     },
   },
 
@@ -72,8 +88,11 @@ export const validatedApi = {
     },
     checkIn: async (payload: CheckInSchema): Promise<AttendanceRecordSchema> => {
       const data = await httpClient.post<unknown>("/attendance/check-in", payload);
-      const list = validate(data, attendanceListSchema, "/attendance/check-in");
-      return list[0];
+      return validate(data, attendanceRecordSchema, "/attendance/check-in");
+    },
+    checkOut: async (payload: CheckOutSchema): Promise<AttendanceRecordSchema> => {
+      const data = await httpClient.post<unknown>("/attendance/check-out", payload);
+      return validate(data, attendanceRecordSchema, "/attendance/check-out");
     },
   },
 
@@ -87,8 +106,16 @@ export const validatedApi = {
       const data = await httpClient.post<unknown>("/geofences", validated);
       return validate(data, geofenceSchema, "/geofences");
     },
+    update: async (
+      id: number,
+      geofence: Partial<CreateGeofenceSchema>
+    ): Promise<GeofenceSchema> => {
+      const data = await httpClient.put<unknown>(`/geofences/${id}`, geofence);
+      return validate(data, geofenceSchema, `/geofences/${id}`);
+    },
     delete: async (id: number): Promise<{ id: number }> => {
-      return httpClient.delete<{ id: number }>(`/geofences/${id}`);
+      const raw = await httpClient.delete<Record<string, unknown>>(`/geofences/${id}`);
+      return (raw?.data ?? raw) as { id: number };
     },
   },
 
@@ -97,40 +124,16 @@ export const validatedApi = {
       const data = await httpClient.get<unknown>("/dashboard/stats");
       return validate(data, dashboardStatsSchema, "/dashboard/stats");
     },
+    trends: async (): Promise<DashboardTrendsSchema> => {
+      const data = await httpClient.get<unknown>("/dashboard/trends");
+      return validate(data, dashboardTrendsSchema, "/dashboard/trends");
+    },
   },
 
   tracking: {
     live: async (): Promise<LiveTrackingEmployeeSchema[]> => {
       const data = await httpClient.get<unknown>("/tracking/live");
       return validate(data, liveTrackingListSchema, "/tracking/live");
-    },
-  },
-
-  ai: {
-    predictAttendance: async (payload: {
-      employee_id: number;
-      day_of_week: number;
-      historical_late_rate: number;
-      historical_absent_rate: number;
-      distance_to_geofence: number;
-      weather_score?: number;
-    }) => {
-      return httpClient.post("/ai/attendance/predict", payload);
-    },
-    detectAnomaly: async (payload: {
-      employee_id: number;
-      check_in_hour: number;
-      check_out_hour: number;
-      worked_hours: number;
-      late_frequency: number;
-    }) => {
-      return httpClient.post("/ai/anomaly/detect", payload);
-    },
-    analyzePatterns: async (payload: {
-      employee_id: number;
-      attendance_history: Record<string, unknown>[];
-    }) => {
-      return httpClient.post("/ai/patterns/analyze", payload);
     },
   },
 };

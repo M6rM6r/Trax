@@ -1,4 +1,3 @@
-export { default as Logo } from "./logo.svg";
 export { default as SelectArrow } from "./selectArrow.svg";
 export { default as CalendarIcon } from "./calendar.svg";
 export { default as Online } from "./online.svg";
@@ -31,7 +30,6 @@ export { default as SidebarLine } from "./sidebarLine.svg";
 export { default as SaudiFlag } from "./saudiFlag.svg";
 export { default as ArrowDown } from "./arrow-down.svg";
 export { default as America } from "./america.svg";
-export { default as LogoWhite } from "./logoWhite.svg";
 export { default as EyeSlash } from "./eyeSlash.svg";
 export { default as EyeInput } from "./eyeInput.svg";
 export { default as ArrowDownFilter } from "./arrow-down-filter.svg";

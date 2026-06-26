@@ -1,0 +1,45 @@
+{
+  "login": {
+    "title": "Login",
+    "subtitle": "Please complete your data to login",
+    "email": "Email",
+    "password": "Password",
+    "rememberMe": "Remember me",
+    "submit": "Login",
+    "forgotPassword": "Forgot password?",
+    "invalidCredentials": "Invalid email or password",
+    "success": "Login successful"
+  },
+  "home": {
+    "title": "Home",
+    "welcome": "Welcome",
+    "checkIn": "Check In",
+    "checkOut": "Check Out",
+    "history": "History",
+    "profile": "Profile"
+  },
+  "checkIn": {
+    "title": "Check In",
+    "insideGeofence": "You are inside the work zone",
+    "outsideGeofence": "You are outside the work zone",
+    "checkingIn": "Checking in...",
+    "success": "Checked in successfully",
+    "error": "Failed to check in",
+    "locationRequired": "Location permission is required"
+  },
+  "history": {
+    "title": "Attendance History",
+    "present": "Present",
+    "late": "Late",
+    "absent": "Absent",
+    "noRecords": "No attendance records found"
+  },
+  "profile": {
+    "title": "Profile",
+    "settings": "Settings",
+    "darkMode": "Dark Mode",
+    "language": "Language",
+    "logout": "Logout",
+    "version": "Version"
+  }
+}

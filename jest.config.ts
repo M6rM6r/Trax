@@ -8,7 +8,7 @@ const config: Config = {
     "^@/(.*)$": "<rootDir>/$1",
     "\\.(css|less|scss|sass)$": "identity-obj-proxy",
   },
-  testPathIgnorePatterns: ["<rootDir>/.next/", "<rootDir>/node_modules/"],
+  testPathIgnorePatterns: ["<rootDir>/.next/", "<rootDir>/node_modules/", "<rootDir>/e2e/"],
   collectCoverageFrom: [
     "components/**/*.{ts,tsx}",
     "lib/**/*.{ts,tsx}",

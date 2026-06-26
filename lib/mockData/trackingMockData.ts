@@ -53,6 +53,7 @@ export const mockEmployees: Employee[] = [
     currentLat: 24.7136,
     currentLng: 46.6753,
     lastSeen: new Date().toISOString(),
+    employeeNumber: "EMP-001",
   },
   {
     id: 2,
@@ -65,8 +66,9 @@ export const mockEmployees: Employee[] = [
     geofenceId: 1,
     status: "active",
     currentLat: 24.7145,
-    currentLng: 46.6760,
+    currentLng: 46.676,
     lastSeen: new Date().toISOString(),
+    employeeNumber: "EMP-002",
   },
   {
     id: 3,
@@ -81,6 +83,7 @@ export const mockEmployees: Employee[] = [
     currentLat: 24.7128,
     currentLng: 46.6748,
     lastSeen: new Date().toISOString(),
+    employeeNumber: "EMP-003",
   },
   {
     id: 4,
@@ -95,6 +98,7 @@ export const mockEmployees: Employee[] = [
     currentLat: 21.4858,
     currentLng: 39.1925,
     lastSeen: new Date().toISOString(),
+    employeeNumber: "EMP-004",
   },
   {
     id: 5,
@@ -106,9 +110,10 @@ export const mockEmployees: Employee[] = [
     avatar: null,
     geofenceId: 1,
     status: "active",
-    currentLat: 24.7150,
+    currentLat: 24.715,
     currentLng: 46.6755,
     lastSeen: new Date().toISOString(),
+    employeeNumber: "EMP-005",
   },
   {
     id: 6,
@@ -123,6 +128,7 @@ export const mockEmployees: Employee[] = [
     currentLat: 26.4207,
     currentLng: 50.0888,
     lastSeen: new Date().toISOString(),
+    employeeNumber: "EMP-006",
   },
   {
     id: 7,
@@ -137,6 +143,7 @@ export const mockEmployees: Employee[] = [
     currentLat: null,
     currentLng: null,
     lastSeen: null,
+    employeeNumber: "EMP-007",
   },
   {
     id: 8,
@@ -151,6 +158,7 @@ export const mockEmployees: Employee[] = [
     currentLat: 24.7132,
     currentLng: 46.6758,
     lastSeen: new Date().toISOString(),
+    employeeNumber: "EMP-008",
   },
 ];
 
@@ -180,7 +188,7 @@ export const mockAttendance: AttendanceRecord[] = [
     checkOutTime: null,
     status: "late",
     checkInLat: 24.7145,
-    checkInLng: 46.6760,
+    checkInLng: 46.676,
     geofenceName: "المقر الرئيسي",
     lateMinutes: 25,
     workedHours: 0,
@@ -221,7 +229,7 @@ export const mockAttendance: AttendanceRecord[] = [
     checkInTime: "08:45",
     checkOutTime: null,
     status: "late",
-    checkInLat: 24.7150,
+    checkInLat: 24.715,
     checkInLng: 46.6755,
     geofenceName: "المقر الرئيسي",
     lateMinutes: 45,
@@ -273,12 +281,15 @@ export const mockAttendance: AttendanceRecord[] = [
 
 export const mockDashboardStats: DashboardStats = {
   totalEmployees: 8,
+  activeEmployees: 7,
+  inactiveEmployees: 1,
   presentToday: 5,
   absentToday: 1,
   lateToday: 2,
   checkedOutToday: 0,
   onTimeRate: 71.4,
   avgCheckInTime: "08:11",
+  avgWorkedHours: 7.5,
   totalGeofences: 3,
 };
 
@@ -291,17 +302,17 @@ export const mockLiveTracking: LiveTrackingEmployee[] = [
     status: "inside_geofence",
     geofenceName: "المقر الرئيسي",
     lastSeen: new Date().toISOString(),
-    battery: 85,
+    batteryLevel: 85,
   },
   {
     id: 2,
     name: "خالد العتيبي",
     lat: 24.7145,
-    lng: 46.6760,
+    lng: 46.676,
     status: "inside_geofence",
     geofenceName: "المقر الرئيسي",
     lastSeen: new Date().toISOString(),
-    battery: 62,
+    batteryLevel: 62,
   },
   {
     id: 3,
@@ -311,7 +322,7 @@ export const mockLiveTracking: LiveTrackingEmployee[] = [
     status: "inside_geofence",
     geofenceName: "المقر الرئيسي",
     lastSeen: new Date().toISOString(),
-    battery: 91,
+    batteryLevel: 91,
   },
   {
     id: 4,
@@ -321,17 +332,17 @@ export const mockLiveTracking: LiveTrackingEmployee[] = [
     status: "inside_geofence",
     geofenceName: "فرع جدة",
     lastSeen: new Date().toISOString(),
-    battery: 45,
+    batteryLevel: 45,
   },
   {
     id: 5,
     name: "نورة الشمري",
-    lat: 24.7150,
+    lat: 24.715,
     lng: 46.6755,
     status: "inside_geofence",
     geofenceName: "المقر الرئيسي",
     lastSeen: new Date().toISOString(),
-    battery: 73,
+    batteryLevel: 73,
   },
   {
     id: 6,
@@ -341,16 +352,16 @@ export const mockLiveTracking: LiveTrackingEmployee[] = [
     status: "inside_geofence",
     geofenceName: "مستودع الدمام",
     lastSeen: new Date().toISOString(),
-    battery: 28,
+    batteryLevel: 28,
   },
   {
     id: 8,
     name: "ماجد الغامدي",
-    lat: 24.7200,
-    lng: 46.6800,
+    lat: 24.72,
+    lng: 46.68,
     status: "outside_geofence",
     geofenceName: null,
     lastSeen: new Date().toISOString(),
-    battery: 55,
+    batteryLevel: null,
   },
 ];
