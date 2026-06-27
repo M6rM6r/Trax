@@ -16,6 +16,8 @@ import {
   Download,
   Eye,
   X,
+  Check,
+  KeyRound,
   LayoutGrid,
   LayoutList,
   Search,
@@ -69,6 +71,14 @@ export default function EmployeesPage() {
   const [selectedIds, setSelectedIds] = useState<Array<number | string>>([]);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [editAvatarPreview, setEditAvatarPreview] = useState<string | null>(null);
+  const [createdCredentials, setCreatedCredentials] = useState<{
+    email: string;
+    password: string;
+  } | null>(null);
+  const [viewingCredentials, setViewingCredentials] = useState<{
+    email: string;
+    password: string;
+  } | null>(null);
   const [newEmployee, setNewEmployee] = useState({
     name: "",
     email: "",
@@ -76,6 +86,7 @@ export default function EmployeesPage() {
     department: "",
     role: "employee" as EmployeeRole,
     geofenceId: 1,
+    password: "",
   });
   const [editEmployee, setEditEmployee] = useState({
     name: "",
@@ -86,7 +97,52 @@ export default function EmployeesPage() {
     geofenceId: 1,
   });
 
+  const openCredentials = (email: string) => {
+    const stored = JSON.parse(localStorage.getItem("trax_emp_creds") || "{}");
+    const pwd = stored[email];
+    if (pwd) {
+      setViewingCredentials({ email, password: pwd });
+    } else {
+      toastError("كلمة المرور غير محفوظة لهذا الموظف");
+    }
+  };
+
+  const resetNewEmployee = () => {
+    setNewEmployee({
+      name: "",
+      email: "",
+      phone: "",
+      department: "",
+      role: "employee",
+      geofenceId: 1,
+      password: "",
+    });
+    setAvatarPreview(null);
+    setShowAddForm(false);
+  };
+
   const handleAdd = () => {
+    if (
+      !newEmployee.name ||
+      !newEmployee.email ||
+      !newEmployee.phone ||
+      !newEmployee.department ||
+      !newEmployee.password
+    ) {
+      toastError("يرجى ملء جميع الحقول المطلوبة بما فيها كلمة المرور");
+      return;
+    }
+    if (newEmployee.password.length < 8) {
+      toastError("كلمة المرور يجب أن تكون 8 أحرف على الأقل");
+      return;
+    }
+    const email = newEmployee.email;
+    const password = newEmployee.password;
+    const saveCredentials = (e: string, p: string) => {
+      const stored = JSON.parse(localStorage.getItem("trax_emp_creds") || "{}");
+      stored[e] = p;
+      localStorage.setItem("trax_emp_creds", JSON.stringify(stored));
+    };
     createEmployee.mutate(
       {
         ...newEmployee,
@@ -98,33 +154,15 @@ export default function EmployeesPage() {
       },
       {
         onSuccess: () => {
-          toastSuccess("تم إضافة الموظف بنجاح");
-          setShowAddForm(false);
-          setAvatarPreview(null);
-          setNewEmployee({
-            name: "",
-            email: "",
-            phone: "",
-            department: "",
-            role: "employee",
-            geofenceId: 1,
-          });
+          saveCredentials(email, password);
+          resetNewEmployee();
+          setCreatedCredentials({ email, password });
         },
         onError: () => {
           toastError("حدث خطأ أثناء إضافة الموظف");
         },
       }
     );
-    setShowAddForm(false);
-    setAvatarPreview(null);
-    setNewEmployee({
-      name: "",
-      email: "",
-      phone: "",
-      department: "",
-      role: "employee",
-      geofenceId: 1,
-    });
   };
 
   const handleEdit = (emp: Employee) => {
@@ -417,8 +455,109 @@ export default function EmployeesPage() {
                   ))}
                 </select>
               </div>
+              <div>
+                <label className="text-sm font-medium text-gray-700 dark:text-slate-300 mb-1 block">
+                  كلمة المرور <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="password"
+                  value={newEmployee.password}
+                  onChange={(e) => setNewEmployee({ ...newEmployee, password: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-transparent dark:bg-slate-900 text-gray-900 dark:text-slate-100"
+                  placeholder="8 أحرف على الأقل"
+                />
+                <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">
+                  سيستخدم الموظف هذه البيانات لتسجيل الدخول
+                </p>
+              </div>
             </div>
           </FormDrawer>
+        )}
+
+        {/* Credentials success dialog */}
+        {createdCredentials && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 max-w-sm w-full shadow-2xl">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
+                  <Check className="w-5 h-5 text-green-600" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-gray-900 dark:text-slate-100">
+                    تم إنشاء حساب الموظف
+                  </h3>
+                  <p className="text-xs text-gray-500 dark:text-slate-400">
+                    احتفظ بهذه البيانات وشاركها مع الموظف
+                  </p>
+                </div>
+              </div>
+              <div className="bg-gray-50 dark:bg-slate-900 rounded-xl p-4 space-y-3 mb-4">
+                <div>
+                  <p className="text-xs text-gray-500 dark:text-slate-400 mb-1">
+                    البريد الإلكتروني
+                  </p>
+                  <p className="font-mono text-sm font-semibold text-gray-900 dark:text-slate-100 select-all">
+                    {createdCredentials.email}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500 dark:text-slate-400 mb-1">كلمة المرور</p>
+                  <p className="font-mono text-sm font-semibold text-gray-900 dark:text-slate-100 select-all">
+                    {createdCredentials.password}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setCreatedCredentials(null)}
+                className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-medium transition-colors"
+              >
+                فهمت
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* View credentials dialog */}
+        {viewingCredentials && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 max-w-sm w-full shadow-2xl">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+                  <KeyRound className="w-5 h-5 text-blue-600" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-gray-900 dark:text-slate-100">
+                    بيانات تسجيل الدخول
+                  </h3>
+                  <p className="text-xs text-gray-500 dark:text-slate-400">
+                    يمكن للموظف استخدامها للدخول إلى التطبيق
+                  </p>
+                </div>
+              </div>
+              <div className="bg-gray-50 dark:bg-slate-900 rounded-xl p-4 space-y-3 mb-4">
+                <div>
+                  <p className="text-xs text-gray-500 dark:text-slate-400 mb-1">
+                    البريد الإلكتروني
+                  </p>
+                  <p className="font-mono text-sm font-semibold text-gray-900 dark:text-slate-100 select-all">
+                    {viewingCredentials.email}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500 dark:text-slate-400 mb-1">كلمة المرور</p>
+                  <p className="font-mono text-sm font-semibold text-gray-900 dark:text-slate-100 select-all">
+                    {viewingCredentials.password}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setViewingCredentials(null)}
+                className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-medium transition-colors"
+              >
+                إغلاق
+              </button>
+            </div>
+          </div>
         )}
 
         {/* Stats strip */}
@@ -611,6 +750,15 @@ export default function EmployeesPage() {
                         </button>
                         <div className="w-px h-5 bg-gray-100 dark:bg-slate-700" />
                         <button
+                          onClick={() => openCredentials(emp.email)}
+                          className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg text-xs font-medium text-gray-600 dark:text-slate-400 hover:bg-yellow-50 hover:text-yellow-600 dark:hover:bg-yellow-900/20 dark:hover:text-yellow-400 transition-colors"
+                          title="بيانات تسجيل الدخول"
+                        >
+                          <KeyRound className="w-3.5 h-3.5" />
+                          دخول
+                        </button>
+                        <div className="w-px h-5 bg-gray-100 dark:bg-slate-700" />
+                        <button
                           onClick={() => handleDelete(emp)}
                           className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg text-xs font-medium text-gray-600 dark:text-slate-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20 dark:hover:text-red-400 transition-colors"
                           title="حذف"
@@ -760,6 +908,14 @@ export default function EmployeesPage() {
                         aria-label="تعديل الموظف"
                       >
                         <Edit className="w-4 h-4" aria-hidden />
+                      </button>
+                      <button
+                        onClick={() => openCredentials(emp.email)}
+                        className="p-1.5 rounded-lg hover:bg-yellow-50 text-yellow-600 dark:hover:bg-yellow-900/20"
+                        title="بيانات تسجيل الدخول"
+                        aria-label="بيانات الدخول"
+                      >
+                        <KeyRound className="w-4 h-4" aria-hidden />
                       </button>
                       <button
                         onClick={() => handleDelete(emp)}

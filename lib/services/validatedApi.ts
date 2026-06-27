@@ -60,7 +60,7 @@ export const validatedApi = {
       return validate(data, employeeSchema, `/employees/${id}`);
     },
     create: async (employee: CreateEmployeeSchema): Promise<EmployeeSchema> => {
-      const validated = createEmployeeSchema.parse(employee);
+      const validated = { ...createEmployeeSchema.parse(employee), password: employee.password };
       const data = await httpClient.post<unknown>("/employees", validated);
       return validate(data, employeeSchema, "/employees");
     },

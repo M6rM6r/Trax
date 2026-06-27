@@ -36,6 +36,7 @@ import Fill from "ol/style/Fill";
 import CircleStyle from "ol/style/Circle";
 import Text from "ol/style/Text";
 import { Draw } from "ol/interaction";
+import "ol/ol.css";
 
 export default function GeofencesPage() {
   const { data: geofences = [], isLoading, isError, refetch } = useGeofences();
@@ -125,61 +126,78 @@ export default function GeofencesPage() {
   }, [previewGeofence]);
 
   useEffect(() => {
-    if (!showAddForm || !drawerMapRef.current) return;
+    if (!showAddForm) return;
 
-    const source = new VectorSource();
-    drawSourceRef.current = source;
+    let map: Map | null = null;
+    let sizeTimer: ReturnType<typeof setTimeout>;
 
-    if (drawerMapInstance.current) {
-      drawerMapInstance.current.setTarget(undefined);
-    }
+    const initMap = () => {
+      if (!drawerMapRef.current) {
+        sizeTimer = setTimeout(initMap, 100);
+        return;
+      }
 
-    const map = new Map({
-      target: drawerMapRef.current,
-      layers: [new TileLayer({ source: new OSM() }), new VectorLayer({ source })],
-      view: new View({
-        center: fromLonLat([newGeofence.lng, newGeofence.lat]),
-        zoom: 12,
-      }),
-    });
-    drawerMapInstance.current = map;
+      const source = new VectorSource();
+      drawSourceRef.current = source;
 
-    map.on("click", (e) => {
-      const [lng, lat] = toLonLat(e.coordinate);
-      setNewGeofence((prev) => ({
-        ...prev,
-        lat: Number(lat.toFixed(6)),
-        lng: Number(lng.toFixed(6)),
-      }));
-      hapticTap();
+      if (drawerMapInstance.current) {
+        drawerMapInstance.current.setTarget(undefined);
+      }
 
-      source.clear();
-      const center = fromLonLat([lng, lat]);
-      const marker = new Feature({ geometry: new Point(center) });
-      marker.setStyle(
-        new Style({
-          image: new CircleStyle({
-            radius: 6,
-            fill: new Fill({ color: newGeofence.color }),
-            stroke: new Stroke({ color: "#fff", width: 2 }),
-          }),
-        })
-      );
-      source.addFeature(marker);
-
-      const circle = new Feature({
-        geometry: new CircleGeom(center, newGeofence.radius * 10),
+      map = new Map({
+        target: drawerMapRef.current,
+        layers: [new TileLayer({ source: new OSM() }), new VectorLayer({ source })],
+        view: new View({
+          center: fromLonLat([newGeofence.lng, newGeofence.lat]),
+          zoom: 12,
+        }),
       });
-      circle.setStyle(
-        new Style({
-          stroke: new Stroke({ color: newGeofence.color, width: 2 }),
-          fill: new Fill({ color: `${newGeofence.color}20` }),
-        })
-      );
-      source.addFeature(circle);
-    });
+      drawerMapInstance.current = map;
 
-    return () => map.setTarget(undefined);
+      sizeTimer = setTimeout(() => map!.updateSize(), 400);
+
+      map.on("click", (e) => {
+        const [lng, lat] = toLonLat(e.coordinate);
+        setNewGeofence((prev) => ({
+          ...prev,
+          lat: Number(lat.toFixed(6)),
+          lng: Number(lng.toFixed(6)),
+        }));
+        hapticTap();
+
+        source.clear();
+        const center = fromLonLat([lng, lat]);
+        const marker = new Feature({ geometry: new Point(center) });
+        marker.setStyle(
+          new Style({
+            image: new CircleStyle({
+              radius: 6,
+              fill: new Fill({ color: newGeofence.color }),
+              stroke: new Stroke({ color: "#fff", width: 2 }),
+            }),
+          })
+        );
+        source.addFeature(marker);
+
+        const circle = new Feature({
+          geometry: new CircleGeom(center, newGeofence.radius * 10),
+        });
+        circle.setStyle(
+          new Style({
+            stroke: new Stroke({ color: newGeofence.color, width: 2 }),
+            fill: new Fill({ color: `${newGeofence.color}20` }),
+          })
+        );
+        source.addFeature(circle);
+      });
+    };
+
+    initMap();
+
+    return () => {
+      clearTimeout(sizeTimer);
+      map?.setTarget(undefined);
+    };
   }, [showAddForm]);
 
   const toggleDrawMode = () => {

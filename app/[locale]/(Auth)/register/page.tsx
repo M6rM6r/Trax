@@ -27,7 +27,7 @@ import CustomInput from "@/components/shared/form/CustomInput";
 import { toastSuccess, toastError } from "@/hooks/use-toast";
 import { hapticSuccess, hapticError } from "@/lib/utils/haptics";
 import { useAuthStore, UserRole } from "@/stores/useAuthStore";
-import { httpClient } from "@/lib/services/httpClient";
+import { httpClient, ApiError } from "@/lib/services/httpClient";
 import loginBG from "@/public/images/loginBg.png";
 
 interface RegisterValues {
@@ -189,9 +189,16 @@ export default function RegisterPage() {
       router.push(`/${locale}`);
     } catch (err: unknown) {
       hapticError();
-      const msg = err instanceof Error ? err.message : "";
-      if (msg.includes("422") || msg.toLowerCase().includes("email")) {
-        toastError("البريد الإلكتروني مستخدم بالفعل");
+      if (err instanceof ApiError) {
+        if (err.statusCode === 422) {
+          const errors = (err.context as { errors?: Record<string, string[]> })?.errors;
+          const firstError = errors ? Object.values(errors).flat()[0] : null;
+          toastError(firstError || "البريد الإلكتروني مستخدم بالفعل. جرّب بريداً آخر.");
+        } else if (err.statusCode === 0) {
+          toastError("تعذّر الاتصال بالخادم. تأكّد من اتصالك بالإنترنت.");
+        } else {
+          toastError(err.message || "فشل في إنشاء الحساب. حاول مرة أخرى.");
+        }
       } else {
         toastError("فشل في إنشاء الحساب. حاول مرة أخرى.");
       }

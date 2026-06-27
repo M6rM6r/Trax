@@ -4,11 +4,14 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Employee;
+use App\Models\User;
 use App\Http\Resources\EmployeeResource;
 use App\Http\Requests\StoreEmployeeRequest;
 use App\Http\Requests\UpdateEmployeeRequest;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Cache;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -129,8 +132,36 @@ class EmployeeController extends Controller
 
     public function store(StoreEmployeeRequest $request): JsonResponse
     {
-        $data = array_merge($request->validated(), ['company_id' => $this->companyId()]);
-        $employee = Employee::create($data);
+        $validated = $request->validated();
+        $companyId = $this->companyId();
+
+        DB::beginTransaction();
+        try {
+            $employee = Employee::create([
+                'company_id'  => $companyId,
+                'name'        => $validated['name'],
+                'email'       => $validated['email'],
+                'phone'       => $validated['phone'],
+                'role'        => $validated['role'],
+                'department'  => $validated['department'],
+                'avatar'      => $validated['avatar'] ?? null,
+                'geofence_id' => $validated['geofence_id'] ?? $validated['geofenceId'] ?? null,
+                'status'      => $validated['status'] ?? 'active',
+            ]);
+
+            User::create([
+                'company_id' => $companyId,
+                'name'       => $validated['name'],
+                'email'      => $validated['email'],
+                'password'   => Hash::make($validated['password']),
+                'role'       => $validated['role'],
+            ]);
+
+            DB::commit();
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            return response()->json(['success' => false, 'message' => 'Failed to create employee: ' . $e->getMessage()], 500);
+        }
 
         return response()->json([
             'success' => true,

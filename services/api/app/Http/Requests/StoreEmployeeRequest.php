@@ -15,12 +15,15 @@ class StoreEmployeeRequest extends FormRequest
     {
         return [
             'name' => ['required', 'string', 'min:2', 'max:255'],
-            'email' => ['required', 'email', 'unique:employees,email'],
+            'email' => ['required', 'email', 'unique:employees,email', 'unique:users,email'],
             'phone' => ['required', 'string', 'max:20'],
             'role' => ['required', 'in:manager,employee,supervisor'],
             'department' => ['required', 'string', 'max:255'],
             'geofence_id' => ['nullable', 'exists:geofences,id'],
+            'geofenceId' => ['nullable', 'integer'],
             'avatar' => ['nullable', 'string'],
+            'status' => ['nullable', 'in:active,inactive'],
+            'password' => ['required', 'string', 'min:8'],
         ];
     }
 
@@ -36,6 +39,8 @@ class StoreEmployeeRequest extends FormRequest
             'role.required' => 'The role field is required.',
             'role.in' => 'The role must be manager, employee, or supervisor.',
             'department.required' => 'The department field is required.',
+            'password.required' => 'A password is required for the employee to log in.',
+            'password.min' => 'Password must be at least 8 characters.',
         ];
     }
 }

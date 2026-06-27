@@ -9,12 +9,13 @@ export const employeeSchema = z.object({
   department: z.string().min(1, "Department is required"),
   avatar: z.string().nullable().optional(),
   geofenceId: z.number().nullable().optional(),
-  status: z.enum(["active", "inactive"]),
+  status: z.enum(["active", "inactive"]).catch("active"),
   currentLat: z.number().nullable().optional(),
   currentLng: z.number().nullable().optional(),
   lastSeen: z.string().nullable().optional(),
   batteryLevel: z.number().nullable().optional(),
   employeeNumber: z.string().nullable().optional(),
+  password: z.string().min(8).optional(),
 });
 
 export const createEmployeeSchema = employeeSchema.omit({ id: true });
