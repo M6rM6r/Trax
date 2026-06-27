@@ -130,7 +130,7 @@ const Index = ({
         تخطي إلى المحتوى الرئيسي
       </a>
       <nav className="fixed top-0 z-[49] w-full bg-background dark:bg-slate-900" aria-label="الرأس">
-        <header className=" flex items-center flex-wrap gap-x-5 md:gap-5 p-5 border-b border-b-gray-200 dark:border-b-slate-700 relative">
+        <header className=" flex items-center flex-wrap gap-x-3 md:gap-5 p-3 md:p-5 border-b border-b-gray-200 dark:border-b-slate-700 relative">
           {/* Menu Icon with onClick handler */}
           <Menu
             className="w-5 text-gray900 dark:text-slate-100 lg:hidden me-auto md:me-0 cursor-pointer"
@@ -158,7 +158,7 @@ const Index = ({
               </p>
             </div>
           </div>
-          <div className="grow xxsm:max-w-[260px] xsm:max-w-[300px] sm:max-w-[400px] bg-gray-50 dark:bg-slate-800 border border-gray300 dark:border-slate-600 rounded-12 h-[43px] flex items-center md:hidden px-3">
+          <div className="grow xxsm:max-w-[220px] xsm:max-w-[260px] sm:max-w-[320px] bg-gray-50 dark:bg-slate-800 border border-gray300 dark:border-slate-600 rounded-12 h-[38px] flex items-center md:hidden px-3">
             <Search />
             <input
               type="text"
@@ -360,7 +360,7 @@ const Index = ({
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
         className={cn(
-          "p-4 pt-[10rem] md:pt-[7.5rem] pb-20 lg:pb-4 flex flex-col gap-5",
+          "p-3 md:p-4 pt-[8rem] sm:pt-[9rem] md:pt-[7.5rem] pb-20 lg:pb-4 flex flex-col gap-4 sm:gap-5",
           showSidebar && "lg:ms-64"
         )}
       >

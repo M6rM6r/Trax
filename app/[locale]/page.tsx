@@ -669,9 +669,9 @@ export default function DashboardPage() {
 
   return (
     <MainLayout>
-      <div className="p-6 space-y-6 min-h-screen">
+      <div className="p-4 sm:p-6 space-y-4 sm:space-y-6 min-h-screen">
         {/* Hero greeting banner */}
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-800 p-6 shadow-xl">
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-800 p-4 sm:p-6 shadow-xl">
           {/* Decorative circles */}
           <div className="absolute -top-8 -right-8 w-40 h-40 rounded-full bg-white/5" />
           <div className="absolute -bottom-6 right-24 w-24 h-24 rounded-full bg-white/5" />
@@ -754,7 +754,7 @@ export default function DashboardPage() {
           </div>
 
           {/* Quick stats strip */}
-          <div className="relative mt-5 grid grid-cols-4 gap-3">
+          <div className="relative mt-4 sm:mt-5 grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
             {[
               { label: "متوسط الحضور", value: safeStats.avgCheckInTime },
               { label: "حاضرون", value: safeStats.presentToday },
@@ -763,10 +763,10 @@ export default function DashboardPage() {
             ].map((item) => (
               <div
                 key={item.label}
-                className="rounded-xl bg-white/10 px-3 py-2 text-center backdrop-blur-sm"
+                className="rounded-xl bg-white/10 px-2 sm:px-3 py-2 text-center backdrop-blur-sm"
               >
-                <p className="text-xl font-black text-white">{item.value}</p>
-                <p className="text-xs text-blue-200">{item.label}</p>
+                <p className="text-lg sm:text-xl font-black text-white">{item.value}</p>
+                <p className="text-[10px] sm:text-xs text-blue-200">{item.label}</p>
               </div>
             ))}
           </div>

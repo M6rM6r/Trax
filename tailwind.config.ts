@@ -95,6 +95,9 @@ const config: Config = {
           ring: "hsl(var(--sidebar-ring))",
         },
       },
+      gridTemplateColumns: {
+        14: "repeat(14, minmax(0, 1fr))",
+      },
       borderRadius: {
         "6": "6px",
         "8": "8px",

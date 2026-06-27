@@ -50,10 +50,10 @@ function LiveClock() {
   }, []);
   return (
     <div className="text-center">
-      <p className="text-5xl font-bold tracking-tight tabular-nums text-gray-900 dark:text-slate-100">
+      <p className="text-3xl sm:text-5xl font-bold tracking-tight tabular-nums text-gray-900 dark:text-slate-100">
         {time}
       </p>
-      <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">{date}</p>
+      <p className="text-xs sm:text-sm text-gray-500 dark:text-slate-400 mt-1">{date}</p>
     </div>
   );
 }
@@ -331,22 +331,22 @@ export default function CheckInPage() {
 
   return (
     <MainLayout>
-      <div className="p-4 sm:p-6 space-y-5 min-h-screen">
+      <div className="p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-5 min-h-screen">
         {/* Header bar */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="w-9 h-9 rounded-xl bg-blue-600 flex items-center justify-center shadow-md">
-              <CheckCircle className="w-5 h-5 text-white" />
+            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-blue-600 flex items-center justify-center shadow-md">
+              <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
             </div>
             <div>
-              <h1 className="text-lg font-bold text-gray-900 dark:text-slate-100">تسجيل الحضور</h1>
-              <p className="text-xs text-gray-500 dark:text-slate-400 hidden sm:block">
+              <h1 className="text-base sm:text-lg font-bold text-gray-900 dark:text-slate-100">تسجيل الحضور</h1>
+              <p className="text-[10px] sm:text-xs text-gray-500 dark:text-slate-400 hidden sm:block">
                 سجل حضورك ضمن النطاق الجغرافي
               </p>
             </div>
           </div>
           <div
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium ${
+            className={`flex items-center gap-1.5 px-2 sm:px-3 py-1 sm:py-1.5 rounded-full text-[10px] sm:text-xs font-medium ${
               isOnline
                 ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
                 : "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
@@ -355,22 +355,22 @@ export default function CheckInPage() {
             {isOnline ? <Wifi className="w-3 h-3" /> : <WifiOff className="w-3 h-3" />}
             {isOnline ? "متصل" : "غير متصل"}
             {pendingCheckIns.length > 0 && (
-              <span className="mr-1 px-1.5 py-0.5 rounded-full bg-amber-500 text-white text-xs font-bold">
+              <span className="mr-1 px-1.5 py-0.5 rounded-full bg-amber-500 text-white text-[10px] font-bold">
                 {pendingCheckIns.length}
               </span>
             )}
           </div>
         </div>
 
-        <div className="max-w-2xl mx-auto space-y-5">
+        <div className="max-w-2xl mx-auto space-y-4 sm:space-y-5">
           {/* Hero Clock + Radial Button */}
           <Card className="border-0 shadow-xl dark:bg-slate-800 overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-br from-blue-600/5 via-transparent to-indigo-600/5 pointer-events-none" />
-            <CardContent className="pt-8 pb-8">
+            <CardContent className="pt-5 sm:pt-8 pb-5 sm:pb-8">
               <LiveClock />
 
               {/* Radial check-in button */}
-              <div className="flex justify-center mt-8 mb-4">
+              <div className="flex justify-center mt-6 sm:mt-8 mb-3 sm:mb-4">
                 <div className="relative">
                   {/* Pulse rings — only when idle */}
                   {checkInStatus === "idle" && !checkInStatus.toString().includes("outside") && (
@@ -394,7 +394,7 @@ export default function CheckInPage() {
                       checkInStatus === "success"
                     }
                     onClick={handleCheckIn}
-                    className={`relative w-36 h-36 rounded-full flex flex-col items-center justify-center gap-1 shadow-2xl transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
+                    className={`relative w-28 h-28 sm:w-36 sm:h-36 rounded-full flex flex-col items-center justify-center gap-1 shadow-2xl transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
                       checkInStatus === "success"
                         ? "bg-gradient-to-br from-green-500 to-emerald-600 shadow-green-500/30"
                         : checkInStatus === "outside"
@@ -403,21 +403,21 @@ export default function CheckInPage() {
                     }`}
                   >
                     {checkInStatus === "loading" ? (
-                      <div className="w-10 h-10 border-3 border-white/30 border-t-white rounded-full animate-spin" />
+                      <div className="w-8 h-8 sm:w-10 sm:h-10 border-3 border-white/30 border-t-white rounded-full animate-spin" />
                     ) : checkInStatus === "success" ? (
                       <>
-                        <CheckCircle className="w-10 h-10 text-white" />
-                        <span className="text-white text-xs font-bold">تم التسجيل</span>
+                        <CheckCircle className="w-8 h-8 sm:w-10 sm:h-10 text-white" />
+                        <span className="text-white text-[10px] sm:text-xs font-bold">تم التسجيل</span>
                       </>
                     ) : checkInStatus === "outside" ? (
                       <>
-                        <XCircle className="w-10 h-10 text-white" />
-                        <span className="text-white text-xs font-bold">خارج النطاق</span>
+                        <XCircle className="w-8 h-8 sm:w-10 sm:h-10 text-white" />
+                        <span className="text-white text-[10px] sm:text-xs font-bold">خارج النطاق</span>
                       </>
                     ) : (
                       <>
-                        <CheckCircle className="w-10 h-10 text-white" />
-                        <span className="text-white text-sm font-bold">تسجيل الحضور</span>
+                        <CheckCircle className="w-8 h-8 sm:w-10 sm:h-10 text-white" />
+                        <span className="text-white text-xs sm:text-sm font-bold">تسجيل الحضور</span>
                       </>
                     )}
                   </motion.button>
