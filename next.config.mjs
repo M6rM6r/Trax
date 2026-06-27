@@ -12,11 +12,11 @@ const nextConfig = {
   compress: true,
 
   experimental: {
-    staleTimes: {
-      dynamic: 0,
-      static: 0,
-    },
     optimizePackageImports: ["lucide-react", "recharts", "date-fns", "framer-motion", "ol", "@radix-ui/react-dialog", "@radix-ui/react-popover"],
+  },
+
+  async redirects() {
+    return [{ source: "/", destination: "/ar", permanent: false }];
   },
 
   async headers() {

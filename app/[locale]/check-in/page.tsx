@@ -74,7 +74,7 @@ export default function CheckInPage() {
   const [checkOutTime, setCheckOutTime] = useState<string | null>(null);
   const [checkOutStatus, setCheckOutStatus] = useState<"idle" | "loading">("idle");
   const [elapsedTime, setElapsedTime] = useState("");
-  const [checkInMethod, setCheckInMethod] = useState<"location" | "qr" | "selfie">("location");
+  const [checkInMethod, setCheckInMethod] = useState<"location" | "qr" | "selfie">("qr");
   const [showQRScanner, setShowQRScanner] = useState(false);
   const [showSelfieCapture, setShowSelfieCapture] = useState(false);
   const [selfieImage, setSelfieImage] = useState<string | null>(null);
@@ -223,16 +223,6 @@ export default function CheckInPage() {
       const timeStr = now.toLocaleTimeString("ar-SA", { hour: "2-digit", minute: "2-digit" });
       const locationName = nearestGeofence?.geofence.name || "موقع غير معروف";
 
-      if (
-        checkInMethod === "location" &&
-        nearestGeofence &&
-        nearestGeofence.distance > nearestGeofence.geofence.radius
-      ) {
-        setCheckInStatus("outside");
-        hapticError();
-        return;
-      }
-
       setCheckInTime(timeStr);
       setCheckInTimestamp(now.getTime());
       setCheckInStatus("success");
@@ -339,7 +329,9 @@ export default function CheckInPage() {
               <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
             </div>
             <div>
-              <h1 className="text-base sm:text-lg font-bold text-gray-900 dark:text-slate-100">تسجيل الحضور</h1>
+              <h1 className="text-base sm:text-lg font-bold text-gray-900 dark:text-slate-100">
+                تسجيل الحضور
+              </h1>
               <p className="text-[10px] sm:text-xs text-gray-500 dark:text-slate-400 hidden sm:block">
                 سجل حضورك ضمن النطاق الجغرافي
               </p>
@@ -388,11 +380,7 @@ export default function CheckInPage() {
                     whileTap={{ scale: 0.94 }}
                     whileHover={{ scale: 1.04 }}
                     transition={{ type: "spring", stiffness: 400, damping: 20 }}
-                    disabled={
-                      (checkInMethod === "location" && !currentLocation) ||
-                      checkInStatus === "loading" ||
-                      checkInStatus === "success"
-                    }
+                    disabled={checkInStatus === "loading" || checkInStatus === "success"}
                     onClick={handleCheckIn}
                     className={`relative w-28 h-28 sm:w-36 sm:h-36 rounded-full flex flex-col items-center justify-center gap-1 shadow-2xl transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
                       checkInStatus === "success"
@@ -407,17 +395,23 @@ export default function CheckInPage() {
                     ) : checkInStatus === "success" ? (
                       <>
                         <CheckCircle className="w-8 h-8 sm:w-10 sm:h-10 text-white" />
-                        <span className="text-white text-[10px] sm:text-xs font-bold">تم التسجيل</span>
+                        <span className="text-white text-[10px] sm:text-xs font-bold">
+                          تم التسجيل
+                        </span>
                       </>
                     ) : checkInStatus === "outside" ? (
                       <>
                         <XCircle className="w-8 h-8 sm:w-10 sm:h-10 text-white" />
-                        <span className="text-white text-[10px] sm:text-xs font-bold">خارج النطاق</span>
+                        <span className="text-white text-[10px] sm:text-xs font-bold">
+                          خارج النطاق
+                        </span>
                       </>
                     ) : (
                       <>
                         <CheckCircle className="w-8 h-8 sm:w-10 sm:h-10 text-white" />
-                        <span className="text-white text-xs sm:text-sm font-bold">تسجيل الحضور</span>
+                        <span className="text-white text-xs sm:text-sm font-bold">
+                          تسجيل الحضور
+                        </span>
                       </>
                     )}
                   </motion.button>
@@ -547,9 +541,8 @@ export default function CheckInPage() {
               <p className="text-xs font-semibold text-gray-400 dark:text-slate-500 uppercase tracking-wider mb-3">
                 طريقة التسجيل
               </p>
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-2 gap-3">
                 {[
-                  { value: "location" as const, label: "الموقع", icon: MapPin },
                   { value: "qr" as const, label: "QR Code", icon: QrCode },
                   { value: "selfie" as const, label: "سيلفي", icon: Camera },
                 ].map((method) => {
