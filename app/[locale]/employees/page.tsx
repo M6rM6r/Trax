@@ -48,7 +48,7 @@ const roleLabels: Record<string, string> = {
 };
 
 export default function EmployeesPage() {
-  const { data: employees = [], isLoading, isError, refetch } = useEmployees();
+  const { data: employees = [], isLoading, isError, error, refetch } = useEmployees();
   const { data: geofences = [] } = useGeofences();
   const createEmployee = useCreateEmployee();
   const deleteEmployee = useDeleteEmployee();
@@ -646,7 +646,17 @@ export default function EmployeesPage() {
         )}
 
         {isLoading && <LoadingSkeleton variant="table" />}
-        {isError && <ErrorState onRetry={() => refetch()} />}
+        {isError && (
+          <div className="space-y-3">
+            <ErrorState onRetry={() => refetch()} />
+            <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-4 text-left">
+              <p className="text-xs font-bold text-red-700 dark:text-red-300 mb-1">تفاصيل الخطأ:</p>
+              <p className="text-xs text-red-600 dark:text-red-400 font-mono break-all">
+                {error instanceof Error ? error.message : JSON.stringify(error)}
+              </p>
+            </div>
+          </div>
+        )}
         {!isLoading && !isError && employees.length === 0 && (
           <EmptyState
             icon={Users}

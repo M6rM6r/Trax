@@ -166,10 +166,19 @@ export const httpClient = new HttpClient(apiUrl, {
 
 httpClient.addRequestInterceptor((config) => {
   if (typeof document !== "undefined") {
-    const token = document.cookie
+    let token = document.cookie
       .split("; ")
       .find((row) => row.startsWith("auth_token="))
       ?.split("=")[1];
+
+    if (!token && typeof localStorage !== "undefined") {
+      try {
+        const stored = JSON.parse(localStorage.getItem("auth-storage") || "{}");
+        token = stored?.state?.token;
+      } catch {
+        // ignore parse error
+      }
+    }
 
     if (token) {
       config.headers = {
