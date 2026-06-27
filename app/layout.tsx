@@ -16,15 +16,17 @@ export const metadata: Metadata = {
   manifest: "/manifest.json",
   icons: {
     icon: [
-      { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
-      { url: "/icon-512.png", sizes: "512x512", type: "image/png" },
+      { url: "/images/Avatar.png", sizes: "192x192", type: "image/png" },
     ],
-    apple: "/icon-192.png",
+    apple: "/images/Avatar.png",
   },
   appleWebApp: {
     capable: true,
     title: "Trax",
     statusBarStyle: "default",
+  },
+  other: {
+    "mobile-web-app-capable": "yes",
   },
   openGraph: {
     type: "website",
