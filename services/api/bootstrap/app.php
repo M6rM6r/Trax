@@ -26,4 +26,10 @@ return Application::configure(basePath: dirname(__DIR__))
                 return response()->json(['success' => false, 'message' => 'Unauthenticated.'], 401);
             }
         });
+
+        $exceptions->renderable(function (\Symfony\Component\Routing\Exception\RouteNotFoundException $e, \Illuminate\Http\Request $request) {
+            if (($request->is('api/*') || $request->expectsJson()) && str_contains($e->getMessage(), 'login')) {
+                return response()->json(['success' => false, 'message' => 'Unauthenticated.'], 401);
+            }
+        });
     })->create();
