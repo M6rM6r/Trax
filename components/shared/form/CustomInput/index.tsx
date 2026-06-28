@@ -22,6 +22,7 @@ const Index = ({
   step,
   preventLeadingZero = false,
   maxDecimals,
+  autoComplete,
 }: {
   type: string;
   name: string;
@@ -41,6 +42,7 @@ const Index = ({
   step?: string;
   preventLeadingZero?: boolean;
   maxDecimals?: number;
+  autoComplete?: string;
 }) => {
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
   const isPasswordType = type === "password";
@@ -224,6 +226,7 @@ const Index = ({
                   : undefined
               }
               inputMode={inputMode}
+              autoComplete={autoComplete}
               step={
                 maxDecimals !== undefined
                   ? maxDecimals === 0

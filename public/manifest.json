@@ -12,8 +12,14 @@
   "categories": ["business", "productivity", "utilities"],
   "icons": [
     {
-      "src": "/images/Avatar.png",
+      "src": "/images/icon-192.png",
       "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/images/icon-512.png",
+      "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
     }
@@ -23,13 +29,13 @@
       "name": "تسجيل الحضور",
       "short_name": "حضور",
       "url": "/ar/check-in",
-      "icons": [{ "src": "/images/Avatar.png", "sizes": "192x192" }]
+      "icons": [{ "src": "/images/icon-192.png", "sizes": "192x192" }]
     },
     {
       "name": "الخريطة المباشرة",
       "short_name": "خريطة",
       "url": "/ar/live-map",
-      "icons": [{ "src": "/images/Avatar.png", "sizes": "192x192" }]
+      "icons": [{ "src": "/images/icon-192.png", "sizes": "192x192" }]
     }
   ]
 }

@@ -40,7 +40,7 @@ export default async function LocaleLayout({
 
   return (
     <html lang={locale} dir={locale === "ar" ? "rtl" : "ltr"} suppressHydrationWarning>
-      <body className={`${cairo.className} relative`}>
+      <body className={`${cairo.className} relative`} suppressHydrationWarning>
         <NextIntlClientProvider messages={messages}>
           <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
             <QueryProvider>

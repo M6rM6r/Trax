@@ -153,6 +153,7 @@ const Page = () => {
                 name="email"
                 placeholder="example@trax.com"
                 label="بريد إلكتروني"
+                autoComplete="email"
               />
               <div className="relative">
                 <CustomInput
@@ -160,6 +161,7 @@ const Page = () => {
                   name="password"
                   placeholder="*********"
                   label="كلمة المرور"
+                  autoComplete="current-password"
                 />
                 <button
                   type="button"
