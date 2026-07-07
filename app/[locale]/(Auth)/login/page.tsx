@@ -18,7 +18,7 @@ import { motion } from "framer-motion";
 import { httpClient } from "@/lib/services/httpClient";
 
 interface LoginValues {
-  email: string;
+  identifier: string;
   password: string;
   rememberMe: boolean;
 }
@@ -57,7 +57,9 @@ const Page = () => {
           company?: { id: number; name: string };
         };
       }>("auth/login", {
-        email: values.email,
+        email: values.identifier,
+        username: values.identifier,
+        identifier: values.identifier,
         password: values.password,
       });
 
@@ -72,6 +74,9 @@ const Page = () => {
 
       setCookie("auth_token", token, {
         maxAge: values.rememberMe ? 30 * 24 * 60 * 60 : 24 * 60 * 60,
+        path: "/",
+        sameSite: "strict",
+        secure: process.env.NODE_ENV === "production",
       });
 
       setUser(
@@ -107,7 +112,7 @@ const Page = () => {
   };
 
   const loginSchema = Yup.object({
-    email: Yup.string().email("البريد الإلكتروني غير صحيح").required("البريد الإلكتروني مطلوب"),
+    identifier: Yup.string().required("البريد الإلكتروني أو اسم المستخدم مطلوب"),
     password: Yup.string()
       .min(8, "كلمة المرور يجب أن تكون 8 أحرف على الأقل")
       .required("كلمة المرور مطلوبة"),
@@ -130,7 +135,7 @@ const Page = () => {
 
       <Formik
         validationSchema={loginSchema}
-        initialValues={{ email: "", password: "", rememberMe: false }}
+        initialValues={{ identifier: "", password: "", rememberMe: false }}
         onSubmit={handleSubmit}
       >
         {(props) => (
@@ -149,11 +154,11 @@ const Page = () => {
               </p>
 
               <CustomInput
-                type="email"
-                name="email"
-                placeholder="example@trax.com"
-                label="بريد إلكتروني"
-                autoComplete="email"
+                type="text"
+                name="identifier"
+                placeholder="example@trax.com أو username"
+                label="البريد الإلكتروني أو اسم المستخدم"
+                autoComplete="username"
               />
               <div className="relative">
                 <CustomInput

@@ -23,8 +23,20 @@ class UserSeeder extends Seeder
 {
     public function run(): void
     {
+        $companyId = (int) (DB::table('companies')->where('slug', 'trax-main')->value('id')
+            ?? DB::table('companies')->insertGetId([
+                'name' => 'Trax Main Company',
+                'slug' => 'trax-main',
+                'plan' => 'pro',
+                'max_employees' => 100,
+                'active' => true,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]));
+
         DB::table('users')->insert([
             [
+                'company_id' => $companyId,
                 'name' => 'Admin Boss',
                 'email' => 'boss@trax.com',
                 'password' => Hash::make('12345678'),
@@ -33,6 +45,7 @@ class UserSeeder extends Seeder
                 'updated_at' => now(),
             ],
             [
+                'company_id' => $companyId,
                 'name' => 'Test Employee',
                 'email' => 'employee@trax.com',
                 'password' => Hash::make('12345678'),
@@ -48,6 +61,17 @@ class GeofenceSeeder extends Seeder
 {
     public function run(): void
     {
+        $companyId = (int) (DB::table('companies')->where('slug', 'trax-main')->value('id')
+            ?? DB::table('companies')->insertGetId([
+                'name' => 'Trax Main Company',
+                'slug' => 'trax-main',
+                'plan' => 'pro',
+                'max_employees' => 100,
+                'active' => true,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]));
+
         $geofences = [
             ['name' => 'المقر الرئيسي', 'address' => 'الرياض، حي العليا', 'lat' => 24.7136, 'lng' => 46.6753, 'radius' => 150, 'color' => '#3C7EE7'],
             ['name' => 'فرع جدة', 'address' => 'جدة، حي الروضة', 'lat' => 21.4858, 'lng' => 39.1925, 'radius' => 120, 'color' => '#10B981'],
@@ -56,6 +80,7 @@ class GeofenceSeeder extends Seeder
 
         foreach ($geofences as $geo) {
             DB::table('geofences')->insert(array_merge($geo, [
+                'company_id' => $companyId,
                 'active' => true,
                 'created_at' => now(),
                 'updated_at' => now(),
@@ -68,6 +93,17 @@ class EmployeeSeeder extends Seeder
 {
     public function run(): void
     {
+        $companyId = (int) (DB::table('companies')->where('slug', 'trax-main')->value('id')
+            ?? DB::table('companies')->insertGetId([
+                'name' => 'Trax Main Company',
+                'slug' => 'trax-main',
+                'plan' => 'pro',
+                'max_employees' => 100,
+                'active' => true,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]));
+
         $employees = [
             ['name' => 'أحمد محمد', 'email' => 'ahmed@trax.com', 'phone' => '+966501234567', 'role' => 'manager', 'department' => 'الإدارة', 'geofence_id' => 1, 'status' => 'active'],
             ['name' => 'سارة أحمد', 'email' => 'sara@trax.com', 'phone' => '+966502345678', 'role' => 'employee', 'department' => 'المبيعات', 'geofence_id' => 1, 'status' => 'active'],
@@ -78,6 +114,7 @@ class EmployeeSeeder extends Seeder
 
         foreach ($employees as $emp) {
             DB::table('employees')->insert(array_merge($emp, [
+                'company_id' => $companyId,
                 'created_at' => now(),
                 'updated_at' => now(),
             ]));

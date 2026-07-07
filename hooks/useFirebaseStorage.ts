@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from "react";
 import { ref, uploadBytesResumable, getDownloadURL, deleteObject } from "firebase/storage";
-import { storage } from "@/lib/config/firebase";
+import { isFirebaseConfigured, storage } from "@/lib/config/firebase";
 
 export type UploadFolder = "avatars" | "company-logos" | "documents" | "attachments";
 
@@ -27,6 +27,15 @@ export function useFirebaseStorage(): UseFirebaseStorageReturn {
   const upload = useCallback(
     (file: File, folder: UploadFolder, fileName?: string): Promise<UploadResult> => {
       return new Promise((resolve, reject) => {
+        if (!isFirebaseConfigured || !storage) {
+          const configError = new Error(
+            "Firebase is not configured. Add NEXT_PUBLIC_FIREBASE_* variables to enable uploads."
+          );
+          setError(configError.message);
+          reject(configError);
+          return;
+        }
+
         setUploading(true);
         setProgress(0);
         setError(null);
@@ -69,6 +78,12 @@ export function useFirebaseStorage(): UseFirebaseStorageReturn {
   );
 
   const remove = useCallback(async (path: string): Promise<void> => {
+    if (!isFirebaseConfigured || !storage) {
+      throw new Error(
+        "Firebase is not configured. Add NEXT_PUBLIC_FIREBASE_* variables to enable file deletion."
+      );
+    }
+
     const storageRef = ref(storage, path);
     await deleteObject(storageRef);
   }, []);

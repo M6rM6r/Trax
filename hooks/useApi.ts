@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/services/api";
 import { validatedApi } from "@/lib/services/validatedApi";
 import { env } from "@/lib/config/env";
+import { buildRetentionFeatures, type RetentionFeatures } from "@/lib/utils/retentionFeatures";
 import type {
   Employee,
   AttendanceRecord,
@@ -14,6 +15,19 @@ import type {
 import type { DashboardTrendsSchema } from "@/lib/schemas/dashboard.schema";
 
 const useMock = env.NEXT_PUBLIC_USE_MOCK;
+
+export interface DashboardDateRange {
+  from?: Date;
+  to?: Date;
+}
+
+function toApiDate(value?: Date): string | undefined {
+  if (!value) return undefined;
+  const y = value.getFullYear();
+  const m = String(value.getMonth() + 1).padStart(2, "0");
+  const d = String(value.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
 
 const mockTrends: DashboardTrendsSchema = {
   weeklyData: [
@@ -57,7 +71,16 @@ export const queryKeys = {
   dashboard: ["dashboard", "stats"] as const,
   dashboardTrends: ["dashboard", "trends"] as const,
   tracking: ["tracking", "live"] as const,
+  aiRetention: ["ai", "retention"] as const,
 };
+
+export interface RetentionInsightResponse {
+  retentionScore: number;
+  riskLevel: "low" | "medium" | "high";
+  summary: string;
+  recommendedActions: string[];
+  confidence: number;
+}
 
 export function useEmployees() {
   return useQuery<Employee[]>({
@@ -261,28 +284,34 @@ export function useDeleteGeofence() {
   });
 }
 
-export function useDashboardStats() {
+export function useDashboardStats(dateRange?: DashboardDateRange) {
+  const from = toApiDate(dateRange?.from);
+  const to = toApiDate(dateRange?.to);
+
   return useQuery<DashboardStats>({
-    queryKey: queryKeys.dashboard,
+    queryKey: [...queryKeys.dashboard, from ?? "all", to ?? "all"],
     queryFn: async (): Promise<DashboardStats> => {
       if (useMock) {
-        const res = await api.dashboard.stats();
+        const res = await api.dashboard.stats({ from, to });
         return res.data;
       }
-      return validatedApi.dashboard.stats();
+      return validatedApi.dashboard.stats({ from, to });
     },
   });
 }
 
-export function useDashboardTrends() {
+export function useDashboardTrends(dateRange?: DashboardDateRange) {
+  const from = toApiDate(dateRange?.from);
+  const to = toApiDate(dateRange?.to);
+
   return useQuery<DashboardTrendsSchema>({
-    queryKey: queryKeys.dashboardTrends,
+    queryKey: [...queryKeys.dashboardTrends, from ?? "all", to ?? "all"],
     queryFn: async (): Promise<DashboardTrendsSchema> => {
       if (useMock) {
         await new Promise((r) => setTimeout(r, 100));
         return mockTrends;
       }
-      return validatedApi.dashboard.trends();
+      return validatedApi.dashboard.trends({ from, to });
     },
     staleTime: 5 * 60 * 1000,
   });
@@ -299,5 +328,35 @@ export function useLiveTracking() {
       return validatedApi.tracking.live();
     },
     refetchInterval: 30000,
+  });
+}
+
+export function useRetentionInsights(attendance: AttendanceRecord[], employees: Employee[]) {
+  return useQuery<RetentionInsightResponse>({
+    queryKey: [...queryKeys.aiRetention, attendance.length, employees.length],
+    queryFn: async () => {
+      const aiUrl = env.NEXT_PUBLIC_AI_URL || "http://localhost:8001";
+      const features: RetentionFeatures = buildRetentionFeatures(attendance, employees);
+
+      const response = await fetch(`${aiUrl}/api/v1/retention/analyze`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(features),
+      });
+
+      if (!response.ok) {
+        throw new Error("AI retention service unavailable");
+      }
+
+      const payload = (await response.json()) as {
+        success: boolean;
+        data: RetentionInsightResponse;
+      };
+
+      return payload.data;
+    },
+    enabled: attendance.length > 0,
+    staleTime: 5 * 60 * 1000,
+    retry: 1,
   });
 }

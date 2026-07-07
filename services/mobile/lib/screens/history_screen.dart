@@ -20,7 +20,7 @@ class HistoryScreen extends StatelessWidget {
                   itemCount: attendance.records.length,
                   itemBuilder: (ctx, i) {
                     final record = attendance.records[i];
-                    final status = record["status"] ?? "unknown";
+                    final status = record["status"]?.toString() ?? "unknown";
                     final statusColor = status == "present"
                         ? const Color(0xFF16A34A)
                         : status == "late"
@@ -36,7 +36,7 @@ class HistoryScreen extends StatelessWidget {
                             color: statusColor,
                           ),
                         ),
-                        title: Text(record["date"] ?? ""),
+                        title: Text(record["date"]?.toString() ?? ""),
                         subtitle: Text("دخول: ${record["check_in_time"] ?? "-"} | انصراف: ${record["check_out_time"] ?? "-"}"),
                         trailing: Text(
                           status,

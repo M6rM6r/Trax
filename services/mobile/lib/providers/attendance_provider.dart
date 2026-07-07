@@ -17,6 +17,18 @@ class AttendanceProvider extends ChangeNotifier {
 
   static String get _baseUrl => Env.apiBaseUrl;
 
+  Map<String, dynamic> _asMap(Object? value) {
+    return value is Map<String, dynamic> ? value : <String, dynamic>{};
+  }
+
+  List<Map<String, dynamic>> _asMapList(Object? value) {
+    if (value is! List) return <Map<String, dynamic>>[];
+    return value
+      .whereType<Map<dynamic, dynamic>>()
+        .map((item) => item.map((k, v) => MapEntry(k.toString(), v)))
+        .toList();
+  }
+
   Future<void> fetchHistory(String token) async {
     _isLoading = true;
     notifyListeners();
@@ -31,8 +43,8 @@ class AttendanceProvider extends ChangeNotifier {
       );
 
       if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        _records = List<Map<String, dynamic>>.from(data["data"] ?? []);
+        final data = _asMap(jsonDecode(response.body));
+        _records = _asMapList(data["data"]);
         _error = null;
       }
     } catch (e) {
@@ -62,8 +74,8 @@ class AttendanceProvider extends ChangeNotifier {
         headers: {"Authorization": "Bearer $token", "Accept": "application/json"},
       );
       if (response.statusCode != 200) return null;
-      final data = jsonDecode(response.body);
-      final geofences = List<Map<String, dynamic>>.from(data["data"] ?? []);
+      final data = _asMap(jsonDecode(response.body));
+      final geofences = _asMapList(data["data"]);
 
       int? nearestId;
       double nearestDist = double.infinity;
@@ -123,15 +135,16 @@ class AttendanceProvider extends ChangeNotifier {
         body: jsonEncode(body),
       );
 
-      final data = jsonDecode(response.body);
+      final data = _asMap(jsonDecode(response.body));
+      final payload = _asMap(data["data"]);
 
       if (response.statusCode == 201 && data["success"] == true) {
-        _todayStatus = data["data"]["status"];
+        _todayStatus = payload["status"]?.toString();
         _isLoading = false;
         notifyListeners();
         return true;
       } else {
-        _error = data["message"] ?? "Check-in failed";
+        _error = data["message"]?.toString() ?? "Check-in failed";
         _isLoading = false;
         notifyListeners();
         return false;
@@ -160,7 +173,7 @@ class AttendanceProvider extends ChangeNotifier {
         body: jsonEncode({"employee_id": employeeId}),
       );
 
-      final data = jsonDecode(response.body);
+      final data = _asMap(jsonDecode(response.body));
 
       if (response.statusCode == 200 && data["success"] == true) {
         _todayStatus = "checked_out";
@@ -168,7 +181,7 @@ class AttendanceProvider extends ChangeNotifier {
         notifyListeners();
         return true;
       } else {
-        _error = data["message"] ?? "Check-out failed";
+        _error = data["message"]?.toString() ?? "Check-out failed";
         _isLoading = false;
         notifyListeners();
         return false;

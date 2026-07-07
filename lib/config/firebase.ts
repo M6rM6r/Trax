@@ -12,13 +12,34 @@ const firebaseConfig = {
   measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID,
 };
 
-const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
+const requiredFirebaseKeys = [
+  firebaseConfig.apiKey,
+  firebaseConfig.authDomain,
+  firebaseConfig.projectId,
+  firebaseConfig.storageBucket,
+  firebaseConfig.messagingSenderId,
+  firebaseConfig.appId,
+];
 
-export const storage = getStorage(app);
+export const isFirebaseConfigured = requiredFirebaseKeys.every(
+  (value) => typeof value === "string" && value.length > 0
+);
+
+const app = isFirebaseConfigured
+  ? getApps().length === 0
+    ? initializeApp(firebaseConfig)
+    : getApps()[0]
+  : null;
+
+export const storage = app ? getStorage(app) : null;
 
 export const analytics =
-  typeof window !== "undefined"
+  typeof window !== "undefined" && app
     ? isSupported().then((ok) => (ok ? getAnalytics(app) : null))
     : Promise.resolve(null);
+
+if (typeof window !== "undefined" && !isFirebaseConfigured) {
+  console.warn("Firebase is not fully configured. Storage features are disabled.");
+}
 
 export default app;

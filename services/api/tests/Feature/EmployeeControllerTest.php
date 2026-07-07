@@ -41,6 +41,7 @@ class EmployeeControllerTest extends TestCase
             'name' => 'Test Employee',
             'email' => 'test.employee@trax.com',
             'phone' => '+966509999999',
+            'password' => '12345678',
             'role' => 'employee',
             'department' => 'Testing',
             'geofence_id' => 1,
@@ -77,6 +78,7 @@ class EmployeeControllerTest extends TestCase
             'name' => 'Delete Me',
             'email' => 'delete.me@trax.com',
             'phone' => '+966508888888',
+            'password' => '12345678',
             'role' => 'employee',
             'department' => 'Testing',
         ]);

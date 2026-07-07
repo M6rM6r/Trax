@@ -44,26 +44,34 @@ class ApiService {
 
   ApiService(this._dio);
 
+  Map<String, dynamic> _asMap(Object? value) {
+    return value is Map<String, dynamic> ? value : <String, dynamic>{};
+  }
+
+  List<dynamic> _asList(Object? value) {
+    return value is List ? value : <dynamic>[];
+  }
+
   Future<Map<String, dynamic>> login(String email, String password) async {
-    final response = await _dio.post('/auth/login', data: {
+    final response = await _dio.post<Map<String, dynamic>>('/auth/login', data: {
       'email': email,
       'password': password,
     });
-    return response.data['data'] as Map<String, dynamic>;
+    return _asMap(_asMap(response.data)['data']);
   }
 
   Future<void> logout() async {
-    await _dio.post('/auth/logout');
+    await _dio.post<Map<String, dynamic>>('/auth/logout');
   }
 
   Future<Map<String, dynamic>> getDashboardStats() async {
-    final response = await _dio.get('/dashboard/stats');
-    return response.data['data'] as Map<String, dynamic>;
+    final response = await _dio.get<Map<String, dynamic>>('/dashboard/stats');
+    return _asMap(_asMap(response.data)['data']);
   }
 
   Future<List<dynamic>> getAttendanceHistory() async {
-    final response = await _dio.get('/attendance');
-    return response.data['data'] as List<dynamic>;
+    final response = await _dio.get<Map<String, dynamic>>('/attendance');
+    return _asList(_asMap(response.data)['data']);
   }
 
   Future<Map<String, dynamic>> checkIn({
@@ -71,22 +79,22 @@ class ApiService {
     required double lng,
     int? batteryLevel,
   }) async {
-    final response = await _dio.post('/attendance/check-in', data: {
+    final response = await _dio.post<Map<String, dynamic>>('/attendance/check-in', data: {
       'lat': lat,
       'lng': lng,
       'battery_level': batteryLevel,
     });
-    return response.data['data'] as Map<String, dynamic>;
+    return _asMap(_asMap(response.data)['data']);
   }
 
   Future<Map<String, dynamic>> checkOut({
     required double lat,
     required double lng,
   }) async {
-    final response = await _dio.post('/attendance/check-out', data: {
+    final response = await _dio.post<Map<String, dynamic>>('/attendance/check-out', data: {
       'lat': lat,
       'lng': lng,
     });
-    return response.data['data'] as Map<String, dynamic>;
+    return _asMap(_asMap(response.data)['data']);
   }
 }

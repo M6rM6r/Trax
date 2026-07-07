@@ -32,6 +32,10 @@ class AuthProvider extends ChangeNotifier {
 
   static String get _baseUrl => Env.apiBaseUrl;
 
+  Map<String, dynamic> _asMap(Object? value) {
+    return value is Map<String, dynamic> ? value : <String, dynamic>{};
+  }
+
   Future<bool> login(String email, String password) async {
     _isLoading = true;
     _error = null;
@@ -44,15 +48,18 @@ class AuthProvider extends ChangeNotifier {
         body: jsonEncode({"email": email, "password": password}),
       );
 
-      final data = jsonDecode(response.body);
+      final data = _asMap(jsonDecode(response.body));
+      final payload = _asMap(data["data"]);
+      final user = _asMap(payload["user"]);
+      final company = _asMap(payload["company"]);
 
       if (response.statusCode == 200 && data["success"] == true) {
-        _token = data["data"]["token"];
-        _userName = data["data"]["user"]["name"];
-        _userEmail = data["data"]["user"]["email"];
-        _userId = data["data"]["user"]["id"];
-        _companyId = data["data"]["user"]["company_id"] as int?;
-        _companyName = data["data"]["company"]?["name"] as String?;
+        _token = payload["token"]?.toString();
+        _userName = user["name"]?.toString();
+        _userEmail = user["email"]?.toString();
+        _userId = (user["id"] as num?)?.toInt();
+        _companyId = (user["company_id"] as num?)?.toInt();
+        _companyName = company["name"]?.toString();
 
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString("auth_token", _token!);
@@ -68,7 +75,7 @@ class AuthProvider extends ChangeNotifier {
         unawaited(_syncFcmToken());
         return true;
       } else {
-        _error = data["message"] ?? "Login failed";
+        _error = data["message"]?.toString() ?? "Login failed";
         _isLoading = false;
         notifyListeners();
         return false;

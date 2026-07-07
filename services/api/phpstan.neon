@@ -1,0 +1,12 @@
+includes:
+  - ./vendor/larastan/larastan/extension.neon
+
+parameters:
+  paths:
+    - app
+    - routes
+  level: 6
+  checkMissingIterableValueType: false
+  treatPhpDocTypesAsCertain: false
+  ignoreErrors:
+    - '#Call to an undefined method Illuminate\\Database\\Eloquent\\Builder::#'

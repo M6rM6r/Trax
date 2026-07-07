@@ -10,6 +10,7 @@ use App\Http\Requests\StoreEmployeeRequest;
 use App\Http\Requests\UpdateEmployeeRequest;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Cache;
@@ -47,7 +48,7 @@ class EmployeeController extends Controller
      */
     private function companyId(): int
     {
-        return auth()->user()->company_id;
+        return (int) (Auth::user()?->company_id ?? 0);
     }
 
     public function index(Request $request): JsonResponse
@@ -141,6 +142,7 @@ class EmployeeController extends Controller
                 'company_id'  => $companyId,
                 'name'        => $validated['name'],
                 'email'       => $validated['email'],
+                'employee_number' => $validated['employeeNumber'] ?? null,
                 'phone'       => $validated['phone'],
                 'role'        => $validated['role'],
                 'department'  => $validated['department'],
@@ -153,6 +155,7 @@ class EmployeeController extends Controller
                 'company_id' => $companyId,
                 'name'       => $validated['name'],
                 'email'      => $validated['email'],
+                'username'   => $validated['employeeNumber'] ?? null,
                 'password'   => Hash::make($validated['password']),
                 'role'       => $validated['role'],
             ]);
@@ -178,7 +181,42 @@ class EmployeeController extends Controller
             return response()->json(['success' => false, 'message' => 'Employee not found'], 404);
         }
 
-        $employee->update($request->validated());
+        $payload = $request->validated();
+        $originalEmail = $employee->email;
+
+        $linkedUser = User::where('company_id', $this->companyId())
+            ->where('email', $originalEmail)
+            ->first();
+
+        if (array_key_exists('employeeNumber', $payload)) {
+            $username = $payload['employeeNumber'];
+            if ($username) {
+                $usernameTaken = User::where('company_id', $this->companyId())
+                    ->where('username', $username)
+                    ->when($linkedUser, fn ($q) => $q->where('id', '!=', $linkedUser->id))
+                    ->exists();
+
+                if ($usernameTaken) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Username is already taken in this company.',
+                    ], 422);
+                }
+            }
+            $payload['employee_number'] = $payload['employeeNumber'];
+            unset($payload['employeeNumber']);
+        }
+
+        $employee->update($payload);
+
+        if ($linkedUser) {
+            $linkedUser->update([
+                'name' => $employee->name,
+                'email' => $employee->email,
+                'username' => $employee->employee_number,
+                'role' => $employee->role,
+            ]);
+        }
 
         return response()->json([
             'success' => true,

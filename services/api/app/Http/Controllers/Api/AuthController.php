@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use App\Models\User;
@@ -17,7 +18,9 @@ class AuthController extends Controller
     public function login(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'email' => 'required|email',
+            'identifier' => 'nullable|string|max:255',
+            'email' => 'nullable|string|max:255',
+            'username' => 'nullable|string|max:255',
             'password' => 'required|string|min:6',
         ]);
 
@@ -29,16 +32,29 @@ class AuthController extends Controller
             ], 422);
         }
 
-        $credentials = $request->only('email', 'password');
+        $identifier = $request->input('identifier')
+            ?? $request->input('email')
+            ?? $request->input('username');
 
-        if (!$token = JWTAuth::attempt($credentials)) {
+        if (!$identifier) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Identifier is required',
+            ], 422);
+        }
+
+        $user = User::where('email', $identifier)
+            ->orWhere('username', $identifier)
+            ->first();
+
+        if (!$user || !Hash::check((string) $request->input('password'), (string) $user->password)) {
             return response()->json([
                 'success' => false,
                 'message' => 'Invalid credentials',
             ], 401);
         }
 
-        $user = auth()->user();
+        $token = JWTAuth::fromUser($user);
 
         return response()->json([
             'success' => true,
@@ -49,6 +65,7 @@ class AuthController extends Controller
                     'id'         => $user->id,
                     'name'       => $user->name,
                     'email'      => $user->email,
+                    'username'   => $user->username,
                     'role'       => $user->role,
                     'company_id' => $user->company_id,
                 ],
@@ -57,7 +74,7 @@ class AuthController extends Controller
                     'name' => $user->company->name,
                     'plan' => $user->company->plan,
                 ] : null,
-                'expires_in' => auth()->factory()->getTTL() * 60,
+                'expires_in' => JWTAuth::factory()->getTTL() * 60,
             ],
         ]);
     }
@@ -76,7 +93,7 @@ class AuthController extends Controller
     {
         return response()->json([
             'success' => true,
-            'data' => auth()->user(),
+            'data' => Auth::guard('api')->user(),
         ]);
     }
 
@@ -150,7 +167,7 @@ class AuthController extends Controller
             'success' => true,
             'data' => [
                 'token' => $token,
-                'expires_in' => auth()->factory()->getTTL() * 60,
+                'expires_in' => JWTAuth::factory()->getTTL() * 60,
             ],
         ]);
     }

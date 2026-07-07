@@ -20,6 +20,11 @@
     "test:coverage": "jest --coverage",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
+    "quality:frontend": "npm run type-check && npm run lint && npm run test -- --passWithNoTests",
+    "quality:api": "cd services/api && composer install --no-interaction --prefer-dist && composer analyse && vendor/bin/phpunit --testdox",
+    "quality:ai": "cd services/ai && pip install -r requirements.txt && python -m pytest",
+    "quality:mobile": "cd services/mobile && flutter pub get && flutter analyze && flutter test",
+    "quality:all": "npm run quality:frontend && npm run quality:api && npm run quality:ai",
     "prepare": "husky"
   },
   "dependencies": {

@@ -40,14 +40,17 @@ export const useAuthStore = create<AuthState>()(
           companyName: companyName ?? null,
         }),
       setRole: (role) => set({ role }),
-      clearUser: () =>
-        set({ user: null, token: null, role: null, companyId: null, companyName: null }),
+      clearUser: () => {
+        if (typeof document !== "undefined") {
+          document.cookie = "auth_token=; Max-Age=0; path=/";
+        }
+        set({ user: null, token: null, role: null, companyId: null, companyName: null });
+      },
     }),
     {
       name: "auth-storage",
       partialize: (state) => ({
         user: state.user,
-        token: state.token,
         role: state.role,
         companyId: state.companyId,
         companyName: state.companyName,

@@ -4,18 +4,16 @@ test.describe("Authentication Flow", () => {
   test("login page renders with RTL Arabic", async ({ page }) => {
     await page.goto("/ar/login");
     await expect(page.locator("h1")).toContainText("تسجيل الدخول");
-    await expect(page.locator('input[type="email"]')).toBeVisible();
+    await expect(page.locator('input[name="identifier"]')).toBeVisible();
     await expect(page.locator('input[type="password"]')).toBeVisible();
   });
 
-  test("role selector switches between boss and employee", async ({ page }) => {
+  test("login has unified identifier field", async ({ page }) => {
     await page.goto("/ar/login");
-    const bossBtn = page.locator("button", { hasText: "مدير" });
-    const employeeBtn = page.locator("button", { hasText: "موظف" });
-    await employeeBtn.click();
-    await expect(page.locator('input[type="email"]')).toHaveValue("employee@trax.com");
-    await bossBtn.click();
-    await expect(page.locator('input[type="email"]')).toHaveValue("boss@trax.com");
+    await expect(page.locator('input[name="identifier"]')).toHaveAttribute(
+      "placeholder",
+      /example@trax.com|username/
+    );
   });
 
   test("password visibility toggle works", async ({ page }) => {

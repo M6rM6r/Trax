@@ -1,4 +1,5 @@
 import "package:flutter/material.dart";
+import "dart:async";
 import "package:provider/provider.dart";
 import "../providers/auth_provider.dart";
 import "../providers/attendance_provider.dart";
@@ -19,7 +20,9 @@ class HomeScreen extends StatelessWidget {
             icon: const Icon(Icons.logout),
             onPressed: () async {
               await auth.logout();
-              if (context.mounted) Navigator.pushReplacementNamed(context, "/login");
+              if (context.mounted) {
+                unawaited(Navigator.pushReplacementNamed(context, "/login"));
+              }
             },
           ),
         ],
@@ -58,9 +61,11 @@ class HomeScreen extends StatelessWidget {
               title: "سجل الحضور",
               subtitle: "عرض سجل الحضور والانصراف",
               color: const Color(0xFF3C7EE7),
-              onTap: () {
-                attendance.fetchHistory(auth.token!);
-                Navigator.pushNamed(context, "/history");
+              onTap: () async {
+                await attendance.fetchHistory(auth.token!);
+                if (context.mounted) {
+                  unawaited(Navigator.pushNamed(context, "/history"));
+                }
               },
             ),
             const SizedBox(height: 12),

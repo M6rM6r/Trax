@@ -166,19 +166,12 @@ export const httpClient = new HttpClient(apiUrl, {
 
 httpClient.addRequestInterceptor((config) => {
   if (typeof document !== "undefined") {
-    let token = document.cookie
-      .split("; ")
-      .find((row) => row.startsWith("auth_token="))
-      ?.split("=")[1];
+    const tokenCookie = document.cookie
+      .split(";")
+      .map((cookie) => cookie.trim())
+      .find((cookie) => cookie.startsWith("auth_token="));
 
-    if (!token && typeof localStorage !== "undefined") {
-      try {
-        const stored = JSON.parse(localStorage.getItem("auth-storage") || "{}");
-        token = stored?.state?.token;
-      } catch {
-        // ignore parse error
-      }
-    }
+    const token = tokenCookie ? decodeURIComponent(tokenCookie.slice("auth_token=".length)) : null;
 
     if (token) {
       config.headers = {
@@ -193,7 +186,21 @@ httpClient.addRequestInterceptor((config) => {
 httpClient.addResponseInterceptor((response) => {
   if (response.status === 401 && typeof window !== "undefined") {
     logger.warn("Unauthorized — redirecting to login");
-    window.location.href = "/ar/login";
+    try {
+      localStorage.removeItem("auth-storage");
+      localStorage.removeItem("trax_emp_creds");
+    } catch {
+      // ignore storage cleanup failures
+    }
+    document.cookie = "auth_token=; Max-Age=0; path=/";
+    const isJsDom =
+      typeof navigator !== "undefined" &&
+      typeof navigator.userAgent === "string" &&
+      navigator.userAgent.toLowerCase().includes("jsdom");
+
+    if (!isJsDom) {
+      window.location.href = "/ar/login";
+    }
   }
   return response;
 });

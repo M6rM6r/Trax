@@ -1,4 +1,5 @@
 import "package:flutter/material.dart";
+import "dart:async";
 import "package:provider/provider.dart";
 import "../providers/auth_provider.dart";
 
@@ -79,7 +80,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               _passwordController.text,
                             );
                             if (success && context.mounted) {
-                              Navigator.pushReplacementNamed(context, "/home");
+                              unawaited(Navigator.pushReplacementNamed(context, "/home"));
                             }
                           }
                         },

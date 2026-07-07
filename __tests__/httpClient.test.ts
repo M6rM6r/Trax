@@ -1,7 +1,30 @@
-import { describe, it, expect, jest, beforeEach } from "@jest/globals";
+import { describe, it, expect, jest, beforeEach, afterEach } from "@jest/globals";
 import { ApiError, httpClient } from "@/lib/services/httpClient";
 
+const originalFetch = global.fetch;
+
+const mockJsonResponse = (status: number, payload: unknown) =>
+  ({
+    ok: status >= 200 && status < 300,
+    status,
+    statusText: status >= 200 && status < 300 ? "OK" : "ERR",
+    headers: {
+      get: (name: string) => (name.toLowerCase() === "content-type" ? "application/json" : null),
+    },
+    json: async () => payload,
+  }) as unknown as Response;
+
 describe("HttpClient", () => {
+  beforeEach(() => {
+    jest.restoreAllMocks();
+    localStorage.clear();
+    document.cookie = "auth_token=; Max-Age=0; path=/";
+  });
+
+  afterEach(() => {
+    global.fetch = originalFetch;
+  });
+
   describe("ApiError", () => {
     it("creates an ApiError with correct properties", () => {
       const error = new ApiError("Not found", 404, "/employees/1");
@@ -35,6 +58,40 @@ describe("HttpClient", () => {
 
     it("has delete method", () => {
       expect(typeof httpClient.delete).toBe("function");
+    });
+
+    it("adds Authorization header from auth_token cookie", async () => {
+      document.cookie = `auth_token=${encodeURIComponent("token-123")}; path=/`;
+
+      global.fetch = jest.fn(async (_url: string | URL | Request, init?: RequestInit) => {
+        expect((init?.headers as Record<string, string>)?.Authorization).toBe("Bearer token-123");
+        return mockJsonResponse(200, { ok: true });
+      }) as typeof fetch;
+
+      await httpClient.get("/ping");
+    });
+
+    it("does not fallback to localStorage token when cookie is missing", async () => {
+      localStorage.setItem("auth-storage", JSON.stringify({ state: { token: "stale-token" } }));
+
+      global.fetch = jest.fn(async (_url: string | URL | Request, init?: RequestInit) => {
+        expect((init?.headers as Record<string, string>)?.Authorization).toBeUndefined();
+        return mockJsonResponse(200, { ok: true });
+      }) as typeof fetch;
+
+      await httpClient.get("/ping");
+    });
+
+    it("clears storage and redirects on 401 responses", async () => {
+      localStorage.setItem("auth-storage", JSON.stringify({ state: { token: "abc" } }));
+
+      global.fetch = jest.fn(async () =>
+        mockJsonResponse(401, { message: "unauthorized" })
+      ) as typeof fetch;
+
+      await expect(httpClient.get("/private")).rejects.toBeInstanceOf(ApiError);
+      expect(localStorage.getItem("auth-storage")).toBeNull();
+      expect(document.cookie).not.toContain("auth_token=");
     });
   });
 });

@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class StoreEmployeeRequest extends FormRequest
 {
@@ -16,6 +17,14 @@ class StoreEmployeeRequest extends FormRequest
         return [
             'name' => ['required', 'string', 'min:2', 'max:255'],
             'email' => ['required', 'email', 'unique:employees,email', 'unique:users,email'],
+            'employeeNumber' => [
+                'nullable',
+                'string',
+                'max:100',
+                Rule::unique('users', 'username')->where(
+                    fn ($query) => $query->where('company_id', $this->user()?->company_id)
+                ),
+            ],
             'phone' => ['required', 'string', 'max:20'],
             'role' => ['required', 'in:manager,employee,supervisor'],
             'department' => ['required', 'string', 'max:255'],

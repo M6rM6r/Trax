@@ -1,4 +1,5 @@
 import "package:flutter/material.dart";
+import "dart:async";
 import "package:provider/provider.dart";
 import "../providers/auth_provider.dart";
 import "../providers/theme_provider.dart";
@@ -100,7 +101,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
             TextButton(
               onPressed: () async {
                 await auth.logout();
-                if (context.mounted) Navigator.pushReplacementNamed(context, "/login");
+                if (context.mounted) {
+                  unawaited(Navigator.pushReplacementNamed(context, "/login"));
+                }
               },
               child: const Text("تسجيل الخروج", style: TextStyle(color: Colors.red)),
             ),

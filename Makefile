@@ -1,4 +1,4 @@
-.PHONY: help install dev dev:fast build build:analyze test test:coverage test:e2e lint format type-check docker-up docker-down docker-build docker-logs docker-ps docker-clean ai-install ai-test ai-retrain ai-health ai-metrics api-install api-test api-migrate api-seed api-fresh api-swagger api-health api-cache-clear mobile-run mobile-build mobile-test mobile-codegen reverb-start reverb-stop security-audit monitoring-up
+.PHONY: help install dev dev:fast build build:analyze test test:coverage test:e2e lint format type-check docker-up docker-down docker-build docker-logs docker-ps docker-clean ai-install ai-test ai-lint ai-retrain ai-health ai-metrics api-install api-test api-lint api-analyse api-migrate api-seed api-fresh api-swagger api-health api-cache-clear mobile-run mobile-build mobile-test mobile-codegen reverb-start reverb-stop security-audit monitoring-up quality-frontend quality-all
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
@@ -63,6 +63,9 @@ ai-install: ## Install AI service dependencies
 ai-test: ## Run AI service tests
 	cd services/ai && pytest -v
 
+ai-lint: ## Lint AI service code
+	cd services/ai && ruff check .
+
 ai-retrain: ## Trigger model retraining from database
 	curl -X POST http://localhost:8001/api/ai/models/retrain
 
@@ -78,6 +81,12 @@ api-install: ## Install API dependencies
 
 api-test: ## Run API tests
 	cd services/api && vendor/bin/phpunit
+
+api-lint: ## Run Laravel Pint checks
+	cd services/api && vendor/bin/pint --test
+
+api-analyse: ## Run PHPStan static analysis
+	cd services/api && vendor/bin/phpstan analyse --memory-limit=1G
 
 api-migrate: ## Run database migrations
 	cd services/api && php artisan migrate
@@ -126,3 +135,15 @@ security-audit: ## Run security audits across all services
 
 monitoring-up: ## Start Prometheus + Grafana monitoring stack
 	docker compose up -d prometheus grafana node-exporter
+
+# === Quality Gates ===
+quality-frontend: ## Frontend quality gate
+	npm run type-check && npm run lint && npm run test -- --passWithNoTests
+
+quality-all: ## Cross-stack quality gate (frontend + api + ai)
+	$(MAKE) quality-frontend
+	$(MAKE) api-lint
+	$(MAKE) api-analyse
+	$(MAKE) api-test
+	$(MAKE) ai-lint
+	$(MAKE) ai-test

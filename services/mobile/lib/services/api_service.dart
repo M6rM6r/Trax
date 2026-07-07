@@ -1,5 +1,5 @@
 import 'dart:convert';
-import 'package:http/http' as http;
+import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../config/env.dart';
 
@@ -32,6 +32,10 @@ class ApiService {
         if (_token != null) 'Authorization': 'Bearer $_token',
       };
 
+  Map<String, dynamic> _asMap(Object? value) {
+    return value is Map<String, dynamic> ? value : <String, dynamic>{};
+  }
+
   Future<Map<String, dynamic>> _request(
     String method,
     String endpoint, {
@@ -58,7 +62,7 @@ class ApiService {
         throw ArgumentError('Unsupported method: $method');
     }
 
-    final data = jsonDecode(response.body);
+    final data = _asMap(jsonDecode(response.body));
 
     if (response.statusCode == 401) {
       await clearToken();
@@ -67,7 +71,7 @@ class ApiService {
 
     if (response.statusCode >= 400) {
       throw ApiException(
-        data['message'] ?? 'Request failed',
+        data['message']?.toString() ?? 'Request failed',
         response.statusCode,
       );
     }
@@ -80,8 +84,10 @@ class ApiService {
       'email': email,
       'password': password,
     });
-    if (data['data']?['token'] != null) {
-      await _saveToken(data['data']['token']);
+    final payload = _asMap(data['data']);
+    final token = payload['token']?.toString();
+    if (token != null && token.isNotEmpty) {
+      await _saveToken(token);
     }
     return data;
   }

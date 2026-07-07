@@ -19,12 +19,13 @@ import {
   RefreshCw,
   Upload,
 } from "lucide-react";
-import { useGeofences } from "@/hooks/useApi";
+import { useCheckIn, useCheckOut, useGeofences } from "@/hooks/useApi";
 import { hapticSuccess, hapticError, hapticTap } from "@/lib/utils/haptics";
 import { fireConfetti } from "@/lib/utils/confetti";
 import { toastSuccess, toastError } from "@/hooks/use-toast";
 import { motion, AnimatePresence } from "framer-motion";
 import type { Geofence } from "@/lib/types/trackingTypes";
+import { useAuthStore } from "@/stores/useAuthStore";
 
 function LiveClock() {
   const [time, setTime] = useState("");
@@ -60,6 +61,9 @@ function LiveClock() {
 
 export default function CheckInPage() {
   const { data: geofences = [] } = useGeofences();
+  const checkInMutation = useCheckIn();
+  const checkOutMutation = useCheckOut();
+  const { user } = useAuthStore();
   const [currentLocation, setCurrentLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [locationError, setLocationError] = useState<string | null>(null);
   const [nearestGeofence, setNearestGeofence] = useState<{
@@ -82,6 +86,8 @@ export default function CheckInPage() {
   const [pendingCheckIns, setPendingCheckIns] = useState<
     Array<{ type: string; time: string; location: string; selfie?: string }>
   >([]);
+  const [attendanceMode, setAttendanceMode] = useState<"manual" | "auto_optional">("manual");
+  const [autoAttempted, setAutoAttempted] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -109,6 +115,19 @@ export default function CheckInPage() {
       window.removeEventListener("online", handleOnline);
       window.removeEventListener("offline", handleOffline);
     };
+  }, []);
+
+  useEffect(() => {
+    const raw = localStorage.getItem("trax_settings");
+    if (!raw) return;
+    try {
+      const parsed = JSON.parse(raw);
+      if (parsed.attendanceMode === "auto_optional" || parsed.attendanceMode === "manual") {
+        setAttendanceMode(parsed.attendanceMode);
+      }
+    } catch {
+      // ignore malformed settings
+    }
   }, []);
 
   const savePendingCheckIn = (record: {
@@ -214,33 +233,62 @@ export default function CheckInPage() {
     return R * c;
   };
 
-  const handleCheckIn = () => {
+  const completeLocalCheckIn = () => {
+    const now = new Date();
+    const timeStr = now.toLocaleTimeString("ar-SA", { hour: "2-digit", minute: "2-digit" });
+    const locationName = nearestGeofence?.geofence.name || "موقع غير معروف";
+
+    setCheckInTime(timeStr);
+    setCheckInTimestamp(now.getTime());
+    setCheckInStatus("success");
+    hapticSuccess();
+    fireConfetti();
+
+    if (!isOnline) {
+      savePendingCheckIn({
+        type: checkInMethod,
+        time: timeStr,
+        location: locationName,
+        selfie: selfieImage || undefined,
+      });
+      toastSuccess("تم حفظ الحضور محلياً - سيتم المزامنة عند عودة الاتصال");
+    }
+  };
+
+  const handleCheckIn = async () => {
     hapticTap();
+    if (checkInStatus === "success" || checkInStatus === "loading") return;
+
+    if (!nearestGeofence || !currentLocation) {
+      toastError("تعذر تسجيل الحضور قبل تحديد الموقع");
+      return;
+    }
+
+    if (!isInside) {
+      setCheckInStatus("outside");
+      hapticError();
+      toastError("أنت خارج النطاق الجغرافي المسموح لتسجيل الحضور");
+      return;
+    }
+
     setCheckInStatus("loading");
 
-    const performCheckIn = () => {
-      const now = new Date();
-      const timeStr = now.toLocaleTimeString("ar-SA", { hour: "2-digit", minute: "2-digit" });
-      const locationName = nearestGeofence?.geofence.name || "موقع غير معروف";
-
-      setCheckInTime(timeStr);
-      setCheckInTimestamp(now.getTime());
-      setCheckInStatus("success");
-      hapticSuccess();
-      fireConfetti();
-
-      if (!isOnline) {
-        savePendingCheckIn({
-          type: checkInMethod,
-          time: timeStr,
-          location: locationName,
-          selfie: selfieImage || undefined,
+    if (isOnline && user?.id) {
+      try {
+        await checkInMutation.mutateAsync({
+          employeeId: user.id,
+          lat: currentLocation.lat,
+          lng: currentLocation.lng,
+          geofenceId: nearestGeofence.geofence.id,
         });
-        toastSuccess("تم حفظ الحضور محلياً - سيتم المزامنة عند عودة الاتصال");
+        completeLocalCheckIn();
+        return;
+      } catch {
+        toastError("تعذر تسجيل الحضور عبر الخادم، سيتم الحفظ محلياً");
       }
-    };
+    }
 
-    setTimeout(performCheckIn, 1000);
+    setTimeout(() => completeLocalCheckIn(), 400);
   };
 
   const handleQRCheckIn = () => {
@@ -289,19 +337,48 @@ export default function CheckInPage() {
     }, 800);
   };
 
-  const handleCheckOut = () => {
-    if (!checkInTimestamp) return;
+  const handleCheckOut = async () => {
+    if (!checkInTimestamp || checkOutStatus === "loading") return;
     hapticTap();
     setCheckOutStatus("loading");
+
+    if (isOnline && user?.id) {
+      try {
+        await checkOutMutation.mutateAsync({ employeeId: user.id });
+      } catch {
+        toastError("تعذر مزامنة الانصراف مع الخادم");
+      }
+    }
+
     setTimeout(() => {
       const now = new Date();
       setCheckOutTime(now.toLocaleTimeString("ar-SA", { hour: "2-digit", minute: "2-digit" }));
       setCheckOutStatus("idle");
       hapticSuccess();
-    }, 1000);
+    }, 500);
   };
 
   const isInside = nearestGeofence && nearestGeofence.distance <= nearestGeofence.geofence.radius;
+
+  useEffect(() => {
+    if (attendanceMode !== "auto_optional") return;
+    if (!isInside) return;
+    if (checkInStatus !== "idle") return;
+    if (autoAttempted) return;
+
+    setAutoAttempted(true);
+    const timer = setTimeout(() => {
+      void handleCheckIn();
+    }, 2000);
+
+    return () => clearTimeout(timer);
+  }, [attendanceMode, isInside, checkInStatus, autoAttempted]);
+
+  useEffect(() => {
+    if (!isInside && checkInStatus === "idle") {
+      setAutoAttempted(false);
+    }
+  }, [isInside, checkInStatus]);
 
   const sessionStatus = !checkInTime
     ? { label: "لم يتم تسجيل الحضور اليوم", color: "amber" }
@@ -355,6 +432,26 @@ export default function CheckInPage() {
         </div>
 
         <div className="max-w-2xl mx-auto space-y-4 sm:space-y-5">
+          <Card className="border-0 shadow-md dark:bg-slate-800">
+            <CardContent className="py-3 flex items-center justify-between gap-3">
+              <div>
+                <p className="text-sm font-semibold text-gray-900 dark:text-slate-100">
+                  وضع الحضور: {attendanceMode === "auto_optional" ? "تلقائي + يدوي" : "يدوي فقط"}
+                </p>
+                <p className="text-xs text-gray-500 dark:text-slate-400">
+                  {attendanceMode === "auto_optional"
+                    ? "سيتم محاولة تسجيل الحضور تلقائياً عند دخول النطاق، ويمكنك التسجيل يدوياً أيضاً."
+                    : "التسجيل يتم يدوياً فقط عند الضغط على زر تسجيل الحضور."}
+                </p>
+              </div>
+              {attendanceMode === "auto_optional" && checkInStatus === "idle" && isInside && (
+                <span className="text-xs px-2 py-1 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
+                  محاولة تلقائية بعد ثانيتين
+                </span>
+              )}
+            </CardContent>
+          </Card>
+
           {/* Hero Clock + Radial Button */}
           <Card className="border-0 shadow-xl dark:bg-slate-800 overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-br from-blue-600/5 via-transparent to-indigo-600/5 pointer-events-none" />
@@ -538,8 +635,11 @@ export default function CheckInPage() {
           {/* Check-in Method Selector */}
           <Card className="border-0 shadow-lg dark:bg-slate-800">
             <CardContent className="pt-5 pb-5">
-              <p className="text-xs font-semibold text-gray-400 dark:text-slate-500 uppercase tracking-wider mb-3">
+              <p className="text-xs font-semibold text-gray-400 dark:text-slate-500 uppercase tracking-wider mb-1">
                 طريقة التسجيل
+              </p>
+              <p className="text-xs text-gray-500 dark:text-slate-400 mb-3">
+                الوضع الحالي: {attendanceMode === "auto_optional" ? "تلقائي + يدوي" : "يدوي فقط"}
               </p>
               <div className="grid grid-cols-2 gap-3">
                 {[

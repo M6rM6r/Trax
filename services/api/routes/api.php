@@ -43,20 +43,22 @@ Route::middleware('auth:api')->group(function () {
     Route::post('auth/refresh', [AuthController::class, 'refresh'])
         ->middleware(['throttle:10,1']);
 
-    // Dashboard
-    Route::get('dashboard/stats', [DashboardController::class, 'stats'])
-        ->middleware(['throttle:60,1']);
-    Route::get('dashboard/trends', [DashboardController::class, 'trends'])
-        ->middleware(['throttle:60,1']);
-    Route::get('dashboard/departments', [DashboardController::class, 'departmentStats'])
-        ->middleware(['throttle:60,1']);
+    // Management-only endpoints
+    Route::middleware(['role:boss,manager,supervisor'])->group(function () {
+        // Dashboard
+        Route::get('dashboard/stats', [DashboardController::class, 'stats'])
+            ->middleware(['throttle:60,1']);
+        Route::get('dashboard/trends', [DashboardController::class, 'trends'])
+            ->middleware(['throttle:60,1']);
+        Route::get('dashboard/departments', [DashboardController::class, 'departmentStats'])
+            ->middleware(['throttle:60,1']);
 
-    // Tracking — high frequency for live updates
-    Route::get('tracking/live', [TrackingController::class, 'live'])
-        ->middleware(['throttle:120,1']);
+        // Tracking — high frequency for live updates
+        Route::get('tracking/live', [TrackingController::class, 'live'])
+            ->middleware(['throttle:120,1']);
 
-    // Employees — standard API rate limit
-    Route::middleware(['throttle:60,1'])->group(function () {
+        // Employees — standard API rate limit
+        Route::middleware(['throttle:60,1'])->group(function () {
         Route::get('employees', [EmployeeController::class, 'index']);
         Route::post('employees', [EmployeeController::class, 'store']);
         Route::get('employees/{employee}', [EmployeeController::class, 'show']);
@@ -66,12 +68,27 @@ Route::middleware('auth:api')->group(function () {
         Route::get('employees/inactive/list', [EmployeeController::class, 'inactive']);
         Route::get('employees/export/csv', [EmployeeController::class, 'export']);
         Route::get('employees/meta/departments', [EmployeeController::class, 'departments']);
+        });
+
+        // Attendance reports/listing
+        Route::middleware(['throttle:30,1'])->group(function () {
+            Route::get('attendance', [AttendanceController::class, 'index']);
+            Route::get('attendance/reports', [AttendanceController::class, 'reports']);
+        });
+
+        // Geofences — standard API rate limit
+        Route::middleware(['throttle:60,1'])->group(function () {
+            Route::get('geofences', [GeofenceController::class, 'index']);
+            Route::post('geofences', [GeofenceController::class, 'store']);
+            Route::get('geofences/{geofence}', [GeofenceController::class, 'show']);
+            Route::put('geofences/{geofence}', [GeofenceController::class, 'update']);
+            Route::delete('geofences/{geofence}', [GeofenceController::class, 'destroy']);
+            Route::post('geofences/check-inside', [GeofenceController::class, 'checkInside']);
+        });
     });
 
-    // Attendance — lower limit for mutations
+    // Attendance actions — all authenticated roles
     Route::middleware(['throttle:30,1'])->group(function () {
-        Route::get('attendance', [AttendanceController::class, 'index']);
-        Route::get('attendance/reports', [AttendanceController::class, 'reports']);
         Route::post('attendance/check-in', [AttendanceController::class, 'checkIn']);
         Route::post('attendance/check-out', [AttendanceController::class, 'checkOut']);
     });
@@ -82,13 +99,4 @@ Route::middleware('auth:api')->group(function () {
         Route::delete('device/fcm', [DeviceController::class, 'unregisterFcmToken']);
     });
 
-    // Geofences — standard API rate limit
-    Route::middleware(['throttle:60,1'])->group(function () {
-        Route::get('geofences', [GeofenceController::class, 'index']);
-        Route::post('geofences', [GeofenceController::class, 'store']);
-        Route::get('geofences/{geofence}', [GeofenceController::class, 'show']);
-        Route::put('geofences/{geofence}', [GeofenceController::class, 'update']);
-        Route::delete('geofences/{geofence}', [GeofenceController::class, 'destroy']);
-        Route::post('geofences/check-inside', [GeofenceController::class, 'checkInside']);
-    });
 });

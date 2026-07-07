@@ -61,7 +61,7 @@ class _CheckInScreenState extends State<CheckInScreen> {
 
   Future<void> _syncPending() async {
     await OfflineSyncService().syncPendingActions();
-    _loadPendingCount();
+    await _loadPendingCount();
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("تمت مزامنة البيانات المعلقة")),
@@ -88,7 +88,8 @@ class _CheckInScreenState extends State<CheckInScreen> {
 
     if (confirmed == true) {
       final success = await attendance.checkOut(token, employeeId);
-      if (success && context.mounted) {
+      if (!mounted) return;
+      if (success) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text("تم تسجيل الانصراف بنجاح")),
         );

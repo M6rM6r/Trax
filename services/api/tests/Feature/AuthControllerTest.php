@@ -34,12 +34,22 @@ class AuthControllerTest extends TestCase
         $response->assertStatus(401);
     }
 
-    public function test_login_validation_requires_email_and_password(): void
+    public function test_login_validation_requires_password(): void
     {
         $response = $this->postJson('/api/auth/login', []);
 
         $response->assertStatus(422)
-            ->assertJsonValidationErrors(['email', 'password']);
+            ->assertJsonValidationErrors(['password']);
+    }
+
+    public function test_login_validation_requires_identifier_when_password_exists(): void
+    {
+        $response = $this->postJson('/api/auth/login', [
+            'password' => '12345678',
+        ]);
+
+        $response->assertStatus(422)
+            ->assertJsonPath('message', 'Identifier is required');
     }
 
     public function test_protected_route_without_token_returns_401(): void

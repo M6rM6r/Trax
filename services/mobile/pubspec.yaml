@@ -19,7 +19,7 @@ dependencies:
   provider: ^6.1.2
   google_fonts: ^6.2.1
   flutter_svg: ^2.0.10
-  intl: ^0.19.0
+  intl: ^0.20.2
   connectivity_plus: ^6.0.5
   flutter_background_geolocation: ^4.15.0
   permission_handler: ^11.3.1
@@ -34,12 +34,14 @@ dependencies:
   firebase_core: ^3.6.0
   workmanager: ^0.5.2
   web_socket_channel: ^3.0.1
+  flutter_riverpod: ^2.6.1
   freezed_annotation: ^2.4.4
   json_annotation: ^4.9.0
   easy_localization: ^3.0.7
   flutter_dotenv: ^5.2.1
   envied: ^1.1.1
   sentry_flutter: ^8.9.0
+  path: ^1.9.1
 
 dev_dependencies:
   flutter_test:

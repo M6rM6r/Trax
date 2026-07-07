@@ -41,7 +41,7 @@ class OfflineSyncService {
 
   Future<bool> isOnline() async {
     final result = await Connectivity().checkConnectivity();
-    return result != ConnectivityResult.none;
+    return !result.contains(ConnectivityResult.none);
   }
 
   Future<void> queueAction({
@@ -74,10 +74,12 @@ class OfflineSyncService {
 
     for (final action in actions) {
       final success = await _sendAction(action);
+      final id = (action["id"] as num?)?.toInt();
+      if (id == null) continue;
       if (success) {
-        await _deleteAction(action["id"]);
+        await _deleteAction(id);
       } else {
-        await _incrementRetry(action["id"]);
+        await _incrementRetry(id);
       }
     }
   }

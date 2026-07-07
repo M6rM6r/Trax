@@ -9,7 +9,6 @@ import {
   Battery as BatteryIcon,
   Wifi,
   WifiOff,
-  Navigation,
   X,
   Search,
   Route,
@@ -34,14 +33,18 @@ import { useLiveTracking, useGeofences } from "@/hooks/useApi";
 import { useLiveTrackingSocket } from "@/hooks/useLiveTrackingSocket";
 import { LoadingSkeleton, ErrorState, EmptyState } from "@/components/shared/StateViews";
 import { Input } from "@/components/ui/input";
-import { motion, AnimatePresence } from "framer-motion";
 import { hapticTap } from "@/lib/utils/haptics";
 import type { LiveTrackingEmployee, Geofence } from "@/lib/types/trackingTypes";
+import { useAuthStore } from "@/stores/useAuthStore";
+import { useLocale } from "next-intl";
+import AccessDeniedCard from "@/components/shared/AccessDeniedCard";
 
 export default function LiveMapPage() {
   const mapRef = useRef<HTMLDivElement>(null);
   const { data: initialTracking = [], isLoading, isError, refetch } = useLiveTracking();
   const { data: geofences = [] } = useGeofences();
+  const { role } = useAuthStore();
+  const locale = useLocale();
   const {
     employees: liveTracking,
     isConnected: socketConnected,
@@ -83,26 +86,29 @@ export default function LiveMapPage() {
     return () => document.removeEventListener("fullscreenchange", onFsChange);
   }, []);
 
-  const tileSources: Record<"osm" | "satellite" | "topo", () => OSM | XYZ> = {
-    osm: () => new OSM(),
-    satellite: () =>
-      new XYZ({
-        url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
-        maxZoom: 19,
-        attributions: "Esri",
-      }),
-    topo: () =>
-      new XYZ({
-        url: "https://tile.opentopomap.org/{z}/{x}/{y}.png",
-        maxZoom: 17,
-        attributions: "OpenTopoMap",
-      }),
-  };
+  const tileSources = useMemo<Record<"osm" | "satellite" | "topo", () => OSM | XYZ>>(
+    () => ({
+      osm: () => new OSM(),
+      satellite: () =>
+        new XYZ({
+          url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+          maxZoom: 19,
+          attributions: "Esri",
+        }),
+      topo: () =>
+        new XYZ({
+          url: "https://tile.opentopomap.org/{z}/{x}/{y}.png",
+          maxZoom: 17,
+          attributions: "OpenTopoMap",
+        }),
+    }),
+    []
+  );
 
   useEffect(() => {
     if (!mapInstanceRef.current || !tileLayerRef.current) return;
     tileLayerRef.current.setSource(tileSources[tileLayer]());
-  }, [tileLayer]);
+  }, [tileLayer, tileSources]);
 
   const statusLabels: Record<string, string> = {
     inside_geofence: "داخل النطاق",
@@ -169,7 +175,7 @@ export default function LiveMapPage() {
     });
 
     // Add employee markers
-    liveTracking.forEach((emp) => {
+    filteredTracking.forEach((emp) => {
       if (emp.lat === null || emp.lng === null) return;
       const point = fromLonLat([emp.lng, emp.lat]);
       const feature = new Feature({
@@ -308,6 +314,20 @@ export default function LiveMapPage() {
     }
   }, [showRoute, routeHistory, selectedEmployee]);
 
+  if (role === "employee") {
+    return (
+      <MainLayout>
+        <div className="p-6 min-h-screen">
+          <AccessDeniedCard
+            icon={MapPin}
+            message="الخريطة المباشرة مخصصة لمتابعة الإدارة فقط."
+            ctaHref={`/${locale}/check-in`}
+          />
+        </div>
+      </MainLayout>
+    );
+  }
+
   return (
     <MainLayout>
       <div className="p-6 space-y-6 min-h-screen">
@@ -388,6 +408,7 @@ export default function LiveMapPage() {
                           hapticTap();
                           setStatusFilter(opt.value);
                         }}
+                        aria-pressed={statusFilter === opt.value}
                         className={`px-3 py-1.5 rounded-md text-xs transition-all ${
                           statusFilter === opt.value
                             ? "bg-white dark:bg-slate-800 shadow-sm font-medium"
@@ -433,6 +454,7 @@ export default function LiveMapPage() {
                         onClick={toggleFullscreen}
                         className="p-2 rounded-lg bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm shadow-md hover:bg-white dark:hover:bg-slate-700 transition-colors"
                         title={isFullscreen ? "خروج من الشاشة الكاملة" : "شاشة كاملة"}
+                        aria-label={isFullscreen ? "خروج من الشاشة الكاملة" : "دخول الشاشة الكاملة"}
                       >
                         {isFullscreen ? (
                           <Minimize2 className="w-4 h-4 text-gray-700 dark:text-slate-200" />
@@ -445,6 +467,8 @@ export default function LiveMapPage() {
                           onClick={() => setShowTilePicker(!showTilePicker)}
                           className="p-2 rounded-lg bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm shadow-md hover:bg-white dark:hover:bg-slate-700 transition-colors"
                           title="طبقة الخريطة"
+                          aria-label="اختيار طبقة الخريطة"
+                          aria-expanded={showTilePicker}
                         >
                           <Layers className="w-4 h-4 text-gray-700 dark:text-slate-200" />
                         </button>

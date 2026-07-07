@@ -2,7 +2,9 @@
 
 namespace Tests\Feature;
 
+use App\Models\Employee;
 use Tests\TestCase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 class AttendanceControllerTest extends TestCase
@@ -49,15 +51,26 @@ class AttendanceControllerTest extends TestCase
     {
         $token = $this->getAuthToken();
 
+        $employee = Employee::create([
+            'company_id' => 1,
+            'name' => 'Fresh Checkin User',
+            'email' => 'fresh.checkin@trax.com',
+            'phone' => '+966500000001',
+            'role' => 'employee',
+            'department' => 'Testing',
+            'geofence_id' => 1,
+            'status' => 'active',
+        ]);
+
         $response = $this->withToken($token)->postJson('/api/attendance/check-in', [
-            'employee_id' => 1,
+            'employee_id' => $employee->id,
             'lat' => 24.7136,
             'lng' => 46.6753,
             'geofence_id' => 1,
         ]);
 
         $response->assertStatus(201)
-            ->assertJsonPath('data.employeeId', 1);
+            ->assertJsonPath('data.employeeId', $employee->id);
     }
 
     public function test_check_in_validation_fails_without_required_fields(): void
@@ -95,15 +108,33 @@ class AttendanceControllerTest extends TestCase
     {
         $token = $this->getAuthToken();
 
-        $this->withToken($token)->postJson('/api/attendance/check-in', [
-            'employee_id' => 3,
-            'lat' => 24.7136,
-            'lng' => 46.6753,
+        $employee = Employee::create([
+            'company_id' => 1,
+            'name' => 'Fresh Checkout User',
+            'email' => 'fresh.checkout@trax.com',
+            'phone' => '+966500000002',
+            'role' => 'employee',
+            'department' => 'Testing',
             'geofence_id' => 1,
+            'status' => 'active',
+        ]);
+
+        DB::table('attendance')->insert([
+            'employee_id' => $employee->id,
+            'date' => now()->toDateString(),
+            'check_in_time' => '08:00:00',
+            'check_in_lat' => 24.7136,
+            'check_in_lng' => 46.6753,
+            'geofence_id' => 1,
+            'status' => 'present',
+            'late_minutes' => 0,
+            'worked_hours' => 0,
+            'created_at' => now(),
+            'updated_at' => now(),
         ]);
 
         $response = $this->withToken($token)->postJson('/api/attendance/check-out', [
-            'employee_id' => 3,
+            'employee_id' => $employee->id,
         ]);
 
         $response->assertStatus(200)
@@ -118,6 +149,7 @@ class AttendanceControllerTest extends TestCase
             'employee_id' => 999,
         ]);
 
-        $response->assertStatus(404);
+        $response->assertStatus(422)
+            ->assertJsonValidationErrors(['employee_id']);
     }
 }

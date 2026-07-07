@@ -30,6 +30,23 @@ import {
   type LiveTrackingEmployeeSchema,
 } from "@/lib/schemas/dashboard.schema";
 
+interface DashboardQueryParams {
+  from?: string;
+  to?: string;
+}
+
+function buildQuery(params?: DashboardQueryParams): string {
+  if (!params) return "";
+  const searchParams = new URLSearchParams();
+  Object.entries(params).forEach(([key, value]) => {
+    if (value) {
+      searchParams.set(key, value);
+    }
+  });
+  const query = searchParams.toString();
+  return query ? `?${query}` : "";
+}
+
 function validate<T>(raw: unknown, schema: { parse: (d: unknown) => T }, endpoint: string): T {
   try {
     const payload =
@@ -120,13 +137,15 @@ export const validatedApi = {
   },
 
   dashboard: {
-    stats: async (): Promise<DashboardStatsSchema> => {
-      const data = await httpClient.get<unknown>("/dashboard/stats");
-      return validate(data, dashboardStatsSchema, "/dashboard/stats");
+    stats: async (params?: DashboardQueryParams): Promise<DashboardStatsSchema> => {
+      const endpoint = `/dashboard/stats${buildQuery(params)}`;
+      const data = await httpClient.get<unknown>(endpoint);
+      return validate(data, dashboardStatsSchema, endpoint);
     },
-    trends: async (): Promise<DashboardTrendsSchema> => {
-      const data = await httpClient.get<unknown>("/dashboard/trends");
-      return validate(data, dashboardTrendsSchema, "/dashboard/trends");
+    trends: async (params?: DashboardQueryParams): Promise<DashboardTrendsSchema> => {
+      const endpoint = `/dashboard/trends${buildQuery(params)}`;
+      const data = await httpClient.get<unknown>(endpoint);
+      return validate(data, dashboardTrendsSchema, endpoint);
     },
   },
 

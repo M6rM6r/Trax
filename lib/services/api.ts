@@ -16,6 +16,11 @@ import { logger } from "@/lib/config/logger";
 
 type ApiResponse<T> = Promise<{ data: T; success: boolean }>;
 
+interface DashboardQueryParams {
+  from?: string;
+  to?: string;
+}
+
 function simulateLatency<T>(data: T, delay = 200): ApiResponse<T> {
   return new Promise((resolve) => {
     setTimeout(() => {
@@ -23,6 +28,69 @@ function simulateLatency<T>(data: T, delay = 200): ApiResponse<T> {
       resolve({ data, success: true });
     }, delay);
   });
+}
+
+function filterAttendanceByDateRange(records: AttendanceRecord[], params?: DashboardQueryParams) {
+  if (!params?.from && !params?.to) {
+    return records;
+  }
+
+  const fromMs = params.from ? new Date(`${params.from}T00:00:00`).getTime() : -Infinity;
+  const toMs = params.to ? new Date(`${params.to}T00:00:00`).getTime() : Infinity;
+
+  return records.filter((record) => {
+    const ms = new Date(`${record.date}T00:00:00`).getTime();
+    return Number.isFinite(ms) && ms >= fromMs && ms <= toMs;
+  });
+}
+
+function averageCheckInTime(records: AttendanceRecord[]): string {
+  const values = records
+    .map((r) => r.checkInTime)
+    .filter((v): v is string => typeof v === "string" && /^\d{2}:\d{2}$/.test(v))
+    .map((v) => {
+      const [h, m] = v.split(":").map(Number);
+      return h * 60 + m;
+    });
+
+  if (values.length === 0) return "N/A";
+
+  const avg = Math.round(values.reduce((acc, n) => acc + n, 0) / values.length);
+  const h = String(Math.floor(avg / 60)).padStart(2, "0");
+  const m = String(avg % 60).padStart(2, "0");
+  return `${h}:${m}`;
+}
+
+function buildDashboardStats(params?: DashboardQueryParams): DashboardStats {
+  const scoped = filterAttendanceByDateRange(mockAttendance, params);
+  const presentToday = scoped.filter((r) => r.status === "present").length;
+  const lateToday = scoped.filter((r) => r.status === "late").length;
+  const absentToday = scoped.filter((r) => r.status === "absent").length;
+  const checkedOutToday = scoped.filter((r) => r.status === "checked_out").length;
+
+  const punctualBase = presentToday + lateToday;
+  const onTimeRate =
+    punctualBase > 0 ? Number(((presentToday / punctualBase) * 100).toFixed(1)) : 0;
+
+  const worked = scoped.map((r) => r.workedHours).filter((h) => Number.isFinite(h) && h > 0);
+  const avgWorkedHours =
+    worked.length > 0
+      ? Number((worked.reduce((sum, h) => sum + h, 0) / worked.length).toFixed(1))
+      : 0;
+
+  return {
+    totalEmployees: mockEmployees.length,
+    activeEmployees: mockEmployees.filter((e) => e.status === "active").length,
+    inactiveEmployees: mockEmployees.filter((e) => e.status === "inactive").length,
+    presentToday,
+    absentToday,
+    lateToday,
+    checkedOutToday,
+    onTimeRate,
+    avgCheckInTime: averageCheckInTime(scoped),
+    avgWorkedHours,
+    totalGeofences: mockGeofences.length,
+  };
 }
 
 export const api = {
@@ -109,7 +177,8 @@ export const api = {
   },
 
   dashboard: {
-    stats: (): ApiResponse<DashboardStats> => simulateLatency(mockDashboardStats),
+    stats: (params?: DashboardQueryParams): ApiResponse<DashboardStats> =>
+      simulateLatency(buildDashboardStats(params)),
   },
 
   tracking: {

@@ -18,6 +18,12 @@ class UpdateEmployeeRequest extends FormRequest
         return [
             'name' => ['sometimes', 'string', 'min:2', 'max:255'],
             'email' => ['sometimes', 'email', 'unique:employees,email,' . $employeeId],
+            'employeeNumber' => [
+                'sometimes',
+                'nullable',
+                'string',
+                'max:100',
+            ],
             'phone' => ['sometimes', 'string', 'max:20'],
             'role' => ['sometimes', 'in:manager,employee,supervisor'],
             'department' => ['sometimes', 'string', 'max:255'],

@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useMemo, useState, useEffect, type ComponentType } from "react";
+import { memo, useMemo, useState, useEffect, useRef, type ComponentType } from "react";
 import { Cell } from "recharts";
 import { Card, CardHeader, CardContent, CardTitle } from "@/components/ui/card";
 import {
@@ -24,7 +24,9 @@ import {
   useEmployees,
   useDashboardTrends,
   useGeofences,
+  queryKeys,
 } from "@/hooks/useApi";
+import { useQueryClient } from "@tanstack/react-query";
 import { LoadingSkeleton, ErrorState } from "@/components/shared/StateViews";
 import { DataTable } from "@/components/shared/DataTable/DataTable";
 import type { DashboardStats, AttendanceRecord } from "@/lib/types/trackingTypes";
@@ -466,17 +468,20 @@ function saveCardOrder(order: string[]) {
 export default function DashboardPage() {
   const locale = useLocale();
   const { user, companyName } = useAuthStore();
-  const { data: stats, isLoading, isError, refetch } = useDashboardStats();
+  const queryClient = useQueryClient();
+  const [dateRange, setDateRange] = useState<DateRange>(getDefaultDateRange());
+  const { data: stats, isLoading, isError, refetch } = useDashboardStats(dateRange);
   const { data: attendanceData } = useAttendance();
   const { data: employees = [] } = useEmployees();
 
-  const { data: trends } = useDashboardTrends();
+  const { data: trends } = useDashboardTrends(dateRange);
   const { data: geofences = [] } = useGeofences();
   const [lastUpdated, setLastUpdated] = useState<string>("");
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [dateRange, setDateRange] = useState<DateRange>(getDefaultDateRange());
   const [cardOrder, setCardOrder] = useState<string[]>(DEFAULT_CARD_IDS);
   const [realtimePulse, setRealtimePulse] = useState(false);
+  const lastRealtimeToastAtRef = useRef(0);
+  const realtimePulseTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     setCardOrder(loadCardOrder());
@@ -504,8 +509,20 @@ export default function DashboardPage() {
 
         socket.on("attendance:update", () => {
           setRealtimePulse(true);
-          setTimeout(() => setRealtimePulse(false), 2000);
-          refetch();
+          if (realtimePulseTimeoutRef.current) {
+            clearTimeout(realtimePulseTimeoutRef.current);
+          }
+          realtimePulseTimeoutRef.current = setTimeout(() => setRealtimePulse(false), 2000);
+
+          queryClient.invalidateQueries({ queryKey: queryKeys.dashboard });
+          queryClient.invalidateQueries({ queryKey: queryKeys.dashboardTrends });
+          queryClient.invalidateQueries({ queryKey: queryKeys.attendance });
+
+          const now = Date.now();
+          if (now - lastRealtimeToastAtRef.current > 10000) {
+            toastSuccess("تم تحديث بيانات الحضور");
+            lastRealtimeToastAtRef.current = now;
+          }
         });
       } catch {}
     }
@@ -513,13 +530,23 @@ export default function DashboardPage() {
     initSocket();
     return () => {
       socket?.disconnect();
+      if (realtimePulseTimeoutRef.current) {
+        clearTimeout(realtimePulseTimeoutRef.current);
+      }
     };
-  }, [refetch]);
+  }, [queryClient]);
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
-    await refetch();
-    setIsRefreshing(false);
+    try {
+      await Promise.all([
+        refetch(),
+        queryClient.invalidateQueries({ queryKey: queryKeys.dashboardTrends }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.attendance }),
+      ]);
+    } finally {
+      setIsRefreshing(false);
+    }
   };
 
   const handleResetLayout = () => {
@@ -665,7 +692,29 @@ export default function DashboardPage() {
     [safeStats]
   );
 
-  const recentAttendance = useMemo(() => (attendanceData ?? []).slice(0, 5), [attendanceData]);
+  const recentAttendance = useMemo(() => {
+    const rows = attendanceData ?? [];
+    const from = dateRange.from;
+    const to = dateRange.to;
+
+    if (!from && !to) {
+      return rows.slice(0, 5);
+    }
+
+    const fromMs = from
+      ? new Date(from.getFullYear(), from.getMonth(), from.getDate()).getTime()
+      : -Infinity;
+    const toMs = to ? new Date(to.getFullYear(), to.getMonth(), to.getDate()).getTime() : Infinity;
+
+    return rows
+      .filter((r) => {
+        const date = new Date(`${r.date}T00:00:00`);
+        if (Number.isNaN(date.getTime())) return false;
+        const value = date.getTime();
+        return value >= fromMs && value <= toMs;
+      })
+      .slice(0, 5);
+  }, [attendanceData, dateRange]);
 
   return (
     <MainLayout>

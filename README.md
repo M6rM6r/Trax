@@ -10,6 +10,7 @@ Trax is a real-time employee tracking and attendance management system built wit
 | ---------- | ---------------------------- |
 | Framework  | Next.js 14 (App Router)      |
 | Language   | TypeScript (strict)          |
+| AI Service | FastAPI (Python)             |
 | Styling    | TailwindCSS + Radix UI       |
 | State      | Zustand                      |
 | Maps       | OpenLayers                   |
@@ -36,6 +37,9 @@ npm run dev
 # Run tests
 npm test
 
+# Run AI service locally
+cd services/ai && pip install -r requirements.txt && uvicorn app.main:app --reload --port 8001
+
 # Type check
 npm run type-check
 
@@ -51,7 +55,7 @@ npm run build
 
 ## Project Structure
 
-```
+```text
 Trax/
 ├── app/
 │   └── [locale]/
@@ -88,27 +92,43 @@ Trax/
 - **Geofences** — Work location management with configurable radius
 - **Check-in** — Browser geolocation-based sign-in with distance validation
 - **Role-based Auth** — Boss (full access) vs Employee (check-in only)
+- **Retention Intelligence** — AI score + recommendations to reduce churn risk
+
+## Firebase-First Configuration
+
+The current media/storage path is Firebase-based. Configure these variables in `.env.local` (and in CI/CD secrets for production environments):
+
+- `NEXT_PUBLIC_FIREBASE_API_KEY`
+- `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN`
+- `NEXT_PUBLIC_FIREBASE_PROJECT_ID`
+- `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET`
+- `NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID`
+- `NEXT_PUBLIC_FIREBASE_APP_ID`
+- `NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID`
+
+If Firebase variables are not set, upload/delete actions are intentionally disabled with explicit runtime errors.
 
 ## Mock Credentials
 
-| Role     | Email             | Password |
-| -------- | ----------------- | -------- |
-| Boss     | boss@trax.com     | 12345678 |
-| Employee | employee@trax.com | 12345678 |
+| Role     | Email                                         | Password |
+| -------- | --------------------------------------------- | -------- |
+| Boss     | [boss@trax.com](mailto:boss@trax.com)         | 12345678 |
+| Employee | [employee@trax.com](mailto:employee@trax.com) | 12345678 |
 
 ## Scripts
 
-| Command                 | Description              |
-| ----------------------- | ------------------------ |
-| `npm run dev`           | Start dev server         |
-| `npm run build`         | Production build         |
-| `npm run lint`          | Run ESLint               |
-| `npm run lint:fix`      | Auto-fix lint issues     |
-| `npm run format`        | Format with Prettier     |
-| `npm run type-check`    | TypeScript type checking |
-| `npm test`              | Run Jest tests           |
-| `npm run test:watch`    | Watch mode tests         |
-| `npm run test:coverage` | Coverage report          |
+| Command                 | Description                      |
+| ----------------------- | -------------------------------- |
+| `npm run dev`           | Start dev server                 |
+| `npm run build`         | Production build                 |
+| `npm run lint`          | Run ESLint                       |
+| `npm run lint:fix`      | Auto-fix lint issues             |
+| `npm run format`        | Format with Prettier             |
+| `npm run type-check`    | TypeScript type checking         |
+| `npm test`              | Run Jest tests                   |
+| `npm run test:watch`    | Watch mode tests                 |
+| `npm run test:coverage` | Coverage report                  |
+| `npm run quality:all`   | Frontend + API + AI quality gate |
 
 ## License
 

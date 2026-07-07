@@ -99,6 +99,7 @@ export default function SettingsPage() {
   const [language, setLanguage] = useState("ar");
   const [timezone, setTimezone] = useState("Asia/Riyadh");
   const [dateFormat, setDateFormat] = useState("gregorian");
+  const [attendanceMode, setAttendanceMode] = useState<"manual" | "auto_optional">("manual");
 
   // Notification states
   const [attendanceAlerts, setAttendanceAlerts] = useState(true);
@@ -123,6 +124,7 @@ export default function SettingsPage() {
       setLanguage(parsed.language || "ar");
       setTimezone(parsed.timezone || "Asia/Riyadh");
       setDateFormat(parsed.dateFormat || "gregorian");
+      setAttendanceMode(parsed.attendanceMode || "manual");
       setTheme(tm);
       if (accentColorMap[ac])
         document.documentElement.style.setProperty("--accent-rgb", accentColorMap[ac]);
@@ -411,6 +413,33 @@ export default function SettingsPage() {
                     >
                       <option value="gregorian">ميلادي</option>
                       <option value="hijri">هجري</option>
+                    </select>
+                  </div>
+                  <div className="flex items-center justify-between p-4 rounded-xl bg-gray-50 dark:bg-slate-700/50">
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-lg bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
+                        <UserCheck className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-gray-900 dark:text-slate-100">
+                          وضع تسجيل الحضور
+                        </p>
+                        <p className="text-xs text-gray-500 dark:text-slate-400">
+                          يدوي أو تلقائي (اختياري)
+                        </p>
+                      </div>
+                    </div>
+                    <select
+                      value={attendanceMode}
+                      onChange={(e) => {
+                        const value = e.target.value as "manual" | "auto_optional";
+                        setAttendanceMode(value);
+                        saveSettings("attendanceMode", value);
+                      }}
+                      className="px-3 py-2 rounded-lg border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-900 text-sm text-gray-900 dark:text-slate-100"
+                    >
+                      <option value="manual">يدوي فقط</option>
+                      <option value="auto_optional">تلقائي + يدوي</option>
                     </select>
                   </div>
                 </CardContent>

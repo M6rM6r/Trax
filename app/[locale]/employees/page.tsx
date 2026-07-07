@@ -17,7 +17,6 @@ import {
   Eye,
   X,
   Check,
-  KeyRound,
   LayoutGrid,
   LayoutList,
   Search,
@@ -40,6 +39,13 @@ import { Link } from "@/i18n/navigation";
 import { useLocale } from "next-intl";
 import { motion, AnimatePresence } from "framer-motion";
 import type { Employee, EmployeeRole } from "@/lib/types/trackingTypes";
+import { useAuthStore } from "@/stores/useAuthStore";
+import AccessDeniedCard from "@/components/shared/AccessDeniedCard";
+import {
+  buildStaffCredentialsEmail,
+  buildStaffCredentialsMessage,
+  generateStaffUsername,
+} from "@/lib/utils/staffOnboarding";
 
 const roleLabels: Record<string, string> = {
   manager: "مدير",
@@ -54,6 +60,7 @@ export default function EmployeesPage() {
   const deleteEmployee = useDeleteEmployee();
   const updateEmployee = useUpdateEmployee();
   const locale = useLocale();
+  const { role } = useAuthStore();
   const [viewMode, setViewMode] = useState<"table" | "grid">("table");
   const [showAddForm, setShowAddForm] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<Employee | null>(null);
@@ -73,15 +80,13 @@ export default function EmployeesPage() {
   const [editAvatarPreview, setEditAvatarPreview] = useState<string | null>(null);
   const [createdCredentials, setCreatedCredentials] = useState<{
     email: string;
-    password: string;
-  } | null>(null);
-  const [viewingCredentials, setViewingCredentials] = useState<{
-    email: string;
+    username: string;
     password: string;
   } | null>(null);
   const [newEmployee, setNewEmployee] = useState({
     name: "",
     email: "",
+    employeeNumber: "",
     phone: "",
     department: "",
     role: "employee" as EmployeeRole,
@@ -91,26 +96,18 @@ export default function EmployeesPage() {
   const [editEmployee, setEditEmployee] = useState({
     name: "",
     email: "",
+    employeeNumber: "",
     phone: "",
     department: "",
     role: "employee" as EmployeeRole,
     geofenceId: 1,
   });
 
-  const openCredentials = (email: string) => {
-    const stored = JSON.parse(localStorage.getItem("trax_emp_creds") || "{}");
-    const pwd = stored[email];
-    if (pwd) {
-      setViewingCredentials({ email, password: pwd });
-    } else {
-      toastError("كلمة المرور غير محفوظة لهذا الموظف");
-    }
-  };
-
   const resetNewEmployee = () => {
     setNewEmployee({
       name: "",
       email: "",
+      employeeNumber: "",
       phone: "",
       department: "",
       role: "employee",
@@ -137,15 +134,16 @@ export default function EmployeesPage() {
       return;
     }
     const email = newEmployee.email;
+    const username = generateStaffUsername({
+      employeeNumber: newEmployee.employeeNumber,
+      email: newEmployee.email,
+      name: newEmployee.name,
+    });
     const password = newEmployee.password;
-    const saveCredentials = (e: string, p: string) => {
-      const stored = JSON.parse(localStorage.getItem("trax_emp_creds") || "{}");
-      stored[e] = p;
-      localStorage.setItem("trax_emp_creds", JSON.stringify(stored));
-    };
     createEmployee.mutate(
       {
         ...newEmployee,
+        employeeNumber: username,
         avatar: avatarPreview,
         status: "active",
         currentLat: null,
@@ -154,9 +152,8 @@ export default function EmployeesPage() {
       },
       {
         onSuccess: () => {
-          saveCredentials(email, password);
           resetNewEmployee();
-          setCreatedCredentials({ email, password });
+          setCreatedCredentials({ email, username, password });
         },
         onError: () => {
           toastError("حدث خطأ أثناء إضافة الموظف");
@@ -171,6 +168,7 @@ export default function EmployeesPage() {
     setEditEmployee({
       name: emp.name,
       email: emp.email,
+      employeeNumber: emp.employeeNumber ?? "",
       phone: emp.phone,
       department: emp.department,
       role: emp.role,
@@ -182,7 +180,14 @@ export default function EmployeesPage() {
   const handleUpdate = () => {
     if (!editTarget) return;
     updateEmployee.mutate(
-      { id: editTarget.id, data: { ...editEmployee, avatar: editAvatarPreview } },
+      {
+        id: editTarget.id,
+        data: {
+          ...editEmployee,
+          employeeNumber: generateStaffUsername({ employeeNumber: editEmployee.employeeNumber }),
+          avatar: editAvatarPreview,
+        },
+      },
       {
         onSuccess: () => {
           toastSuccess("تم تحديث بيانات الموظف بنجاح");
@@ -305,6 +310,20 @@ export default function EmployeesPage() {
   const activeCount = employees.filter((e) => e.status === "active").length;
   const inactiveCount = employees.filter((e) => e.status !== "active").length;
 
+  if (role === "employee") {
+    return (
+      <MainLayout>
+        <div className="p-6 min-h-screen">
+          <AccessDeniedCard
+            icon={Users}
+            message="صفحة إدارة الموظفين متاحة لمدير الشركة فقط."
+            ctaHref={`/${locale}/check-in`}
+          />
+        </div>
+      </MainLayout>
+    );
+  }
+
   return (
     <MainLayout>
       <div className="p-6 space-y-6 min-h-screen">
@@ -395,6 +414,20 @@ export default function EmployeesPage() {
                   onChange={(e) => setNewEmployee({ ...newEmployee, email: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-transparent dark:bg-slate-900 text-gray-900 dark:text-slate-100"
                   placeholder="email@trax.com"
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-700 dark:text-slate-300 mb-1 block">
+                  اسم المستخدم
+                </label>
+                <input
+                  type="text"
+                  value={newEmployee.employeeNumber}
+                  onChange={(e) =>
+                    setNewEmployee({ ...newEmployee, employeeNumber: e.target.value.trim() })
+                  }
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-transparent dark:bg-slate-900 text-gray-900 dark:text-slate-100"
+                  placeholder="اختياري - سيتم توليده تلقائيًا"
                 />
               </div>
               <div>
@@ -501,60 +534,63 @@ export default function EmployeesPage() {
                   </p>
                 </div>
                 <div>
+                  <p className="text-xs text-gray-500 dark:text-slate-400 mb-1">اسم المستخدم</p>
+                  <p className="font-mono text-sm font-semibold text-gray-900 dark:text-slate-100 select-all">
+                    {createdCredentials.username}
+                  </p>
+                </div>
+                <div>
                   <p className="text-xs text-gray-500 dark:text-slate-400 mb-1">كلمة المرور</p>
                   <p className="font-mono text-sm font-semibold text-gray-900 dark:text-slate-100 select-all">
                     {createdCredentials.password}
                   </p>
                 </div>
               </div>
+              <div className="grid grid-cols-2 gap-2 mb-4">
+                <button
+                  type="button"
+                  onClick={async () => {
+                    const message = buildStaffCredentialsMessage({
+                      email: createdCredentials.email,
+                      username: createdCredentials.username,
+                      password: createdCredentials.password,
+                    });
+                    try {
+                      await navigator.clipboard.writeText(message);
+                      toastSuccess("تم نسخ بيانات الدخول");
+                    } catch {
+                      toastError("تعذر النسخ التلقائي. انسخ البيانات يدويًا.");
+                    }
+                  }}
+                  aria-label="نسخ بيانات الدخول"
+                  className="py-2 px-3 rounded-xl border border-gray-200 dark:border-slate-600 text-sm font-medium text-gray-700 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors"
+                >
+                  نسخ البيانات
+                </button>
+                <a
+                  href={`mailto:${createdCredentials.email}?subject=${encodeURIComponent(
+                    buildStaffCredentialsEmail({
+                      email: createdCredentials.email,
+                      username: createdCredentials.username,
+                      password: createdCredentials.password,
+                    }).subject
+                  )}&body=${encodeURIComponent(
+                    buildStaffCredentialsEmail({
+                      email: createdCredentials.email,
+                      username: createdCredentials.username,
+                      password: createdCredentials.password,
+                    }).body
+                  )}`}
+                  className="py-2 px-3 rounded-xl border border-blue-200 dark:border-blue-700 text-sm font-medium text-blue-700 dark:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors text-center"
+                >
+                  مشاركة عبر البريد
+                </a>
+              </div>
               <button
                 onClick={() => setCreatedCredentials(null)}
                 className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-medium transition-colors"
               >
                 فهمت
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* View credentials dialog */}
-        {viewingCredentials && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 max-w-sm w-full shadow-2xl">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
-                  <KeyRound className="w-5 h-5 text-blue-600" />
-                </div>
-                <div>
-                  <h3 className="font-bold text-gray-900 dark:text-slate-100">
-                    بيانات تسجيل الدخول
-                  </h3>
-                  <p className="text-xs text-gray-500 dark:text-slate-400">
-                    يمكن للموظف استخدامها للدخول إلى التطبيق
-                  </p>
-                </div>
-              </div>
-              <div className="bg-gray-50 dark:bg-slate-900 rounded-xl p-4 space-y-3 mb-4">
-                <div>
-                  <p className="text-xs text-gray-500 dark:text-slate-400 mb-1">
-                    البريد الإلكتروني
-                  </p>
-                  <p className="font-mono text-sm font-semibold text-gray-900 dark:text-slate-100 select-all">
-                    {viewingCredentials.email}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs text-gray-500 dark:text-slate-400 mb-1">كلمة المرور</p>
-                  <p className="font-mono text-sm font-semibold text-gray-900 dark:text-slate-100 select-all">
-                    {viewingCredentials.password}
-                  </p>
-                </div>
-              </div>
-              <button
-                onClick={() => setViewingCredentials(null)}
-                className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-medium transition-colors"
-              >
-                إغلاق
               </button>
             </div>
           </div>
@@ -760,15 +796,6 @@ export default function EmployeesPage() {
                         </button>
                         <div className="w-px h-5 bg-gray-100 dark:bg-slate-700" />
                         <button
-                          onClick={() => openCredentials(emp.email)}
-                          className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg text-xs font-medium text-gray-600 dark:text-slate-400 hover:bg-yellow-50 hover:text-yellow-600 dark:hover:bg-yellow-900/20 dark:hover:text-yellow-400 transition-colors"
-                          title="بيانات تسجيل الدخول"
-                        >
-                          <KeyRound className="w-3.5 h-3.5" />
-                          دخول
-                        </button>
-                        <div className="w-px h-5 bg-gray-100 dark:bg-slate-700" />
-                        <button
                           onClick={() => handleDelete(emp)}
                           className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg text-xs font-medium text-gray-600 dark:text-slate-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20 dark:hover:text-red-400 transition-colors"
                           title="حذف"
@@ -920,14 +947,6 @@ export default function EmployeesPage() {
                         <Edit className="w-4 h-4" aria-hidden />
                       </button>
                       <button
-                        onClick={() => openCredentials(emp.email)}
-                        className="p-1.5 rounded-lg hover:bg-yellow-50 text-yellow-600 dark:hover:bg-yellow-900/20"
-                        title="بيانات تسجيل الدخول"
-                        aria-label="بيانات الدخول"
-                      >
-                        <KeyRound className="w-4 h-4" aria-hidden />
-                      </button>
-                      <button
                         onClick={() => handleDelete(emp)}
                         className="p-1.5 rounded-lg hover:bg-red-50 text-red-600 dark:hover:bg-red-900/20"
                         title="حذف"
@@ -1023,6 +1042,12 @@ export default function EmployeesPage() {
                 key: "email",
                 type: "email",
                 placeholder: "email@trax.com",
+              },
+              {
+                label: "اسم المستخدم",
+                key: "employeeNumber",
+                type: "text",
+                placeholder: "اسم المستخدم",
               },
               { label: "الهاتف", key: "phone", type: "tel", placeholder: "+966..." },
               { label: "القسم", key: "department", type: "text", placeholder: "القسم" },
