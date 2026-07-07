@@ -194,6 +194,10 @@ export default function RegisterPage() {
           const errors = (err.context as { errors?: Record<string, string[]> })?.errors;
           const firstError = errors ? Object.values(errors).flat()[0] : null;
           toastError(firstError || "البريد الإلكتروني مستخدم بالفعل. جرّب بريداً آخر.");
+        } else if (err.statusCode === 500) {
+          toastError(
+            "الخادم أو قاعدة البيانات غير متاحة حالياً. تأكد من تشغيل API و MySQL ثم أعد المحاولة."
+          );
         } else if (err.statusCode === 0) {
           toastError("تعذّر الاتصال بالخادم. تأكّد من اتصالك بالإنترنت.");
         } else {
