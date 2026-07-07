@@ -82,9 +82,10 @@ export interface RetentionInsightResponse {
   confidence: number;
 }
 
-export function useEmployees() {
+export function useEmployees(options?: { enabled?: boolean }) {
   return useQuery<Employee[]>({
     queryKey: queryKeys.employees,
+    enabled: options?.enabled ?? true,
     queryFn: async (): Promise<Employee[]> => {
       if (useMock) {
         const res = await api.employees.list();

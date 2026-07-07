@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import loginBG from "@/public/images/loginBg.png";
 import { Form, Formik, FormikHelpers } from "formik";
-import Image from "next/image";
 import { MapPin, Eye, EyeOff, Building2 } from "lucide-react";
 import { setCookie } from "cookies-next";
 import * as Yup from "yup";
@@ -120,13 +119,9 @@ const Page = () => {
 
   return (
     <section className="w-screen h-screen flex items-center justify-center relative bg-primaryColor dark:bg-slate-950">
-      <Image
-        src={loginBG}
-        alt="loginBG"
-        fill
-        className="object-center object-cover z-0 dark:opacity-30"
-        priority
-        quality={85}
+      <div
+        className="absolute inset-0 z-0 bg-center bg-cover dark:opacity-30"
+        style={{ backgroundImage: `url(${loginBG.src})` }}
       />
       <div className="absolute left-1/2 -translate-x-1/2 top-6 z-20 flex items-center gap-2">
         <MapPin className="w-8 h-8 text-white" />

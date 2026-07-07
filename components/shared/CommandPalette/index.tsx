@@ -40,8 +40,8 @@ export function CommandPalette() {
   const router = useRouter();
   const locale = useLocale();
   const { theme, setTheme } = useTheme();
-  const { clearUser } = useAuthStore();
-  const { data: employees = [] } = useEmployees();
+  const { clearUser, token } = useAuthStore();
+  const { data: employees = [] } = useEmployees({ enabled: open && !!token });
 
   const toggleTheme = useCallback(() => {
     setTheme(theme === "dark" ? "light" : "dark");
