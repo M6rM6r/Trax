@@ -8,6 +8,8 @@ runConfig:
 env:
   - variable: NEXT_PUBLIC_USE_MOCK
     value: "false"
+  - variable: NEXT_PUBLIC_API_URL
+    value: "https://api.trax.app/api"
   - variable: NEXT_PUBLIC_DEFAULT_LOCALE
     value: "ar"
   - variable: NEXT_PUBLIC_FIREBASE_PROJECT_ID
