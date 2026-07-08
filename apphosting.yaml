@@ -9,7 +9,7 @@ env:
   - variable: NEXT_PUBLIC_USE_MOCK
     value: "false"
   - variable: NEXT_PUBLIC_API_URL
-    value: "https://api.trax.app/api"
+    value: "https://trax-api-651185247129.asia-southeast1.run.app/api"
   - variable: NEXT_PUBLIC_APP_URL
     value: "https://naf--trax-ae.asia-southeast1.hosted.app"
   - variable: NEXT_PUBLIC_DEFAULT_LOCALE

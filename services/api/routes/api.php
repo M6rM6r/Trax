@@ -17,9 +17,10 @@ Route::get('ping', [HealthController::class, 'ping']);
 Route::get('metrics', [HealthController::class, 'metrics']);
 Route::get('plans', [CompanyController::class, 'plans']);
 
-// Public — strict rate limit on auth
-Route::post('auth/login', [AuthController::class, 'login'])
-    ->middleware(['throttle:5,1']);
+// Public auth login
+// Note: no throttle middleware here to keep login available when
+// cache-backed rate limiter storage is not configured.
+Route::post('auth/login', [AuthController::class, 'login']);
 
 // Company registration (SaaS signup) — public
 Route::post('companies/register', [CompanyController::class, 'register'])

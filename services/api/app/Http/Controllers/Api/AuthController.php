@@ -44,50 +44,73 @@ class AuthController extends Controller
             ], 422);
         }
 
-        $user = User::where('email', $identifier)
-            ->orWhere('username', $identifier)
-            ->first();
+        try {
+            $user = User::where('email', $identifier)
+                ->orWhere('username', $identifier)
+                ->first();
 
-        if (!$user || !Hash::check((string) $request->input('password'), (string) $user->password)) {
+            if (!$user || !Hash::check((string) $request->input('password'), (string) $user->password)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Invalid credentials',
+                ], 401);
+            }
+
+            $token = JWTAuth::fromUser($user);
+
+            $linkedEmployee = null;
+            try {
+                $linkedEmployee = Employee::where('company_id', $user->company_id)
+                    ->where(function ($q) use ($user) {
+                        $q->where('email', $user->email);
+                        if (!empty($user->username)) {
+                            $q->orWhere('employee_number', $user->username);
+                        }
+                    })
+                    ->first();
+            } catch (\Throwable) {
+                $linkedEmployee = null;
+            }
+
+            $companyPayload = null;
+            try {
+                if ($user->company) {
+                    $companyPayload = [
+                        'id'   => $user->company->id,
+                        'name' => $user->company->name,
+                        'plan' => $user->company->plan,
+                    ];
+                }
+            } catch (\Throwable) {
+                $companyPayload = null;
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Login successful',
+                'data' => [
+                    'token'      => $token,
+                    'user'       => [
+                        'id'         => $user->id,
+                        'name'       => $user->name,
+                        'email'      => $user->email,
+                        'username'   => $user->username,
+                        'role'       => $user->role,
+                        'company_id' => $user->company_id,
+                        'employee_id' => $linkedEmployee?->id,
+                        'assigned_geofence_id' => $linkedEmployee?->geofence_id,
+                    ],
+                    'company'    => $companyPayload,
+                    'expires_in' => JWTAuth::factory()->getTTL() * 60,
+                ],
+            ]);
+        } catch (\Throwable $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Invalid credentials',
-            ], 401);
+                'message' => 'Login failed',
+                'error' => config('app.debug') ? $e->getMessage() : 'Server error',
+            ], 500);
         }
-
-        $token = JWTAuth::fromUser($user);
-        $linkedEmployee = Employee::where('company_id', $user->company_id)
-            ->where(function ($q) use ($user) {
-                $q->where('email', $user->email);
-                if (!empty($user->username)) {
-                    $q->orWhere('employee_number', $user->username);
-                }
-            })
-            ->first();
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Login successful',
-            'data' => [
-                'token'      => $token,
-                'user'       => [
-                    'id'         => $user->id,
-                    'name'       => $user->name,
-                    'email'      => $user->email,
-                    'username'   => $user->username,
-                    'role'       => $user->role,
-                    'company_id' => $user->company_id,
-                    'employee_id' => $linkedEmployee?->id,
-                    'assigned_geofence_id' => $linkedEmployee?->geofence_id,
-                ],
-                'company'    => $user->company ? [
-                    'id'   => $user->company->id,
-                    'name' => $user->company->name,
-                    'plan' => $user->company->plan,
-                ] : null,
-                'expires_in' => JWTAuth::factory()->getTTL() * 60,
-            ],
-        ]);
     }
 
     public function logout()
@@ -103,14 +126,19 @@ class AuthController extends Controller
     public function me()
     {
         $user = Auth::guard('api')->user();
-        $linkedEmployee = Employee::where('company_id', $user->company_id)
-            ->where(function ($q) use ($user) {
-                $q->where('email', $user->email);
-                if (!empty($user->username)) {
-                    $q->orWhere('employee_number', $user->username);
-                }
-            })
-            ->first();
+        $linkedEmployee = null;
+        try {
+            $linkedEmployee = Employee::where('company_id', $user->company_id)
+                ->where(function ($q) use ($user) {
+                    $q->where('email', $user->email);
+                    if (!empty($user->username)) {
+                        $q->orWhere('employee_number', $user->username);
+                    }
+                })
+                ->first();
+        } catch (\Throwable) {
+            $linkedEmployee = null;
+        }
 
         return response()->json([
             'success' => true,
