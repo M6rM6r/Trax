@@ -109,7 +109,16 @@ export default function UserAvatar({
           <span className="text-sm font-medium text-gray-900 dark:text-slate-100">
             {user?.name ?? "User"}
           </span>
-          {user?.email && <span className="text-xs text-muted-foreground">{user.email}</span>}
+          {user?.email && (
+            <span
+              dir="ltr"
+              lang="en"
+              style={{ unicodeBidi: "plaintext" }}
+              className="text-xs text-left text-muted-foreground"
+            >
+              {user.email}
+            </span>
+          )}
         </div>
       )}
     </div>

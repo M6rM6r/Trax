@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect } from "react";
-import { useTheme } from "next-themes";
 
 const ACCENT_MAP: Record<string, string> = {
   blue: "59 130 246",
@@ -20,15 +19,15 @@ const FONT_SIZE_MAP: Record<string, string> = {
 };
 
 export default function SettingsApplier() {
-  const { setTheme } = useTheme();
-
   useEffect(() => {
     try {
+      document.documentElement.classList.add("dark");
+      document.documentElement.classList.remove("light");
+      document.documentElement.style.colorScheme = "dark";
+
       const raw = localStorage.getItem("trax_settings");
       if (!raw) return;
       const s = JSON.parse(raw);
-
-      if (s.themeMode) setTheme(s.themeMode);
 
       if (s.accentColor && ACCENT_MAP[s.accentColor]) {
         document.documentElement.style.setProperty("--accent-rgb", ACCENT_MAP[s.accentColor]);
@@ -44,7 +43,7 @@ export default function SettingsApplier() {
         document.documentElement.classList.remove("reduce-motion");
       }
     } catch {}
-  }, [setTheme]);
+  }, []);
 
   return null;
 }

@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use App\Models\User;
+use App\Models\Employee;
 use Tymon\JWTAuth\Facades\JWTAuth;
 
 class AuthController extends Controller
@@ -55,6 +56,14 @@ class AuthController extends Controller
         }
 
         $token = JWTAuth::fromUser($user);
+        $linkedEmployee = Employee::where('company_id', $user->company_id)
+            ->where(function ($q) use ($user) {
+                $q->where('email', $user->email);
+                if (!empty($user->username)) {
+                    $q->orWhere('employee_number', $user->username);
+                }
+            })
+            ->first();
 
         return response()->json([
             'success' => true,
@@ -68,6 +77,8 @@ class AuthController extends Controller
                     'username'   => $user->username,
                     'role'       => $user->role,
                     'company_id' => $user->company_id,
+                    'employee_id' => $linkedEmployee?->id,
+                    'assigned_geofence_id' => $linkedEmployee?->geofence_id,
                 ],
                 'company'    => $user->company ? [
                     'id'   => $user->company->id,
@@ -91,9 +102,28 @@ class AuthController extends Controller
 
     public function me()
     {
+        $user = Auth::guard('api')->user();
+        $linkedEmployee = Employee::where('company_id', $user->company_id)
+            ->where(function ($q) use ($user) {
+                $q->where('email', $user->email);
+                if (!empty($user->username)) {
+                    $q->orWhere('employee_number', $user->username);
+                }
+            })
+            ->first();
+
         return response()->json([
             'success' => true,
-            'data' => Auth::guard('api')->user(),
+            'data' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'username' => $user->username,
+                'role' => $user->role,
+                'company_id' => $user->company_id,
+                'employee_id' => $linkedEmployee?->id,
+                'assigned_geofence_id' => $linkedEmployee?->geofence_id,
+            ],
         ]);
     }
 

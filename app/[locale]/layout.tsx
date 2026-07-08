@@ -39,27 +39,35 @@ export default async function LocaleLayout({
   const messages = await getMessages();
 
   return (
-    <html lang={locale} dir={locale === "ar" ? "rtl" : "ltr"} suppressHydrationWarning>
-      <body className={`${cairo.className} relative`} suppressHydrationWarning>
-        <NextIntlClientProvider messages={messages}>
-          <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
-            <QueryProvider>
-              <ErrorBoundary>
-                <MonitoringProvider>
-                  <SettingsApplier />
-                  <PWARegistrar />
-                  <AppPreloader />
-                  <TopLoadingBar />
-                  {children}
-                  <CommandPalette />
-                  <OfflineIndicator />
-                  <Toaster />
-                </MonitoringProvider>
-              </ErrorBoundary>
-            </QueryProvider>
-          </ThemeProvider>
-        </NextIntlClientProvider>
-      </body>
-    </html>
+    <div
+      lang={locale}
+      dir={locale === "ar" ? "rtl" : "ltr"}
+      className={`${cairo.className} relative`}
+      suppressHydrationWarning
+    >
+      <NextIntlClientProvider messages={messages}>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="dark"
+          enableSystem={false}
+          forcedTheme="dark"
+        >
+          <QueryProvider>
+            <ErrorBoundary>
+              <MonitoringProvider>
+                <SettingsApplier />
+                <PWARegistrar />
+                <AppPreloader />
+                <TopLoadingBar />
+                {children}
+                <CommandPalette />
+                <OfflineIndicator />
+                <Toaster />
+              </MonitoringProvider>
+            </ErrorBoundary>
+          </QueryProvider>
+        </ThemeProvider>
+      </NextIntlClientProvider>
+    </div>
   );
 }

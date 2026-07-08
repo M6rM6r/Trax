@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use Tests\TestCase;
+use App\Models\Employee;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 class DashboardTrackingControllerTest extends TestCase
@@ -59,5 +60,28 @@ class DashboardTrackingControllerTest extends TestCase
         $response->assertStatus(200)
             ->assertJsonPath('data.totalEmployees', 5)
             ->assertJsonPath('data.totalGeofences', 3);
+    }
+
+    public function test_can_update_staff_location_heartbeat(): void
+    {
+        $token = $this->getAuthToken();
+        $employee = Employee::query()->firstOrFail();
+
+        $response = $this->withToken($token)->postJson('/api/tracking/location', [
+            'employee_id' => $employee->id,
+            'lat' => 26.2173,
+            'lng' => 50.2905,
+            'accuracy' => 15,
+            'timestamp' => now()->toIso8601String(),
+        ]);
+
+        $response->assertStatus(200)
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.employeeId', $employee->id);
+
+        $employee->refresh();
+        $this->assertEquals(26.2173, (float) $employee->current_lat);
+        $this->assertEquals(50.2905, (float) $employee->current_lng);
+        $this->assertNotNull($employee->last_seen);
     }
 }

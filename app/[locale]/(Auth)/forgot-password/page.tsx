@@ -91,6 +91,7 @@ export default function ForgotPasswordPage() {
                         type="email"
                         label="البريد الإلكتروني"
                         placeholder="example@company.com"
+                        className="text-left [direction:ltr] [unicode-bidi:plaintext]"
                       />
                       <Button
                         type="submit"
@@ -124,7 +125,12 @@ export default function ForgotPasswordPage() {
                 <p className="text-sm text-gray-500 dark:text-slate-400 mb-1">
                   تم إرسال رابط إعادة التعيين إلى
                 </p>
-                <p className="text-sm font-semibold text-blue-600 dark:text-blue-400 mb-6 break-all">
+                <p
+                  dir="ltr"
+                  lang="en"
+                  style={{ unicodeBidi: "plaintext" }}
+                  className="text-sm text-left font-semibold text-blue-600 dark:text-blue-400 mb-6 break-all"
+                >
                   {sentTo}
                 </p>
                 <p className="text-xs text-gray-400 dark:text-slate-500 mb-6">

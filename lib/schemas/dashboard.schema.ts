@@ -45,8 +45,8 @@ export const peakHourSchema = z.object({
 });
 
 export const dashboardTrendsSchema = z.object({
-  weeklyData: z.array(dashboardTrendDaySchema),
-  peakHoursData: z.array(peakHourSchema),
+  weeklyData: z.array(dashboardTrendDaySchema).default([]),
+  peakHoursData: z.array(peakHourSchema).default([]),
   employeeGrowth: z.coerce.number().default(0),
   presentChange: z.coerce.number().default(0),
   lateChange: z.coerce.number().default(0),

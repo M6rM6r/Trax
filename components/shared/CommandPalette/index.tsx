@@ -14,13 +14,10 @@ import {
   FileText,
   Shield,
   Bell,
-  Moon,
-  Sun,
   LogOut,
   Search,
   UserCircle,
 } from "lucide-react";
-import { useTheme } from "next-themes";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { deleteCookie } from "cookies-next";
 import { hapticTap } from "@/lib/utils/haptics";
@@ -39,13 +36,8 @@ export function CommandPalette() {
   const [open, setOpen] = useState(false);
   const router = useRouter();
   const locale = useLocale();
-  const { theme, setTheme } = useTheme();
   const { clearUser, token } = useAuthStore();
   const { data: employees = [] } = useEmployees({ enabled: open && !!token });
-
-  const toggleTheme = useCallback(() => {
-    setTheme(theme === "dark" ? "light" : "dark");
-  }, [theme, setTheme]);
 
   const handleLogout = useCallback(() => {
     deleteCookie("auth_token");
@@ -139,17 +131,6 @@ export function CommandPalette() {
       icon: Bell,
       action: () => navigate(`/${locale}/settings/notificationSettings`),
       group: "الإعدادات",
-    },
-    {
-      id: "toggle-theme",
-      label: theme === "dark" ? "الوضع النهاري" : "الوضع الليلي",
-      icon: theme === "dark" ? Sun : Moon,
-      action: () => {
-        hapticTap();
-        toggleTheme();
-        setOpen(false);
-      },
-      group: "إجراءات",
     },
     {
       id: "logout",

@@ -1,15 +1,20 @@
 import { z } from "zod";
 
+const optionalUrl = z.preprocess(
+  (value) => (typeof value === "string" && value.trim() === "" ? undefined : value),
+  z.string().url().optional()
+);
+
 const envSchema = z.object({
   NEXT_PUBLIC_APP_NAME: z.string().default("Trax"),
   NEXT_PUBLIC_APP_VERSION: z.string().default("0.1.0"),
   NEXT_PUBLIC_DEFAULT_LOCALE: z.string().default("ar"),
 
-  NEXT_PUBLIC_API_URL: z.string().url().optional(),
-  NEXT_PUBLIC_AI_URL: z.string().url().optional(),
-  NEXT_PUBLIC_PRODUCTION_API_URL: z.string().url().optional(),
-  NEXT_PUBLIC_BASE_URL: z.string().url().optional(),
-  NEXT_PUBLIC_WS_URL: z.string().url().optional(),
+  NEXT_PUBLIC_API_URL: optionalUrl,
+  NEXT_PUBLIC_AI_URL: optionalUrl,
+  NEXT_PUBLIC_PRODUCTION_API_URL: optionalUrl,
+  NEXT_PUBLIC_BASE_URL: optionalUrl,
+  NEXT_PUBLIC_WS_URL: optionalUrl,
   NEXT_PUBLIC_USE_MOCK: z.preprocess((v) => (v as string) === "true", z.boolean()).default(true),
 
   NEXT_PUBLIC_DEFAULT_MAP_LAT: z.coerce.number().default(24.7136),

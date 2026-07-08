@@ -84,11 +84,15 @@ export default function InactiveEmployeesPage() {
                   <div className="flex flex-col gap-1 text-xs text-gray-400 dark:text-slate-500">
                     <span className="flex items-center gap-1">
                       <Mail className="w-3 h-3" />
-                      {emp.email}
+                      <span dir="ltr" lang="en" style={{ unicodeBidi: "plaintext" }}>
+                        {emp.email}
+                      </span>
                     </span>
                     <span className="flex items-center gap-1">
                       <Phone className="w-3 h-3" />
-                      {emp.phone}
+                      <span dir="ltr" lang="en" style={{ unicodeBidi: "plaintext" }}>
+                        {emp.phone}
+                      </span>
                     </span>
                   </div>
                 ),

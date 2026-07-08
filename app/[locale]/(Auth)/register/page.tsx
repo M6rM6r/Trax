@@ -374,6 +374,7 @@ export default function RegisterPage() {
                         type="email"
                         label="البريد الإلكتروني"
                         placeholder="admin@company.com"
+                        className="text-left [direction:ltr] [unicode-bidi:plaintext]"
                       />
                       <div className="relative">
                         <CustomInput
@@ -521,7 +522,12 @@ export default function RegisterPage() {
                         </div>
                         <div className="flex items-center justify-between text-sm">
                           <span className="text-gray-500 dark:text-slate-400">المدير</span>
-                          <span className="font-medium text-gray-900 dark:text-slate-100">
+                          <span
+                            dir="ltr"
+                            lang="en"
+                            style={{ unicodeBidi: "plaintext" }}
+                            className="font-medium text-left text-gray-900 dark:text-slate-100"
+                          >
                             {props.values.admin_email || "—"}
                           </span>
                         </div>

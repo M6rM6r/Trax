@@ -14,8 +14,8 @@ class StoreGeofenceRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'name' => ['required', 'string', 'min:2', 'max:255'],
-            'address' => ['required', 'string', 'max:500'],
+            'name' => ['sometimes', 'nullable', 'string', 'min:2', 'max:255'],
+            'address' => ['sometimes', 'nullable', 'string', 'max:500'],
             'lat' => ['required', 'numeric', 'between:-90,90'],
             'lng' => ['required', 'numeric', 'between:-180,180'],
             'radius' => ['required', 'numeric', 'min:1', 'max:10000'],
@@ -24,11 +24,26 @@ class StoreGeofenceRequest extends FormRequest
         ];
     }
 
+    protected function prepareForValidation(): void
+    {
+        $name = is_string($this->input('name')) ? trim($this->input('name')) : '';
+        $address = is_string($this->input('address')) ? trim($this->input('address')) : '';
+
+        $lat = $this->input('lat');
+        $lng = $this->input('lng');
+
+        $fallbackName = sprintf('نطاق %s', now()->format('Ymd-His'));
+        $fallbackAddress = sprintf('Map pin (%s, %s)', $lat, $lng);
+
+        $this->merge([
+            'name' => $name !== '' ? $name : $fallbackName,
+            'address' => $address !== '' ? $address : $fallbackAddress,
+        ]);
+    }
+
     public function messages(): array
     {
         return [
-            'name.required' => 'The name field is required.',
-            'address.required' => 'The address field is required.',
             'lat.required' => 'Latitude is required.',
             'lat.between' => 'Latitude must be between -90 and 90.',
             'lng.required' => 'Longitude is required.',

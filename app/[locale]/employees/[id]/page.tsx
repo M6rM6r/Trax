@@ -37,6 +37,7 @@ import { toastSuccess, toastError, toastWithUndo, useToast } from "@/hooks/use-t
 import { Link } from "@/i18n/navigation";
 import type { AttendanceRecord } from "@/lib/types/trackingTypes";
 import AvatarUpload from "@/components/shared/AvatarUpload";
+import Image from "next/image";
 
 const statusLabels: Record<string, string> = {
   present: "حاضر",
@@ -173,9 +174,12 @@ export default function EmployeeProfilePage({ params }: { params: Promise<{ id: 
               <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 -mt-12">
                 <div className="w-24 h-24 rounded-2xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-3xl font-bold shadow-xl border-4 border-white dark:border-slate-800">
                   {employee.avatar ? (
-                    <img
+                    <Image
                       src={employee.avatar}
                       alt={employee.name}
+                      width={96}
+                      height={96}
+                      unoptimized
                       className="w-full h-full rounded-2xl object-cover"
                     />
                   ) : (
@@ -232,7 +236,9 @@ export default function EmployeeProfilePage({ params }: { params: Promise<{ id: 
                   <div>
                     <p className="text-xs text-gray-500 dark:text-slate-400">البريد الإلكتروني</p>
                     <p className="text-sm font-medium text-gray-900 dark:text-slate-100">
-                      {employee.email}
+                      <span dir="ltr" lang="en" style={{ unicodeBidi: "plaintext" }}>
+                        {employee.email}
+                      </span>
                     </p>
                   </div>
                 </div>
@@ -243,7 +249,9 @@ export default function EmployeeProfilePage({ params }: { params: Promise<{ id: 
                   <div>
                     <p className="text-xs text-gray-500 dark:text-slate-400">الهاتف</p>
                     <p className="text-sm font-medium text-gray-900 dark:text-slate-100">
-                      {employee.phone}
+                      <span dir="ltr" lang="en" style={{ unicodeBidi: "plaintext" }}>
+                        {employee.phone}
+                      </span>
                     </p>
                   </div>
                 </div>
@@ -455,20 +463,27 @@ export default function EmployeeProfilePage({ params }: { params: Promise<{ id: 
               },
               { label: "الهاتف", key: "phone", type: "tel", placeholder: "+966..." },
               { label: "القسم", key: "department", type: "text", placeholder: "القسم" },
-            ].map(({ label, key, type, placeholder }) => (
-              <div key={key}>
-                <label className="text-sm font-medium text-gray-700 dark:text-slate-300 mb-1 block">
-                  {label}
-                </label>
-                <input
-                  type={type}
-                  value={editEmployee[key as keyof typeof editEmployee] as string}
-                  onChange={(e) => setEditEmployee({ ...editEmployee, [key]: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-transparent dark:bg-slate-900 text-gray-900 dark:text-slate-100"
-                  placeholder={placeholder}
-                />
-              </div>
-            ))}
+            ].map(({ label, key, type, placeholder }) => {
+              const isLtrField = key === "email" || key === "phone";
+
+              return (
+                <div key={key}>
+                  <label className="text-sm font-medium text-gray-700 dark:text-slate-300 mb-1 block">
+                    {label}
+                  </label>
+                  <input
+                    type={type}
+                    value={editEmployee[key as keyof typeof editEmployee] as string}
+                    onChange={(e) => setEditEmployee({ ...editEmployee, [key]: e.target.value })}
+                    dir={isLtrField ? "ltr" : "rtl"}
+                    lang={isLtrField ? "en" : "ar"}
+                    style={isLtrField ? { unicodeBidi: "plaintext" } : undefined}
+                    className={`w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-transparent dark:bg-slate-900 text-gray-900 dark:text-slate-100 ${isLtrField ? "text-left" : "text-right"}`}
+                    placeholder={placeholder}
+                  />
+                </div>
+              );
+            })}
             <div>
               <label className="text-sm font-medium text-gray-700 dark:text-slate-300 mb-1 block">
                 الدور

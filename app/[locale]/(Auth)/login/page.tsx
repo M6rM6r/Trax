@@ -52,7 +52,15 @@ const Page = () => {
         success: boolean;
         data: {
           token: string;
-          user: { id: number; name: string; email: string; role: string; company_id: number };
+          user: {
+            id: number;
+            name: string;
+            email: string;
+            role: string;
+            company_id: number;
+            employee_id?: number | null;
+            assigned_geofence_id?: number | null;
+          };
           company?: { id: number; name: string };
         };
       }>("auth/login", {
@@ -84,6 +92,8 @@ const Page = () => {
           name: user.name,
           email: user.email,
           role: user.role,
+          employee_id: user.employee_id ?? null,
+          assigned_geofence_id: user.assigned_geofence_id ?? null,
           permissions: [],
           created_at: new Date().toISOString(),
           profile_image: "",
@@ -154,6 +164,7 @@ const Page = () => {
                 placeholder="example@trax.com أو username"
                 label="البريد الإلكتروني أو اسم المستخدم"
                 autoComplete="username"
+                className="text-left [direction:ltr] [unicode-bidi:plaintext]"
               />
               <div className="relative">
                 <CustomInput

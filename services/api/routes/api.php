@@ -43,6 +43,13 @@ Route::middleware('auth:api')->group(function () {
     Route::post('auth/refresh', [AuthController::class, 'refresh'])
         ->middleware(['throttle:10,1']);
 
+    // Geofences (read-only) — required for employee check-in validation
+    Route::middleware(['throttle:60,1'])->group(function () {
+        Route::get('geofences', [GeofenceController::class, 'index']);
+        Route::get('geofences/{geofence}', [GeofenceController::class, 'show']);
+        Route::post('geofences/check-inside', [GeofenceController::class, 'checkInside']);
+    });
+
     // Management-only endpoints
     Route::middleware(['role:boss,manager,supervisor'])->group(function () {
         // Dashboard
@@ -76,14 +83,11 @@ Route::middleware('auth:api')->group(function () {
             Route::get('attendance/reports', [AttendanceController::class, 'reports']);
         });
 
-        // Geofences — standard API rate limit
+        // Geofences (management mutations)
         Route::middleware(['throttle:60,1'])->group(function () {
-            Route::get('geofences', [GeofenceController::class, 'index']);
             Route::post('geofences', [GeofenceController::class, 'store']);
-            Route::get('geofences/{geofence}', [GeofenceController::class, 'show']);
             Route::put('geofences/{geofence}', [GeofenceController::class, 'update']);
             Route::delete('geofences/{geofence}', [GeofenceController::class, 'destroy']);
-            Route::post('geofences/check-inside', [GeofenceController::class, 'checkInside']);
         });
     });
 
@@ -92,6 +96,11 @@ Route::middleware('auth:api')->group(function () {
         Route::post('attendance/check-in', [AttendanceController::class, 'checkIn']);
         Route::post('attendance/check-out', [AttendanceController::class, 'checkOut']);
     });
+
+    // Tracking heartbeat — all authenticated roles (employees send live location)
+    // NOTE: keep this endpoint free of explicit throttling to avoid runtime failures
+    // when cache-backed rate-limiter storage is unavailable in local/dev environments.
+    Route::post('tracking/location', [TrackingController::class, 'updateLocation']);
 
     // Device / FCM token
     Route::middleware(['throttle:30,1'])->group(function () {

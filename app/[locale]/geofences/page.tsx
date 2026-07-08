@@ -19,6 +19,7 @@ import { useToast } from "@/hooks/use-toast";
 import { hapticTap, hapticSuccess } from "@/lib/utils/haptics";
 import { motion, AnimatePresence } from "framer-motion";
 import type { Geofence } from "@/lib/types/trackingTypes";
+import { ApiError } from "@/lib/services/httpClient";
 
 import Map from "ol/Map";
 import View from "ol/View";
@@ -49,6 +50,7 @@ export default function GeofencesPage() {
   const [editTarget, setEditTarget] = useState<Geofence | null>(null);
   const [previewGeofence, setPreviewGeofence] = useState<Geofence | null>(null);
   const [drawMode, setDrawMode] = useState(false);
+  const [editDrawMode, setEditDrawMode] = useState(false);
   const [newGeofence, setNewGeofence] = useState({
     name: "",
     address: "",
@@ -71,7 +73,46 @@ export default function GeofencesPage() {
   const drawerMapRef = useRef<HTMLDivElement>(null);
   const drawerMapInstance = useRef<Map | null>(null);
   const drawSourceRef = useRef<VectorSource | null>(null);
+  const markerFeatureRef = useRef<Feature<Point> | null>(null);
+  const circleFeatureRef = useRef<Feature<CircleGeom> | null>(null);
   const drawInteractionRef = useRef<Draw | null>(null);
+  const editDrawerMapRef = useRef<HTMLDivElement>(null);
+  const editDrawerMapInstance = useRef<Map | null>(null);
+  const editDrawSourceRef = useRef<VectorSource | null>(null);
+  const editMarkerFeatureRef = useRef<Feature<Point> | null>(null);
+  const editCircleFeatureRef = useRef<Feature<CircleGeom> | null>(null);
+  const editDrawInteractionRef = useRef<Draw | null>(null);
+
+  const extractApiErrorMessage = (error: unknown, fallback: string): string => {
+    if (error instanceof ApiError) {
+      const context = error.context as
+        | {
+            message?: string;
+            errors?: Record<string, string[] | string>;
+          }
+        | undefined;
+
+      const firstFieldErrors = context?.errors ? Object.values(context.errors)[0] : undefined;
+      if (Array.isArray(firstFieldErrors) && firstFieldErrors.length > 0) {
+        return String(firstFieldErrors[0]);
+      }
+      if (typeof firstFieldErrors === "string" && firstFieldErrors.trim()) {
+        return firstFieldErrors;
+      }
+      if (context?.message?.trim()) {
+        return context.message;
+      }
+      if (error.message?.trim()) {
+        return error.message;
+      }
+    }
+
+    if (error instanceof Error && error.message.trim()) {
+      return error.message;
+    }
+
+    return fallback;
+  };
 
   useEffect(() => {
     if (!previewMapRef.current || !previewGeofence) return;
@@ -80,7 +121,7 @@ export default function GeofencesPage() {
     const center = fromLonLat([previewGeofence.lng, previewGeofence.lat]);
 
     const circleFeature = new Feature({
-      geometry: new CircleGeom(center, previewGeofence.radius * 10),
+      geometry: new CircleGeom(center, previewGeofence.radius),
     });
     circleFeature.setStyle(
       new Style({
@@ -125,6 +166,88 @@ export default function GeofencesPage() {
     return () => map.setTarget(undefined);
   }, [previewGeofence]);
 
+  const syncDrawerCircle = (
+    source: VectorSource,
+    lng: number,
+    lat: number,
+    radius: number,
+    color: string
+  ) => {
+    const center = fromLonLat([lng, lat]);
+
+    if (!markerFeatureRef.current) {
+      markerFeatureRef.current = new Feature({ geometry: new Point(center) });
+      source.addFeature(markerFeatureRef.current);
+    } else {
+      markerFeatureRef.current.setGeometry(new Point(center));
+    }
+
+    markerFeatureRef.current.setStyle(
+      new Style({
+        image: new CircleStyle({
+          radius: 6,
+          fill: new Fill({ color }),
+          stroke: new Stroke({ color: "#fff", width: 2 }),
+        }),
+      })
+    );
+
+    if (!circleFeatureRef.current) {
+      circleFeatureRef.current = new Feature({ geometry: new CircleGeom(center, radius) });
+      source.addFeature(circleFeatureRef.current);
+    } else {
+      circleFeatureRef.current.setGeometry(new CircleGeom(center, radius));
+    }
+
+    circleFeatureRef.current.setStyle(
+      new Style({
+        stroke: new Stroke({ color, width: 2 }),
+        fill: new Fill({ color: `${color}20` }),
+      })
+    );
+  };
+
+  const syncEditDrawerCircle = (
+    source: VectorSource,
+    lng: number,
+    lat: number,
+    radius: number,
+    color: string
+  ) => {
+    const center = fromLonLat([lng, lat]);
+
+    if (!editMarkerFeatureRef.current) {
+      editMarkerFeatureRef.current = new Feature({ geometry: new Point(center) });
+      source.addFeature(editMarkerFeatureRef.current);
+    } else {
+      editMarkerFeatureRef.current.setGeometry(new Point(center));
+    }
+
+    editMarkerFeatureRef.current.setStyle(
+      new Style({
+        image: new CircleStyle({
+          radius: 6,
+          fill: new Fill({ color }),
+          stroke: new Stroke({ color: "#fff", width: 2 }),
+        }),
+      })
+    );
+
+    if (!editCircleFeatureRef.current) {
+      editCircleFeatureRef.current = new Feature({ geometry: new CircleGeom(center, radius) });
+      source.addFeature(editCircleFeatureRef.current);
+    } else {
+      editCircleFeatureRef.current.setGeometry(new CircleGeom(center, radius));
+    }
+
+    editCircleFeatureRef.current.setStyle(
+      new Style({
+        stroke: new Stroke({ color, width: 2 }),
+        fill: new Fill({ color: `${color}20` }),
+      })
+    );
+  };
+
   useEffect(() => {
     if (!showAddForm) return;
 
@@ -154,6 +277,14 @@ export default function GeofencesPage() {
       });
       drawerMapInstance.current = map;
 
+      syncDrawerCircle(
+        source,
+        newGeofence.lng,
+        newGeofence.lat,
+        newGeofence.radius,
+        newGeofence.color
+      );
+
       sizeTimer = setTimeout(() => map!.updateSize(), 400);
 
       map.on("click", (e) => {
@@ -164,31 +295,6 @@ export default function GeofencesPage() {
           lng: Number(lng.toFixed(6)),
         }));
         hapticTap();
-
-        source.clear();
-        const center = fromLonLat([lng, lat]);
-        const marker = new Feature({ geometry: new Point(center) });
-        marker.setStyle(
-          new Style({
-            image: new CircleStyle({
-              radius: 6,
-              fill: new Fill({ color: newGeofence.color }),
-              stroke: new Stroke({ color: "#fff", width: 2 }),
-            }),
-          })
-        );
-        source.addFeature(marker);
-
-        const circle = new Feature({
-          geometry: new CircleGeom(center, newGeofence.radius * 10),
-        });
-        circle.setStyle(
-          new Style({
-            stroke: new Stroke({ color: newGeofence.color, width: 2 }),
-            fill: new Fill({ color: `${newGeofence.color}20` }),
-          })
-        );
-        source.addFeature(circle);
       });
     };
 
@@ -196,9 +302,100 @@ export default function GeofencesPage() {
 
     return () => {
       clearTimeout(sizeTimer);
+      markerFeatureRef.current = null;
+      circleFeatureRef.current = null;
       map?.setTarget(undefined);
     };
   }, [showAddForm]);
+
+  useEffect(() => {
+    if (!showAddForm || !drawSourceRef.current) return;
+
+    syncDrawerCircle(
+      drawSourceRef.current,
+      newGeofence.lng,
+      newGeofence.lat,
+      Math.max(1, Number(newGeofence.radius) || 1),
+      newGeofence.color
+    );
+  }, [showAddForm, newGeofence.lat, newGeofence.lng, newGeofence.radius, newGeofence.color]);
+
+  useEffect(() => {
+    if (!editTarget) return;
+
+    let map: Map | null = null;
+    let sizeTimer: ReturnType<typeof setTimeout>;
+
+    const initMap = () => {
+      if (!editDrawerMapRef.current) {
+        sizeTimer = setTimeout(initMap, 100);
+        return;
+      }
+
+      const source = new VectorSource();
+      editDrawSourceRef.current = source;
+
+      if (editDrawerMapInstance.current) {
+        editDrawerMapInstance.current.setTarget(undefined);
+      }
+
+      map = new Map({
+        target: editDrawerMapRef.current,
+        layers: [new TileLayer({ source: new OSM() }), new VectorLayer({ source })],
+        view: new View({
+          center: fromLonLat([editGeofence.lng, editGeofence.lat]),
+          zoom: 12,
+        }),
+      });
+      editDrawerMapInstance.current = map;
+
+      syncEditDrawerCircle(
+        source,
+        editGeofence.lng,
+        editGeofence.lat,
+        editGeofence.radius,
+        editGeofence.color
+      );
+
+      sizeTimer = setTimeout(() => map!.updateSize(), 400);
+
+      map.on("click", (e) => {
+        const [lng, lat] = toLonLat(e.coordinate);
+        setEditGeofence((prev) => ({
+          ...prev,
+          lat: Number(lat.toFixed(6)),
+          lng: Number(lng.toFixed(6)),
+        }));
+        hapticTap();
+      });
+    };
+
+    initMap();
+
+    return () => {
+      clearTimeout(sizeTimer);
+      editMarkerFeatureRef.current = null;
+      editCircleFeatureRef.current = null;
+      if (editDrawInteractionRef.current && editDrawerMapInstance.current) {
+        editDrawerMapInstance.current.removeInteraction(editDrawInteractionRef.current);
+      }
+      editDrawInteractionRef.current = null;
+      setEditDrawMode(false);
+      map?.setTarget(undefined);
+    };
+  }, [editTarget]);
+
+  useEffect(() => {
+    if (!editTarget || !editDrawSourceRef.current) return;
+
+    syncEditDrawerCircle(
+      editDrawSourceRef.current,
+      editGeofence.lng,
+      editGeofence.lat,
+      Math.max(1, Number(editGeofence.radius) || 1),
+      editGeofence.color
+    );
+  }, [editTarget, editGeofence.lat, editGeofence.lng, editGeofence.radius, editGeofence.color]);
 
   const toggleDrawMode = () => {
     if (!drawerMapInstance.current || !drawSourceRef.current) return;
@@ -218,14 +415,24 @@ export default function GeofencesPage() {
       draw.on("drawend", (e) => {
         const geom = e.feature.getGeometry() as CircleGeom;
         const center = geom.getCenter();
-        const radiusMeters = geom.getRadius() / 10;
+        const radiusMeters = geom.getRadius();
         const [lng, lat] = toLonLat(center);
+
+        drawSourceRef.current?.removeFeature(e.feature);
+
         setNewGeofence((prev) => ({
           ...prev,
           lat: Number(lat.toFixed(6)),
           lng: Number(lng.toFixed(6)),
-          radius: Math.round(radiusMeters),
+          radius: Math.max(1, Math.round(radiusMeters)),
         }));
+
+        if (drawInteractionRef.current && drawerMapInstance.current) {
+          drawerMapInstance.current.removeInteraction(drawInteractionRef.current);
+          drawInteractionRef.current = null;
+          setDrawMode(false);
+        }
+
         hapticSuccess();
       });
       drawerMapInstance.current.addInteraction(draw);
@@ -234,7 +441,56 @@ export default function GeofencesPage() {
     }
   };
 
+  const toggleEditDrawMode = () => {
+    if (!editDrawerMapInstance.current || !editDrawSourceRef.current) return;
+    hapticTap();
+
+    if (editDrawMode) {
+      if (editDrawInteractionRef.current) {
+        editDrawerMapInstance.current.removeInteraction(editDrawInteractionRef.current);
+        editDrawInteractionRef.current = null;
+      }
+      setEditDrawMode(false);
+    } else {
+      const draw = new Draw({
+        source: editDrawSourceRef.current,
+        type: "Circle",
+      });
+      draw.on("drawend", (e) => {
+        const geom = e.feature.getGeometry() as CircleGeom;
+        const center = geom.getCenter();
+        const radiusMeters = geom.getRadius();
+        const [lng, lat] = toLonLat(center);
+
+        editDrawSourceRef.current?.removeFeature(e.feature);
+
+        setEditGeofence((prev) => ({
+          ...prev,
+          lat: Number(lat.toFixed(6)),
+          lng: Number(lng.toFixed(6)),
+          radius: Math.max(1, Math.round(radiusMeters)),
+        }));
+
+        if (editDrawInteractionRef.current && editDrawerMapInstance.current) {
+          editDrawerMapInstance.current.removeInteraction(editDrawInteractionRef.current);
+          editDrawInteractionRef.current = null;
+          setEditDrawMode(false);
+        }
+
+        hapticSuccess();
+      });
+      editDrawerMapInstance.current.addInteraction(draw);
+      editDrawInteractionRef.current = draw;
+      setEditDrawMode(true);
+    }
+  };
+
   const handleAdd = () => {
+    if (!Number.isFinite(newGeofence.radius) || newGeofence.radius <= 0) {
+      toast({ description: "نصف القطر يجب أن يكون أكبر من صفر", variant: "destructive" });
+      return;
+    }
+
     createGeofence.mutate(
       { ...newGeofence, active: true },
       {
@@ -250,8 +506,11 @@ export default function GeofencesPage() {
             color: "#2563EB",
           });
         },
-        onError: () => {
-          toast({ description: "حدث خطأ أثناء إضافة النطاق", variant: "destructive" });
+        onError: (error) => {
+          toast({
+            description: extractApiErrorMessage(error, "حدث خطأ أثناء إضافة النطاق"),
+            variant: "destructive",
+          });
         },
       }
     );
@@ -619,6 +878,34 @@ export default function GeofencesPage() {
           submitLabel="حفظ التعديلات"
         >
           <div className="space-y-4">
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="text-sm font-medium text-gray-700 dark:text-slate-300">
+                  تعديل الموقع على الخريطة
+                </label>
+                <button
+                  onClick={toggleEditDrawMode}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                    editDrawMode
+                      ? "bg-blue-600 text-white"
+                      : "bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-slate-300"
+                  }`}
+                >
+                  {editDrawMode ? <Check className="w-3 h-3" /> : <Pencil className="w-3 h-3" />}
+                  {editDrawMode ? "تم الرسم" : "رسم دائرة"}
+                </button>
+              </div>
+              <div
+                ref={editDrawerMapRef}
+                className="w-full h-64 rounded-xl border border-gray-200 dark:border-slate-600 overflow-hidden"
+              />
+              <p className="text-xs text-gray-500 dark:text-slate-400">
+                {editDrawMode
+                  ? "ارسم دائرة جديدة لتحديث الموقع ونصف القطر"
+                  : "انقر على الخريطة لتحديث مركز النطاق"}
+              </p>
+            </div>
+
             <div>
               <label className="text-sm font-medium text-gray-700 dark:text-slate-300 mb-1 block">
                 الاسم

@@ -1,4 +1,4 @@
-const CACHE_NAME = "trax-v1";
+const CACHE_NAME = "trax-v2";
 const STATIC_ASSETS = ["/", "/manifest.json", "/icon-192.png", "/icon-512.png"];
 
 self.addEventListener("install", (event) => {
@@ -25,6 +25,17 @@ self.addEventListener("fetch", (event) => {
   if (request.method !== "GET") return;
 
   const url = new URL(request.url);
+
+  // Never cache Next.js internals/app chunks or API calls.
+  // These must always come from network to avoid stale RSC payloads.
+  if (url.pathname.startsWith("/_next/") || url.pathname.startsWith("/api/")) {
+    return;
+  }
+
+  // Avoid caching navigational HTML documents to prevent serving old app shells.
+  if (request.mode === "navigate") {
+    return;
+  }
 
   if (url.origin === location.origin) {
     event.respondWith(

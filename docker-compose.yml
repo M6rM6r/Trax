@@ -56,14 +56,14 @@ services:
       - DB_CONNECTION=mysql
       - DB_HOST=db
       - DB_PORT=3306
-      - DB_DATABASE=trax
-      - DB_USERNAME=trax
-      - DB_PASSWORD=trax_secret
-      - JWT_SECRET=trax_jwt_secret_change_in_production
+      - DB_DATABASE=${DB_DATABASE:-trax}
+      - DB_USERNAME=${DB_USERNAME:-trax}
+      - DB_PASSWORD=${DB_PASSWORD:?DB_PASSWORD is required}
+      - JWT_SECRET=${JWT_SECRET:?JWT_SECRET is required}
       - BROADCAST_CONNECTION=reverb
-      - REVERB_APP_ID=trax-reverb-id
-      - REVERB_APP_KEY=trax-reverb-key
-      - REVERB_APP_SECRET=trax-reverb-secret
+      - REVERB_APP_ID=${REVERB_APP_ID:?REVERB_APP_ID is required}
+      - REVERB_APP_KEY=${REVERB_APP_KEY:?REVERB_APP_KEY is required}
+      - REVERB_APP_SECRET=${REVERB_APP_SECRET:?REVERB_APP_SECRET is required}
       - REVERB_HOST=reverb
       - REVERB_PORT=8080
       - REDIS_HOST=redis
@@ -108,9 +108,9 @@ services:
     ports:
       - "8080:8080"
     environment:
-      - REVERB_APP_ID=trax-reverb-id
-      - REVERB_APP_KEY=trax-reverb-key
-      - REVERB_APP_SECRET=trax-reverb-secret
+      - REVERB_APP_ID=${REVERB_APP_ID:?REVERB_APP_ID is required}
+      - REVERB_APP_KEY=${REVERB_APP_KEY:?REVERB_APP_KEY is required}
+      - REVERB_APP_SECRET=${REVERB_APP_SECRET:?REVERB_APP_SECRET is required}
       - REVERB_HOST=0.0.0.0
       - REVERB_PORT=8080
     restart: unless-stopped
@@ -125,10 +125,10 @@ services:
     ports:
       - "3306:3306"
     environment:
-      MYSQL_DATABASE: trax
-      MYSQL_USER: trax
-      MYSQL_PASSWORD: trax_secret
-      MYSQL_ROOT_PASSWORD: root_secret
+      MYSQL_DATABASE: ${DB_DATABASE:-trax}
+      MYSQL_USER: ${DB_USERNAME:-trax}
+      MYSQL_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:?DB_ROOT_PASSWORD is required}
     volumes:
       - trax-db:/var/lib/mysql
     healthcheck:
@@ -176,8 +176,8 @@ services:
     ports:
       - "3001:3000"
     environment:
-      GF_SECURITY_ADMIN_USER: admin
-      GF_SECURITY_ADMIN_PASSWORD: trax_admin
+      GF_SECURITY_ADMIN_USER: ${GF_SECURITY_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GF_SECURITY_ADMIN_PASSWORD:?GF_SECURITY_ADMIN_PASSWORD is required}
       GF_USERS_ALLOW_SIGN_UP: "false"
       GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /etc/grafana/provisioning/dashboards/trax-overview.json
     volumes:

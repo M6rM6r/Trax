@@ -41,6 +41,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import type { Employee, EmployeeRole } from "@/lib/types/trackingTypes";
 import { useAuthStore } from "@/stores/useAuthStore";
 import AccessDeniedCard from "@/components/shared/AccessDeniedCard";
+import Image from "next/image";
 import {
   buildStaffCredentialsEmail,
   buildStaffCredentialsMessage,
@@ -412,7 +413,10 @@ export default function EmployeesPage() {
                   type="email"
                   value={newEmployee.email}
                   onChange={(e) => setNewEmployee({ ...newEmployee, email: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-transparent dark:bg-slate-900 text-gray-900 dark:text-slate-100"
+                  dir="ltr"
+                  lang="en"
+                  style={{ unicodeBidi: "plaintext" }}
+                  className="w-full text-left px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-transparent dark:bg-slate-900 text-gray-900 dark:text-slate-100"
                   placeholder="email@trax.com"
                 />
               </div>
@@ -426,7 +430,10 @@ export default function EmployeesPage() {
                   onChange={(e) =>
                     setNewEmployee({ ...newEmployee, employeeNumber: e.target.value.trim() })
                   }
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-transparent dark:bg-slate-900 text-gray-900 dark:text-slate-100"
+                  dir="ltr"
+                  lang="en"
+                  style={{ unicodeBidi: "plaintext" }}
+                  className="w-full text-left px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-transparent dark:bg-slate-900 text-gray-900 dark:text-slate-100"
                   placeholder="اختياري - سيتم توليده تلقائيًا"
                 />
               </div>
@@ -438,7 +445,10 @@ export default function EmployeesPage() {
                   type="tel"
                   value={newEmployee.phone}
                   onChange={(e) => setNewEmployee({ ...newEmployee, phone: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-transparent dark:bg-slate-900 text-gray-900 dark:text-slate-100"
+                  dir="ltr"
+                  lang="en"
+                  style={{ unicodeBidi: "plaintext" }}
+                  className="w-full text-left px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-transparent dark:bg-slate-900 text-gray-900 dark:text-slate-100"
                   placeholder="+966..."
                 />
               </div>
@@ -530,13 +540,17 @@ export default function EmployeesPage() {
                     البريد الإلكتروني
                   </p>
                   <p className="font-mono text-sm font-semibold text-gray-900 dark:text-slate-100 select-all">
-                    {createdCredentials.email}
+                    <span dir="ltr" lang="en" style={{ unicodeBidi: "plaintext" }}>
+                      {createdCredentials.email}
+                    </span>
                   </p>
                 </div>
                 <div>
                   <p className="text-xs text-gray-500 dark:text-slate-400 mb-1">اسم المستخدم</p>
                   <p className="font-mono text-sm font-semibold text-gray-900 dark:text-slate-100 select-all">
-                    {createdCredentials.username}
+                    <span dir="ltr" lang="en" style={{ unicodeBidi: "plaintext" }}>
+                      {createdCredentials.username}
+                    </span>
                   </p>
                 </div>
                 <div>
@@ -729,9 +743,12 @@ export default function EmployeesPage() {
                           } group-hover:scale-105 transition-transform duration-300`}
                         >
                           {emp.avatar ? (
-                            <img
+                            <Image
                               src={emp.avatar}
                               alt={emp.name}
+                              width={56}
+                              height={56}
+                              unoptimized
                               className="w-full h-full object-cover"
                             />
                           ) : (
@@ -768,11 +785,20 @@ export default function EmployeesPage() {
                       <div className="text-xs text-gray-500 dark:text-slate-400 space-y-1 mb-3 px-1">
                         <div className="flex items-center gap-1.5">
                           <Mail className="w-3 h-3 shrink-0" />
-                          <span className="truncate">{emp.email}</span>
+                          <span
+                            dir="ltr"
+                            lang="en"
+                            style={{ unicodeBidi: "plaintext" }}
+                            className="truncate"
+                          >
+                            {emp.email}
+                          </span>
                         </div>
                         <div className="flex items-center gap-1.5">
                           <Phone className="w-3 h-3 shrink-0" />
-                          <span>{emp.phone}</span>
+                          <span dir="ltr" lang="en" style={{ unicodeBidi: "plaintext" }}>
+                            {emp.phone}
+                          </span>
                         </div>
                       </div>
 
@@ -828,9 +854,12 @@ export default function EmployeesPage() {
                     >
                       <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm overflow-hidden">
                         {emp.avatar ? (
-                          <img
+                          <Image
                             src={emp.avatar}
                             alt={emp.name}
+                            width={40}
+                            height={40}
+                            unoptimized
                             className="w-full h-full object-cover"
                           />
                         ) : (
@@ -850,7 +879,12 @@ export default function EmployeesPage() {
                   filterable: true,
                   sortValue: (emp) => emp.employeeNumber ?? "",
                   cell: (emp) => (
-                    <span className="text-sm text-gray-600 dark:text-slate-400 font-mono">
+                    <span
+                      dir="ltr"
+                      lang="en"
+                      style={{ unicodeBidi: "plaintext" }}
+                      className="inline-block text-left text-sm text-gray-600 dark:text-slate-400 font-mono"
+                    >
                       {emp.employeeNumber || "-"}
                     </span>
                   ),
@@ -881,11 +915,15 @@ export default function EmployeesPage() {
                     <div className="flex flex-col gap-1 text-xs text-gray-500 dark:text-slate-400">
                       <span className="flex items-center gap-1">
                         <Mail className="w-3 h-3" />
-                        {emp.email}
+                        <span dir="ltr" lang="en" style={{ unicodeBidi: "plaintext" }}>
+                          {emp.email}
+                        </span>
                       </span>
                       <span className="flex items-center gap-1">
                         <Phone className="w-3 h-3" />
-                        {emp.phone}
+                        <span dir="ltr" lang="en" style={{ unicodeBidi: "plaintext" }}>
+                          {emp.phone}
+                        </span>
                       </span>
                     </div>
                   ),
@@ -1051,20 +1089,27 @@ export default function EmployeesPage() {
               },
               { label: "الهاتف", key: "phone", type: "tel", placeholder: "+966..." },
               { label: "القسم", key: "department", type: "text", placeholder: "القسم" },
-            ].map(({ label, key, type, placeholder }) => (
-              <div key={key}>
-                <label className="text-sm font-medium text-gray-700 dark:text-slate-300 mb-1 block">
-                  {label}
-                </label>
-                <input
-                  type={type}
-                  value={editEmployee[key as keyof typeof editEmployee] as string}
-                  onChange={(e) => setEditEmployee({ ...editEmployee, [key]: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-transparent dark:bg-slate-900 text-gray-900 dark:text-slate-100"
-                  placeholder={placeholder}
-                />
-              </div>
-            ))}
+            ].map(({ label, key, type, placeholder }) => {
+              const isLtrField = key === "email" || key === "employeeNumber" || key === "phone";
+
+              return (
+                <div key={key}>
+                  <label className="text-sm font-medium text-gray-700 dark:text-slate-300 mb-1 block">
+                    {label}
+                  </label>
+                  <input
+                    type={type}
+                    value={editEmployee[key as keyof typeof editEmployee] as string}
+                    onChange={(e) => setEditEmployee({ ...editEmployee, [key]: e.target.value })}
+                    dir={isLtrField ? "ltr" : "rtl"}
+                    lang={isLtrField ? "en" : "ar"}
+                    style={isLtrField ? { unicodeBidi: "plaintext" } : undefined}
+                    className={`w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-transparent dark:bg-slate-900 text-gray-900 dark:text-slate-100 ${isLtrField ? "text-left" : "text-right"}`}
+                    placeholder={placeholder}
+                  />
+                </div>
+              );
+            })}
             <div>
               <label className="text-sm font-medium text-gray-700 dark:text-slate-300 mb-1 block">
                 الدور

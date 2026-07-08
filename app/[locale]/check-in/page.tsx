@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import MainLayout from "@/components/shared/MainLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -26,6 +26,8 @@ import { toastSuccess, toastError } from "@/hooks/use-toast";
 import { motion, AnimatePresence } from "framer-motion";
 import type { Geofence } from "@/lib/types/trackingTypes";
 import { useAuthStore } from "@/stores/useAuthStore";
+import { httpClient } from "@/lib/services/httpClient";
+import Image from "next/image";
 
 function LiveClock() {
   const [time, setTime] = useState("");
@@ -60,16 +62,45 @@ function LiveClock() {
 }
 
 export default function CheckInPage() {
-  const { data: geofences = [] } = useGeofences();
+  const {
+    data: geofences = [],
+    isLoading: geofencesLoading,
+    isError: geofencesError,
+  } = useGeofences();
   const checkInMutation = useCheckIn();
   const checkOutMutation = useCheckOut();
   const { user } = useAuthStore();
   const [currentLocation, setCurrentLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [latestLocation, setLatestLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [lastLocationFixAt, setLastLocationFixAt] = useState<number | null>(null);
+  const [locationAccuracy, setLocationAccuracy] = useState<number | null>(null);
+  const [latestLocationFixAt, setLatestLocationFixAt] = useState<number | null>(null);
+  const [latestLocationAccuracy, setLatestLocationAccuracy] = useState<number | null>(null);
   const [locationError, setLocationError] = useState<string | null>(null);
   const [nearestGeofence, setNearestGeofence] = useState<{
     geofence: Geofence;
     distance: number;
   } | null>(null);
+  const [serverValidation, setServerValidation] = useState<{
+    geofenceId: number | null;
+    inside: boolean | null;
+    distance: number | null;
+    pending: boolean;
+    verifiedAt: number | null;
+  }>({ geofenceId: null, inside: null, distance: null, pending: false, verifiedAt: null });
+  const [locationSync, setLocationSync] = useState<{
+    pending: boolean;
+    lastSuccessAt: number | null;
+    lastErrorAt: number | null;
+    pausedLowAccuracy: boolean;
+  }>({ pending: false, lastSuccessAt: null, lastErrorAt: null, pausedLowAccuracy: false });
+  const [authResolved, setAuthResolved] = useState(false);
+  const [linkedEmployeeId, setLinkedEmployeeId] = useState<number | null>(
+    user?.employee_id ?? null
+  );
+  const [assignedGeofenceId, setAssignedGeofenceId] = useState<number | null>(
+    user?.assigned_geofence_id ?? null
+  );
   const [checkInStatus, setCheckInStatus] = useState<"idle" | "success" | "outside" | "loading">(
     "idle"
   );
@@ -91,6 +122,8 @@ export default function CheckInPage() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const lastServerValidationKeyRef = useRef<string | null>(null);
+  const handleCheckInRef = useRef<() => Promise<void>>(async () => {});
 
   const pendingCheckInsRef = useRef(pendingCheckIns);
   pendingCheckInsRef.current = pendingCheckIns;
@@ -130,16 +163,57 @@ export default function CheckInPage() {
     }
   }, []);
 
-  const savePendingCheckIn = (record: {
-    type: string;
-    time: string;
-    location: string;
-    selfie?: string;
-  }) => {
-    const updated = [...pendingCheckIns, record];
-    setPendingCheckIns(updated);
-    localStorage.setItem("trax_pending_checkins", JSON.stringify(updated));
-  };
+  useEffect(() => {
+    setLinkedEmployeeId(user?.employee_id ?? null);
+    setAssignedGeofenceId(user?.assigned_geofence_id ?? null);
+  }, [user?.employee_id, user?.assigned_geofence_id]);
+
+  useEffect(() => {
+    if (authResolved) return;
+    if (linkedEmployeeId && assignedGeofenceId !== null) {
+      setAuthResolved(true);
+      return;
+    }
+
+    let cancelled = false;
+
+    const resolveMe = async () => {
+      try {
+        const resp = await httpClient.get<{
+          success: boolean;
+          data: {
+            employee_id?: number | null;
+            assigned_geofence_id?: number | null;
+          };
+        }>("auth/me");
+
+        if (cancelled) return;
+        setLinkedEmployeeId(resp.data.employee_id ?? null);
+        setAssignedGeofenceId(resp.data.assigned_geofence_id ?? null);
+      } catch {
+        // keep fallback behavior if /auth/me is unavailable
+      } finally {
+        if (!cancelled) setAuthResolved(true);
+      }
+    };
+
+    void resolveMe();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [authResolved, linkedEmployeeId, assignedGeofenceId]);
+
+  const savePendingCheckIn = useCallback(
+    (record: { type: string; time: string; location: string; selfie?: string }) => {
+      setPendingCheckIns((prev) => {
+        const updated = [...prev, record];
+        localStorage.setItem("trax_pending_checkins", JSON.stringify(updated));
+        return updated;
+      });
+    },
+    []
+  );
 
   const startCamera = useCallback(async () => {
     try {
@@ -181,30 +255,60 @@ export default function CheckInPage() {
   }, [stopCamera]);
 
   useEffect(() => {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const { latitude, longitude } = position.coords;
-          setCurrentLocation({ lat: latitude, lng: longitude });
-
-          let closest: { geofence: Geofence; distance: number } | null = null;
-          geofences.forEach((geo) => {
-            const dist = calculateDistance(latitude, longitude, geo.lat, geo.lng);
-            if (!closest || dist < closest.distance) {
-              closest = { geofence: geo, distance: dist };
-            }
-          });
-          if (closest) {
-            setNearestGeofence(closest);
-          }
-        },
-        () => {
-          setLocationError("تعذر الحصول على موقعك. يرجى تفعيل خدمة تحديد الموقع.");
-        }
-      );
-    } else {
+    if (!navigator.geolocation) {
       setLocationError("متصفحك لا يدعم خدمة تحديد الموقع.");
+      return;
     }
+
+    const updateFromPosition = (position: GeolocationPosition) => {
+      const { latitude, longitude, accuracy } = position.coords;
+      const normalizedAccuracy = Number.isFinite(accuracy) ? accuracy : null;
+      const now = Date.now();
+
+      setLocationError(null);
+      setLatestLocation({ lat: latitude, lng: longitude });
+      setLatestLocationFixAt(now);
+      setLatestLocationAccuracy(normalizedAccuracy);
+
+      const TRUSTED_MAX_ACCURACY_METERS = 1000;
+      const shouldTrustFix =
+        normalizedAccuracy !== null && normalizedAccuracy <= TRUSTED_MAX_ACCURACY_METERS;
+
+      if (shouldTrustFix) {
+        setCurrentLocation({ lat: latitude, lng: longitude });
+        setLastLocationFixAt(now);
+        setLocationAccuracy(normalizedAccuracy);
+      }
+
+      let closest: { geofence: Geofence; distance: number } | null = null;
+      geofences.forEach((geo) => {
+        const dist = calculateDistance(latitude, longitude, geo.lat, geo.lng);
+        if (!closest || dist < closest.distance) {
+          closest = { geofence: geo, distance: dist };
+        }
+      });
+
+      setNearestGeofence(closest);
+    };
+
+    const handleLocationError = (error: GeolocationPositionError) => {
+      if (error.code === error.PERMISSION_DENIED) {
+        setLocationError("تم رفض إذن الموقع. يرجى السماح بالوصول للموقع من إعدادات المتصفح.");
+        return;
+      }
+
+      setLocationError("تعذر الحصول على موقعك بدقة. يرجى التأكد من تفعيل GPS والمحاولة مرة أخرى.");
+    };
+
+    const watchId = navigator.geolocation.watchPosition(updateFromPosition, handleLocationError, {
+      enableHighAccuracy: true,
+      timeout: 15000,
+      maximumAge: 0,
+    });
+
+    return () => {
+      navigator.geolocation.clearWatch(watchId);
+    };
   }, [geofences]);
 
   useEffect(() => {
@@ -233,10 +337,36 @@ export default function CheckInPage() {
     return R * c;
   };
 
-  const completeLocalCheckIn = () => {
+  const assignedGeofence =
+    assignedGeofenceId !== null
+      ? (geofences.find((g) => g.id === assignedGeofenceId) ?? null)
+      : null;
+
+  const decisionLocation = currentLocation ?? latestLocation;
+
+  const activeGeofenceContext = useMemo(
+    () =>
+      decisionLocation && assignedGeofence
+        ? {
+            geofence: assignedGeofence,
+            distance: calculateDistance(
+              decisionLocation.lat,
+              decisionLocation.lng,
+              assignedGeofence.lat,
+              assignedGeofence.lng
+            ),
+            source: "assigned" as const,
+          }
+        : nearestGeofence
+          ? { ...nearestGeofence, source: "nearest" as const }
+          : null,
+    [decisionLocation, assignedGeofence, nearestGeofence]
+  );
+
+  const completeLocalCheckIn = useCallback(() => {
     const now = new Date();
     const timeStr = now.toLocaleTimeString("ar-SA", { hour: "2-digit", minute: "2-digit" });
-    const locationName = nearestGeofence?.geofence.name || "موقع غير معروف";
+    const locationName = activeGeofenceContext?.geofence.name || "موقع غير معروف";
 
     setCheckInTime(timeStr);
     setCheckInTimestamp(now.getTime());
@@ -253,18 +383,108 @@ export default function CheckInPage() {
       });
       toastSuccess("تم حفظ الحضور محلياً - سيتم المزامنة عند عودة الاتصال");
     }
-  };
+  }, [activeGeofenceContext, isOnline, savePendingCheckIn, checkInMethod, selfieImage]);
 
   const handleCheckIn = async () => {
     hapticTap();
     if (checkInStatus === "success" || checkInStatus === "loading") return;
 
-    if (!nearestGeofence || !currentLocation) {
+    if (!decisionLocation) {
       toastError("تعذر تسجيل الحضور قبل تحديد الموقع");
       return;
     }
 
-    if (!isInside) {
+    if (geofencesLoading || !authResolved) {
+      toastError("جاري تحميل النطاقات الجغرافية، حاول بعد ثوانٍ");
+      return;
+    }
+
+    if (geofencesError) {
+      toastError("تعذر تحميل النطاقات الجغرافية");
+      return;
+    }
+
+    if (geofences.length === 0) {
+      toastError("لا توجد نطاقات جغرافية متاحة حالياً");
+      return;
+    }
+
+    if (!activeGeofenceContext) {
+      toastError("تعذر مطابقة موقعك مع أي نطاق جغرافي");
+      return;
+    }
+
+    if (locationAccuracy === null && latestLocationAccuracy === null) {
+      toastError("جاري تحسين دقة الموقع، حاول بعد ثوانٍ");
+      return;
+    }
+
+    const canUseCoarseServerValidation =
+      !isLocationReliable &&
+      isOnline &&
+      assignedGeofence !== null &&
+      latestLocationAccuracy !== null &&
+      latestLocationAccuracy <= 30000;
+    const isCoarseFallbackMode = !isLocationReliable && canUseCoarseServerValidation;
+
+    if (!isLocationReliable) {
+      if (!canUseCoarseServerValidation) {
+        toastError(
+          `دقة GPS الحالية ضعيفة (±${Math.round(latestLocationAccuracy ?? locationAccuracy ?? 0)}م). انتظر لتحسين الدقة أو استخدم جهازاً بموقع أدق.`
+        );
+        return;
+      }
+    }
+
+    let insideDecision = statusInside;
+    const isFreshServerDecision =
+      serverValidation.verifiedAt !== null &&
+      activeGeofenceContext &&
+      serverValidation.geofenceId === activeGeofenceContext.geofence.id &&
+      Date.now() - serverValidation.verifiedAt < 20000;
+
+    if (isFreshServerDecision && serverValidation.inside !== null) {
+      insideDecision = serverValidation.inside;
+    } else if (isOnline) {
+      try {
+        const targetGeofenceId =
+          isCoarseFallbackMode && assignedGeofence
+            ? assignedGeofence.id
+            : activeGeofenceContext.geofence.id;
+        const verification = await verifyInsideFromServer(
+          decisionLocation.lat,
+          decisionLocation.lng,
+          targetGeofenceId
+        );
+        if (verification) {
+          if (isCoarseFallbackMode && !verification.inside) {
+            setCheckInStatus("idle");
+            hapticError();
+            toastError(
+              "دقة GPS الحالية لا تسمح بتأكيد أنك خارج النطاق. حاول مرة أخرى بعد تحسن الدقة أو انتقل لمنطقة مفتوحة."
+            );
+            return;
+          }
+          insideDecision = verification.inside;
+        }
+      } catch {
+        if (isCoarseFallbackMode) {
+          setCheckInStatus("idle");
+          toastError("تعذر التحقق من الخادم مع دقة GPS منخفضة حالياً. حاول بعد ثوانٍ.");
+          return;
+        }
+        // fallback to local decision if server-side validation is temporarily unavailable
+      }
+    }
+
+    if (!insideDecision) {
+      if (isCoarseFallbackMode) {
+        setCheckInStatus("idle");
+        toastError(
+          "لا يمكن تأكيد الخروج من النطاق أثناء انخفاض دقة GPS. انتظر تحسن الدقة ثم أعد المحاولة."
+        );
+        return;
+      }
       setCheckInStatus("outside");
       hapticError();
       toastError("أنت خارج النطاق الجغرافي المسموح لتسجيل الحضور");
@@ -276,10 +496,13 @@ export default function CheckInPage() {
     if (isOnline && user?.id) {
       try {
         await checkInMutation.mutateAsync({
-          employeeId: user.id,
-          lat: currentLocation.lat,
-          lng: currentLocation.lng,
-          geofenceId: nearestGeofence.geofence.id,
+          employeeId: linkedEmployeeId ?? user.id,
+          lat: decisionLocation.lat,
+          lng: decisionLocation.lng,
+          geofenceId:
+            !isLocationReliable && assignedGeofence
+              ? assignedGeofence.id
+              : activeGeofenceContext.geofence.id,
         });
         completeLocalCheckIn();
         return;
@@ -290,6 +513,8 @@ export default function CheckInPage() {
 
     setTimeout(() => completeLocalCheckIn(), 400);
   };
+
+  handleCheckInRef.current = handleCheckIn;
 
   const handleQRCheckIn = () => {
     hapticTap();
@@ -344,7 +569,7 @@ export default function CheckInPage() {
 
     if (isOnline && user?.id) {
       try {
-        await checkOutMutation.mutateAsync({ employeeId: user.id });
+        await checkOutMutation.mutateAsync({ employeeId: linkedEmployeeId ?? user.id });
       } catch {
         toastError("تعذر مزامنة الانصراف مع الخادم");
       }
@@ -358,27 +583,300 @@ export default function CheckInPage() {
     }, 500);
   };
 
-  const isInside = nearestGeofence && nearestGeofence.distance <= nearestGeofence.geofence.radius;
+  const effectiveRadius = activeGeofenceContext
+    ? Number(activeGeofenceContext.geofence.radius) || 0
+    : 0;
+
+  const maxReliableAccuracy = activeGeofenceContext
+    ? Math.max(100, Math.min(500, Math.round(effectiveRadius * 0.5)))
+    : 250;
+
+  const reliableFixAgeMs = lastLocationFixAt !== null ? Date.now() - lastLocationFixAt : null;
+  const isReliableFixFresh = reliableFixAgeMs !== null && reliableFixAgeMs <= 120000;
+
+  const isLocationReliable =
+    locationAccuracy !== null && locationAccuracy <= maxReliableAccuracy && isReliableFixFresh;
+
+  const locationAccuracyTolerance = locationAccuracy
+    ? Math.max(10, Math.min(50, Math.round(locationAccuracy)))
+    : 0;
+
+  const isInside =
+    !!activeGeofenceContext &&
+    isLocationReliable &&
+    activeGeofenceContext.distance <= effectiveRadius + locationAccuracyTolerance;
+
+  const statusInside =
+    serverValidation.inside !== null &&
+    isLocationReliable &&
+    activeGeofenceContext &&
+    serverValidation.geofenceId === activeGeofenceContext.geofence.id
+      ? serverValidation.inside
+      : isInside;
+
+  const effectiveDistance =
+    serverValidation.distance !== null &&
+    activeGeofenceContext &&
+    serverValidation.geofenceId === activeGeofenceContext.geofence.id
+      ? serverValidation.distance
+      : activeGeofenceContext?.distance || 0;
+
+  const verifyInsideFromServer = useCallback(
+    async (lat: number, lng: number, geofenceId: number) => {
+      const response = await httpClient.post<{
+        success: boolean;
+        data: { inside: boolean; distance: number; geofence_radius: number };
+      }>("/geofences/check-inside", {
+        lat,
+        lng,
+        geofence_id: geofenceId,
+      });
+
+      const next = {
+        geofenceId,
+        inside: response.data.inside,
+        distance: response.data.distance,
+        pending: false,
+        verifiedAt: Date.now(),
+      };
+
+      setServerValidation(next);
+      return next;
+    },
+    []
+  );
+
+  const sendLocationHeartbeat = useCallback(
+    async (lat: number, lng: number, employeeId: number) => {
+      let batteryLevel: number | undefined;
+      try {
+        const nav = navigator as Navigator & {
+          getBattery?: () => Promise<{ level: number }>;
+        };
+        if (nav.getBattery) {
+          const battery = await nav.getBattery();
+          batteryLevel = Math.max(0, Math.min(100, Math.round((battery.level ?? 0) * 100)));
+        }
+      } catch {
+        // ignore battery read failures
+      }
+
+      await httpClient.post<{
+        success: boolean;
+        data: { lastSeen: string; serverTime: string };
+      }>("/tracking/location", {
+        employee_id: employeeId,
+        lat,
+        lng,
+        accuracy: locationAccuracy,
+        battery_level: batteryLevel,
+        timestamp: new Date().toISOString(),
+      });
+    },
+    [locationAccuracy]
+  );
 
   useEffect(() => {
     if (attendanceMode !== "auto_optional") return;
-    if (!isInside) return;
+    if (!isLocationReliable) return;
+    if (!statusInside) return;
     if (checkInStatus !== "idle") return;
     if (autoAttempted) return;
 
     setAutoAttempted(true);
     const timer = setTimeout(() => {
-      void handleCheckIn();
+      void handleCheckInRef.current();
     }, 2000);
 
     return () => clearTimeout(timer);
-  }, [attendanceMode, isInside, checkInStatus, autoAttempted]);
+  }, [attendanceMode, statusInside, checkInStatus, autoAttempted, isLocationReliable]);
 
   useEffect(() => {
-    if (!isInside && checkInStatus === "idle") {
+    if (!statusInside && checkInStatus === "idle") {
       setAutoAttempted(false);
     }
-  }, [isInside, checkInStatus]);
+  }, [statusInside, checkInStatus]);
+
+  useEffect(() => {
+    if (!isOnline || !authResolved) return;
+    if (!currentLocation || !activeGeofenceContext) return;
+    if (!isLocationReliable) {
+      setServerValidation((prev) => (prev.pending ? { ...prev, pending: false } : prev));
+      return;
+    }
+
+    const validationKey = `${activeGeofenceContext.geofence.id}:${currentLocation.lat.toFixed(5)}:${currentLocation.lng.toFixed(5)}`;
+
+    if (lastServerValidationKeyRef.current === validationKey) return;
+
+    lastServerValidationKeyRef.current = validationKey;
+    setServerValidation((prev) => ({ ...prev, pending: true }));
+
+    let cancelled = false;
+    const timer = setTimeout(() => {
+      void verifyInsideFromServer(
+        currentLocation.lat,
+        currentLocation.lng,
+        activeGeofenceContext.geofence.id
+      ).catch(() => {
+        if (!cancelled) {
+          setServerValidation((prev) => ({ ...prev, pending: false }));
+        }
+      });
+    }, 500);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [
+    isOnline,
+    authResolved,
+    currentLocation,
+    activeGeofenceContext,
+    isLocationReliable,
+    verifyInsideFromServer,
+  ]);
+
+  useEffect(() => {
+    if (!isOnline || !authResolved) return;
+    if (!currentLocation || !activeGeofenceContext) return;
+    if (!isLocationReliable) {
+      setServerValidation((prev) => (prev.pending ? { ...prev, pending: false } : prev));
+      return;
+    }
+
+    const intervalId = setInterval(() => {
+      setServerValidation((prev) => ({ ...prev, pending: true }));
+      void verifyInsideFromServer(
+        currentLocation.lat,
+        currentLocation.lng,
+        activeGeofenceContext.geofence.id
+      ).catch(() => {
+        setServerValidation((prev) => ({ ...prev, pending: false }));
+      });
+    }, 15000);
+
+    return () => clearInterval(intervalId);
+  }, [
+    isOnline,
+    authResolved,
+    currentLocation,
+    activeGeofenceContext,
+    isLocationReliable,
+    verifyInsideFromServer,
+  ]);
+
+  useEffect(() => {
+    if (!isOnline || !authResolved) return;
+    if (!currentLocation) return;
+    if (!linkedEmployeeId) return;
+
+    const TRACKING_MAX_ACCURACY_METERS = 1000;
+    if (latestLocationAccuracy !== null && latestLocationAccuracy > TRACKING_MAX_ACCURACY_METERS) {
+      setLocationSync((prev) => {
+        if (prev.pending === false && prev.pausedLowAccuracy) {
+          return prev;
+        }
+
+        return {
+          ...prev,
+          pending: false,
+          pausedLowAccuracy: true,
+        };
+      });
+      return;
+    }
+
+    let cancelled = false;
+
+    const syncNow = () => {
+      if (cancelled) return;
+      setLocationSync((prev) => ({ ...prev, pending: true, pausedLowAccuracy: false }));
+      void sendLocationHeartbeat(currentLocation.lat, currentLocation.lng, linkedEmployeeId)
+        .then(() => {
+          if (!cancelled) {
+            setLocationSync({
+              pending: false,
+              lastSuccessAt: Date.now(),
+              lastErrorAt: null,
+              pausedLowAccuracy: false,
+            });
+          }
+        })
+        .catch(() => {
+          if (!cancelled) {
+            setLocationSync((prev) => ({
+              ...prev,
+              pending: false,
+              lastErrorAt: Date.now(),
+              pausedLowAccuracy: false,
+            }));
+          }
+        });
+    };
+
+    syncNow();
+    const intervalId = setInterval(syncNow, 8000);
+
+    return () => {
+      cancelled = true;
+      clearInterval(intervalId);
+    };
+  }, [
+    isOnline,
+    authResolved,
+    currentLocation,
+    linkedEmployeeId,
+    sendLocationHeartbeat,
+    latestLocationAccuracy,
+  ]);
+
+  const locationFixTimeText = lastLocationFixAt
+    ? new Date(lastLocationFixAt).toLocaleTimeString("ar-SA", {
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+      })
+    : null;
+
+  const latestLocationFixTimeText = latestLocationFixAt
+    ? new Date(latestLocationFixAt).toLocaleTimeString("ar-SA", {
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+      })
+    : null;
+
+  const serverVerifiedTimeText =
+    serverValidation.verifiedAt &&
+    activeGeofenceContext &&
+    serverValidation.geofenceId === activeGeofenceContext.geofence.id
+      ? new Date(serverValidation.verifiedAt).toLocaleTimeString("ar-SA", {
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+        })
+      : null;
+
+  const locationSyncTimeText = locationSync.lastSuccessAt
+    ? new Date(locationSync.lastSuccessAt).toLocaleTimeString("ar-SA", {
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+      })
+    : null;
+
+  const displayLocation = latestLocation ?? currentLocation;
+  const trustedFixAgeMinutes =
+    reliableFixAgeMs !== null ? Math.floor(reliableFixAgeMs / 60000) : null;
+
+  const coarseServerFallbackEligible =
+    !isLocationReliable &&
+    isOnline &&
+    assignedGeofence !== null &&
+    latestLocationAccuracy !== null &&
+    latestLocationAccuracy <= 30000;
 
   const sessionStatus = !checkInTime
     ? { label: "لم يتم تسجيل الحضور اليوم", color: "amber" }
@@ -444,7 +942,7 @@ export default function CheckInPage() {
                     : "التسجيل يتم يدوياً فقط عند الضغط على زر تسجيل الحضور."}
                 </p>
               </div>
-              {attendanceMode === "auto_optional" && checkInStatus === "idle" && isInside && (
+              {attendanceMode === "auto_optional" && checkInStatus === "idle" && statusInside && (
                 <span className="text-xs px-2 py-1 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
                   محاولة تلقائية بعد ثانيتين
                 </span>
@@ -477,7 +975,12 @@ export default function CheckInPage() {
                     whileTap={{ scale: 0.94 }}
                     whileHover={{ scale: 1.04 }}
                     transition={{ type: "spring", stiffness: 400, damping: 20 }}
-                    disabled={checkInStatus === "loading" || checkInStatus === "success"}
+                    disabled={
+                      checkInStatus === "loading" ||
+                      checkInStatus === "success" ||
+                      geofencesLoading ||
+                      !authResolved
+                    }
                     onClick={handleCheckIn}
                     className={`relative w-28 h-28 sm:w-36 sm:h-36 rounded-full flex flex-col items-center justify-center gap-1 shadow-2xl transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
                       checkInStatus === "success"
@@ -489,6 +992,13 @@ export default function CheckInPage() {
                   >
                     {checkInStatus === "loading" ? (
                       <div className="w-8 h-8 sm:w-10 sm:h-10 border-3 border-white/30 border-t-white rounded-full animate-spin" />
+                    ) : geofencesLoading || !authResolved ? (
+                      <>
+                        <RefreshCw className="w-8 h-8 sm:w-10 sm:h-10 text-white animate-spin" />
+                        <span className="text-white text-[10px] sm:text-xs font-bold">
+                          تحميل النطاق
+                        </span>
+                      </>
                     ) : checkInStatus === "success" ? (
                       <>
                         <CheckCircle className="w-8 h-8 sm:w-10 sm:h-10 text-white" />
@@ -581,7 +1091,7 @@ export default function CheckInPage() {
                           تسجيل الحضور
                         </p>
                         <p className="text-xs text-gray-500 dark:text-slate-400">
-                          {nearestGeofence?.geofence.name || "—"}
+                          {activeGeofenceContext?.geofence.name || "—"}
                         </p>
                       </div>
                       <span className="text-sm font-bold tabular-nums text-gray-900 dark:text-slate-100">
@@ -755,9 +1265,11 @@ export default function CheckInPage() {
                   <div className="text-center space-y-4">
                     {selfieImage ? (
                       <div className="space-y-4">
-                        <img
+                        <Image
                           src={selfieImage}
                           alt="Selfie"
+                          width={192}
+                          height={192}
                           className="w-48 h-48 mx-auto rounded-2xl object-cover"
                         />
                         <div className="flex gap-3">
@@ -898,7 +1410,7 @@ export default function CheckInPage() {
                   <XCircle className="w-6 h-6 text-red-600 dark:text-red-400" />
                   <p className="text-sm text-red-700 dark:text-red-300">{locationError}</p>
                 </div>
-              ) : !currentLocation ? (
+              ) : !latestLocation && !currentLocation ? (
                 <div className="flex items-center gap-3 bg-blue-50 dark:bg-blue-900/20 p-4 rounded-xl">
                   <div className="w-5 h-5 border-2 border-blue-600 dark:border-blue-400 border-t-transparent rounded-full animate-spin" />
                   <p className="text-sm text-blue-700 dark:text-blue-300">جاري تحديد موقعك...</p>
@@ -911,49 +1423,155 @@ export default function CheckInPage() {
                       <p className="text-sm font-medium text-green-900 dark:text-green-300">
                         تم تحديد موقعك
                       </p>
+                      {displayLocation && (
+                        <p className="text-xs text-green-700 dark:text-green-400 mt-0.5">
+                          خط العرض: {displayLocation.lat.toFixed(4)} | خط الطول:{" "}
+                          {displayLocation.lng.toFixed(4)}
+                        </p>
+                      )}
+                      {latestLocationAccuracy !== null && (
+                        <p className="text-xs text-green-700 dark:text-green-400 mt-0.5">
+                          أحدث قراءة GPS: ±{Math.round(latestLocationAccuracy)} متر
+                          {latestLocationFixTimeText && (
+                            <> | وقت القراءة: {latestLocationFixTimeText}</>
+                          )}
+                        </p>
+                      )}
+                      {locationAccuracy !== null && (
+                        <p className="text-xs text-green-700 dark:text-green-400 mt-0.5">
+                          آخر قراءة موثوقة: ±{Math.round(locationAccuracy)} متر
+                          {locationFixTimeText && <> | وقت القراءة: {locationFixTimeText}</>}
+                          {!isReliableFixFresh && trustedFixAgeMinutes !== null && (
+                            <> | قديمة منذ {trustedFixAgeMinutes} دقيقة</>
+                          )}
+                        </p>
+                      )}
+                      {locationAccuracy === null && (
+                        <p className="text-xs text-green-700 dark:text-green-400 mt-0.5">
+                          لا توجد قراءة موثوقة بعد لاتخاذ قرار الحضور.
+                        </p>
+                      )}
                       <p className="text-xs text-green-700 dark:text-green-400 mt-0.5">
-                        خط العرض: {currentLocation.lat.toFixed(4)} | خط الطول:{" "}
-                        {currentLocation.lng.toFixed(4)}
+                        مزامنة موقع الموظف:{" "}
+                        {!linkedEmployeeId
+                          ? "لا يوجد ربط موظف"
+                          : locationSync.pausedLowAccuracy
+                            ? "موقوف مؤقتاً (دقة GPS ضعيفة)"
+                            : locationSync.pending
+                              ? "جاري الإرسال..."
+                              : "مزامن"}
+                        {locationSyncTimeText && <> | آخر مزامنة: {locationSyncTimeText}</>}
                       </p>
                     </div>
                   </div>
 
-                  {nearestGeofence && (
+                  {geofencesLoading && (
+                    <div className="flex items-center gap-3 bg-blue-50 dark:bg-blue-900/20 p-4 rounded-xl">
+                      <RefreshCw className="w-5 h-5 text-blue-600 dark:text-blue-400 animate-spin" />
+                      <p className="text-sm text-blue-700 dark:text-blue-300">
+                        جاري تحميل النطاقات الجغرافية...
+                      </p>
+                    </div>
+                  )}
+
+                  {!geofencesLoading && geofencesError && (
+                    <div className="flex items-center gap-3 bg-red-50 dark:bg-red-900/20 p-4 rounded-xl">
+                      <XCircle className="w-5 h-5 text-red-600 dark:text-red-400" />
+                      <p className="text-sm text-red-700 dark:text-red-300">
+                        تعذر تحميل النطاقات الجغرافية
+                      </p>
+                    </div>
+                  )}
+
+                  {!geofencesLoading && !geofencesError && geofences.length === 0 && (
+                    <div className="flex items-center gap-3 bg-amber-50 dark:bg-amber-900/20 p-4 rounded-xl">
+                      <XCircle className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+                      <p className="text-sm text-amber-700 dark:text-amber-300">
+                        لا توجد نطاقات جغرافية متاحة لهذا الحساب
+                      </p>
+                    </div>
+                  )}
+
+                  {activeGeofenceContext && (
                     <div
                       className={`p-4 rounded-xl ${
-                        isInside
-                          ? "bg-green-50 dark:bg-green-900/20 border-2 border-green-200 dark:border-green-800"
-                          : "bg-amber-50 dark:bg-amber-900/20 border-2 border-amber-200 dark:border-amber-800"
+                        !isLocationReliable
+                          ? "bg-blue-50 dark:bg-blue-900/20 border-2 border-blue-200 dark:border-blue-800"
+                          : statusInside
+                            ? "bg-green-50 dark:bg-green-900/20 border-2 border-green-200 dark:border-green-800"
+                            : "bg-amber-50 dark:bg-amber-900/20 border-2 border-amber-200 dark:border-amber-800"
                       }`}
                     >
                       <div className="flex items-center gap-3">
                         <div
                           className="w-10 h-10 rounded-xl flex items-center justify-center"
-                          style={{ backgroundColor: `${nearestGeofence.geofence.color}20` }}
+                          style={{ backgroundColor: `${activeGeofenceContext.geofence.color}20` }}
                         >
                           <MapPin
                             className="w-5 h-5"
-                            style={{ color: nearestGeofence.geofence.color }}
+                            style={{ color: activeGeofenceContext.geofence.color }}
                           />
                         </div>
                         <div className="flex-1">
                           <p className="text-sm font-bold text-gray-900 dark:text-slate-100">
-                            {nearestGeofence.geofence.name}
+                            {activeGeofenceContext.geofence.name}
                           </p>
                           <p className="text-xs text-gray-600 dark:text-slate-400">
-                            {nearestGeofence.geofence.address}
+                            {activeGeofenceContext.geofence.address}
                           </p>
+                          {activeGeofenceContext.source === "assigned" && (
+                            <p className="text-[11px] text-blue-600 dark:text-blue-400 mt-0.5">
+                              النطاق المعيّن لك
+                            </p>
+                          )}
                           <p className="text-xs text-gray-500 dark:text-slate-500 mt-1">
-                            المسافة: {Math.round(nearestGeofence.distance)} متر | النطاق:{" "}
-                            {nearestGeofence.geofence.radius} متر
+                            {isLocationReliable ? (
+                              <>
+                                المسافة: {Math.round(effectiveDistance)} متر | النطاق:{" "}
+                                {Math.round(effectiveRadius)} متر
+                                {locationAccuracyTolerance > 0 && (
+                                  <> | هامش دقة: +{locationAccuracyTolerance} متر</>
+                                )}
+                                {serverValidation.pending && <> | جاري التحقق من الخادم...</>}
+                              </>
+                            ) : (
+                              <>
+                                قياس المسافة معلق حتى تتوفر قراءة موثوقة (دقة ≤{" "}
+                                {maxReliableAccuracy}م وخلال آخر دقيقتين)
+                              </>
+                            )}
+                          </p>
+                          <p className="text-[11px] text-gray-500 dark:text-slate-400 mt-1">
+                            مصدر القرار:{" "}
+                            {isLocationReliable
+                              ? serverVerifiedTimeText
+                                ? "الخادم"
+                                : "محلي"
+                              : "معلق بسبب ضعف/قدم القراءة"}
+                            {serverVerifiedTimeText && <> | آخر تحقق: {serverVerifiedTimeText}</>}
                           </p>
                         </div>
-                        {isInside ? (
+                        {statusInside ? (
                           <CheckCircle className="w-6 h-6 text-green-600" />
+                        ) : !isLocationReliable ? (
+                          <RefreshCw className="w-6 h-6 text-blue-600 animate-spin" />
                         ) : (
                           <XCircle className="w-6 h-6 text-amber-600" />
                         )}
                       </div>
+                      {!isLocationReliable && latestLocationAccuracy !== null && (
+                        <p className="text-xs text-blue-700 dark:text-blue-300 mt-2">
+                          أحدث قراءة GPS غير مستقرة (±{Math.round(latestLocationAccuracy)}م). يلزم
+                          دقة ≤{maxReliableAccuracy}م مع قراءة حديثة لاتخاذ قرار حضور دقيق.
+                          {coarseServerFallbackEligible && (
+                            <>
+                              {" "}
+                              يمكنك الضغط على «تسجيل الحضور» لمحاولة تحقق خادمي باستخدام النطاق
+                              المعيّن.
+                            </>
+                          )}
+                        </p>
+                      )}
                     </div>
                   )}
                 </div>
@@ -979,8 +1597,24 @@ export default function CheckInPage() {
                         أنت خارج النطاق الجغرافي
                       </p>
                       <p className="text-xs text-amber-700 dark:text-amber-400 mt-0.5">
-                        المسافة الحالية: {Math.round(nearestGeofence?.distance || 0)} متر — النطاق
-                        المطلوب: {nearestGeofence?.geofence.radius} متر
+                        {!isLocationReliable ? (
+                          <>
+                            لا يمكن تأكيد الخروج من النطاق حالياً لأن قراءة الموقع غير موثوقة. انتظر
+                            تحسن الإشارة أو تحرك لمنطقة مفتوحة.
+                          </>
+                        ) : (
+                          <>
+                            المسافة الحالية: {Math.round(effectiveDistance)} متر — النطاق المطلوب:{" "}
+                            {Math.round(effectiveRadius)} متر
+                            {locationAccuracyTolerance > 0 && (
+                              <>
+                                {" "}
+                                (مع هامش الدقة:{" "}
+                                {Math.round(effectiveRadius + locationAccuracyTolerance)} متر)
+                              </>
+                            )}
+                          </>
+                        )}
                       </p>
                     </div>
                   </CardContent>
