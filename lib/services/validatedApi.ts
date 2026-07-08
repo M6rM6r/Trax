@@ -100,8 +100,16 @@ export const validatedApi = {
       return validate(data, attendanceListSchema, "/attendance");
     },
     reports: async (): Promise<AttendanceRecordSchema[]> => {
-      const data = await httpClient.get<unknown>("/attendance/reports");
-      return validate(data, attendanceListSchema, "/attendance/reports");
+      const raw = await httpClient.get<unknown>("/attendance/reports");
+      const unwrapped =
+        raw !== null && typeof raw === "object" && "data" in (raw as object)
+          ? (raw as Record<string, unknown>).data
+          : raw;
+      const payload =
+        unwrapped !== null && typeof unwrapped === "object" && "records" in (unwrapped as object)
+          ? (unwrapped as Record<string, unknown>).records
+          : unwrapped;
+      return validate({ data: payload }, attendanceListSchema, "/attendance/reports");
     },
     checkIn: async (payload: CheckInSchema): Promise<AttendanceRecordSchema> => {
       const data = await httpClient.post<unknown>("/attendance/check-in", payload);

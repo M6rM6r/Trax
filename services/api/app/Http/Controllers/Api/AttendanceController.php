@@ -92,7 +92,7 @@ class AttendanceController extends Controller
             $record->employee?->update(['battery_level' => $request->battery_level]);
         }
 
-        Cache::tags(['attendance', 'dashboard'])->flush();
+        try { Cache::tags(['attendance', 'dashboard'])->flush(); } catch (\Throwable) {}
 
         event(new AttendanceCheckedIn(
             $record->employee_id,
@@ -139,7 +139,7 @@ class AttendanceController extends Controller
             'worked_hours' => $this->calculateWorkedHours($record->check_in_time, $checkOutTime),
         ]);
 
-        Cache::tags(['attendance', 'dashboard'])->flush();
+        try { Cache::tags(['attendance', 'dashboard'])->flush(); } catch (\Throwable) {}
 
         event(new AttendanceCheckedOut(
             $record->employee_id,

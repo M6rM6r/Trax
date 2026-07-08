@@ -25,7 +25,7 @@ class DeviceController extends Controller
             'fcm_platform' => $request->platform ?? 'android',
         ]);
 
-        Cache::tags(['employees'])->flush();
+        try { Cache::tags(['employees'])->flush(); } catch (\Throwable) {}
 
         return response()->json([
             'success' => true,
@@ -44,7 +44,7 @@ class DeviceController extends Controller
             'fcm_platform' => null,
         ]);
 
-        Cache::tags(['employees'])->flush();
+        try { Cache::tags(['employees'])->flush(); } catch (\Throwable) {}
 
         return response()->json([
             'success' => true,
