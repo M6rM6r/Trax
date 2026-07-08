@@ -209,17 +209,8 @@ export default function EmployeesPage() {
       deleteEmployee.mutate(emp.id);
     });
     toastWithUndo(`تم حذف ${selectedEmployees.length} موظف`, () => {
-      selectedEmployees.forEach((emp) => {
-        createEmployee.mutate({
-          ...emp,
-          avatar: null,
-          status: "active",
-          currentLat: null,
-          currentLng: null,
-          lastSeen: null,
-        });
-      });
-      toastSuccess("تم استرجاع الموظفين");
+      toastError("لا يمكن التراجع — يرجى إعادة إضافة الموظفين يدوياً");
+      void refetch();
     });
     setSelectedIds([]);
   };
@@ -257,20 +248,8 @@ export default function EmployeesPage() {
     deleteEmployee.mutate(deleteTarget.id, {
       onSuccess: () => {
         toastWithUndo(`تم حذف الموظف ${deletedEmployee.name}`, () => {
-          createEmployee.mutate(
-            {
-              ...deletedEmployee,
-              avatar: null,
-              status: "active",
-              currentLat: null,
-              currentLng: null,
-              lastSeen: null,
-            },
-            {
-              onSuccess: () => toastSuccess("تم استرجاع الموظف"),
-              onError: () => toastError("تعذر استرجاع الموظف"),
-            }
-          );
+          toastError("لا يمكن التراجع — يرجى إعادة إضافة الموظف يدوياً");
+          void refetch();
         });
         setDeleteTarget(null);
       },

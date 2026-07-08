@@ -293,8 +293,8 @@ const Index = ({
                         isActive: pathname.includes("/check-in"),
                       },
                       {
-                        title: "إعددات عامة",
-                        url: `#`,
+                        title: "الإعدادات",
+                        url: `/${locale}/settings`,
                         icon: Setting2,
                         isActive: pathname.includes(`/settings`),
                         items: [

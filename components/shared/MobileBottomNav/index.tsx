@@ -7,8 +7,9 @@ import { LayoutDashboard, Users, MapPin, Calendar, CheckCircle, Target } from "l
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
 import { hapticTap } from "@/lib/utils/haptics";
+import { useAuthStore } from "@/stores/useAuthStore";
 
-const navItems = [
+const bossNavItems = [
   { icon: LayoutDashboard, label: "الرئيسية", path: "" },
   { icon: Users, label: "الموظفون", path: "employees" },
   { icon: MapPin, label: "الخريطة", path: "live-map" },
@@ -17,9 +18,13 @@ const navItems = [
   { icon: Target, label: "النطاقات", path: "geofences" },
 ];
 
+const employeeNavItems = [{ icon: CheckCircle, label: "تسجيل الحضور", path: "check-in" }];
+
 export default function MobileBottomNav() {
   const pathname = usePathname();
   const locale = useLocale();
+  const { role } = useAuthStore();
+  const navItems = role === "employee" ? employeeNavItems : bossNavItems;
 
   const handlePress = () => {
     hapticTap();

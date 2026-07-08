@@ -171,7 +171,19 @@ httpClient.addRequestInterceptor((config) => {
       .map((cookie) => cookie.trim())
       .find((cookie) => cookie.startsWith("auth_token="));
 
-    const token = tokenCookie ? decodeURIComponent(tokenCookie.slice("auth_token=".length)) : null;
+    let token = tokenCookie ? decodeURIComponent(tokenCookie.slice("auth_token=".length)) : null;
+
+    if (!token) {
+      try {
+        const stored = localStorage.getItem("auth-storage");
+        if (stored) {
+          const parsed = JSON.parse(stored) as { state?: { token?: string } };
+          token = parsed?.state?.token ?? null;
+        }
+      } catch {
+        // ignore
+      }
+    }
 
     if (token) {
       config.headers = {

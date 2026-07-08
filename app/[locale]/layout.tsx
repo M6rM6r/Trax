@@ -46,12 +46,7 @@ export default async function LocaleLayout({
       suppressHydrationWarning
     >
       <NextIntlClientProvider messages={messages}>
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="dark"
-          enableSystem={false}
-          forcedTheme="dark"
-        >
+        <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>
           <QueryProvider>
             <ErrorBoundary>
               <MonitoringProvider>
