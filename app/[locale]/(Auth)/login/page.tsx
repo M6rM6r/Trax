@@ -14,7 +14,7 @@ import { useState, useMemo } from "react";
 import { useAuthStore, UserRole } from "@/stores/useAuthStore";
 import { hapticSuccess, hapticError } from "@/lib/utils/haptics";
 import { motion } from "framer-motion";
-import { httpClient } from "@/lib/services/httpClient";
+import { httpClient, ApiError } from "@/lib/services/httpClient";
 
 interface LoginValues {
   identifier: string;
@@ -117,9 +117,26 @@ const Page = () => {
       } else {
         router.push(`/${locale}`);
       }
-    } catch {
+    } catch (error) {
       hapticError();
-      toastError("البريد الإلكتروني أو كلمة المرور غير صحيحة");
+      if (error instanceof ApiError) {
+        if (error.statusCode === 401) {
+          toastError("البريد الإلكتروني أو كلمة المرور غير صحيحة");
+          return;
+        }
+
+        if (error.statusCode === 0) {
+          toastError("تعذر الاتصال بخادم النظام. تحقق من اتصال الإنترنت أو إعدادات الخادم.");
+          return;
+        }
+
+        if (error.statusCode >= 500) {
+          toastError("خادم النظام غير متاح حالياً. حاول مرة أخرى بعد قليل.");
+          return;
+        }
+      }
+
+      toastError("تعذر إتمام تسجيل الدخول حالياً. حاول مرة أخرى.");
     } finally {
       setSubmitting(false);
     }

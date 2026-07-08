@@ -28,6 +28,17 @@ import type { Geofence } from "@/lib/types/trackingTypes";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { httpClient } from "@/lib/services/httpClient";
 import Image from "next/image";
+import OlMap from "ol/Map";
+import View from "ol/View";
+import TileLayer from "ol/layer/Tile";
+import VectorLayer from "ol/layer/Vector";
+import VectorSource from "ol/source/Vector";
+import OSM from "ol/source/OSM";
+import Feature from "ol/Feature";
+import { Point, Circle as CircleGeom } from "ol/geom";
+import { fromLonLat } from "ol/proj";
+import { Style, Fill, Stroke, Circle as CircleStyle } from "ol/style";
+import "ol/ol.css";
 
 function LiveClock() {
   const [time, setTime] = useState("");
@@ -124,6 +135,10 @@ export default function CheckInPage() {
   const streamRef = useRef<MediaStream | null>(null);
   const lastServerValidationKeyRef = useRef<string | null>(null);
   const handleCheckInRef = useRef<() => Promise<void>>(async () => {});
+  const currentMiniMapRef = useRef<HTMLDivElement | null>(null);
+  const currentMiniMapInstanceRef = useRef<OlMap | null>(null);
+  const miniMapRef = useRef<HTMLDivElement | null>(null);
+  const miniMapInstanceRef = useRef<OlMap | null>(null);
 
   const pendingCheckInsRef = useRef(pendingCheckIns);
   pendingCheckInsRef.current = pendingCheckIns;
@@ -881,6 +896,17 @@ export default function CheckInPage() {
   const trustedFixAgeMinutes =
     reliableFixAgeMs !== null ? Math.floor(reliableFixAgeMs / 60000) : null;
   const isLatestAccuracyVeryWeak = latestLocationAccuracy !== null && latestLocationAccuracy > 5000;
+  const isTrackingAccuracyWeak = latestLocationAccuracy !== null && latestLocationAccuracy > 1000;
+
+  const locationSyncStatusText = (() => {
+    if (!linkedEmployeeId) return "لا يوجد ربط موظف";
+    if (!currentLocation) return "بانتظار قراءة صالحة";
+    if (isTrackingAccuracyWeak || locationSync.pausedLowAccuracy)
+      return "موقوف مؤقتاً (دقة GPS ضعيفة)";
+    if (locationSync.pending) return "جاري الإرسال...";
+    if (!locationSync.lastSuccessAt) return "بانتظار أول مزامنة";
+    return "مزامن";
+  })();
 
   const coarseServerFallbackEligible =
     !isLocationReliable &&
@@ -900,6 +926,134 @@ export default function CheckInPage() {
 
     return `${Math.round(distanceMeters)} متر`;
   };
+
+  useEffect(() => {
+    if (!currentMiniMapRef.current || !displayLocation) return;
+
+    const center = fromLonLat([displayLocation.lng, displayLocation.lat]);
+    const source = new VectorSource();
+
+    const accuracyMeters =
+      latestLocationAccuracy !== null && Number.isFinite(latestLocationAccuracy)
+        ? Math.max(20, Math.min(latestLocationAccuracy, 8000))
+        : 80;
+
+    const accuracyCircle = new Feature({
+      geometry: new CircleGeom(center, accuracyMeters),
+    });
+    accuracyCircle.setStyle(
+      new Style({
+        stroke: new Stroke({ color: "#3B82F6", width: 2 }),
+        fill: new Fill({ color: "#3B82F633" }),
+      })
+    );
+    source.addFeature(accuracyCircle);
+
+    const marker = new Feature({
+      geometry: new Point(center),
+    });
+    marker.setStyle(
+      new Style({
+        image: new CircleStyle({
+          radius: 6,
+          fill: new Fill({ color: "#2563EB" }),
+          stroke: new Stroke({ color: "#ffffff", width: 2 }),
+        }),
+      })
+    );
+    source.addFeature(marker);
+
+    const vectorLayer = new VectorLayer({ source });
+
+    if (!currentMiniMapInstanceRef.current) {
+      currentMiniMapInstanceRef.current = new OlMap({
+        target: currentMiniMapRef.current,
+        layers: [new TileLayer({ source: new OSM() }), vectorLayer],
+        view: new View({ center, zoom: 16 }),
+      });
+    } else {
+      const map = currentMiniMapInstanceRef.current;
+      map.getLayers().setAt(1, vectorLayer);
+      map.getView().setCenter(center);
+      map.getView().setZoom(16);
+      map.updateSize();
+    }
+
+    return () => {
+      currentMiniMapInstanceRef.current?.updateSize();
+    };
+  }, [displayLocation, latestLocationAccuracy]);
+
+  useEffect(() => {
+    if (!miniMapRef.current || !activeGeofenceContext) return;
+
+    const { geofence } = activeGeofenceContext;
+    const center = fromLonLat([geofence.lng, geofence.lat]);
+
+    const source = new VectorSource();
+
+    const geofenceCircle = new Feature({
+      geometry: new CircleGeom(center, geofence.radius),
+    });
+    geofenceCircle.setStyle(
+      new Style({
+        stroke: new Stroke({ color: geofence.color, width: 2 }),
+        fill: new Fill({ color: `${geofence.color}22` }),
+      })
+    );
+    source.addFeature(geofenceCircle);
+
+    const centerMarker = new Feature({
+      geometry: new Point(center),
+    });
+    centerMarker.setStyle(
+      new Style({
+        image: new CircleStyle({
+          radius: 6,
+          fill: new Fill({ color: geofence.color }),
+          stroke: new Stroke({ color: "#ffffff", width: 2 }),
+        }),
+      })
+    );
+    source.addFeature(centerMarker);
+
+    const vectorLayer = new VectorLayer({ source });
+
+    if (!miniMapInstanceRef.current) {
+      miniMapInstanceRef.current = new OlMap({
+        target: miniMapRef.current,
+        layers: [new TileLayer({ source: new OSM() }), vectorLayer],
+        view: new View({
+          center,
+          zoom: 16,
+        }),
+      });
+    } else {
+      const map = miniMapInstanceRef.current;
+      map.getLayers().setAt(1, vectorLayer);
+      map.getView().setCenter(center);
+      map.getView().setZoom(16);
+      map.updateSize();
+    }
+
+    return () => {
+      miniMapInstanceRef.current?.updateSize();
+    };
+  }, [activeGeofenceContext]);
+
+  useEffect(() => {
+    return () => {
+      if (miniMapInstanceRef.current) {
+        miniMapInstanceRef.current.setTarget(undefined);
+        miniMapInstanceRef.current = null;
+      }
+
+      if (currentMiniMapInstanceRef.current) {
+        currentMiniMapInstanceRef.current.setTarget(undefined);
+        currentMiniMapInstanceRef.current = null;
+      }
+    };
+  }, []);
 
   const assignedGeofenceDistanceText =
     assignedGeofenceDistance !== null ? formatDistanceReadable(assignedGeofenceDistance) : null;
@@ -1482,6 +1636,15 @@ export default function CheckInPage() {
                           )}
                         </p>
                       )}
+                      {displayLocation && (
+                        <div className="mt-2 overflow-hidden rounded-lg border border-green-200 dark:border-green-800">
+                          <div
+                            ref={currentMiniMapRef}
+                            className="h-28 w-full dark:[&_.ol-layer]:filter dark:[&_.ol-layer]:invert-[1] dark:[&_.ol-layer]:hue-rotate-180 dark:[&_.ol-layer]:brightness-[0.9] dark:[&_.ol-layer]:contrast-[0.9]"
+                            aria-label="خريطة مصغرة للموقع الحالي"
+                          />
+                        </div>
+                      )}
                       {locationAccuracy !== null && (
                         <p className="text-xs text-green-700 dark:text-green-400 mt-0.5">
                           آخر قراءة موثوقة: ±{Math.round(locationAccuracy)} متر
@@ -1497,14 +1660,7 @@ export default function CheckInPage() {
                         </p>
                       )}
                       <p className="text-xs text-green-700 dark:text-green-400 mt-0.5">
-                        مزامنة موقع الموظف:{" "}
-                        {!linkedEmployeeId
-                          ? "لا يوجد ربط موظف"
-                          : locationSync.pausedLowAccuracy
-                            ? "موقوف مؤقتاً (دقة GPS ضعيفة)"
-                            : locationSync.pending
-                              ? "جاري الإرسال..."
-                              : "مزامن"}
+                        مزامنة موقع الموظف: {locationSyncStatusText}
                         {locationSyncTimeText && <> | آخر مزامنة: {locationSyncTimeText}</>}
                       </p>
                     </div>
@@ -1564,6 +1720,13 @@ export default function CheckInPage() {
                           <p className="text-xs text-gray-600 dark:text-slate-400">
                             {activeGeofenceContext.geofence.address}
                           </p>
+                          <div className="mt-2 overflow-hidden rounded-lg border border-gray-200 dark:border-slate-700">
+                            <div
+                              ref={miniMapRef}
+                              className="h-28 w-full dark:[&_.ol-layer]:filter dark:[&_.ol-layer]:invert-[1] dark:[&_.ol-layer]:hue-rotate-180 dark:[&_.ol-layer]:brightness-[0.9] dark:[&_.ol-layer]:contrast-[0.9]"
+                              aria-label="خريطة مصغرة لموقع النطاق"
+                            />
+                          </div>
                           {activeGeofenceContext.source === "assigned" && (
                             <p className="text-[11px] text-blue-600 dark:text-blue-400 mt-0.5">
                               النطاق المعيّن لك
