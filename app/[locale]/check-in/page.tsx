@@ -285,9 +285,7 @@ export default function CheckInPage() {
       setLatestLocationFixAt(now);
       setLatestLocationAccuracy(normalizedAccuracy);
 
-      const TRUSTED_MAX_ACCURACY_METERS = 1000;
-      const shouldTrustFix =
-        normalizedAccuracy !== null && normalizedAccuracy <= TRUSTED_MAX_ACCURACY_METERS;
+      const shouldTrustFix = normalizedAccuracy !== null;
 
       if (shouldTrustFix) {
         setCurrentLocation({ lat: latitude, lng: longitude });
@@ -613,14 +611,10 @@ export default function CheckInPage() {
     ? Number(activeGeofenceContext.geofence.radius) || 0
     : 0;
 
-  const REQUIRED_ATTENDANCE_ACCURACY_METERS = 5;
+  const REQUIRED_ATTENDANCE_ACCURACY_METERS = 10000;
   const maxReliableAccuracy = REQUIRED_ATTENDANCE_ACCURACY_METERS;
 
-  const reliableFixAgeMs = lastLocationFixAt !== null ? Date.now() - lastLocationFixAt : null;
-  const isReliableFixFresh = reliableFixAgeMs !== null && reliableFixAgeMs <= 120000;
-
-  const isLocationReliable =
-    locationAccuracy !== null && locationAccuracy <= maxReliableAccuracy && isReliableFixFresh;
+  const isLocationReliable = locationAccuracy !== null && locationAccuracy <= maxReliableAccuracy;
 
   const locationAccuracyTolerance = locationAccuracy
     ? Math.max(1, Math.min(REQUIRED_ATTENDANCE_ACCURACY_METERS, Math.round(locationAccuracy)))
@@ -893,8 +887,7 @@ export default function CheckInPage() {
     : null;
 
   const displayLocation = latestLocation ?? currentLocation;
-  const trustedFixAgeMinutes =
-    reliableFixAgeMs !== null ? Math.floor(reliableFixAgeMs / 60000) : null;
+  const trustedFixAgeMinutes = null;
   const isLatestAccuracyVeryWeak = latestLocationAccuracy !== null && latestLocationAccuracy > 5000;
   const isTrackingAccuracyWeak = latestLocationAccuracy !== null && latestLocationAccuracy > 1000;
 
@@ -1649,9 +1642,6 @@ export default function CheckInPage() {
                         <p className="text-xs text-green-700 dark:text-green-400 mt-0.5">
                           آخر قراءة موثوقة: ±{Math.round(locationAccuracy)} متر
                           {locationFixTimeText && <> | وقت القراءة: {locationFixTimeText}</>}
-                          {!isReliableFixFresh && trustedFixAgeMinutes !== null && (
-                            <> | قديمة منذ {trustedFixAgeMinutes} دقيقة</>
-                          )}
                         </p>
                       )}
                       {locationAccuracy === null && (

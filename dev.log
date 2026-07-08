@@ -1,0 +1,43 @@
+  Γû▓ Next.js 14.2.18
+  - Local:        http://localhost:3000
+  - Environments: .env.local, .env
+
+ Γ£ô Starting...
+ Γ£ô Ready in 1802ms
+ Γ£ô Compiled /middleware in 438ms (106 modules)
+ Γùï Compiling /[locale]/login ...
+ Γ£ô Compiled /[locale]/login in 8.3s (2151 modules)
+ Γ£ô Compiled in 389ms (1026 modules)
+ Γ£ô Compiled in 132ms (1012 modules)
+ GET /ar/login 200 in 1913ms
+ GET /ar/login 200 in 9054ms
+ Γùï Compiling /favicon.ico ...
+ Γ£ô Compiled /favicon.ico in 2.7s (1147 modules)
+ GET /favicon.ico 200 in 2739ms
+ GET /ar/login 200 in 190ms
+ GET /ar/login 200 in 81ms
+ GET /favicon.ico 200 in 8ms
+ Γùï Compiling /[locale] ...
+ Γ£ô Compiled /[locale] in 5.2s (4537 modules)
+ Γùï Compiling /[locale]/check-in ...
+ Γ£ô Compiled /[locale]/check-in in 770ms (4622 modules)
+ GET /ar/login 200 in 288ms
+ GET /ar/login 200 in 54ms
+ GET /ar/login 200 in 73ms
+ Γ£ô Compiled in 1272ms (4622 modules)
+ GET /ar/login?_rsc=3y9k2 200 in 99ms
+ GET /ar/login 200 in 95ms
+ GET /ar/login 200 in 278ms
+ GET /ar/login 200 in 72ms
+ GET /ar/check-in 200 in 132ms
+ Γùï Compiling /favicon.ico ...
+ Γ£ô Compiled /favicon.ico in 508ms (2440 modules)
+ GET /favicon.ico 200 in 601ms
+ Γ£ô Compiled in 1140ms (4622 modules)
+ GET /ar/login?_rsc=3y9k2 200 in 117ms
+ GET /ar/check-in?_rsc=pxtbt 200 in 119ms
+ Γ£ô Compiled /favicon.ico in 306ms (2440 modules)
+ GET /favicon.ico 200 in 406ms
+ GET /favicon.ico 200 in 18ms
+ GET /favicon.ico 200 in 15ms
+ GET /favicon.ico 200 in 17ms
