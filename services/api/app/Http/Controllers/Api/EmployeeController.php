@@ -12,7 +12,6 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Cache;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -156,7 +155,7 @@ class EmployeeController extends Controller
                 'name'       => $validated['name'],
                 'email'      => $validated['email'],
                 'username'   => $validated['employeeNumber'] ?? null,
-                'password'   => Hash::make($validated['password']),
+                'password'   => $validated['password'],
                 'role'       => $validated['role'],
             ]);
 

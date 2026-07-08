@@ -5,14 +5,14 @@ import MainLayout from "@/components/shared/MainLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
-  MapPin,
-  Navigation,
-  CheckCircle,
-  XCircle,
-  LogOut,
   Timer,
   QrCode,
   Camera,
+  CheckCircle,
+  XCircle,
+  LogOut,
+  Navigation,
+  MapPin,
   Wifi,
   WifiOff,
   CloudOff,
@@ -428,9 +428,20 @@ export default function CheckInPage() {
     const isCoarseFallbackMode = !isLocationReliable && canUseCoarseServerValidation;
 
     if (!isLocationReliable) {
-      if (!canUseCoarseServerValidation) {
+      if (isAssignedGeofenceLikelyMismatch) {
         toastError(
-          `دقة GPS الحالية ضعيفة (±${Math.round(latestLocationAccuracy ?? locationAccuracy ?? 0)}م). انتظر لتحسين الدقة أو استخدم جهازاً بموقع أدق.`
+          "يبدو أن النطاق المعيّن بعيد عن موقعك الحالي بشكل كبير. يرجى مراجعة تعيين النطاق مع الإدارة."
+        );
+        return;
+      }
+
+      if (!canUseCoarseServerValidation) {
+        const gpsAccuracyText =
+          latestLocationAccuracy !== null && latestLocationAccuracy > 5000
+            ? "ضعيفة جدًا (أكثر من 5 كم)"
+            : `ضعيفة (±${Math.round(latestLocationAccuracy ?? locationAccuracy ?? 0)}م)`;
+        toastError(
+          `دقة GPS الحالية ${gpsAccuracyText}. انتظر لتحسين الدقة أو استخدم جهازاً بموقع أدق.`
         );
         return;
       }
@@ -869,6 +880,7 @@ export default function CheckInPage() {
   const displayLocation = latestLocation ?? currentLocation;
   const trustedFixAgeMinutes =
     reliableFixAgeMs !== null ? Math.floor(reliableFixAgeMs / 60000) : null;
+  const isLatestAccuracyVeryWeak = latestLocationAccuracy !== null && latestLocationAccuracy > 5000;
 
   const coarseServerFallbackEligible =
     !isLocationReliable &&
@@ -876,6 +888,31 @@ export default function CheckInPage() {
     assignedGeofence !== null &&
     latestLocationAccuracy !== null &&
     latestLocationAccuracy <= 30000;
+
+  const assignedGeofenceDistance =
+    activeGeofenceContext?.source === "assigned" ? activeGeofenceContext.distance : null;
+
+  const formatDistanceReadable = (distanceMeters: number): string => {
+    if (distanceMeters >= 1000) {
+      const km = distanceMeters / 1000;
+      return `${km >= 10 ? km.toFixed(0) : km.toFixed(1)} كم`;
+    }
+
+    return `${Math.round(distanceMeters)} متر`;
+  };
+
+  const assignedGeofenceDistanceText =
+    assignedGeofenceDistance !== null ? formatDistanceReadable(assignedGeofenceDistance) : null;
+
+  const assignedDistanceAfterAccuracyCompensation =
+    assignedGeofenceDistance !== null
+      ? assignedGeofenceDistance - (latestLocationAccuracy ?? 0)
+      : null;
+
+  const isAssignedGeofenceLikelyMismatch =
+    !isLocationReliable &&
+    assignedDistanceAfterAccuracyCompensation !== null &&
+    assignedDistanceAfterAccuracyCompensation > 3000;
 
   const sessionStatus = !checkInTime
     ? { label: "لم يتم تسجيل الحضور اليوم", color: "amber" }
@@ -1219,29 +1256,35 @@ export default function CheckInPage() {
                       <h3 className="text-lg font-bold text-gray-900 dark:text-slate-100">
                         مسح QR Code
                       </h3>
-                      <p className="text-sm text-gray-500 dark:text-slate-400">
-                        وجه الكاميرا نحو رمز QR الخاص بالموقع
+                      <p className="text-xs text-gray-500 dark:text-slate-500 mt-1">
+                        {isLocationReliable ? (
+                          <>
+                            المسافة: {Math.round(effectiveDistance)} متر | النطاق:{" "}
+                            {Math.round(effectiveRadius)} متر
+                            {locationAccuracyTolerance > 0 && (
+                              <> | هامش دقة: +{locationAccuracyTolerance} متر</>
+                            )}
+                            {serverValidation.pending && <> | جاري التحقق من الخادم...</>}
+                          </>
+                        ) : (
+                          <>
+                            قياس المسافة معلق حتى تتوفر قراءة موثوقة (دقة ≤ {maxReliableAccuracy}م
+                            وخلال آخر دقيقتين)
+                          </>
+                        )}
                       </p>
-                    </div>
-                    <div className="flex gap-3">
-                      <Button
-                        variant="outline"
-                        className="flex-1"
-                        onClick={() => setShowQRScanner(false)}
-                      >
-                        إلغاء
-                      </Button>
-                      <Button variant="primary" className="flex-1" onClick={handleQRCheckIn}>
-                        محاكاة المسح
-                      </Button>
+                      {isAssignedGeofenceLikelyMismatch && (
+                        <div className="mt-2 inline-flex items-center gap-2 rounded-full border border-red-300 bg-red-50 px-3 py-1 text-[11px] font-semibold text-red-700 dark:border-red-800 dark:bg-red-900/30 dark:text-red-300">
+                          <span className="w-2 h-2 rounded-full bg-red-500" />
+                          تعيين النطاق غير مطابق لموقعك الحالي
+                        </div>
+                      )}
                     </div>
                   </div>
                 </motion.div>
               </motion.div>
             )}
           </AnimatePresence>
-
-          {/* Selfie Capture Modal */}
           <AnimatePresence>
             {showSelfieCapture && (
               <motion.div
@@ -1430,7 +1473,10 @@ export default function CheckInPage() {
                       )}
                       {latestLocationAccuracy !== null && (
                         <p className="text-xs text-green-700 dark:text-green-400 mt-0.5">
-                          أحدث قراءة GPS: ±{Math.round(latestLocationAccuracy)} متر
+                          أحدث قراءة GPS:{" "}
+                          {isLatestAccuracyVeryWeak
+                            ? "ضعيفة جدًا (أكثر من 5 كم)"
+                            : `±${Math.round(latestLocationAccuracy)} متر`}
                           {latestLocationFixTimeText && (
                             <> | وقت القراءة: {latestLocationFixTimeText}</>
                           )}
@@ -1523,6 +1569,11 @@ export default function CheckInPage() {
                               النطاق المعيّن لك
                             </p>
                           )}
+                          {assignedGeofenceDistanceText && (
+                            <p className="text-[11px] text-gray-500 dark:text-slate-400 mt-0.5">
+                              البعد التقديري عن مركز النطاق: {assignedGeofenceDistanceText}
+                            </p>
+                          )}
                           <p className="text-xs text-gray-500 dark:text-slate-500 mt-1">
                             {isLocationReliable ? (
                               <>
@@ -1540,6 +1591,12 @@ export default function CheckInPage() {
                               </>
                             )}
                           </p>
+                          {isAssignedGeofenceLikelyMismatch && (
+                            <div className="mt-2 inline-flex items-center gap-2 rounded-full border border-red-300 bg-red-50 px-3 py-1 text-[11px] font-semibold text-red-700 dark:border-red-800 dark:bg-red-900/30 dark:text-red-300">
+                              <span className="w-2 h-2 rounded-full bg-red-500" />
+                              تعيين النطاق غير مطابق لموقعك الحالي
+                            </div>
+                          )}
                           <p className="text-[11px] text-gray-500 dark:text-slate-400 mt-1">
                             مصدر القرار:{" "}
                             {isLocationReliable
@@ -1560,15 +1617,27 @@ export default function CheckInPage() {
                       </div>
                       {!isLocationReliable && latestLocationAccuracy !== null && (
                         <p className="text-xs text-blue-700 dark:text-blue-300 mt-2">
-                          أحدث قراءة GPS غير مستقرة (±{Math.round(latestLocationAccuracy)}م). يلزم
-                          دقة ≤{maxReliableAccuracy}م مع قراءة حديثة لاتخاذ قرار حضور دقيق.
-                          {coarseServerFallbackEligible && (
+                          أحدث قراءة GPS غير مستقرة
+                          {isLatestAccuracyVeryWeak
+                            ? " (ضعيفة جدًا: أكثر من 5 كم)."
+                            : ` (±${Math.round(latestLocationAccuracy)}م).`}{" "}
+                          يلزم دقة ≤{maxReliableAccuracy}م مع قراءة حديثة لاتخاذ قرار حضور دقيق.
+                          {isAssignedGeofenceLikelyMismatch ? (
+                            <>
+                              {" "}
+                              كما يبدو أن النطاق المعيّن بعيد عن موقعك الحالي. يرجى التأكد من تعيين
+                              النطاق الصحيح للموظف من صفحة الإدارة.
+                              {assignedGeofenceDistanceText && (
+                                <> (البعد الحالي: {assignedGeofenceDistanceText}).</>
+                              )}
+                            </>
+                          ) : coarseServerFallbackEligible ? (
                             <>
                               {" "}
                               يمكنك الضغط على «تسجيل الحضور» لمحاولة تحقق خادمي باستخدام النطاق
                               المعيّن.
                             </>
-                          )}
+                          ) : null}
                         </p>
                       )}
                     </div>
