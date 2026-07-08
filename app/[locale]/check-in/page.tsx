@@ -587,9 +587,8 @@ export default function CheckInPage() {
     ? Number(activeGeofenceContext.geofence.radius) || 0
     : 0;
 
-  const maxReliableAccuracy = activeGeofenceContext
-    ? Math.max(100, Math.min(500, Math.round(effectiveRadius * 0.5)))
-    : 250;
+  const REQUIRED_ATTENDANCE_ACCURACY_METERS = 5;
+  const maxReliableAccuracy = REQUIRED_ATTENDANCE_ACCURACY_METERS;
 
   const reliableFixAgeMs = lastLocationFixAt !== null ? Date.now() - lastLocationFixAt : null;
   const isReliableFixFresh = reliableFixAgeMs !== null && reliableFixAgeMs <= 120000;
@@ -598,7 +597,7 @@ export default function CheckInPage() {
     locationAccuracy !== null && locationAccuracy <= maxReliableAccuracy && isReliableFixFresh;
 
   const locationAccuracyTolerance = locationAccuracy
-    ? Math.max(10, Math.min(50, Math.round(locationAccuracy)))
+    ? Math.max(1, Math.min(REQUIRED_ATTENDANCE_ACCURACY_METERS, Math.round(locationAccuracy)))
     : 0;
 
   const isInside =
