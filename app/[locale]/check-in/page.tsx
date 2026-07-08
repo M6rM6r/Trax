@@ -11,7 +11,6 @@ import {
   CheckCircle,
   XCircle,
   LogOut,
-  MapPin,
   Wifi,
   WifiOff,
   CloudOff,
@@ -71,9 +70,7 @@ export default function CheckInPage() {
   const { user } = useAuthStore();
   const [currentLocation, setCurrentLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [latestLocation, setLatestLocation] = useState<{ lat: number; lng: number } | null>(null);
-  const [lastLocationFixAt, setLastLocationFixAt] = useState<number | null>(null);
   const [locationAccuracy, setLocationAccuracy] = useState<number | null>(null);
-  const [latestLocationFixAt, setLatestLocationFixAt] = useState<number | null>(null);
   const [latestLocationAccuracy, setLatestLocationAccuracy] = useState<number | null>(null);
   const [locationError, setLocationError] = useState<string | null>(null);
   const [nearestGeofence, setNearestGeofence] = useState<{
@@ -116,17 +113,10 @@ export default function CheckInPage() {
   const [pendingCheckIns, setPendingCheckIns] = useState<
     Array<{ type: string; time: string; location: string; selfie?: string }>
   >([]);
-  const [attendanceMode, setAttendanceMode] = useState<"manual" | "auto_optional">("manual");
-  const [autoAttempted, setAutoAttempted] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const lastServerValidationKeyRef = useRef<string | null>(null);
-  const handleCheckInRef = useRef<() => Promise<void>>(async () => {});
-  const currentMiniMapRef = useRef<HTMLDivElement | null>(null);
-  const currentMiniMapInstanceRef = useRef<OlMap | null>(null);
-  const miniMapRef = useRef<HTMLDivElement | null>(null);
-  const miniMapInstanceRef = useRef<OlMap | null>(null);
 
   const pendingCheckInsRef = useRef(pendingCheckIns);
   pendingCheckInsRef.current = pendingCheckIns;
@@ -151,19 +141,6 @@ export default function CheckInPage() {
       window.removeEventListener("online", handleOnline);
       window.removeEventListener("offline", handleOffline);
     };
-  }, []);
-
-  useEffect(() => {
-    const raw = localStorage.getItem("trax_settings");
-    if (!raw) return;
-    try {
-      const parsed = JSON.parse(raw);
-      if (parsed.attendanceMode === "auto_optional" || parsed.attendanceMode === "manual") {
-        setAttendanceMode(parsed.attendanceMode);
-      }
-    } catch {
-      // ignore malformed settings
-    }
   }, []);
 
   useEffect(() => {
@@ -266,18 +243,15 @@ export default function CheckInPage() {
     const updateFromPosition = (position: GeolocationPosition) => {
       const { latitude, longitude, accuracy } = position.coords;
       const normalizedAccuracy = Number.isFinite(accuracy) ? accuracy : null;
-      const now = Date.now();
 
       setLocationError(null);
       setLatestLocation({ lat: latitude, lng: longitude });
-      setLatestLocationFixAt(now);
       setLatestLocationAccuracy(normalizedAccuracy);
 
       const shouldTrustFix = normalizedAccuracy !== null;
 
       if (shouldTrustFix) {
         setCurrentLocation({ lat: latitude, lng: longitude });
-        setLastLocationFixAt(now);
         setLocationAccuracy(normalizedAccuracy);
       }
 
@@ -518,15 +492,18 @@ export default function CheckInPage() {
         });
         completeLocalCheckIn();
         return;
-      } catch {
+      } catch (err: unknown) {
+        const status = (err as { status?: number })?.status;
+        if (status === 409) {
+          completeLocalCheckIn();
+          return;
+        }
         toastError("تعذر تسجيل الحضور عبر الخادم، سيتم الحفظ محلياً");
       }
     }
 
     setTimeout(() => completeLocalCheckIn(), 400);
   };
-
-  handleCheckInRef.current = handleCheckIn;
 
   const handleQRCheckIn = () => {
     hapticTap();
@@ -621,13 +598,6 @@ export default function CheckInPage() {
       ? serverValidation.inside
       : isInside;
 
-  const effectiveDistance =
-    serverValidation.distance !== null &&
-    activeGeofenceContext &&
-    serverValidation.geofenceId === activeGeofenceContext.geofence.id
-      ? serverValidation.distance
-      : activeGeofenceContext?.distance || 0;
-
   const verifyInsideFromServer = useCallback(
     async (lat: number, lng: number, geofenceId: number) => {
       const response = await httpClient.post<{
@@ -682,27 +652,6 @@ export default function CheckInPage() {
     },
     [locationAccuracy]
   );
-
-  useEffect(() => {
-    if (attendanceMode !== "auto_optional") return;
-    if (!isLocationReliable) return;
-    if (!statusInside) return;
-    if (checkInStatus !== "idle") return;
-    if (autoAttempted) return;
-
-    setAutoAttempted(true);
-    const timer = setTimeout(() => {
-      void handleCheckInRef.current();
-    }, 2000);
-
-    return () => clearTimeout(timer);
-  }, [attendanceMode, statusInside, checkInStatus, autoAttempted, isLocationReliable]);
-
-  useEffect(() => {
-    if (!statusInside && checkInStatus === "idle") {
-      setAutoAttempted(false);
-    }
-  }, [statusInside, checkInStatus]);
 
   useEffect(() => {
     if (!isOnline || !authResolved) return;
@@ -839,205 +788,8 @@ export default function CheckInPage() {
     latestLocationAccuracy,
   ]);
 
-  const locationFixTimeText = lastLocationFixAt
-    ? new Date(lastLocationFixAt).toLocaleTimeString("ar-SA", {
-        hour: "2-digit",
-        minute: "2-digit",
-        second: "2-digit",
-      })
-    : null;
-
-  const latestLocationFixTimeText = latestLocationFixAt
-    ? new Date(latestLocationFixAt).toLocaleTimeString("ar-SA", {
-        hour: "2-digit",
-        minute: "2-digit",
-        second: "2-digit",
-      })
-    : null;
-
-  const serverVerifiedTimeText =
-    serverValidation.verifiedAt &&
-    activeGeofenceContext &&
-    serverValidation.geofenceId === activeGeofenceContext.geofence.id
-      ? new Date(serverValidation.verifiedAt).toLocaleTimeString("ar-SA", {
-          hour: "2-digit",
-          minute: "2-digit",
-          second: "2-digit",
-        })
-      : null;
-
-  const locationSyncTimeText = locationSync.lastSuccessAt
-    ? new Date(locationSync.lastSuccessAt).toLocaleTimeString("ar-SA", {
-        hour: "2-digit",
-        minute: "2-digit",
-        second: "2-digit",
-      })
-    : null;
-
-  const displayLocation = latestLocation ?? currentLocation;
-  const trustedFixAgeMinutes = null;
-  const isLatestAccuracyVeryWeak = latestLocationAccuracy !== null && latestLocationAccuracy > 5000;
-  const isTrackingAccuracyWeak = latestLocationAccuracy !== null && latestLocationAccuracy > 1000;
-
-  const locationSyncStatusText = (() => {
-    if (!linkedEmployeeId) return "لا يوجد ربط موظف";
-    if (!currentLocation) return "بانتظار قراءة صالحة";
-    if (isTrackingAccuracyWeak || locationSync.pausedLowAccuracy)
-      return "موقوف مؤقتاً (دقة GPS ضعيفة)";
-    if (locationSync.pending) return "جاري الإرسال...";
-    if (!locationSync.lastSuccessAt) return "بانتظار أول مزامنة";
-    return "مزامن";
-  })();
-
-  const coarseServerFallbackEligible =
-    !isLocationReliable &&
-    isOnline &&
-    assignedGeofence !== null &&
-    latestLocationAccuracy !== null &&
-    latestLocationAccuracy <= 30000;
-
   const assignedGeofenceDistance =
     activeGeofenceContext?.source === "assigned" ? activeGeofenceContext.distance : null;
-
-  const formatDistanceReadable = (distanceMeters: number): string => {
-    if (distanceMeters >= 1000) {
-      const km = distanceMeters / 1000;
-      return `${km >= 10 ? km.toFixed(0) : km.toFixed(1)} كم`;
-    }
-
-    return `${Math.round(distanceMeters)} متر`;
-  };
-
-  useEffect(() => {
-    if (!currentMiniMapRef.current || !displayLocation) return;
-
-    const center = fromLonLat([displayLocation.lng, displayLocation.lat]);
-    const source = new VectorSource();
-
-    const accuracyMeters =
-      latestLocationAccuracy !== null && Number.isFinite(latestLocationAccuracy)
-        ? Math.max(20, Math.min(latestLocationAccuracy, 8000))
-        : 80;
-
-    const accuracyCircle = new Feature({
-      geometry: new CircleGeom(center, accuracyMeters),
-    });
-    accuracyCircle.setStyle(
-      new Style({
-        stroke: new Stroke({ color: "#3B82F6", width: 2 }),
-        fill: new Fill({ color: "#3B82F633" }),
-      })
-    );
-    source.addFeature(accuracyCircle);
-
-    const marker = new Feature({
-      geometry: new Point(center),
-    });
-    marker.setStyle(
-      new Style({
-        image: new CircleStyle({
-          radius: 6,
-          fill: new Fill({ color: "#2563EB" }),
-          stroke: new Stroke({ color: "#ffffff", width: 2 }),
-        }),
-      })
-    );
-    source.addFeature(marker);
-
-    const vectorLayer = new VectorLayer({ source });
-
-    if (!currentMiniMapInstanceRef.current) {
-      currentMiniMapInstanceRef.current = new OlMap({
-        target: currentMiniMapRef.current,
-        layers: [new TileLayer({ source: new OSM() }), vectorLayer],
-        view: new View({ center, zoom: 16 }),
-      });
-    } else {
-      const map = currentMiniMapInstanceRef.current;
-      map.getLayers().setAt(1, vectorLayer);
-      map.getView().setCenter(center);
-      map.getView().setZoom(16);
-      map.updateSize();
-    }
-
-    return () => {
-      currentMiniMapInstanceRef.current?.updateSize();
-    };
-  }, [displayLocation, latestLocationAccuracy]);
-
-  useEffect(() => {
-    if (!miniMapRef.current || !activeGeofenceContext) return;
-
-    const { geofence } = activeGeofenceContext;
-    const center = fromLonLat([geofence.lng, geofence.lat]);
-
-    const source = new VectorSource();
-
-    const geofenceCircle = new Feature({
-      geometry: new CircleGeom(center, geofence.radius),
-    });
-    geofenceCircle.setStyle(
-      new Style({
-        stroke: new Stroke({ color: geofence.color, width: 2 }),
-        fill: new Fill({ color: `${geofence.color}22` }),
-      })
-    );
-    source.addFeature(geofenceCircle);
-
-    const centerMarker = new Feature({
-      geometry: new Point(center),
-    });
-    centerMarker.setStyle(
-      new Style({
-        image: new CircleStyle({
-          radius: 6,
-          fill: new Fill({ color: geofence.color }),
-          stroke: new Stroke({ color: "#ffffff", width: 2 }),
-        }),
-      })
-    );
-    source.addFeature(centerMarker);
-
-    const vectorLayer = new VectorLayer({ source });
-
-    if (!miniMapInstanceRef.current) {
-      miniMapInstanceRef.current = new OlMap({
-        target: miniMapRef.current,
-        layers: [new TileLayer({ source: new OSM() }), vectorLayer],
-        view: new View({
-          center,
-          zoom: 16,
-        }),
-      });
-    } else {
-      const map = miniMapInstanceRef.current;
-      map.getLayers().setAt(1, vectorLayer);
-      map.getView().setCenter(center);
-      map.getView().setZoom(16);
-      map.updateSize();
-    }
-
-    return () => {
-      miniMapInstanceRef.current?.updateSize();
-    };
-  }, [activeGeofenceContext]);
-
-  useEffect(() => {
-    return () => {
-      if (miniMapInstanceRef.current) {
-        miniMapInstanceRef.current.setTarget(undefined);
-        miniMapInstanceRef.current = null;
-      }
-
-      if (currentMiniMapInstanceRef.current) {
-        currentMiniMapInstanceRef.current.setTarget(undefined);
-        currentMiniMapInstanceRef.current = null;
-      }
-    };
-  }, []);
-
-  const assignedGeofenceDistanceText =
-    assignedGeofenceDistance !== null ? formatDistanceReadable(assignedGeofenceDistance) : null;
 
   const assignedDistanceAfterAccuracyCompensation =
     assignedGeofenceDistance !== null
@@ -1174,6 +926,38 @@ export default function CheckInPage() {
                     )}
                   </motion.button>
                 </div>
+              </div>
+
+              {/* GPS / Geofence status badge */}
+              <div className="flex justify-center mt-3">
+                {locationError ? (
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-800">
+                    <XCircle className="w-3 h-3" />
+                    {locationError.length > 40 ? "تعذر تحديد الموقع" : locationError}
+                  </span>
+                ) : !decisionLocation ? (
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-gray-100 dark:bg-slate-700 text-gray-500 dark:text-slate-400 animate-pulse">
+                    <RefreshCw className="w-3 h-3 animate-spin" />
+                    جاري تحديد الموقع…
+                  </span>
+                ) : activeGeofenceContext ? (
+                  statusInside ? (
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-800">
+                      <CheckCircle className="w-3 h-3" />
+                      {activeGeofenceContext.geofence.name}
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800">
+                      <XCircle className="w-3 h-3" />
+                      خارج النطاق · {Math.round(activeGeofenceContext.distance)}م
+                    </span>
+                  )
+                ) : (
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-gray-100 dark:bg-slate-700 text-gray-500 dark:text-slate-400">
+                    <RefreshCw className="w-3 h-3 animate-spin" />
+                    جاري تحميل النطاقات…
+                  </span>
+                )}
               </div>
 
               {/* Check-out button */}
@@ -1368,29 +1152,9 @@ export default function CheckInPage() {
                       <h3 className="text-lg font-bold text-gray-900 dark:text-slate-100">
                         مسح QR Code
                       </h3>
-                      <p className="text-xs text-gray-500 dark:text-slate-500 mt-1">
-                        {isLocationReliable ? (
-                          <>
-                            المسافة: {Math.round(effectiveDistance)} متر | النطاق:{" "}
-                            {Math.round(effectiveRadius)} متر
-                            {locationAccuracyTolerance > 0 && (
-                              <> | هامش دقة: +{locationAccuracyTolerance} متر</>
-                            )}
-                            {serverValidation.pending && <> | جاري التحقق من الخادم...</>}
-                          </>
-                        ) : (
-                          <>
-                            قياس المسافة معلق حتى تتوفر قراءة موثوقة (دقة ≤ {maxReliableAccuracy}م
-                            وخلال آخر دقيقتين)
-                          </>
-                        )}
+                      <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">
+                        وجه الكاميرا نحو رمز QR الخاص بالموقع
                       </p>
-                      {isAssignedGeofenceLikelyMismatch && (
-                        <div className="mt-2 inline-flex items-center gap-2 rounded-full border border-red-300 bg-red-50 px-3 py-1 text-[11px] font-semibold text-red-700 dark:border-red-800 dark:bg-red-900/30 dark:text-red-300">
-                          <span className="w-2 h-2 rounded-full bg-red-500" />
-                          تعيين النطاق غير مطابق لموقعك الحالي
-                        </div>
-                      )}
                     </div>
                   </div>
                 </motion.div>

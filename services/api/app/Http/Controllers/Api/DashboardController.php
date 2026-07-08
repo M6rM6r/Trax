@@ -145,8 +145,17 @@ class DashboardController extends Controller
 
         $pct = fn($cur, $prev) => $prev > 0 ? round(($cur - $prev) / $prev * 100, 1) : 0;
 
-        $thisMonthEmp = Employee::where('company_id', $cid)->whereMonth('created_at', now()->month)->count();
-        $prevMonthEmp = Employee::where('company_id', $cid)->whereMonth('created_at', now()->subMonth()->month)->count();
+        $thisMonthStart = now()->startOfMonth()->toDateString();
+        $thisMonthEnd   = now()->endOfMonth()->toDateString();
+        $prevMonthStart = now()->subMonth()->startOfMonth()->toDateString();
+        $prevMonthEnd   = now()->subMonth()->endOfMonth()->toDateString();
+
+        $thisMonthEmp = Employee::where('company_id', $cid)
+            ->whereBetween('created_at', [$thisMonthStart, $thisMonthEnd])
+            ->count();
+        $prevMonthEmp = Employee::where('company_id', $cid)
+            ->whereBetween('created_at', [$prevMonthStart, $prevMonthEnd])
+            ->count();
 
         $driver = DB::connection()->getDriverName();
         $hourExpr = $driver === 'sqlite'

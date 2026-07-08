@@ -62,12 +62,14 @@ class AttendanceController extends Controller
         $today = now()->toDateString();
         $existing = Attendance::where('employee_id', $request->employee_id)
             ->where('date', $today)
+            ->whereIn('status', ['present', 'late'])
             ->first();
 
         if ($existing) {
             return response()->json([
                 'success' => false,
                 'message' => 'Already checked in today',
+                'data' => new AttendanceResource($existing->load(['employee', 'geofence'])),
             ], 409);
         }
 
