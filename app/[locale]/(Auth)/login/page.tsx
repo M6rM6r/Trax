@@ -14,6 +14,8 @@ import { useState, useMemo } from "react";
 import { useAuthStore, UserRole } from "@/stores/useAuthStore";
 import { hapticSuccess, hapticError } from "@/lib/utils/haptics";
 import { motion } from "framer-motion";
+import { signInWithEmailAndPassword } from "firebase/auth";
+import { auth } from "@/lib/config/firebase";
 
 interface LoginValues {
   identifier: string;
@@ -47,97 +49,163 @@ const Page = () => {
     []
   );
 
+  const applyLoginResponse = async (
+    values: LoginValues,
+    resp: {
+      success: boolean;
+      data?: {
+        token: string;
+        user: {
+          id: number;
+          name: string;
+          email: string;
+          role: string;
+          company_id: number;
+          employee_id?: number | null;
+          assigned_geofence_id?: number | null;
+        };
+        company?: { id: number; name: string };
+      };
+    }
+  ) => {
+    if (!resp.success || !resp.data) {
+      hapticError();
+      toastError("البريد الإلكتروني أو كلمة المرور غير صحيحة");
+      return;
+    }
+
+    const { token, user, company } = resp.data;
+    const role = (user.role === "boss" ? "boss" : "employee") as UserRole;
+
+    setCookie("auth_token", token, {
+      maxAge: values.rememberMe ? 30 * 24 * 60 * 60 : 24 * 60 * 60,
+      path: "/",
+      sameSite: "strict",
+      secure: process.env.NODE_ENV === "production",
+    });
+
+    setUser(
+      {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        employee_id: user.employee_id ?? null,
+        assigned_geofence_id: user.assigned_geofence_id ?? null,
+        permissions: [],
+        created_at: new Date().toISOString(),
+        profile_image: "",
+      },
+      token,
+      role,
+      user.company_id,
+      company?.name
+    );
+
+    hapticSuccess();
+    toastSuccess("تم تسجيل الدخول بنجاح");
+
+    if (role === "employee") {
+      router.push(`/${locale}/check-in`);
+    } else {
+      router.push(`/${locale}`);
+    }
+  };
+
+  const legacyLogin = async (values: LoginValues) => {
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
+    const rawResp = await fetch(`${apiUrl}/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      body: JSON.stringify({
+        email: values.identifier,
+        username: values.identifier,
+        identifier: values.identifier,
+        password: values.password,
+      }),
+    });
+
+    if (rawResp.status === 401 || rawResp.status === 422) {
+      hapticError();
+      toastError("البريد الإلكتروني أو كلمة المرور غير صحيحة");
+      return;
+    }
+
+    if (!rawResp.ok) {
+      hapticError();
+      toastError("خادم النظام غير متاح حالياً. حاول مرة أخرى بعد قليل.");
+      return;
+    }
+
+    const resp = (await rawResp.json()) as {
+      success: boolean;
+      data: {
+        token: string;
+        user: {
+          id: number;
+          name: string;
+          email: string;
+          role: string;
+          company_id: number;
+          employee_id?: number | null;
+          assigned_geofence_id?: number | null;
+        };
+        company?: { id: number; name: string };
+      };
+    };
+
+    await applyLoginResponse(values, resp);
+  };
+
+  const firebaseLogin = async (values: LoginValues) => {
+    if (!auth) {
+      await legacyLogin(values);
+      return;
+    }
+
+    const credential = await signInWithEmailAndPassword(auth, values.identifier, values.password);
+    const idToken = await credential.user.getIdToken();
+
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
+    const rawResp = await fetch(`${apiUrl}/auth/firebase`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      body: JSON.stringify({ id_token: idToken }),
+    });
+
+    if (!rawResp.ok) {
+      await legacyLogin(values);
+      return;
+    }
+
+    const resp = (await rawResp.json()) as {
+      success: boolean;
+      data?: {
+        token: string;
+        user: {
+          id: number;
+          name: string;
+          email: string;
+          role: string;
+          company_id: number;
+          employee_id?: number | null;
+          assigned_geofence_id?: number | null;
+        };
+        company?: { id: number; name: string };
+      };
+    };
+
+    await applyLoginResponse(values, resp);
+  };
+
   const handleSubmit = async (
     values: LoginValues,
     { setSubmitting }: FormikHelpers<LoginValues>
   ) => {
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
-      const rawResp = await fetch(`${apiUrl}/auth/login`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Accept: "application/json" },
-        body: JSON.stringify({
-          email: values.identifier,
-          username: values.identifier,
-          identifier: values.identifier,
-          password: values.password,
-        }),
-      });
-
-      if (rawResp.status === 401 || rawResp.status === 422) {
-        hapticError();
-        toastError("البريد الإلكتروني أو كلمة المرور غير صحيحة");
-        return;
-      }
-
-      if (!rawResp.ok) {
-        hapticError();
-        toastError("خادم النظام غير متاح حالياً. حاول مرة أخرى بعد قليل.");
-        return;
-      }
-
-      const resp = (await rawResp.json()) as {
-        success: boolean;
-        data: {
-          token: string;
-          user: {
-            id: number;
-            name: string;
-            email: string;
-            role: string;
-            company_id: number;
-            employee_id?: number | null;
-            assigned_geofence_id?: number | null;
-          };
-          company?: { id: number; name: string };
-        };
-      };
-
-      if (!resp.success) {
-        hapticError();
-        toastError("البريد الإلكتروني أو كلمة المرور غير صحيحة");
-        return;
-      }
-
-      const { token, user, company } = resp.data;
-      const role = (user.role === "boss" ? "boss" : "employee") as UserRole;
-
-      setCookie("auth_token", token, {
-        maxAge: values.rememberMe ? 30 * 24 * 60 * 60 : 24 * 60 * 60,
-        path: "/",
-        sameSite: "strict",
-        secure: process.env.NODE_ENV === "production",
-      });
-
-      setUser(
-        {
-          id: user.id,
-          name: user.name,
-          email: user.email,
-          role: user.role,
-          employee_id: user.employee_id ?? null,
-          assigned_geofence_id: user.assigned_geofence_id ?? null,
-          permissions: [],
-          created_at: new Date().toISOString(),
-          profile_image: "",
-        },
-        token,
-        role,
-        user.company_id,
-        company?.name
-      );
-
-      hapticSuccess();
-      toastSuccess("تم تسجيل الدخول بنجاح");
-
-      if (role === "employee") {
-        router.push(`/${locale}/check-in`);
-      } else {
-        router.push(`/${locale}`);
-      }
+      await firebaseLogin(values);
     } catch {
-      hapticError();
-      toastError("تعذر الاتصال بخادم النظام. تحقق من اتصال الإنترنت.");
+      await legacyLogin(values);
     } finally {
       setSubmitting(false);
     }

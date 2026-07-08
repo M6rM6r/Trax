@@ -21,6 +21,7 @@ Route::get('plans', [CompanyController::class, 'plans']);
 // Note: no throttle middleware here to keep login available when
 // cache-backed rate limiter storage is not configured.
 Route::post('auth/login', [AuthController::class, 'login']);
+Route::post('auth/firebase', [AuthController::class, 'firebaseLogin']);
 
 // Company registration (SaaS signup) — public
 Route::post('companies/register', [CompanyController::class, 'register'])
@@ -73,6 +74,7 @@ Route::middleware('auth:api')->group(function () {
         Route::put('employees/{employee}', [EmployeeController::class, 'update']);
         Route::patch('employees/{employee}', [EmployeeController::class, 'update']);
         Route::delete('employees/{employee}', [EmployeeController::class, 'destroy']);
+        Route::post('employees/{employee}/reset-password', [EmployeeController::class, 'resetPassword']);
         Route::get('employees/inactive/list', [EmployeeController::class, 'inactive']);
         Route::get('employees/export/csv', [EmployeeController::class, 'export']);
         Route::get('employees/meta/departments', [EmployeeController::class, 'departments']);

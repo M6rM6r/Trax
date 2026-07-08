@@ -1,6 +1,7 @@
 import { initializeApp, getApps } from "firebase/app";
 import { getStorage } from "firebase/storage";
 import { getAnalytics, isSupported } from "firebase/analytics";
+import { getAuth } from "firebase/auth";
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -32,6 +33,8 @@ const app = isFirebaseConfigured
   : null;
 
 export const storage = app ? getStorage(app) : null;
+
+export const auth = app ? getAuth(app) : null;
 
 export const analytics =
   typeof window !== "undefined" && app

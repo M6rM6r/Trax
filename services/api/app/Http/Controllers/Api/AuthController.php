@@ -13,9 +13,116 @@ use Illuminate\Support\Str;
 use App\Models\User;
 use App\Models\Employee;
 use Tymon\JWTAuth\Facades\JWTAuth;
+use Kreait\Firebase\Contract\Auth as FirebaseAuth;
+use Kreait\Firebase\Exception\Auth\FailedToVerifyToken;
 
 class AuthController extends Controller
 {
+    protected FirebaseAuth $firebaseAuth;
+
+    public function __construct(FirebaseAuth $firebaseAuth)
+    {
+        $this->firebaseAuth = $firebaseAuth;
+    }
+
+    public function firebaseLogin(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'id_token' => 'required|string',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation error',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        try {
+            $verifiedIdToken = $this->firebaseAuth->verifyIdToken($request->input('id_token'));
+            $firebaseUser = $verifiedIdToken->claims();
+            $email = $firebaseUser->get('email');
+
+            if (empty($email)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Firebase token does not contain an email',
+                ], 422);
+            }
+
+            $user = User::where('email', $email)->first();
+
+            if (!$user) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No account found for this email',
+                ], 404);
+            }
+
+            $token = JWTAuth::fromUser($user);
+
+            $linkedEmployee = null;
+            try {
+                $linkedEmployee = Employee::where('company_id', $user->company_id)
+                    ->where(function ($q) use ($user) {
+                        $q->where('email', $user->email);
+                        if (!empty($user->username)) {
+                            $q->orWhere('employee_number', $user->username);
+                        }
+                    })
+                    ->first();
+            } catch (\Throwable) {
+                $linkedEmployee = null;
+            }
+
+            $companyPayload = null;
+            try {
+                if ($user->company) {
+                    $companyPayload = [
+                        'id'   => $user->company->id,
+                        'name' => $user->company->name,
+                        'plan' => $user->company->plan,
+                    ];
+                }
+            } catch (\Throwable) {
+                $companyPayload = null;
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Login successful',
+                'data' => [
+                    'token'      => $token,
+                    'user'       => [
+                        'id'         => $user->id,
+                        'name'       => $user->name,
+                        'email'      => $user->email,
+                        'username'   => $user->username,
+                        'role'       => $user->role,
+                        'company_id' => $user->company_id,
+                        'employee_id' => $linkedEmployee?->id,
+                        'assigned_geofence_id' => $linkedEmployee?->geofence_id,
+                    ],
+                    'company'    => $companyPayload,
+                    'expires_in' => JWTAuth::factory()->getTTL() * 60,
+                ],
+            ]);
+        } catch (FailedToVerifyToken $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Invalid Firebase token',
+                'error' => config('app.debug') ? $e->getMessage() : null,
+            ], 401);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Login failed',
+                'error' => config('app.debug') ? $e->getMessage() : 'Server error',
+            ], 500);
+        }
+    }
+
     public function login(Request $request)
     {
         $validator = Validator::make($request->all(), [

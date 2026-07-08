@@ -2,6 +2,7 @@ import "package:flutter/foundation.dart";
 import "package:shared_preferences/shared_preferences.dart";
 import "package:http/http.dart" as http;
 import "package:firebase_messaging/firebase_messaging.dart";
+import "package:firebase_auth/firebase_auth.dart";
 import "dart:async";
 import "dart:convert";
 import "../config/env.dart";
@@ -36,50 +37,79 @@ class AuthProvider extends ChangeNotifier {
     return value is Map<String, dynamic> ? value : <String, dynamic>{};
   }
 
+  Future<bool> _applyLoginResponse(http.Response response) async {
+    final data = _asMap(jsonDecode(response.body));
+    final payload = _asMap(data["data"]);
+    final user = _asMap(payload["user"]);
+    final company = _asMap(payload["company"]);
+
+    if (response.statusCode == 200 && data["success"] == true) {
+      _token = payload["token"]?.toString();
+      _userName = user["name"]?.toString();
+      _userEmail = user["email"]?.toString();
+      _userId = (user["id"] as num?)?.toInt();
+      _companyId = (user["company_id"] as num?)?.toInt();
+      _companyName = company["name"]?.toString();
+
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString("auth_token", _token!);
+      await prefs.setString("user_name", _userName!);
+      await prefs.setString("user_email", _userEmail!);
+      await prefs.setInt("user_id", _userId!);
+      if (_companyId != null) await prefs.setInt("company_id", _companyId!);
+      if (_companyName != null) await prefs.setString("company_name", _companyName!);
+
+      _isLoading = false;
+      notifyListeners();
+
+      unawaited(_syncFcmToken());
+      return true;
+    }
+
+    _error = data["message"]?.toString() ?? "Login failed";
+    _isLoading = false;
+    notifyListeners();
+    return false;
+  }
+
+  Future<bool> _legacyLogin(String email, String password) async {
+    final response = await http.post(
+      Uri.parse("$_baseUrl/auth/login"),
+      headers: {"Content-Type": "application/json", "Accept": "application/json"},
+      body: jsonEncode({"email": email, "password": password}),
+    );
+    return _applyLoginResponse(response);
+  }
+
   Future<bool> login(String email, String password) async {
     _isLoading = true;
     _error = null;
     notifyListeners();
 
     try {
-      final response = await http.post(
-        Uri.parse("$_baseUrl/auth/login"),
-        headers: {"Content-Type": "application/json", "Accept": "application/json"},
-        body: jsonEncode({"email": email, "password": password}),
-      );
+      try {
+        final credential = await FirebaseAuth.instance.signInWithEmailAndPassword(
+          email: email,
+          password: password,
+        );
+        final idToken = await credential.user?.getIdToken();
 
-      final data = _asMap(jsonDecode(response.body));
-      final payload = _asMap(data["data"]);
-      final user = _asMap(payload["user"]);
-      final company = _asMap(payload["company"]);
+        if (idToken != null) {
+          final response = await http.post(
+            Uri.parse("$_baseUrl/auth/firebase"),
+            headers: {"Content-Type": "application/json", "Accept": "application/json"},
+            body: jsonEncode({"id_token": idToken}),
+          );
 
-      if (response.statusCode == 200 && data["success"] == true) {
-        _token = payload["token"]?.toString();
-        _userName = user["name"]?.toString();
-        _userEmail = user["email"]?.toString();
-        _userId = (user["id"] as num?)?.toInt();
-        _companyId = (user["company_id"] as num?)?.toInt();
-        _companyName = company["name"]?.toString();
-
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setString("auth_token", _token!);
-        await prefs.setString("user_name", _userName!);
-        await prefs.setString("user_email", _userEmail!);
-        await prefs.setInt("user_id", _userId!);
-        if (_companyId != null) await prefs.setInt("company_id", _companyId!);
-        if (_companyName != null) await prefs.setString("company_name", _companyName!);
-
-        _isLoading = false;
-        notifyListeners();
-
-        unawaited(_syncFcmToken());
-        return true;
-      } else {
-        _error = data["message"]?.toString() ?? "Login failed";
-        _isLoading = false;
-        notifyListeners();
-        return false;
+          if (response.statusCode == 200) {
+            return _applyLoginResponse(response);
+          }
+        }
+      } catch (_) {
+        // Fall back to legacy login if Firebase auth fails or id_token is null.
       }
+
+      return await _legacyLogin(email, password);
     } catch (e) {
       _error = "Connection error: $e";
       _isLoading = false;

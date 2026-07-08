@@ -224,6 +224,35 @@ class EmployeeController extends Controller
         ]);
     }
 
+    public function resetPassword(Request $request, $id): JsonResponse
+    {
+        $request->validate([
+            'password' => ['required', 'string', 'min:8'],
+        ]);
+
+        $employee = Employee::where('company_id', $this->companyId())->find($id);
+
+        if (!$employee) {
+            return response()->json(['success' => false, 'message' => 'Employee not found'], 404);
+        }
+
+        $linkedUser = User::where('company_id', $this->companyId())
+            ->where('email', $employee->email)
+            ->first();
+
+        if (!$linkedUser) {
+            return response()->json(['success' => false, 'message' => 'No login account linked to this employee'], 404);
+        }
+
+        $linkedUser->password = $request->input('password');
+        $linkedUser->save();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Password updated successfully',
+        ]);
+    }
+
     public function destroy($id): JsonResponse
     {
         $employee = Employee::where('company_id', $this->companyId())->find($id);

@@ -3,6 +3,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/services/api";
 import { validatedApi } from "@/lib/services/validatedApi";
+import { httpClient } from "@/lib/services/httpClient";
 import { env } from "@/lib/config/env";
 import { buildRetentionFeatures, type RetentionFeatures } from "@/lib/utils/retentionFeatures";
 import type {
@@ -153,6 +154,14 @@ export function useDeleteEmployee() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: queryKeys.employees });
+    },
+  });
+}
+
+export function useResetEmployeePassword() {
+  return useMutation({
+    mutationFn: async ({ id, password }: { id: number; password: string }) => {
+      return httpClient.post(`/employees/${id}/reset-password`, { password });
     },
   });
 }

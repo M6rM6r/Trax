@@ -28,6 +28,7 @@ import {
   useCreateEmployee,
   useDeleteEmployee,
   useUpdateEmployee,
+  useResetEmployeePassword,
 } from "@/hooks/useApi";
 import { LoadingSkeleton, EmptyState, ErrorState } from "@/components/shared/StateViews";
 import { DataTable } from "@/components/shared/DataTable/DataTable";
@@ -42,6 +43,8 @@ import type { Employee, EmployeeRole } from "@/lib/types/trackingTypes";
 import { useAuthStore } from "@/stores/useAuthStore";
 import AccessDeniedCard from "@/components/shared/AccessDeniedCard";
 import Image from "next/image";
+import { createUserWithEmailAndPassword } from "firebase/auth";
+import { auth } from "@/lib/config/firebase";
 import {
   buildStaffCredentialsEmail,
   buildStaffCredentialsMessage,
@@ -62,6 +65,9 @@ export default function EmployeesPage() {
   const createEmployee = useCreateEmployee();
   const deleteEmployee = useDeleteEmployee();
   const updateEmployee = useUpdateEmployee();
+  const resetEmployeePassword = useResetEmployeePassword();
+  const [resetPasswordValue, setResetPasswordValue] = useState("");
+  const [showResetPassword, setShowResetPassword] = useState(false);
   const locale = useLocale();
   const { role } = useAuthStore();
   const [viewMode, setViewMode] = useState<"table" | "grid">("table");
@@ -154,7 +160,19 @@ export default function EmployeesPage() {
         lastSeen: null,
       },
       {
-        onSuccess: () => {
+        onSuccess: async () => {
+          if (auth) {
+            try {
+              await createUserWithEmailAndPassword(auth, email, password);
+            } catch (firebaseErr: unknown) {
+              const code = (firebaseErr as { code?: string }).code;
+              if (code === "auth/email-already-in-use") {
+                toastError("البريد الإلكتروني موجود مسبقاً في Firebase Auth");
+              } else {
+                toastError("تم إنشاء الموظف لكن فشل إنشاء حساب Firebase");
+              }
+            }
+          }
           resetNewEmployee();
           setCreatedCredentials({ email, username, password });
         },
@@ -168,6 +186,8 @@ export default function EmployeesPage() {
   const handleEdit = (emp: Employee) => {
     hapticTap();
     setEditTarget(emp);
+    setResetPasswordValue("");
+    setShowResetPassword(false);
     setEditEmployee({
       name: emp.name,
       email: emp.email,
@@ -1153,6 +1173,66 @@ export default function EmployeesPage() {
                   </option>
                 ))}
               </select>
+            </div>
+
+            {/* Reset password section */}
+            <div className="pt-3 border-t border-gray-200 dark:border-slate-700">
+              {!showResetPassword ? (
+                <button
+                  type="button"
+                  onClick={() => setShowResetPassword(true)}
+                  className="text-xs text-blue-600 dark:text-blue-400 hover:underline"
+                >
+                  تعيين كلمة مرور جديدة للموظف
+                </button>
+              ) : (
+                <div className="space-y-2">
+                  <label className="block text-xs font-medium text-gray-700 dark:text-slate-300">
+                    كلمة المرور الجديدة
+                  </label>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={resetPasswordValue}
+                      onChange={(e) => setResetPasswordValue(e.target.value)}
+                      placeholder="8 أحرف على الأقل"
+                      dir="ltr"
+                      className="flex-1 px-3 py-2 text-sm border border-gray-300 dark:border-slate-600 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-transparent dark:bg-slate-900 text-gray-900 dark:text-slate-100"
+                    />
+                    <button
+                      type="button"
+                      disabled={resetPasswordValue.length < 8 || resetEmployeePassword.isPending}
+                      onClick={() => {
+                        if (!editTarget || resetPasswordValue.length < 8) return;
+                        resetEmployeePassword.mutate(
+                          { id: editTarget.id, password: resetPasswordValue },
+                          {
+                            onSuccess: () => {
+                              toastSuccess("تم تغيير كلمة المرور بنجاح");
+                              setResetPasswordValue("");
+                              setShowResetPassword(false);
+                            },
+                            onError: () => toastError("فشل تغيير كلمة المرور"),
+                          }
+                        );
+                      }}
+                      className="px-3 py-2 text-sm bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white rounded-lg transition-colors"
+                    >
+                      {resetEmployeePassword.isPending ? "…" : "حفظ"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowResetPassword(false);
+                        setResetPasswordValue("");
+                      }}
+                      className="px-3 py-2 text-sm text-gray-500 hover:text-gray-700 dark:text-slate-400"
+                    >
+                      إلغاء
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </FormDrawer>

@@ -6,6 +6,9 @@ use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Support\Facades\Route;
 
 return Application::configure(basePath: dirname(__DIR__))
+    ->withProviders([
+        \App\Providers\FirebaseAuthServiceProvider::class,
+    ])
     ->withRouting(
         api: __DIR__ . '/../routes/api.php',
         commands: __DIR__ . '/../routes/console.php',
