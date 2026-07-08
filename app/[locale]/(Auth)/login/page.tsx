@@ -8,7 +8,7 @@ import { MapPin, Eye, EyeOff, Building2 } from "lucide-react";
 import { setCookie } from "cookies-next";
 import * as Yup from "yup";
 import { toastSuccess, toastError } from "@/hooks/use-toast";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useLocale } from "next-intl";
 import { useState, useMemo } from "react";
 import { useAuthStore, UserRole } from "@/stores/useAuthStore";
@@ -24,9 +24,14 @@ interface LoginValues {
 
 const Page = () => {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const locale = useLocale();
   const { setUser } = useAuthStore();
   const [showPassword, setShowPassword] = useState(false);
+  const initialIdentifier = useMemo(
+    () => searchParams.get("identifier")?.trim() || "",
+    [searchParams]
+  );
 
   const getPasswordStrength = useMemo(
     () => (v: string) => {
@@ -140,7 +145,8 @@ const Page = () => {
 
       <Formik
         validationSchema={loginSchema}
-        initialValues={{ identifier: "", password: "", rememberMe: false }}
+        initialValues={{ identifier: initialIdentifier, password: "", rememberMe: false }}
+        enableReinitialize
         onSubmit={handleSubmit}
       >
         {(props) => (

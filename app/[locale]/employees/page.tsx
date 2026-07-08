@@ -48,6 +48,8 @@ import {
   generateStaffUsername,
 } from "@/lib/utils/staffOnboarding";
 
+const DEFAULT_PUBLIC_APP_URL = "https://naf--trax-ae.asia-southeast1.hosted.app";
+
 const roleLabels: Record<string, string> = {
   manager: "مدير",
   employee: "موظف",
@@ -289,16 +291,30 @@ export default function EmployeesPage() {
   const [filterStatus, setFilterStatus] = useState("");
 
   const staffLoginUrl = useMemo(() => {
-    const envBase =
-      process.env.NEXT_PUBLIC_APP_URL ||
-      process.env.NEXT_PUBLIC_BASE_URL ||
-      (typeof window !== "undefined" ? window.location.origin : "");
+    const envBase = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_BASE_URL || "";
 
-    const normalizedBase = envBase?.replace(/\/$/, "");
+    let browserOrigin = "";
+    let browserIsLocal = false;
+
+    if (typeof window !== "undefined") {
+      browserOrigin = window.location.origin || "";
+      try {
+        const host = new URL(browserOrigin).hostname;
+        browserIsLocal = host === "localhost" || host === "127.0.0.1";
+      } catch {
+        browserIsLocal = false;
+      }
+    }
+
+    const baseCandidate = envBase || (browserIsLocal ? DEFAULT_PUBLIC_APP_URL : browserOrigin);
+    const normalizedBase = baseCandidate?.replace(/\/$/, "");
     if (!normalizedBase) return null;
 
-    return `${normalizedBase}/${locale}/login`;
-  }, [locale]);
+    const identifier = createdCredentials?.username || createdCredentials?.email || "";
+    const withIdentifier = identifier ? `?identifier=${encodeURIComponent(identifier)}` : "";
+
+    return `${normalizedBase}/${locale}/login${withIdentifier}`;
+  }, [locale, createdCredentials?.email, createdCredentials?.username]);
 
   const departments = useMemo(() => {
     const depts = new Set(employees.map((e) => e.department).filter(Boolean));
