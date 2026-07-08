@@ -70,7 +70,9 @@ class HttpClient {
         "Content-Type": "application/json",
         ...options.headers,
       },
-    });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      _endpoint: endpoint,
+    } as any); // _endpoint used by interceptors to skip auth on public routes
 
     const url = this.buildUrl(endpoint);
 
@@ -166,6 +168,15 @@ export const httpClient = new HttpClient(apiUrl, {
 
 httpClient.addRequestInterceptor((config) => {
   if (typeof document !== "undefined") {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const endpoint: string = (config as any)._endpoint ?? "";
+    const isAuthEndpoint =
+      endpoint.includes("auth/login") ||
+      endpoint.includes("auth/register") ||
+      endpoint.includes("auth/forgot") ||
+      endpoint.includes("auth/reset");
+    if (isAuthEndpoint) return config;
+
     const tokenCookie = document.cookie
       .split(";")
       .map((cookie) => cookie.trim())
@@ -197,6 +208,9 @@ httpClient.addRequestInterceptor((config) => {
 
 httpClient.addResponseInterceptor((response) => {
   if (response.status === 401 && typeof window !== "undefined") {
+    const onLoginPage = window.location.pathname.includes("/login");
+    if (onLoginPage) return response;
+
     logger.warn("Unauthorized — redirecting to login");
     try {
       localStorage.removeItem("auth-storage");

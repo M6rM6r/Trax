@@ -14,7 +14,6 @@ import { useState, useMemo } from "react";
 import { useAuthStore, UserRole } from "@/stores/useAuthStore";
 import { hapticSuccess, hapticError } from "@/lib/utils/haptics";
 import { motion } from "framer-motion";
-import { httpClient, ApiError } from "@/lib/services/httpClient";
 
 interface LoginValues {
   identifier: string;
@@ -53,7 +52,31 @@ const Page = () => {
     { setSubmitting }: FormikHelpers<LoginValues>
   ) => {
     try {
-      const resp = await httpClient.post<{
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
+      const rawResp = await fetch(`${apiUrl}/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify({
+          email: values.identifier,
+          username: values.identifier,
+          identifier: values.identifier,
+          password: values.password,
+        }),
+      });
+
+      if (rawResp.status === 401 || rawResp.status === 422) {
+        hapticError();
+        toastError("البريد الإلكتروني أو كلمة المرور غير صحيحة");
+        return;
+      }
+
+      if (!rawResp.ok) {
+        hapticError();
+        toastError("خادم النظام غير متاح حالياً. حاول مرة أخرى بعد قليل.");
+        return;
+      }
+
+      const resp = (await rawResp.json()) as {
         success: boolean;
         data: {
           token: string;
@@ -68,12 +91,7 @@ const Page = () => {
           };
           company?: { id: number; name: string };
         };
-      }>("auth/login", {
-        email: values.identifier,
-        username: values.identifier,
-        identifier: values.identifier,
-        password: values.password,
-      });
+      };
 
       if (!resp.success) {
         hapticError();
@@ -117,26 +135,9 @@ const Page = () => {
       } else {
         router.push(`/${locale}`);
       }
-    } catch (error) {
+    } catch {
       hapticError();
-      if (error instanceof ApiError) {
-        if (error.statusCode === 401) {
-          toastError("البريد الإلكتروني أو كلمة المرور غير صحيحة");
-          return;
-        }
-
-        if (error.statusCode === 0) {
-          toastError("تعذر الاتصال بخادم النظام. تحقق من اتصال الإنترنت أو إعدادات الخادم.");
-          return;
-        }
-
-        if (error.statusCode >= 500) {
-          toastError("خادم النظام غير متاح حالياً. حاول مرة أخرى بعد قليل.");
-          return;
-        }
-      }
-
-      toastError("تعذر إتمام تسجيل الدخول حالياً. حاول مرة أخرى.");
+      toastError("تعذر الاتصال بخادم النظام. تحقق من اتصال الإنترنت.");
     } finally {
       setSubmitting(false);
     }
