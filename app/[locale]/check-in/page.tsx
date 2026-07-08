@@ -1113,26 +1113,6 @@ export default function CheckInPage() {
         </div>
 
         <div className="max-w-2xl mx-auto space-y-4 sm:space-y-5">
-          <Card className="border-0 shadow-md dark:bg-slate-800">
-            <CardContent className="py-3 flex items-center justify-between gap-3">
-              <div>
-                <p className="text-sm font-semibold text-gray-900 dark:text-slate-100">
-                  وضع الحضور: {attendanceMode === "auto_optional" ? "تلقائي + يدوي" : "يدوي فقط"}
-                </p>
-                <p className="text-xs text-gray-500 dark:text-slate-400">
-                  {attendanceMode === "auto_optional"
-                    ? "سيتم محاولة تسجيل الحضور تلقائياً عند دخول النطاق، ويمكنك التسجيل يدوياً أيضاً."
-                    : "التسجيل يتم يدوياً فقط عند الضغط على زر تسجيل الحضور."}
-                </p>
-              </div>
-              {attendanceMode === "auto_optional" && checkInStatus === "idle" && statusInside && (
-                <span className="text-xs px-2 py-1 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
-                  محاولة تلقائية بعد ثانيتين
-                </span>
-              )}
-            </CardContent>
-          </Card>
-
           {/* Hero Clock + Radial Button */}
           <Card className="border-0 shadow-xl dark:bg-slate-800 overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-br from-blue-600/5 via-transparent to-indigo-600/5 pointer-events-none" />
@@ -1328,11 +1308,8 @@ export default function CheckInPage() {
           {/* Check-in Method Selector */}
           <Card className="border-0 shadow-lg dark:bg-slate-800">
             <CardContent className="pt-5 pb-5">
-              <p className="text-xs font-semibold text-gray-400 dark:text-slate-500 uppercase tracking-wider mb-1">
+              <p className="text-xs font-semibold text-gray-400 dark:text-slate-500 uppercase tracking-wider mb-3">
                 طريقة التسجيل
-              </p>
-              <p className="text-xs text-gray-500 dark:text-slate-400 mb-3">
-                الوضع الحالي: {attendanceMode === "auto_optional" ? "تلقائي + يدوي" : "يدوي فقط"}
               </p>
               <div className="grid grid-cols-2 gap-3">
                 {[
@@ -1606,27 +1583,32 @@ export default function CheckInPage() {
                 </div>
               ) : (
                 <div className="space-y-3">
-                  <div className="flex items-center gap-3 bg-green-50 dark:bg-green-900/20 p-4 rounded-xl">
-                    <MapPin className="w-6 h-6 text-green-600 dark:text-green-400" />
-                    <div>
-                      <p className="text-sm font-medium text-green-900 dark:text-green-300">
-                        تم تحديد موقعك
-                      </p>
-                      {displayLocation && (
-                        <p className="text-xs text-green-700 dark:text-green-400 mt-0.5">
-                          خط العرض: {displayLocation.lat.toFixed(4)} | خط الطول:{" "}
-                          {displayLocation.lng.toFixed(4)}
+                  <div className="flex items-start gap-3 bg-green-50 dark:bg-green-900/20 p-4 rounded-xl">
+                    <MapPin className="w-5 h-5 text-green-600 dark:text-green-400 mt-0.5 shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="text-sm font-semibold text-green-900 dark:text-green-300">
+                          تم تحديد موقعك
                         </p>
-                      )}
-                      {latestLocationAccuracy !== null && (
-                        <p className="text-xs text-green-700 dark:text-green-400 mt-0.5">
-                          أحدث قراءة GPS:{" "}
-                          {isLatestAccuracyVeryWeak
-                            ? "ضعيفة جدًا (أكثر من 5 كم)"
-                            : `±${Math.round(latestLocationAccuracy)} متر`}
-                          {latestLocationFixTimeText && (
-                            <> | وقت القراءة: {latestLocationFixTimeText}</>
-                          )}
+                        {latestLocationAccuracy !== null && (
+                          <span
+                            className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                              isLatestAccuracyVeryWeak
+                                ? "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300"
+                                : isTrackingAccuracyWeak
+                                  ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-300"
+                                  : "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300"
+                            }`}
+                          >
+                            {isLatestAccuracyVeryWeak
+                              ? "دقة ضعيفة"
+                              : `±${Math.round(latestLocationAccuracy)}م`}
+                          </span>
+                        )}
+                      </div>
+                      {displayLocation && (
+                        <p className="text-xs text-green-700 dark:text-green-400 mt-1 font-mono">
+                          {displayLocation.lat.toFixed(4)}, {displayLocation.lng.toFixed(4)}
                         </p>
                       )}
                       {displayLocation && (
@@ -1638,21 +1620,6 @@ export default function CheckInPage() {
                           />
                         </div>
                       )}
-                      {locationAccuracy !== null && (
-                        <p className="text-xs text-green-700 dark:text-green-400 mt-0.5">
-                          آخر قراءة موثوقة: ±{Math.round(locationAccuracy)} متر
-                          {locationFixTimeText && <> | وقت القراءة: {locationFixTimeText}</>}
-                        </p>
-                      )}
-                      {locationAccuracy === null && (
-                        <p className="text-xs text-green-700 dark:text-green-400 mt-0.5">
-                          لا توجد قراءة موثوقة بعد لاتخاذ قرار الحضور.
-                        </p>
-                      )}
-                      <p className="text-xs text-green-700 dark:text-green-400 mt-0.5">
-                        مزامنة موقع الموظف: {locationSyncStatusText}
-                        {locationSyncTimeText && <> | آخر مزامنة: {locationSyncTimeText}</>}
-                      </p>
                     </div>
                   </div>
 
@@ -1722,43 +1689,28 @@ export default function CheckInPage() {
                               النطاق المعيّن لك
                             </p>
                           )}
-                          {assignedGeofenceDistanceText && (
-                            <p className="text-[11px] text-gray-500 dark:text-slate-400 mt-0.5">
-                              البعد التقديري عن مركز النطاق: {assignedGeofenceDistanceText}
+                          {isLocationReliable ? (
+                            <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">
+                              المسافة:{" "}
+                              <span className="font-semibold text-gray-700 dark:text-slate-300">
+                                {formatDistanceReadable(effectiveDistance)}
+                              </span>{" "}
+                              من {formatDistanceReadable(effectiveRadius)} (نطاق العمل)
+                              {serverValidation.pending && (
+                                <span className="ml-1 text-blue-500"> · جاري التحقق...</span>
+                              )}
+                            </p>
+                          ) : (
+                            <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
+                              جاري تحسين دقة الموقع...
                             </p>
                           )}
-                          <p className="text-xs text-gray-500 dark:text-slate-500 mt-1">
-                            {isLocationReliable ? (
-                              <>
-                                المسافة: {Math.round(effectiveDistance)} متر | النطاق:{" "}
-                                {Math.round(effectiveRadius)} متر
-                                {locationAccuracyTolerance > 0 && (
-                                  <> | هامش دقة: +{locationAccuracyTolerance} متر</>
-                                )}
-                                {serverValidation.pending && <> | جاري التحقق من الخادم...</>}
-                              </>
-                            ) : (
-                              <>
-                                قياس المسافة معلق حتى تتوفر قراءة موثوقة (دقة ≤{" "}
-                                {maxReliableAccuracy}م وخلال آخر دقيقتين)
-                              </>
-                            )}
-                          </p>
                           {isAssignedGeofenceLikelyMismatch && (
-                            <div className="mt-2 inline-flex items-center gap-2 rounded-full border border-red-300 bg-red-50 px-3 py-1 text-[11px] font-semibold text-red-700 dark:border-red-800 dark:bg-red-900/30 dark:text-red-300">
-                              <span className="w-2 h-2 rounded-full bg-red-500" />
-                              تعيين النطاق غير مطابق لموقعك الحالي
+                            <div className="mt-2 inline-flex items-center gap-1.5 rounded-full border border-red-300 bg-red-50 px-2.5 py-0.5 text-[11px] font-semibold text-red-700 dark:border-red-800 dark:bg-red-900/30 dark:text-red-300">
+                              <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
+                              النطاق بعيد عن موقعك
                             </div>
                           )}
-                          <p className="text-[11px] text-gray-500 dark:text-slate-400 mt-1">
-                            مصدر القرار:{" "}
-                            {isLocationReliable
-                              ? serverVerifiedTimeText
-                                ? "الخادم"
-                                : "محلي"
-                              : "معلق بسبب ضعف/قدم القراءة"}
-                            {serverVerifiedTimeText && <> | آخر تحقق: {serverVerifiedTimeText}</>}
-                          </p>
                         </div>
                         {statusInside ? (
                           <CheckCircle className="w-6 h-6 text-green-600" />
@@ -1768,29 +1720,12 @@ export default function CheckInPage() {
                           <XCircle className="w-6 h-6 text-amber-600" />
                         )}
                       </div>
-                      {!isLocationReliable && latestLocationAccuracy !== null && (
-                        <p className="text-xs text-blue-700 dark:text-blue-300 mt-2">
-                          أحدث قراءة GPS غير مستقرة
-                          {isLatestAccuracyVeryWeak
-                            ? " (ضعيفة جدًا: أكثر من 5 كم)."
-                            : ` (±${Math.round(latestLocationAccuracy)}م).`}{" "}
-                          يلزم دقة ≤{maxReliableAccuracy}م مع قراءة حديثة لاتخاذ قرار حضور دقيق.
-                          {isAssignedGeofenceLikelyMismatch ? (
-                            <>
-                              {" "}
-                              كما يبدو أن النطاق المعيّن بعيد عن موقعك الحالي. يرجى التأكد من تعيين
-                              النطاق الصحيح للموظف من صفحة الإدارة.
-                              {assignedGeofenceDistanceText && (
-                                <> (البعد الحالي: {assignedGeofenceDistanceText}).</>
-                              )}
-                            </>
-                          ) : coarseServerFallbackEligible ? (
-                            <>
-                              {" "}
-                              يمكنك الضغط على «تسجيل الحضور» لمحاولة تحقق خادمي باستخدام النطاق
-                              المعيّن.
-                            </>
-                          ) : null}
+                      {!isLocationReliable && (
+                        <p className="text-xs text-amber-700 dark:text-amber-300 mt-2 flex items-center gap-1.5">
+                          <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
+                          {coarseServerFallbackEligible
+                            ? "يمكنك تسجيل الحضور — سيتحقق الخادم من موقعك."
+                            : "جاري تحسين دقة GPS، انتقل لمكان مفتوح إن أمكن."}
                         </p>
                       )}
                     </div>
@@ -1818,24 +1753,9 @@ export default function CheckInPage() {
                         أنت خارج النطاق الجغرافي
                       </p>
                       <p className="text-xs text-amber-700 dark:text-amber-400 mt-0.5">
-                        {!isLocationReliable ? (
-                          <>
-                            لا يمكن تأكيد الخروج من النطاق حالياً لأن قراءة الموقع غير موثوقة. انتظر
-                            تحسن الإشارة أو تحرك لمنطقة مفتوحة.
-                          </>
-                        ) : (
-                          <>
-                            المسافة الحالية: {Math.round(effectiveDistance)} متر — النطاق المطلوب:{" "}
-                            {Math.round(effectiveRadius)} متر
-                            {locationAccuracyTolerance > 0 && (
-                              <>
-                                {" "}
-                                (مع هامش الدقة:{" "}
-                                {Math.round(effectiveRadius + locationAccuracyTolerance)} متر)
-                              </>
-                            )}
-                          </>
-                        )}
+                        {!isLocationReliable
+                          ? "جاري تحسين دقة الموقع..."
+                          : `أنت على بُعد ${formatDistanceReadable(effectiveDistance)} من النطاق (${formatDistanceReadable(effectiveRadius)})`}
                       </p>
                     </div>
                   </CardContent>
