@@ -8,7 +8,7 @@ export const dashboardStatsSchema = z.object({
   lateToday: z.coerce.number().int().min(0),
   absentToday: z.coerce.number().int().min(0),
   checkedOutToday: z.coerce.number().int().min(0),
-  onTimeRate: z.coerce.number().min(0).max(1),
+  onTimeRate: z.coerce.number().min(0).max(100),
   avgCheckInTime: z.string(),
   avgWorkedHours: z.coerce.number().min(0).max(24),
   totalGeofences: z.coerce.number().int().min(0),

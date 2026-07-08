@@ -6,7 +6,6 @@ use App\Http\Controllers\Controller;
 use App\Models\Employee;
 use App\Models\Attendance;
 use App\Models\Geofence;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 class DashboardController extends Controller
@@ -21,22 +20,59 @@ class DashboardController extends Controller
         $cid   = $this->companyId();
         $today = now()->toDateString();
 
-        $totalEmployees  = Employee::where('company_id', $cid)->count();
-        $presentToday    = Attendance::whereHas('employee', fn($q) => $q->where('company_id', $cid))->where('date', $today)->where('status', 'present')->count();
-        $lateToday       = Attendance::whereHas('employee', fn($q) => $q->where('company_id', $cid))->where('date', $today)->where('status', 'late')->count();
-        $absentToday     = max(0, $totalEmployees - Attendance::whereHas('employee', fn($q) => $q->where('company_id', $cid))->where('date', $today)->count());
-        $checkedOutToday = Attendance::whereHas('employee', fn($q) => $q->where('company_id', $cid))->where('date', $today)->where('status', 'checked_out')->count();
-        $totalGeofences  = Geofence::where('company_id', $cid)->count();
-        $onTimeRate      = $totalEmployees > 0 ? round(($presentToday / $totalEmployees) * 100, 2) : 0;
-        $avgCheckIn      = Attendance::whereHas('employee', fn($q) => $q->where('company_id', $cid))->where('date', $today)->whereNotNull('check_in_time')->avg('check_in_time');
-        $avgWorkedHours  = round(Attendance::whereHas('employee', fn($q) => $q->where('company_id', $cid))->where('date', $today)->where('status', 'checked_out')->avg('worked_hours') ?? 0, 2);
+        $empCounts = Employee::where('company_id', $cid)
+            ->selectRaw("count(*) as total, sum(case when status='active' then 1 else 0 end) as active, sum(case when status='inactive' then 1 else 0 end) as inactive")
+            ->first();
+
+        $totalEmployees  = (int) ($empCounts->total ?? 0);
+        $activeEmployees = (int) ($empCounts->active ?? 0);
+        $inactiveEmployees = (int) ($empCounts->inactive ?? 0);
+
+        $attnToday = Attendance::join('employees', 'attendance.employee_id', '=', 'employees.id')
+            ->where('employees.company_id', $cid)
+            ->where('attendance.date', $today)
+            ->selectRaw("
+                sum(case when attendance.status = 'present' then 1 else 0 end) as present,
+                sum(case when attendance.status = 'late' then 1 else 0 end) as late,
+                sum(case when attendance.status = 'checked_out' then 1 else 0 end) as checked_out,
+                count(*) as total_checked_in,
+                avg(attendance.worked_hours) as avg_worked
+            ")
+            ->first();
+
+        $presentToday    = (int) ($attnToday->present ?? 0);
+        $lateToday       = (int) ($attnToday->late ?? 0);
+        $checkedOutToday = (int) ($attnToday->checked_out ?? 0);
+        $absentToday     = max(0, $totalEmployees - (int) ($attnToday->total_checked_in ?? 0));
+        $avgWorkedHours  = round((float) ($attnToday->avg_worked ?? 0), 2);
+        $onTimeRate      = $totalEmployees > 0
+            ? round(($presentToday + $checkedOutToday) / $totalEmployees * 100, 2)
+            : 0;
+
+        $checkInTimes = Attendance::join('employees', 'attendance.employee_id', '=', 'employees.id')
+            ->where('employees.company_id', $cid)
+            ->where('attendance.date', $today)
+            ->whereNotNull('attendance.check_in_time')
+            ->pluck('attendance.check_in_time');
+
+        $avgCheckIn = 'N/A';
+        if ($checkInTimes->isNotEmpty()) {
+            $totalSecs = $checkInTimes->reduce(function (int $carry, $t) {
+                [$h, $m] = array_map('intval', explode(':', substr((string) $t, 0, 5)));
+                return $carry + $h * 3600 + $m * 60;
+            }, 0);
+            $avgSecs   = intdiv($totalSecs, $checkInTimes->count());
+            $avgCheckIn = sprintf('%02d:%02d', intdiv($avgSecs, 3600), intdiv($avgSecs % 3600, 60));
+        }
+
+        $totalGeofences = Geofence::where('company_id', $cid)->count();
 
         return response()->json([
             'success' => true,
             'data'    => [
                 'totalEmployees'    => $totalEmployees,
-                'activeEmployees'   => Employee::where('company_id', $cid)->where('status', 'active')->count(),
-                'inactiveEmployees' => Employee::where('company_id', $cid)->where('status', 'inactive')->count(),
+                'activeEmployees'   => $activeEmployees,
+                'inactiveEmployees' => $inactiveEmployees,
                 'presentToday'      => $presentToday,
                 'lateToday'         => $lateToday,
                 'absentToday'       => $absentToday,
@@ -51,51 +87,101 @@ class DashboardController extends Controller
 
     public function trends()
     {
-        $cid            = $this->companyId();
-        $totalEmployees = Employee::where('company_id', $cid)->count();
-        $arDays         = ['Sunday' => 'الأحد', 'Monday' => 'الإثنين', 'Tuesday' => 'الثلاثاء',
-                           'Wednesday' => 'الأربعاء', 'Thursday' => 'الخميس', 'Friday' => 'الجمعة', 'Saturday' => 'السبت'];
+        $cid   = $this->companyId();
+        $arDays = [
+            'Sunday' => 'الأحد', 'Monday' => 'الإثنين', 'Tuesday' => 'الثلاثاء',
+            'Wednesday' => 'الأربعاء', 'Thursday' => 'الخميس', 'Friday' => 'الجمعة', 'Saturday' => 'السبت',
+        ];
 
-        $attendanceBase = fn() => Attendance::whereHas('employee', fn($q) => $q->where('company_id', $cid));
+        $totalEmployees = Employee::where('company_id', $cid)->count();
+
+        $start7  = now()->subDays(6)->toDateString();
+        $start14 = now()->subDays(13)->toDateString();
+        $end7    = now()->subDays(7)->toDateString();
+        $today   = now()->toDateString();
+
+        $rawRows = Attendance::join('employees', 'attendance.employee_id', '=', 'employees.id')
+            ->where('employees.company_id', $cid)
+            ->whereBetween('attendance.date', [$start14, $today])
+            ->selectRaw("
+                attendance.date,
+                sum(case when attendance.status IN ('present','checked_out') then 1 else 0 end) as present,
+                sum(case when attendance.status = 'late' then 1 else 0 end) as late,
+                count(*) as total,
+                avg(case when attendance.status = 'checked_out' then attendance.worked_hours end) as avg_worked
+            ")
+            ->groupBy('attendance.date')
+            ->get()
+            ->keyBy('date');
 
         $weeklyData = [];
         for ($i = 6; $i >= 0; $i--) {
-            $date    = now()->subDays($i)->toDateString();
-            $engDay  = now()->subDays($i)->format('l');
-            $present = $attendanceBase()->where('date', $date)->whereIn('status', ['present', 'checked_out'])->count();
-            $late    = $attendanceBase()->where('date', $date)->where('status', 'late')->count();
-            $absent  = max(0, $totalEmployees - $attendanceBase()->where('date', $date)->count());
+            $date   = now()->subDays($i)->toDateString();
+            $engDay = now()->subDays($i)->format('l');
+            $row    = $rawRows->get($date);
 
             $weeklyData[] = [
                 'day'            => $arDays[$engDay] ?? $engDay,
-                'present'        => $present,
-                'late'           => $late,
-                'absent'         => $absent,
-                'avgWorkedHours' => round($attendanceBase()->where('date', $date)->where('status', 'checked_out')->avg('worked_hours') ?? 0, 2),
+                'present'        => (int) ($row->present ?? 0),
+                'late'           => (int) ($row->late ?? 0),
+                'absent'         => max(0, $totalEmployees - (int) ($row->total ?? 0)),
+                'avgWorkedHours' => round((float) ($row->avg_worked ?? 0), 2),
             ];
         }
 
-        $thisWeekPresent = $attendanceBase()->whereBetween('date', [now()->subDays(6)->toDateString(), now()->toDateString()])->whereIn('status', ['present', 'checked_out'])->count();
-        $prevWeekPresent = $attendanceBase()->whereBetween('date', [now()->subDays(13)->toDateString(), now()->subDays(7)->toDateString()])->whereIn('status', ['present', 'checked_out'])->count();
-        $thisWeekLate    = $attendanceBase()->whereBetween('date', [now()->subDays(6)->toDateString(), now()->toDateString()])->where('status', 'late')->count();
-        $prevWeekLate    = $attendanceBase()->whereBetween('date', [now()->subDays(13)->toDateString(), now()->subDays(7)->toDateString()])->where('status', 'late')->count();
-        $thisWeekAbsent  = max(0, $totalEmployees * 7 - $attendanceBase()->whereBetween('date', [now()->subDays(6)->toDateString(), now()->toDateString()])->count());
-        $prevWeekAbsent  = max(0, $totalEmployees * 7 - $attendanceBase()->whereBetween('date', [now()->subDays(13)->toDateString(), now()->subDays(7)->toDateString()])->count());
-        $thisWeekOnTime  = $thisWeekPresent + $thisWeekLate > 0 ? round($thisWeekPresent / ($thisWeekPresent + $thisWeekLate) * 100, 1) : 0;
-        $prevWeekOnTime  = $prevWeekPresent + $prevWeekLate > 0 ? round($prevWeekPresent / ($prevWeekPresent + $prevWeekLate) * 100, 1) : 0;
-        $pctChange       = fn($cur, $prev) => $prev > 0 ? round(($cur - $prev) / $prev * 100, 1) : 0;
-        $thisMonthCount  = Employee::where('company_id', $cid)->whereMonth('created_at', now()->month)->count();
-        $prevMonthCount  = Employee::where('company_id', $cid)->whereMonth('created_at', now()->subMonth()->month)->count();
+        $thisWeekRows = $rawRows->filter(fn($r) => $r->date >= $start7 && $r->date <= $today);
+        $prevWeekRows = $rawRows->filter(fn($r) => $r->date >= $start14 && $r->date <= $end7);
+
+        $thisPresent = $thisWeekRows->sum('present');
+        $prevPresent = $prevWeekRows->sum('present');
+        $thisLate    = $thisWeekRows->sum('late');
+        $prevLate    = $prevWeekRows->sum('late');
+        $thisTotal   = $thisWeekRows->sum('total');
+        $prevTotal   = $prevWeekRows->sum('total');
+        $thisAbsent  = max(0, $totalEmployees * 7 - $thisTotal);
+        $prevAbsent  = max(0, $totalEmployees * 7 - $prevTotal);
+        $thisOnTime  = ($thisPresent + $thisLate) > 0 ? round($thisPresent / ($thisPresent + $thisLate) * 100, 1) : 0;
+        $prevOnTime  = ($prevPresent + $prevLate) > 0 ? round($prevPresent / ($prevPresent + $prevLate) * 100, 1) : 0;
+
+        $pct = fn($cur, $prev) => $prev > 0 ? round(($cur - $prev) / $prev * 100, 1) : 0;
+
+        $thisMonthEmp = Employee::where('company_id', $cid)->whereMonth('created_at', now()->month)->count();
+        $prevMonthEmp = Employee::where('company_id', $cid)->whereMonth('created_at', now()->subMonth()->month)->count();
+
+        $driver = DB::connection()->getDriverName();
+        $hourExpr = $driver === 'sqlite'
+            ? "CAST(strftime('%H', check_in_time) AS INTEGER)"
+            : "HOUR(check_in_time)";
+
+        $peakRows = Attendance::join('employees', 'attendance.employee_id', '=', 'employees.id')
+            ->where('employees.company_id', $cid)
+            ->whereBetween('attendance.date', [$start7, $today])
+            ->whereNotNull('attendance.check_in_time')
+            ->selectRaw("{$hourExpr} as hr, count(*) as cnt")
+            ->groupByRaw("{$hourExpr}")
+            ->orderByRaw("{$hourExpr}")
+            ->get();
+
+        $hourLabels = [
+            0=>'12ص',1=>'1ص',2=>'2ص',3=>'3ص',4=>'4ص',5=>'5ص',6=>'6ص',7=>'7ص',8=>'8ص',9=>'9ص',
+            10=>'10ص',11=>'11ص',12=>'12م',13=>'1م',14=>'2م',15=>'3م',16=>'4م',17=>'5م',
+            18=>'6م',19=>'7م',20=>'8م',21=>'9م',22=>'10م',23=>'11م',
+        ];
+        $peakHoursData = $peakRows->map(fn($r) => [
+            'hour'  => $hourLabels[$r->hr] ?? "{$r->hr}:00",
+            'count' => (int) $r->cnt,
+        ])->values()->all();
 
         return response()->json([
             'success' => true,
             'data'    => [
                 'weeklyData'       => $weeklyData,
-                'employeeGrowth'   => $pctChange($thisMonthCount, $prevMonthCount),
-                'presentChange'    => $pctChange($thisWeekPresent, $prevWeekPresent),
-                'lateChange'       => $pctChange($thisWeekLate, $prevWeekLate),
-                'absentChange'     => $pctChange($thisWeekAbsent, $prevWeekAbsent),
-                'onTimeRateChange' => round($thisWeekOnTime - $prevWeekOnTime, 1),
+                'peakHoursData'    => $peakHoursData,
+                'employeeGrowth'   => $pct($thisMonthEmp, $prevMonthEmp),
+                'presentChange'    => $pct($thisPresent, $prevPresent),
+                'lateChange'       => $pct($thisLate, $prevLate),
+                'absentChange'     => $pct($thisAbsent, $prevAbsent),
+                'onTimeRateChange' => round($thisOnTime - $prevOnTime, 1),
             ],
         ]);
     }

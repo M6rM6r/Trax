@@ -65,7 +65,7 @@ function validate<T>(raw: unknown, schema: { parse: (d: unknown) => T }, endpoin
 export const validatedApi = {
   employees: {
     list: async (): Promise<EmployeeSchema[]> => {
-      const data = await httpClient.get<unknown>("/employees");
+      const data = await httpClient.get<unknown>("/employees?per_page=500&status=all");
       return validate(data, employeeListSchema, "/employees");
     },
     inactive: async (): Promise<EmployeeSchema[]> => {

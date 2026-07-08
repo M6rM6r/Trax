@@ -159,8 +159,12 @@ class AttendanceController extends Controller
 
     private function calculateWorkedHours(string $checkIn, string $checkOut): float
     {
-        $start = now()->setTimeFromTimeString($checkIn);
-        $end = now()->setTimeFromTimeString($checkOut);
+        $start = \Carbon\Carbon::parse($checkIn);
+        $end   = \Carbon\Carbon::parse($checkOut);
+
+        if ($end->lt($start)) {
+            $end->addDay();
+        }
 
         return round($start->diffInMinutes($end) / 60, 2);
     }
