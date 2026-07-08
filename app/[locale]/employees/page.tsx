@@ -288,6 +288,18 @@ export default function EmployeesPage() {
   const [filterDept, setFilterDept] = useState("");
   const [filterStatus, setFilterStatus] = useState("");
 
+  const staffLoginUrl = useMemo(() => {
+    const envBase =
+      process.env.NEXT_PUBLIC_APP_URL ||
+      process.env.NEXT_PUBLIC_BASE_URL ||
+      (typeof window !== "undefined" ? window.location.origin : "");
+
+    const normalizedBase = envBase?.replace(/\/$/, "");
+    if (!normalizedBase) return null;
+
+    return `${normalizedBase}/${locale}/login`;
+  }, [locale]);
+
   const departments = useMemo(() => {
     const depts = new Set(employees.map((e) => e.department).filter(Boolean));
     return Array.from(depts);
@@ -568,6 +580,7 @@ export default function EmployeesPage() {
                       email: createdCredentials.email,
                       username: createdCredentials.username,
                       password: createdCredentials.password,
+                      loginUrl: staffLoginUrl,
                     });
                     try {
                       await navigator.clipboard.writeText(message);
@@ -587,12 +600,14 @@ export default function EmployeesPage() {
                       email: createdCredentials.email,
                       username: createdCredentials.username,
                       password: createdCredentials.password,
+                      loginUrl: staffLoginUrl,
                     }).subject
                   )}&body=${encodeURIComponent(
                     buildStaffCredentialsEmail({
                       email: createdCredentials.email,
                       username: createdCredentials.username,
                       password: createdCredentials.password,
+                      loginUrl: staffLoginUrl,
                     }).body
                   )}`}
                   className="py-2 px-3 rounded-xl border border-blue-200 dark:border-blue-700 text-sm font-medium text-blue-700 dark:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors text-center"

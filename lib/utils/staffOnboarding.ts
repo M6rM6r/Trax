@@ -24,15 +24,24 @@ export function buildStaffCredentialsMessage(input: {
   email: string;
   username: string;
   password: string;
+  loginUrl?: string | null;
 }): string {
   const company = input.companyName?.trim() || "Trax";
-  return [
+  const loginUrl = input.loginUrl?.trim();
+
+  const lines = [
     `مرحبًا، تم إنشاء حسابك في ${company}`,
     `البريد الإلكتروني: ${input.email}`,
     `اسم المستخدم: ${input.username}`,
     `كلمة المرور المؤقتة: ${input.password}`,
     "يرجى تسجيل الدخول وتغيير كلمة المرور فورًا.",
-  ].join("\n");
+  ];
+
+  if (loginUrl) {
+    lines.push(`رابط تسجيل الدخول: ${loginUrl}`);
+  }
+
+  return lines.join("\n");
 }
 
 export function buildStaffCredentialsEmail(input: {
@@ -40,6 +49,7 @@ export function buildStaffCredentialsEmail(input: {
   email: string;
   username: string;
   password: string;
+  loginUrl?: string | null;
 }): { subject: string; body: string } {
   const company = input.companyName?.trim() || "Trax";
   const subject = `بيانات الدخول إلى ${company}`;

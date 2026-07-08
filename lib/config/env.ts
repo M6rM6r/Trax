@@ -11,6 +11,7 @@ const envSchema = z.object({
   NEXT_PUBLIC_DEFAULT_LOCALE: z.string().default("ar"),
 
   NEXT_PUBLIC_API_URL: optionalUrl,
+  NEXT_PUBLIC_APP_URL: optionalUrl,
   NEXT_PUBLIC_AI_URL: optionalUrl,
   NEXT_PUBLIC_PRODUCTION_API_URL: optionalUrl,
   NEXT_PUBLIC_BASE_URL: optionalUrl,

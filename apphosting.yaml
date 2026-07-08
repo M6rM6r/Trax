@@ -10,6 +10,8 @@ env:
     value: "false"
   - variable: NEXT_PUBLIC_API_URL
     value: "https://api.trax.app/api"
+  - variable: NEXT_PUBLIC_APP_URL
+    value: "https://naf--trax-ae.asia-southeast1.hosted.app"
   - variable: NEXT_PUBLIC_DEFAULT_LOCALE
     value: "ar"
   - variable: NEXT_PUBLIC_FIREBASE_PROJECT_ID
