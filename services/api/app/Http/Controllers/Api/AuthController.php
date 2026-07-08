@@ -18,12 +18,6 @@ use Kreait\Firebase\Exception\Auth\FailedToVerifyToken;
 
 class AuthController extends Controller
 {
-    protected FirebaseAuth $firebaseAuth;
-
-    public function __construct(FirebaseAuth $firebaseAuth)
-    {
-        $this->firebaseAuth = $firebaseAuth;
-    }
 
     public function firebaseLogin(Request $request)
     {
@@ -40,7 +34,16 @@ class AuthController extends Controller
         }
 
         try {
-            $verifiedIdToken = $this->firebaseAuth->verifyIdToken($request->input('id_token'));
+            /** @var FirebaseAuth $firebaseAuth */
+            try {
+                $firebaseAuth = app(FirebaseAuth::class);
+            } catch (\RuntimeException $e) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Firebase authentication not available on this server',
+                ], 503);
+            }
+            $verifiedIdToken = $firebaseAuth->verifyIdToken($request->input('id_token'));
             $firebaseUser = $verifiedIdToken->claims();
             $email = $firebaseUser->get('email');
 
