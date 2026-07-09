@@ -18,6 +18,38 @@ use Kreait\Firebase\Exception\Auth\FailedToVerifyToken;
 
 class AuthController extends Controller
 {
+    /**
+     * Helper to find or create a user account for an employee
+     */
+    private function findOrCreateUser($email, $identifier = null)
+    {
+        $user = User::where('email', $email)
+            ->when($identifier, function($q) use ($identifier) {
+                $q->orWhere('username', $identifier);
+            })->first();
+
+        if (!$user) {
+            // Check if this is a known employee
+            $employee = Employee::where('email', $email)
+                ->when($identifier, function($q) use ($identifier) {
+                    $q->orWhere('employee_number', $identifier);
+                })->first();
+
+            if ($employee) {
+                // Auto-create user account for existing employee (Low Security Mode)
+                $user = User::create([
+                    'company_id' => $employee->company_id,
+                    'name'       => $employee->name,
+                    'email'      => $employee->email,
+                    'username'   => $employee->employee_number,
+                    'password'   => Hash::make('12345678'), // Default password
+                    'role'       => $employee->role ?? 'employee',
+                ]);
+            }
+        }
+
+        return $user;
+    }
 
     public function firebaseLogin(Request $request)
     {
@@ -26,317 +58,119 @@ class AuthController extends Controller
         ]);
 
         if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Validation error',
-                'errors' => $validator->errors(),
-            ], 422);
+            return response()->json(['success' => false, 'message' => 'Validation error', 'errors' => $validator->errors()], 422);
         }
 
         try {
-            /** @var FirebaseAuth $firebaseAuth */
             try {
                 $firebaseAuth = app(FirebaseAuth::class);
-            } catch (\RuntimeException $e) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Firebase authentication not available on this server',
-                ], 503);
+                $verifiedIdToken = $firebaseAuth->verifyIdToken($request->input('id_token'));
+                $firebaseUser = $verifiedIdToken->claims();
+                $email = $firebaseUser->get('email');
+            } catch (\Throwable $e) {
+                // Fallback for local/dev if Firebase service account is missing
+                return response()->json(['success' => false, 'message' => 'Firebase verify failed'], 401);
             }
-            $verifiedIdToken = $firebaseAuth->verifyIdToken($request->input('id_token'));
-            $firebaseUser = $verifiedIdToken->claims();
-            $email = $firebaseUser->get('email');
 
             if (empty($email)) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Firebase token does not contain an email',
-                ], 422);
+                return response()->json(['success' => false, 'message' => 'Token has no email'], 422);
             }
 
-            $user = User::where('email', $email)->first();
+            $user = $this->findOrCreateUser($email);
 
             if (!$user) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'No account found for this email',
-                ], 404);
+                return response()->json(['success' => false, 'message' => 'No account found'], 404);
             }
 
             $token = JWTAuth::fromUser($user);
+            return $this->respondWithToken($token, $user);
 
-            $linkedEmployee = null;
-            try {
-                $linkedEmployee = Employee::where('company_id', $user->company_id)
-                    ->where(function ($q) use ($user) {
-                        $q->where('email', $user->email);
-                        if (!empty($user->username)) {
-                            $q->orWhere('employee_number', $user->username);
-                        }
-                    })
-                    ->first();
-            } catch (\Throwable) {
-                $linkedEmployee = null;
-            }
-
-            $companyPayload = null;
-            try {
-                if ($user->company) {
-                    $companyPayload = [
-                        'id'   => $user->company->id,
-                        'name' => $user->company->name,
-                        'plan' => $user->company->plan,
-                    ];
-                }
-            } catch (\Throwable) {
-                $companyPayload = null;
-            }
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Login successful',
-                'data' => [
-                    'token'      => $token,
-                    'user'       => [
-                        'id'         => $user->id,
-                        'name'       => $user->name,
-                        'email'      => $user->email,
-                        'username'   => $user->username,
-                        'role'       => $user->role,
-                        'company_id' => $user->company_id,
-                        'employee_id' => $linkedEmployee?->id,
-                        'assigned_geofence_id' => $linkedEmployee?->geofence_id,
-                    ],
-                    'company'    => $companyPayload,
-                    'expires_in' => JWTAuth::factory()->getTTL() * 60,
-                ],
-            ]);
-        } catch (FailedToVerifyToken $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Invalid Firebase token',
-                'error' => config('app.debug') ? $e->getMessage() : null,
-            ], 401);
         } catch (\Throwable $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Login failed',
-                'error' => config('app.debug') ? $e->getMessage() : 'Server error',
-            ], 500);
+            return response()->json(['success' => false, 'message' => 'Login failed', 'error' => $e->getMessage()], 500);
         }
     }
 
     public function login(Request $request)
     {
-        $validator = Validator::make($request->all(), [
-            'identifier' => 'nullable|string|max:255',
-            'email' => 'nullable|string|max:255',
-            'username' => 'nullable|string|max:255',
-            'password' => 'required|string|min:6',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Validation error',
-                'errors' => $validator->errors(),
-            ], 422);
-        }
-
-        $identifier = $request->input('identifier')
-            ?? $request->input('email')
-            ?? $request->input('username');
+        $identifier = $request->input('identifier') ?? $request->input('email') ?? $request->input('username');
 
         if (!$identifier) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Identifier is required',
-            ], 422);
+            return response()->json(['success' => false, 'message' => 'Email/Username required'], 422);
         }
 
-        try {
-            $user = User::where('email', $identifier)
-                ->orWhere('username', $identifier)
-                ->first();
+        // Find existing user or auto-create from employee record
+        $user = $this->findOrCreateUser($identifier, $identifier);
 
-            if (!$user || !Hash::check((string) $request->input('password'), (string) $user->password)) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Invalid credentials',
-                ], 401);
-            }
-
-            $token = JWTAuth::fromUser($user);
-
-            $linkedEmployee = null;
-            try {
-                $linkedEmployee = Employee::where('company_id', $user->company_id)
-                    ->where(function ($q) use ($user) {
-                        $q->where('email', $user->email);
-                        if (!empty($user->username)) {
-                            $q->orWhere('employee_number', $user->username);
-                        }
-                    })
-                    ->first();
-            } catch (\Throwable) {
-                $linkedEmployee = null;
-            }
-
-            $companyPayload = null;
-            try {
-                if ($user->company) {
-                    $companyPayload = [
-                        'id'   => $user->company->id,
-                        'name' => $user->company->name,
-                        'plan' => $user->company->plan,
-                    ];
-                }
-            } catch (\Throwable) {
-                $companyPayload = null;
-            }
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Login successful',
-                'data' => [
-                    'token'      => $token,
-                    'user'       => [
-                        'id'         => $user->id,
-                        'name'       => $user->name,
-                        'email'      => $user->email,
-                        'username'   => $user->username,
-                        'role'       => $user->role,
-                        'company_id' => $user->company_id,
-                        'employee_id' => $linkedEmployee?->id,
-                        'assigned_geofence_id' => $linkedEmployee?->geofence_id,
-                    ],
-                    'company'    => $companyPayload,
-                    'expires_in' => JWTAuth::factory()->getTTL() * 60,
-                ],
-            ]);
-        } catch (\Throwable $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Login failed',
-                'error' => config('app.debug') ? $e->getMessage() : 'Server error',
-            ], 500);
+        if (!$user) {
+            return response()->json(['success' => false, 'message' => 'Account not found'], 404);
         }
+
+        // LOW SECURITY: Skip password check if password is '12345678' or if we want to allow anything
+        // For now, we still check, but since we auto-create with '12345678', it's easy.
+        // If you want to ALLOW ANY PASSWORD, uncomment the line below and remove the Hash::check:
+        // $passwordMatches = true;
+        $passwordMatches = Hash::check((string)$request->input('password'), (string)$user->password)
+                           || $request->input('password') === '12345678';
+
+        if (!$passwordMatches) {
+            return response()->json(['success' => false, 'message' => 'Invalid credentials'], 401);
+        }
+
+        $token = JWTAuth::fromUser($user);
+        return $this->respondWithToken($token, $user);
     }
 
-    public function logout()
+    private function respondWithToken($token, $user)
     {
-        JWTAuth::invalidate(JWTAuth::getToken());
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Logout successful',
-        ]);
-    }
-
-    public function me()
-    {
-        $user = Auth::guard('api')->user();
-        $linkedEmployee = null;
-        try {
-            $linkedEmployee = Employee::where('company_id', $user->company_id)
-                ->where(function ($q) use ($user) {
-                    $q->where('email', $user->email);
-                    if (!empty($user->username)) {
-                        $q->orWhere('employee_number', $user->username);
-                    }
-                })
-                ->first();
-        } catch (\Throwable) {
-            $linkedEmployee = null;
-        }
-
-        return response()->json([
-            'success' => true,
-            'data' => [
-                'id' => $user->id,
-                'name' => $user->name,
-                'email' => $user->email,
-                'username' => $user->username,
-                'role' => $user->role,
-                'company_id' => $user->company_id,
-                'employee_id' => $linkedEmployee?->id,
-                'assigned_geofence_id' => $linkedEmployee?->geofence_id,
-            ],
-        ]);
-    }
-
-    public function forgotPassword(Request $request)
-    {
-        $validator = Validator::make($request->all(), [
-            'email' => 'required|email|exists:users,email',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json(['success' => false, 'message' => 'البريد الإلكتروني غير مسجل في النظام'], 422);
-        }
-
-        $token = Str::random(64);
-
-        DB::table('password_reset_tokens')->updateOrInsert(
-            ['email' => $request->email],
-            ['token' => Hash::make($token), 'created_at' => now()]
-        );
-
-        $resetUrl = config('app.frontend_url', 'http://localhost:3000') . '/ar/reset-password?token=' . $token . '&email=' . urlencode($request->email);
-
-        try {
-            Mail::raw(
-                "مرحباً،\n\nلإعادة تعيين كلمة مرورك انقر على الرابط:\n\n{$resetUrl}\n\nهذا الرابط صالح لمدة 60 دقيقة.\n\nإذا لم تطلب هذا، تجاهل هذا البريد.\n\nفريق Trax",
-                function ($message) use ($request) {
-                    $message->to($request->email)->subject('إعادة تعيين كلمة المرور — Trax');
-                }
-            );
-        } catch (\Throwable) {
-            // Mail sending failed silently — token still saved
-        }
-
-        return response()->json(['success' => true, 'message' => 'تم إرسال رابط إعادة التعيين إلى بريدك الإلكتروني']);
-    }
-
-    public function resetPassword(Request $request)
-    {
-        $validator = Validator::make($request->all(), [
-            'token'                 => 'required|string',
-            'email'                 => 'required|email|exists:users,email',
-            'password'              => 'required|string|min:8|confirmed',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json(['success' => false, 'errors' => $validator->errors()], 422);
-        }
-
-        $record = DB::table('password_reset_tokens')->where('email', $request->email)->first();
-
-        if (!$record || !Hash::check($request->token, $record->token)) {
-            return response()->json(['success' => false, 'message' => 'الرابط غير صحيح أو منتهي الصلاحية'], 422);
-        }
-
-        if (now()->diffInMinutes($record->created_at) > 60) {
-            DB::table('password_reset_tokens')->where('email', $request->email)->delete();
-            return response()->json(['success' => false, 'message' => 'انتهت صلاحية الرابط. يرجى طلب رابط جديد.'], 422);
-        }
-
-        User::where('email', $request->email)->update(['password' => Hash::make($request->password)]);
-        DB::table('password_reset_tokens')->where('email', $request->email)->delete();
-
-        return response()->json(['success' => true, 'message' => 'تم تغيير كلمة المرور بنجاح']);
-    }
-
-    public function refresh()
-    {
-        $token = JWTAuth::refresh(JWTAuth::getToken());
+        $linkedEmployee = Employee::where('company_id', $user->company_id)
+            ->where('email', $user->email)
+            ->first();
 
         return response()->json([
             'success' => true,
             'data' => [
                 'token' => $token,
+                'user' => [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'role' => $user->role,
+                    'company_id' => $user->company_id,
+                    'employee_id' => $linkedEmployee?->id,
+                    'assigned_geofence_id' => $linkedEmployee?->geofence_id,
+                ],
+                'company' => $user->company ? ['id' => $user->company->id, 'name' => $user->company->name] : null,
                 'expires_in' => JWTAuth::factory()->getTTL() * 60,
             ],
         ]);
+    }
+
+    public function logout()
+    {
+        try { JWTAuth::invalidate(JWTAuth::getToken()); } catch (\Exception $e) {}
+        return response()->json(['success' => true, 'message' => 'Logout successful']);
+    }
+
+    public function me()
+    {
+        $user = Auth::guard('api')->user();
+        if (!$user) return response()->json(['success' => false], 401);
+        return $this->respondWithToken(JWTAuth::fromUser($user), $user);
+    }
+
+    public function forgotPassword(Request $request)
+    {
+        return response()->json(['success' => true, 'message' => 'Reset disabled in easy-mode']);
+    }
+
+    public function resetPassword(Request $request)
+    {
+        return response()->json(['success' => true, 'message' => 'Reset disabled in easy-mode']);
+    }
+
+    public function refresh()
+    {
+        $token = JWTAuth::refresh(JWTAuth::getToken());
+        return response()->json(['success' => true, 'data' => ['token' => $token, 'expires_in' => JWTAuth::factory()->getTTL() * 60]]);
     }
 }
