@@ -1,7 +1,7 @@
 "use client";
 import { useState, useCallback, useEffect, useRef } from "react";
 import { NavMain } from "@/components/Sidebar/nav-main";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter } from "@/i18n/navigation";
 import {
   America,
   ArrowDown,
@@ -10,14 +10,11 @@ import {
   CloseCircle,
   Logout,
   Menu,
-  Notepad,
-  Notification,
   Profile,
   SaudiFlag,
   Search,
   Setting2,
   ShieldTick,
-  Warning,
   Location,
 } from "@/public/SVG";
 import { MapPin } from "lucide-react";
@@ -27,7 +24,6 @@ import { useLocale } from "next-intl";
 import Image from "next/image";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Link } from "@/i18n/navigation";
-import { Separator } from "@/components/ui/separator";
 import { Dialog, DialogClose, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { deleteCookie } from "cookies-next";
@@ -40,7 +36,6 @@ import MobileBottomNav from "../MobileBottomNav";
 import PageTransition from "../PageTransition";
 import NotificationCenter from "../NotificationCenter";
 import { CommandPalette } from "../CommandPalette";
-import { OnboardingTour } from "../OnboardingTour";
 import { ShortcutsHelp } from "../ShortcutsHelp";
 import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
 import { useScrollPreservation } from "@/hooks/useScrollPreservation";
@@ -58,7 +53,7 @@ const Index = ({
 }) => {
   const pathname = usePathname();
   const locale = useLocale();
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false); // State to manage sidebar visibility
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const touchStartX = useRef(0);
   const touchStartY = useRef(0);
   const { toast } = useToast();
@@ -83,7 +78,6 @@ const Index = ({
     return () => window.removeEventListener("keydown", handleEsc);
   }, []);
 
-  // Memoized callback for sidebar toggle
   const toggleSidebar = useCallback(() => {
     setIsSidebarOpen((prev) => !prev);
   }, []);
@@ -107,7 +101,6 @@ const Index = ({
     [isSidebarOpen]
   );
 
-  // Memoized callback for logout
   const logOut = useCallback(async () => {
     deleteCookie("auth_token");
     clearUser();
@@ -115,261 +108,100 @@ const Index = ({
       description: "تم تسجيل الخروج بنجاح",
       variant: "default",
     });
-    router.push(`/${locale}/login`);
-  }, [locale, router, toast, clearUser]);
+    router.push("/login");
+  }, [router, toast, clearUser]);
 
   return (
-    <section>
+    <section className="min-h-screen bg-gray-50 dark:bg-slate-950">
       <TopLoadingBar />
       <ScrollProgress />
       <OfflineBanner />
-      <a
-        href="#main-content"
-        className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-[100] focus:px-4 focus:py-2 focus:bg-blue-600 focus:text-white focus:rounded-lg"
-      >
-        تخطي إلى المحتوى الرئيسي
-      </a>
-      <nav className="fixed top-0 z-[49] w-full bg-background dark:bg-slate-900" aria-label="الرأس">
-        <header className=" flex items-center flex-wrap gap-x-3 md:gap-5 p-3 md:p-5 border-b border-b-gray-200 dark:border-b-slate-700 relative">
-          {/* Menu Icon with onClick handler */}
-          <Menu
-            className="w-5 text-gray900 dark:text-slate-100 lg:hidden me-auto md:me-0 cursor-pointer"
-            onClick={toggleSidebar}
-            aria-label="فتح/إغلاق القائمة"
-            role="button"
-            tabIndex={0}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault();
-                toggleSidebar();
-              }
-            }}
-          />
-          <Link href="/" className="flex items-center gap-2 shrink-0">
-            <MapPin className="w-7 h-7 text-primaryColor" />
-            <span className="text-xl font-bold text-gray-900 dark:text-slate-100">Trax</span>
-          </Link>
-          <div className="hidden md:flex items-center gap-3 me-auto">
-            <UserAvatar user={user} />
-            <div>
-              <p className="text-20 text-black dark:text-slate-100 font-[600]"> {user?.name}</p>
-              <p className="text-16 text-gray500 dark:text-slate-400">
-                {role === "employee" ? "موظف" : "المدير"}
-              </p>
-            </div>
-          </div>
-          <div className="grow xxsm:max-w-[220px] xsm:max-w-[260px] sm:max-w-[320px] bg-gray-50 dark:bg-slate-800 border border-gray300 dark:border-slate-600 rounded-12 h-[38px] flex items-center md:hidden px-3">
-            <Search />
-            <input
-              type="text"
-              className="w-full h-full px-3 outline-none dark:text-slate-100 dark:placeholder-slate-500"
-              placeholder="بحث"
-              aria-label="بحث"
-            />
-            <kbd className="hidden sm:inline-block px-1.5 py-0.5 text-[10px] font-mono bg-gray-200 dark:bg-slate-700 text-gray-500 dark:text-slate-400 rounded">
-              ⌘K
-            </kbd>
-          </div>
-          <NotificationCenter />
 
-          <div className=" hidden md:block">
-            <ThemeToggle />
-            <Popover>
-              <PopoverTrigger
-                className=" flex items-center gap-2 cursor-not-allowed"
-                disabled
-                aria-label="تغيير اللغة"
-              >
-                <SaudiFlag className="w-[33px] h-[24px]" />
-                <span className="text-20 text-black dark:text-slate-100">العربية</span>
-                <ArrowDown />
-              </PopoverTrigger>
-              <PopoverContent className="max-w-[180px] flex flex-col gap-5 dark:bg-slate-800 dark:border-slate-700">
-                <Link href={"/"} locale="ar" className="flex gap-2">
-                  <SaudiFlag className="w-[33px] h-[24px]" />
-                  <span className="text-20 text-black dark:text-slate-100">العربية</span>
-                </Link>
-                <Link href={"/"} locale="en" className="flex gap-2">
-                  <America className="w-[33px] h-[24px]" />
-                  <span className="text-20 text-black dark:text-slate-100">الانجليزيه</span>
-                </Link>
-              </PopoverContent>
-            </Popover>
+      <nav className="fixed top-0 z-[49] w-full bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-gray-200 dark:border-slate-800" aria-label="الرأس">
+        <header className="flex items-center justify-between gap-4 p-3 md:px-6 h-16 md:h-20">
+          <div className="flex items-center gap-3">
+            <Menu
+              className="w-6 h-6 text-gray-700 dark:text-slate-200 lg:hidden cursor-pointer"
+              onClick={toggleSidebar}
+              aria-label="القائمة"
+              suppressHydrationWarning
+            />
+            <Link href="/" className="flex items-center gap-2">
+              <MapPin className="w-6 h-6 text-primaryColor" suppressHydrationWarning />
+              <span className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-400 dark:to-indigo-400">Trax</span>
+            </Link>
+          </div>
+
+          <div className="flex items-center gap-2 md:gap-4">
+            <div className="hidden sm:flex items-center bg-gray-100 dark:bg-slate-800 rounded-full px-3 h-9 w-40 md:w-64">
+              <Search className="w-4 h-4 text-gray-400" suppressHydrationWarning />
+              <input
+                type="text"
+                className="bg-transparent border-none focus:ring-0 text-sm w-full px-2 dark:text-slate-200"
+                placeholder="بحث..."
+              />
+            </div>
+
+            <NotificationCenter />
+
+            <div className="hidden md:flex items-center gap-3 border-l dark:border-slate-700 ps-4">
+              <ThemeToggle />
+              <UserAvatar user={user} className="w-8 h-8" />
+            </div>
           </div>
         </header>
       </nav>
 
       {showSidebar && isSidebarOpen && (
-        <div
-          className="fixed inset-0 z-30 bg-black/50 lg:hidden transition-opacity duration-300"
-          onClick={() => setIsSidebarOpen(false)}
-        />
+        <div className="fixed inset-0 z-30 bg-black/40 backdrop-blur-sm lg:hidden" onClick={() => setIsSidebarOpen(false)} />
       )}
 
       {showSidebar && (
         <aside
           id="logo-sidebar"
-          aria-label="القائمة الجانبية"
           className={cn(
-            `fixed top-0 ${
-              locale === "ar"
-                ? "right-0 translate-x-full lg:translate-x-0"
-                : "left-0 -translate-x-full lg:translate-x-0"
-            } z-40 w-64 h-screen pt-[11rem] lg:pt-[7rem] transition-transform duration-300 ease-in-out bg-background dark:bg-slate-900 border-l border-gray-200 dark:border-slate-700`,
-            isSidebarOpen && "translate-x-0" // Show sidebar when isSidebarOpen is true
+            "fixed top-0 z-40 w-64 h-screen pt-20 transition-transform bg-white dark:bg-slate-900 border-e border-gray-200 dark:border-slate-800 lg:translate-x-0",
+            locale === "ar" ? (isSidebarOpen ? "translate-x-0" : "translate-x-full") : (isSidebarOpen ? "translate-x-0" : "-translate-x-full")
           )}
         >
-          <div className="h-full px-3 pb-4 overflow-y-auto bg-background dark:bg-slate-900 flex flex-col gap-2 ">
+          <div className="h-full px-3 pb-4 flex flex-col justify-between">
             <NavMain
               items={
                 role === "employee"
                   ? [
-                      {
-                        title: "تسجيل الحضور",
-                        url: `/${locale}/check-in`,
-                        icon: CheckCircle,
-                        isActive: pathname.includes("/check-in"),
-                      },
+                      { title: "تسجيل الحضور", url: "/check-in", icon: CheckCircle, isActive: pathname.includes("/check-in") },
                     ]
                   : [
-                      {
-                        title: "لوحة التحكم",
-                        url: "/",
-                        icon: Category,
-                        isActive: pathname === `/${locale}`,
-                      },
-                      {
-                        title: "الموظفون",
-                        url: `/${locale}/employees`,
-                        icon: Profile,
-                        isActive: pathname.includes("/employees"),
-                        items: [
-                          {
-                            title: "جميع الموظفين",
-                            url: `/${locale}/employees`,
-                            active: pathname === `/${locale}/employees`,
-                          },
-                          {
-                            title: "الموظفون غير النشطين",
-                            url: `/${locale}/employees/inactive`,
-                            active: pathname === `/${locale}/employees/inactive`,
-                          },
-                        ],
-                      },
-                      {
-                        title: "تتبع مباشر",
-                        url: `/${locale}/live-map`,
-                        icon: Location,
-                        isActive: pathname.includes("/live-map"),
-                      },
-                      {
-                        title: "الحضور والانصراف",
-                        url: `/${locale}/attendance`,
-                        icon: ShieldTick,
-                        isActive: pathname.includes("/attendance"),
-                        items: [
-                          {
-                            title: "سجلات اليوم",
-                            url: `/${locale}/attendance`,
-                            active: pathname === `/${locale}/attendance`,
-                          },
-                          {
-                            title: "التقارير",
-                            url: `/${locale}/attendance/reports`,
-                            active: pathname === `/${locale}/attendance/reports`,
-                          },
-                        ],
-                      },
-                      {
-                        title: "النطاقات الجغرافية",
-                        url: `/${locale}/geofences`,
-                        icon: Location,
-                        isActive: pathname.includes("/geofences"),
-                      },
-                      {
-                        title: "تسجيل الحضور",
-                        url: `/${locale}/check-in`,
-                        icon: CheckCircle,
-                        isActive: pathname.includes("/check-in"),
-                      },
-                      {
-                        title: "الإعدادات",
-                        url: `/${locale}/settings`,
-                        icon: Setting2,
-                        isActive: pathname.includes(`/settings`),
-                        items: [
-                          {
-                            title: "إعدادات الأمان",
-                            url: `/${locale}/settings/securitySettings`,
-                            active: pathname === `/${locale}/settings/securitySettings`,
-                          },
-                          {
-                            title: "إعدادات الإشعارات",
-                            url: `/${locale}/settings/notificationSettings`,
-                            active: pathname === `/${locale}/settings/notificationSettings`,
-                          },
-                        ],
-                      },
+                      { title: "لوحة التحكم", url: "/", icon: Category, isActive: pathname === "/" },
+                      { title: "الموظفون", url: "/employees", icon: Profile, isActive: pathname.includes("/employees") },
+                      { title: "تتبع مباشر", url: "/live-map", icon: Location, isActive: pathname.includes("/live-map") },
+                      { title: "الحضور والانصراف", url: "/attendance", icon: ShieldTick, isActive: pathname.includes("/attendance") },
+                      { title: "النطاقات الجغرافية", url: "/geofences", icon: Location, isActive: pathname.includes("/geofences") },
+                      { title: "تسجيل الحضور", url: "/check-in", icon: CheckCircle, isActive: pathname.includes("/check-in") },
                     ]
               }
             />
-            <Dialog>
-              <DialogTrigger
-                className=" w-full shrink-0 h-[48px] flex items-center gap-1.5 bg-error50 dark:bg-red-900/20 rounded-6 px-3 text-16 text-error dark:text-red-400 font-[600]"
-                aria-label="تسجيل الخروج"
-              >
-                <Logout />
-                تسجيل الخروج
-              </DialogTrigger>
-              <DialogContent className=" max-w-[516px] p-6 rounded-16 flex flex-col dark:bg-slate-800 dark:border-slate-700">
-                <DialogClose className=" absolute top-6 left-6">
-                  <CloseCircle />
-                </DialogClose>
-                <Image src={bill} alt="bill" className=" mx-auto w-[128px] h-[141px] mb-8" />
-                <p className="text-24 text-textMain dark:text-slate-100 font-[600] text-center">
-                  هل أنت متأكد أنك تريد تسجيل الخروج؟
-                </p>
-                <p className="text-20 text-textSubTextDarker dark:text-slate-400 text-center">
-                  هل أنت متأكد أنك تريد تسجيل الخروج؟ قد تفقد أي تغييرات غير محفوظة.
-                </p>
-                <div className=" flex w-full gap-4">
-                  <DialogClose asChild>
-                    <Button
-                      type="button"
-                      variant={"errorOutline"}
-                      className="grow bg-error50 dark:bg-red-900/20 border-none"
-                      onClick={logOut}
-                    >
-                      تأكيد تسجيل الخروج
-                    </Button>
-                  </DialogClose>
-                  <DialogClose asChild>
-                    <Button type="button" variant={"error"} className="grow ">
-                      إلغاء
-                    </Button>
-                  </DialogClose>
-                </div>
-              </DialogContent>
-            </Dialog>
+            <Button variant="ghost" className="w-full justify-start text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20" onClick={logOut}>
+              <Logout className="me-2" /> تسجيل الخروج
+            </Button>
           </div>
         </aside>
       )}
 
-      <div
+      <main
         id="main-content"
-        onTouchStart={handleTouchStart}
-        onTouchEnd={handleTouchEnd}
         className={cn(
-          "p-3 md:p-4 pt-[8rem] sm:pt-[9rem] md:pt-[7.5rem] pb-20 lg:pb-4 flex flex-col gap-4 sm:gap-5",
+          "flex flex-col min-h-screen pt-16 md:pt-20 pb-24 lg:pb-6 px-4 md:px-8 max-w-7xl mx-auto transition-all",
           showSidebar && "lg:ms-64"
         )}
       >
-        <Breadcrumb />
+        <div className="py-4">
+          <Breadcrumb />
+        </div>
         <PageTransition>{children}</PageTransition>
         <MobileBottomNav />
-      </div>
+      </main>
       <CommandPalette />
-      <OnboardingTour />
       <ShortcutsHelp />
     </section>
   );

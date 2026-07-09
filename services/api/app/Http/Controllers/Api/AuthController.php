@@ -42,7 +42,7 @@ class AuthController extends Controller
                     'name'       => $employee->name,
                     'email'      => $employee->email,
                     'username'   => $employee->employee_number,
-                    'password'   => Hash::make('12345678'), // Default password
+                    'password'   => '12345678',
                     'role'       => $employee->role ?? 'employee',
                 ]);
             }

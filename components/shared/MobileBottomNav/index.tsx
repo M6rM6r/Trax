@@ -1,8 +1,6 @@
 "use client";
 
-import { usePathname } from "next/navigation";
-import { useLocale } from "next-intl";
-import { Link } from "@/i18n/navigation";
+import { usePathname, Link } from "@/i18n/navigation";
 import { LayoutDashboard, Users, MapPin, Calendar, CheckCircle, Target } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
@@ -10,19 +8,18 @@ import { hapticTap } from "@/lib/utils/haptics";
 import { useAuthStore } from "@/stores/useAuthStore";
 
 const bossNavItems = [
-  { icon: LayoutDashboard, label: "الرئيسية", path: "" },
-  { icon: Users, label: "الموظفون", path: "employees" },
-  { icon: MapPin, label: "الخريطة", path: "live-map" },
-  { icon: Calendar, label: "الحضور", path: "attendance" },
-  { icon: CheckCircle, label: "تسجيل", path: "check-in" },
-  { icon: Target, label: "النطاقات", path: "geofences" },
+  { icon: LayoutDashboard, label: "الرئيسية", path: "/" },
+  { icon: Users, label: "الموظفون", path: "/employees" },
+  { icon: MapPin, label: "الخريطة", path: "/live-map" },
+  { icon: Calendar, label: "الحضور", path: "/attendance" },
+  { icon: CheckCircle, label: "تسجيل", path: "/check-in" },
+  { icon: Target, label: "النطاقات", path: "/geofences" },
 ];
 
-const employeeNavItems = [{ icon: CheckCircle, label: "تسجيل الحضور", path: "check-in" }];
+const employeeNavItems = [{ icon: CheckCircle, label: "تسجيل الحضور", path: "/check-in" }];
 
 export default function MobileBottomNav() {
   const pathname = usePathname();
-  const locale = useLocale();
   const { role } = useAuthStore();
   const navItems = role === "employee" ? employeeNavItems : bossNavItems;
 
@@ -38,14 +35,13 @@ export default function MobileBottomNav() {
     >
       <div className="flex items-center justify-around px-1 py-1.5 overflow-x-auto hideScrollbar">
         {navItems.map((item) => {
-          const fullPath = `/${locale}/${item.path}`;
           const isActive =
-            item.path === "" ? pathname === `/${locale}` : pathname.includes(item.path);
+            item.path === "/" ? pathname === "/" : pathname.startsWith(item.path);
           const Icon = item.icon;
           return (
             <Link
               key={item.path}
-              href={fullPath}
+              href={item.path}
               onClick={handlePress}
               className={cn(
                 "relative flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-xl transition-all duration-200 min-w-[48px] shrink-0",
