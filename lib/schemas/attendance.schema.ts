@@ -14,7 +14,7 @@ export const attendanceRecordSchema = z.object({
   checkOutLng: z.coerce.number().min(-180).max(180).nullable().optional(),
   geofenceId: z.coerce.number().int().positive().nullable().optional(),
   geofenceName: z.string().nullable().optional(),
-  lateMinutes: z.coerce.number().min(0).default(0),
+  lateMinutes: z.coerce.number().default(0),
   workedHours: z.coerce.number().min(0).max(24).default(0),
   checkOutStatus: z.enum(["present", "late", "absent"]).nullable().optional(),
 });

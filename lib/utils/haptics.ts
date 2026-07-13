@@ -31,3 +31,15 @@ export function hapticSuccess(): void {
 export function hapticError(): void {
   haptic("error");
 }
+
+export function hapticWarning(): void {
+  haptic("warning");
+}
+
+let lastHapticTime = 0;
+export function hapticDebounced(pattern: HapticPattern = "light", delay = 100): void {
+  const now = Date.now();
+  if (now - lastHapticTime < delay) return;
+  lastHapticTime = now;
+  haptic(pattern);
+}

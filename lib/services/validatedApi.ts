@@ -112,11 +112,19 @@ export const validatedApi = {
       return validate({ data: payload }, attendanceListSchema, "/attendance/reports");
     },
     checkIn: async (payload: CheckInSchema): Promise<AttendanceRecordSchema> => {
-      const data = await httpClient.post<unknown>("/attendance/check-in", payload);
+      const data = await httpClient.post<unknown>("/attendance/check-in", {
+        employee_id: payload.employeeId,
+        lat: payload.lat,
+        lng: payload.lng,
+        geofence_id: payload.geofenceId,
+        timestamp: payload.timestamp,
+      });
       return validate(data, attendanceRecordSchema, "/attendance/check-in");
     },
     checkOut: async (payload: CheckOutSchema): Promise<AttendanceRecordSchema> => {
-      const data = await httpClient.post<unknown>("/attendance/check-out", payload);
+      const data = await httpClient.post<unknown>("/attendance/check-out", {
+        employee_id: payload.employeeId,
+      });
       return validate(data, attendanceRecordSchema, "/attendance/check-out");
     },
   },

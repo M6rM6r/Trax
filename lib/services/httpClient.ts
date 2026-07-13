@@ -1,4 +1,6 @@
 import { logger } from "@/lib/config/logger";
+import { auth } from "@/lib/config/firebase";
+import { getIdToken } from "firebase/auth";
 
 export class ApiError extends Error {
   constructor(
@@ -24,7 +26,7 @@ const DEFAULT_RETRY: RetryConfig = {
   retryableStatusCodes: new Set([408, 429, 500, 502, 503, 504]),
 };
 
-type RequestInterceptor = (config: RequestInit) => RequestInit;
+type RequestInterceptor = (config: RequestInit) => RequestInit | Promise<RequestInit>;
 type ResponseInterceptor = (response: Response) => Response;
 
 class HttpClient {
@@ -50,8 +52,12 @@ class HttpClient {
     return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
-  private applyRequestInterceptors(config: RequestInit): RequestInit {
-    return this.requestInterceptors.reduce((acc, fn) => fn(acc), config);
+  private async applyRequestInterceptors(config: RequestInit): Promise<RequestInit> {
+    let result = config;
+    for (const fn of this.requestInterceptors) {
+      result = await fn(result);
+    }
+    return result;
   }
 
   private applyResponseInterceptors(response: Response): Response {
@@ -64,14 +70,14 @@ class HttpClient {
   }
 
   private async request<T>(endpoint: string, options: RequestInit = {}, attempt = 1): Promise<T> {
-    const config = this.applyRequestInterceptors({
+    const config = await this.applyRequestInterceptors({
       ...options,
       headers: {
         "Content-Type": "application/json",
         ...options.headers,
       },
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       _endpoint: endpoint,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } as any); // _endpoint used by interceptors to skip auth on public routes
 
     const url = this.buildUrl(endpoint);
@@ -109,6 +115,9 @@ class HttpClient {
       return data as T;
     } catch (error) {
       if (error instanceof ApiError) throw error;
+      if (error instanceof DOMException && error.name === "AbortError") {
+        throw new ApiError("Request aborted", 0, endpoint);
+      }
 
       const shouldRetry = attempt < this.retryConfig.maxRetries;
       if (shouldRetry) {
@@ -166,23 +175,26 @@ export const httpClient = new HttpClient(apiUrl, {
   retryDelay: 800,
 });
 
-httpClient.addRequestInterceptor((config) => {
+httpClient.addRequestInterceptor(async (config) => {
   if (typeof document !== "undefined") {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const endpoint: string = (config as any)._endpoint ?? "";
     const isAuthEndpoint =
-      endpoint.includes("auth/login") ||
+      endpoint.includes("auth/firebase") ||
       endpoint.includes("auth/register") ||
       endpoint.includes("auth/forgot") ||
       endpoint.includes("auth/reset");
     if (isAuthEndpoint) return config;
 
-    const tokenCookie = document.cookie
-      .split(";")
-      .map((cookie) => cookie.trim())
-      .find((cookie) => cookie.startsWith("auth_token="));
-
-    let token = tokenCookie ? decodeURIComponent(tokenCookie.slice("auth_token=".length)) : null;
+    // Refresh Firebase ID token before each authenticated request to avoid 1-hour expiry.
+    let token: string | null = null;
+    try {
+      if (auth?.currentUser) {
+        token = await getIdToken(auth.currentUser, false);
+      }
+    } catch {
+      // Fallback to persisted token if refresh fails.
+    }
 
     if (!token) {
       try {
@@ -218,14 +230,15 @@ httpClient.addResponseInterceptor((response) => {
     } catch {
       // ignore storage cleanup failures
     }
-    document.cookie = "auth_token=; Max-Age=0; path=/";
     const isJsDom =
       typeof navigator !== "undefined" &&
       typeof navigator.userAgent === "string" &&
       navigator.userAgent.toLowerCase().includes("jsdom");
 
     if (!isJsDom) {
-      window.location.href = "/ar/login";
+      const pathParts = window.location.pathname.split("/");
+      const detectedLocale = pathParts[1] === "en" ? "en" : "ar";
+      window.location.href = `/${detectedLocale}/login`;
     }
   }
   return response;

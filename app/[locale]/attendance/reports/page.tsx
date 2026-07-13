@@ -12,7 +12,6 @@ import { useToast } from "@/hooks/use-toast";
 import { LoadingSkeleton, ErrorState } from "@/components/shared/StateViews";
 import dynamic from "next/dynamic";
 import { useAuthStore } from "@/stores/useAuthStore";
-import { useLocale } from "next-intl";
 import AccessDeniedCard from "@/components/shared/AccessDeniedCard";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -79,7 +78,6 @@ export default function AttendanceReportsPage() {
     isError: isRetentionError,
   } = useRetentionInsights(attendance, employees);
   const { role } = useAuthStore();
-  const locale = useLocale();
   const { toast } = useToast();
   const presentCount = attendance.filter((r) => r.status === "present").length;
   const lateCount = attendance.filter((r) => r.status === "late").length;
@@ -167,7 +165,7 @@ export default function AttendanceReportsPage() {
           <AccessDeniedCard
             icon={BarChart3}
             message="تقارير الحضور متاحة لإدارة الشركة فقط."
-            ctaHref={`/${locale}/check-in`}
+            ctaHref="/check-in"
           />
         </div>
       </MainLayout>

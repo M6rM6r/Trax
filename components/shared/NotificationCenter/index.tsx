@@ -40,14 +40,8 @@ function formatTimeAgo(timestamp: string): string {
 }
 
 export default function NotificationCenter() {
-  const {
-    notifications,
-    unreadCount,
-    markAsRead,
-    markAllAsRead,
-    removeNotification,
-    addNotification,
-  } = useNotificationStore();
+  const { notifications, unreadCount, markAsRead, markAllAsRead, addNotification } =
+    useNotificationStore();
   const { toast } = useToast();
 
   useEffect(() => {
@@ -99,11 +93,11 @@ export default function NotificationCenter() {
         <button
           className="relative cursor-pointer"
           aria-label={`الإشعارات${unreadCount > 0 ? ` (${unreadCount} غير مقروء)` : ""}`}
-          aria-expanded={undefined}
         >
           {unreadCount > 0 && (
             <span className="w-[12px] h-[12px] bg-error dark:bg-red-500 rounded-full border border-white absolute top-0 right-0 flex items-center justify-center text-[8px] text-white font-bold">
-              {unreadCount > 9 ? "9+" : unreadCount}
+              <span className="absolute inset-0 rounded-full bg-error dark:bg-red-500 animate-ping opacity-75" />
+              <span className="relative">{unreadCount > 9 ? "9+" : unreadCount}</span>
             </span>
           )}
           <Notification />

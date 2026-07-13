@@ -1,13 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter } from "@/i18n/navigation";
 import { useTranslations } from "next-intl";
 
 export default function NotFound() {
   const router = useRouter();
   const t = useTranslations("NotFound");
   const [countdown, setCountdown] = useState(20);
+  const [currentPath, setCurrentPath] = useState("");
 
   // Countdown for automatic redirect
   useEffect(() => {
@@ -21,6 +22,9 @@ export default function NotFound() {
 
   const goHome = () => router.push("/");
   const goBack = () => router.back();
+  useEffect(() => {
+    setCurrentPath(window.location.pathname);
+  }, []);
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-yellow-50 to-amber-100 dark:from-slate-900 dark:to-slate-800 p-4 transition-colors duration-300">
@@ -121,7 +125,7 @@ export default function NotFound() {
         {/* Current Path Info */}
         <div className="mt-6">
           <p className="text-xs text-gray-400 dark:text-slate-500">
-            {t("currentPath")} {typeof window !== "undefined" ? window.location.pathname : ""}
+            {t("currentPath")} {currentPath}
           </p>
         </div>
       </div>

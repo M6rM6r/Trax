@@ -10,7 +10,6 @@ import {
   UserPlus,
   Edit,
   Trash2,
-  Phone,
   Mail,
   MapPin,
   Download,
@@ -21,7 +20,6 @@ import {
   LayoutList,
   Search,
 } from "lucide-react";
-import AvatarUpload from "@/components/shared/AvatarUpload";
 import {
   useEmployees,
   useGeofences,
@@ -30,7 +28,8 @@ import {
   useUpdateEmployee,
   useResetEmployeePassword,
 } from "@/hooks/useApi";
-import { LoadingSkeleton, EmptyState, ErrorState } from "@/components/shared/StateViews";
+import { EmptyState, ErrorState } from "@/components/shared/StateViews";
+import EmployeeListSkeleton from "@/components/shared/Skeletons/EmployeeListSkeleton";
 import { DataTable } from "@/components/shared/DataTable/DataTable";
 import ConfirmDialog from "@/components/shared/ConfirmDialog";
 import { FormDrawer } from "@/components/shared/FormDrawer";
@@ -42,9 +41,6 @@ import { motion, AnimatePresence } from "framer-motion";
 import type { Employee, EmployeeRole } from "@/lib/types/trackingTypes";
 import { useAuthStore } from "@/stores/useAuthStore";
 import AccessDeniedCard from "@/components/shared/AccessDeniedCard";
-import Image from "next/image";
-import { createUserWithEmailAndPassword } from "firebase/auth";
-import { auth } from "@/lib/config/firebase";
 import {
   buildStaffCredentialsEmail,
   buildStaffCredentialsMessage,
@@ -85,8 +81,6 @@ export default function EmployeesPage() {
   };
   const [editTarget, setEditTarget] = useState<Employee | null>(null);
   const [selectedIds, setSelectedIds] = useState<Array<number | string>>([]);
-  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
-  const [editAvatarPreview, setEditAvatarPreview] = useState<string | null>(null);
   const [createdCredentials, setCreatedCredentials] = useState<{
     email: string;
     username: string;
@@ -123,19 +117,12 @@ export default function EmployeesPage() {
       geofenceId: 1,
       password: "",
     });
-    setAvatarPreview(null);
     setShowAddForm(false);
   };
 
   const handleAdd = () => {
-    if (
-      !newEmployee.name ||
-      !newEmployee.email ||
-      !newEmployee.phone ||
-      !newEmployee.department ||
-      !newEmployee.password
-    ) {
-      toastError("يرجى ملء جميع الحقول المطلوبة بما فيها كلمة المرور");
+    if (!newEmployee.name || !newEmployee.email || !newEmployee.password) {
+      toastError("يرجى ملء الاسم والبريد الإلكتروني وكلمة المرور");
       return;
     }
     if (newEmployee.password.length < 8) {
@@ -153,26 +140,13 @@ export default function EmployeesPage() {
       {
         ...newEmployee,
         employeeNumber: username,
-        avatar: avatarPreview,
         status: "active",
         currentLat: null,
         currentLng: null,
         lastSeen: null,
       },
       {
-        onSuccess: async () => {
-          if (auth) {
-            try {
-              await createUserWithEmailAndPassword(auth, email, password);
-            } catch (firebaseErr: unknown) {
-              const code = (firebaseErr as { code?: string }).code;
-              if (code === "auth/email-already-in-use") {
-                toastError("البريد الإلكتروني موجود مسبقاً في Firebase Auth");
-              } else {
-                toastError("تم إنشاء الموظف لكن فشل إنشاء حساب Firebase");
-              }
-            }
-          }
+        onSuccess: () => {
           resetNewEmployee();
           setCreatedCredentials({ email, username, password });
         },
@@ -197,7 +171,6 @@ export default function EmployeesPage() {
       role: emp.role,
       geofenceId: emp.geofenceId ?? 1,
     });
-    setEditAvatarPreview(emp.avatar || null);
   };
 
   const handleUpdate = () => {
@@ -208,14 +181,12 @@ export default function EmployeesPage() {
         data: {
           ...editEmployee,
           employeeNumber: generateStaffUsername({ employeeNumber: editEmployee.employeeNumber }),
-          avatar: editAvatarPreview,
         },
       },
       {
         onSuccess: () => {
           toastSuccess("تم تحديث بيانات الموظف بنجاح");
           setEditTarget(null);
-          setEditAvatarPreview(null);
         },
         onError: () => toastError("حدث خطأ أثناء تحديث بيانات الموظف"),
       }
@@ -345,7 +316,7 @@ export default function EmployeesPage() {
           <AccessDeniedCard
             icon={Users}
             message="صفحة إدارة الموظفين متاحة لمدير الشركة فقط."
-            ctaHref={`/${locale}/check-in`}
+            ctaHref="/check-in"
           />
         </div>
       </MainLayout>
@@ -407,18 +378,6 @@ export default function EmployeesPage() {
             isSubmitting={createEmployee.isPending}
             submitLabel="حفظ"
           >
-            {/* Avatar Upload */}
-            <div className="flex justify-center mb-6">
-              <AvatarUpload
-                currentUrl={avatarPreview}
-                name={newEmployee.name || "موظف"}
-                size={96}
-                folder="avatars"
-                onUpload={(url) => setAvatarPreview(url)}
-                onRemove={() => setAvatarPreview(null)}
-              />
-            </div>
-
             <div className="grid grid-cols-1 gap-4">
               <div>
                 <label className="text-sm font-medium text-gray-700 dark:text-slate-300 mb-1 block">
@@ -445,50 +404,6 @@ export default function EmployeesPage() {
                   style={{ unicodeBidi: "plaintext" }}
                   className="w-full text-left px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-transparent dark:bg-slate-900 text-gray-900 dark:text-slate-100"
                   placeholder="email@trax.com"
-                />
-              </div>
-              <div>
-                <label className="text-sm font-medium text-gray-700 dark:text-slate-300 mb-1 block">
-                  اسم المستخدم
-                </label>
-                <input
-                  type="text"
-                  value={newEmployee.employeeNumber}
-                  onChange={(e) =>
-                    setNewEmployee({ ...newEmployee, employeeNumber: e.target.value.trim() })
-                  }
-                  dir="ltr"
-                  lang="en"
-                  style={{ unicodeBidi: "plaintext" }}
-                  className="w-full text-left px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-transparent dark:bg-slate-900 text-gray-900 dark:text-slate-100"
-                  placeholder="اختياري - سيتم توليده تلقائيًا"
-                />
-              </div>
-              <div>
-                <label className="text-sm font-medium text-gray-700 dark:text-slate-300 mb-1 block">
-                  الهاتف
-                </label>
-                <input
-                  type="tel"
-                  value={newEmployee.phone}
-                  onChange={(e) => setNewEmployee({ ...newEmployee, phone: e.target.value })}
-                  dir="ltr"
-                  lang="en"
-                  style={{ unicodeBidi: "plaintext" }}
-                  className="w-full text-left px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-transparent dark:bg-slate-900 text-gray-900 dark:text-slate-100"
-                  placeholder="+966..."
-                />
-              </div>
-              <div>
-                <label className="text-sm font-medium text-gray-700 dark:text-slate-300 mb-1 block">
-                  القسم
-                </label>
-                <input
-                  type="text"
-                  value={newEmployee.department}
-                  onChange={(e) => setNewEmployee({ ...newEmployee, department: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-transparent dark:bg-slate-900 text-gray-900 dark:text-slate-100"
-                  placeholder="القسم"
                 />
               </div>
               <div>
@@ -573,14 +488,6 @@ export default function EmployeesPage() {
                   </p>
                 </div>
                 <div>
-                  <p className="text-xs text-gray-500 dark:text-slate-400 mb-1">اسم المستخدم</p>
-                  <p className="font-mono text-sm font-semibold text-gray-900 dark:text-slate-100 select-all">
-                    <span dir="ltr" lang="en" style={{ unicodeBidi: "plaintext" }}>
-                      {createdCredentials.username}
-                    </span>
-                  </p>
-                </div>
-                <div>
                   <p className="text-xs text-gray-500 dark:text-slate-400 mb-1">كلمة المرور</p>
                   <p className="font-mono text-sm font-semibold text-gray-900 dark:text-slate-100 select-all">
                     {createdCredentials.password}
@@ -593,7 +500,6 @@ export default function EmployeesPage() {
                   onClick={async () => {
                     const message = buildStaffCredentialsMessage({
                       email: createdCredentials.email,
-                      username: createdCredentials.username,
                       password: createdCredentials.password,
                       loginUrl: staffLoginUrl,
                     });
@@ -613,14 +519,12 @@ export default function EmployeesPage() {
                   href={`mailto:${createdCredentials.email}?subject=${encodeURIComponent(
                     buildStaffCredentialsEmail({
                       email: createdCredentials.email,
-                      username: createdCredentials.username,
                       password: createdCredentials.password,
                       loginUrl: staffLoginUrl,
                     }).subject
                   )}&body=${encodeURIComponent(
                     buildStaffCredentialsEmail({
                       email: createdCredentials.email,
-                      username: createdCredentials.username,
                       password: createdCredentials.password,
                       loginUrl: staffLoginUrl,
                     }).body
@@ -725,7 +629,7 @@ export default function EmployeesPage() {
           </div>
         )}
 
-        {isLoading && <LoadingSkeleton variant="table" />}
+        {isLoading && <EmployeeListSkeleton />}
         {isError && (
           <div className="space-y-3">
             <ErrorState onRetry={() => refetch()} />
@@ -761,35 +665,26 @@ export default function EmployeesPage() {
                   exit={{ opacity: 0, scale: 0.95 }}
                   transition={{ delay: Math.min(index * 0.05, 0.3), duration: 0.3 }}
                 >
-                  <Card className="border-0 shadow-md dark:bg-slate-800 hover:shadow-xl group transition-all duration-300">
+                  <Card className="border-0 shadow-md dark:bg-slate-800 hover:shadow-xl group transition-all duration-300 hover:-translate-y-1 cursor-pointer">
                     <CardContent className="p-4">
                       {/* Avatar + name row */}
                       <div className="flex items-center gap-3 mb-3">
-                        <div
-                          className={`relative w-14 h-14 shrink-0 rounded-2xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-lg overflow-hidden shadow-md ring-2 ${
+                        <motion.div
+                          whileHover={{ scale: 1.1 }}
+                          transition={{ type: "spring", stiffness: 300 }}
+                          className={`relative w-14 h-14 shrink-0 rounded-2xl bg-gradient-to-br from-emerald-500 to-emerald-700 flex items-center justify-center text-white font-bold text-lg overflow-hidden shadow-md ring-2 ${
                             emp.status === "active"
                               ? "ring-green-400"
                               : "ring-gray-200 dark:ring-slate-600"
-                          } group-hover:scale-105 transition-transform duration-300`}
+                          }`}
                         >
-                          {emp.avatar ? (
-                            <Image
-                              src={emp.avatar}
-                              alt={emp.name}
-                              width={56}
-                              height={56}
-                              unoptimized
-                              className="w-full h-full object-cover"
-                            />
-                          ) : (
-                            emp.name.charAt(0)
-                          )}
+                          {emp.name.charAt(0)}
                           {emp.status === "active" && (
                             <span className="absolute bottom-0.5 right-0.5 w-3 h-3 rounded-full bg-green-400 ring-2 ring-white dark:ring-slate-800">
                               <span className="animate-ping absolute inset-0 rounded-full bg-green-400 opacity-75" />
                             </span>
                           )}
-                        </div>
+                        </motion.div>
                         <div className="min-w-0 flex-1">
                           <p className="font-bold text-gray-900 dark:text-slate-100 truncate">
                             {emp.name}
@@ -824,17 +719,11 @@ export default function EmployeesPage() {
                             {emp.email}
                           </span>
                         </div>
-                        <div className="flex items-center gap-1.5">
-                          <Phone className="w-3 h-3 shrink-0" />
-                          <span dir="ltr" lang="en" style={{ unicodeBidi: "plaintext" }}>
-                            {emp.phone}
-                          </span>
-                        </div>
                       </div>
 
                       <div className="flex items-center gap-1 pt-3 border-t border-gray-100 dark:border-slate-700">
                         <Link
-                          href={`/${locale}/employees/${emp.id}`}
+                          href={`/employees/${emp.id}`}
                           className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg text-xs font-medium text-gray-600 dark:text-slate-400 hover:bg-cyan-50 hover:text-cyan-600 dark:hover:bg-cyan-900/20 dark:hover:text-cyan-400 transition-colors"
                           title="عرض الملف"
                         >
@@ -879,22 +768,11 @@ export default function EmployeesPage() {
                   sortValue: (emp) => emp.name,
                   cell: (emp) => (
                     <Link
-                      href={`/${locale}/employees/${emp.id}`}
+                      href={`/employees/${emp.id}`}
                       className="flex items-center gap-3 hover:underline"
                     >
-                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm overflow-hidden">
-                        {emp.avatar ? (
-                          <Image
-                            src={emp.avatar}
-                            alt={emp.name}
-                            width={40}
-                            height={40}
-                            unoptimized
-                            className="w-full h-full object-cover"
-                          />
-                        ) : (
-                          emp.name.charAt(0)
-                        )}
+                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-emerald-500 to-emerald-700 flex items-center justify-center text-white font-bold text-sm overflow-hidden">
+                        {emp.name.charAt(0)}
                       </div>
                       <span className="text-sm font-medium text-gray-900 dark:text-slate-100">
                         {emp.name}
@@ -949,12 +827,6 @@ export default function EmployeesPage() {
                           {emp.email}
                         </span>
                       </span>
-                      <span className="flex items-center gap-1">
-                        <Phone className="w-3 h-3" />
-                        <span dir="ltr" lang="en" style={{ unicodeBidi: "plaintext" }}>
-                          {emp.phone}
-                        </span>
-                      </span>
                     </div>
                   ),
                 },
@@ -999,7 +871,7 @@ export default function EmployeesPage() {
                   cell: (emp) => (
                     <div className="flex items-center gap-2">
                       <Link
-                        href={`/${locale}/employees/${emp.id}`}
+                        href={`/employees/${emp.id}`}
                         className="p-1.5 rounded-lg hover:bg-cyan-50 text-cyan-600 dark:hover:bg-cyan-900/20"
                         title="عرض الملف"
                         aria-label="عرض ملف الموظف"
@@ -1092,16 +964,6 @@ export default function EmployeesPage() {
           isSubmitting={updateEmployee.isPending}
           submitLabel="حفظ التعديلات"
         >
-          <div className="flex justify-center mb-6">
-            <AvatarUpload
-              currentUrl={editAvatarPreview}
-              name={editTarget?.name ?? ""}
-              size={96}
-              folder="avatars"
-              onUpload={(url) => setEditAvatarPreview(url)}
-              onRemove={() => setEditAvatarPreview(null)}
-            />
-          </div>
           <div className="grid grid-cols-1 gap-4">
             {[
               { label: "الاسم", key: "name", type: "text", placeholder: "اسم الموظف" },
@@ -1111,16 +973,8 @@ export default function EmployeesPage() {
                 type: "email",
                 placeholder: "email@trax.com",
               },
-              {
-                label: "اسم المستخدم",
-                key: "employeeNumber",
-                type: "text",
-                placeholder: "اسم المستخدم",
-              },
-              { label: "الهاتف", key: "phone", type: "tel", placeholder: "+966..." },
-              { label: "القسم", key: "department", type: "text", placeholder: "القسم" },
             ].map(({ label, key, type, placeholder }) => {
-              const isLtrField = key === "email" || key === "employeeNumber" || key === "phone";
+              const isLtrField = key === "email";
 
               return (
                 <div key={key}>

@@ -21,7 +21,7 @@ void main() {
 
     await tester.pump();
 
-    expect(find.byType(TextField), findsNWidgets(2));
-    expect(find.byType(ElevatedButton), findsOneWidget);
+    expect(find.byType(TextFormField), findsNWidgets(2));
+    expect(find.byType(FilledButton), findsOneWidget);
   });
 }

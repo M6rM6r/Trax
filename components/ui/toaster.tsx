@@ -18,24 +18,28 @@ export function Toaster() {
 
   return (
     <ToastProvider>
-      {toasts.map(function ({ id, title, description, action, ...props }) {
-        return (
-          <Toast key={id} {...props}>
-            <div className="grid gap-1">
-              {title && <ToastTitle>{title}</ToastTitle>}
-              {description && <ToastDescription>{description}</ToastDescription>}
-            </div>
-            {action}
-            <ToastClose />
-            <motion.div
-              initial={{ width: "100%" }}
-              animate={{ width: "0%" }}
-              transition={{ duration: TOAST_DURATION / 1000, ease: "linear" }}
-              className="absolute bottom-0 left-0 h-1 bg-white/30 rounded-full"
-            />
-          </Toast>
-        );
-      })}
+      <div role="status" aria-live="polite" aria-atomic="false">
+        {toasts.map(function ({ id, title, description, action, ...props }) {
+          return (
+            <Toast key={id} {...props}>
+              <div className="grid gap-1">
+                {title && <ToastTitle>{title}</ToastTitle>}
+                {description && (
+                  <ToastDescription className="line-clamp-2">{description}</ToastDescription>
+                )}
+              </div>
+              {action}
+              <ToastClose />
+              <motion.div
+                initial={{ width: "100%" }}
+                animate={{ width: "0%" }}
+                transition={{ duration: TOAST_DURATION / 1000, ease: "linear" }}
+                className="absolute bottom-0 left-0 h-1 bg-white/30 rounded-full"
+              />
+            </Toast>
+          );
+        })}
+      </div>
       <ToastViewport />
     </ToastProvider>
   );

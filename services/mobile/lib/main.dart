@@ -7,7 +7,10 @@ import "providers/auth_provider.dart";
 import "providers/attendance_provider.dart";
 import "providers/location_provider.dart";
 import "providers/theme_provider.dart";
+import "package:flutter_background_geolocation/flutter_background_geolocation.dart" as bg;
+
 import "services/api_service.dart";
+import "services/background_tracking_service.dart";
 import "services/notification_service.dart";
 import "screens/login_screen.dart";
 import "screens/home_screen.dart";
@@ -26,6 +29,16 @@ void main() async {
   final prefs = await SharedPreferences.getInstance();
   final onboardingCompleted = prefs.getBool("onboarding_completed") ?? false;
   final hasSession = prefs.getString("auth_token") != null;
+
+  // Resume background tracking if it was active before the app was killed.
+  // Errors here are non-fatal (e.g., plugin unavailable in widget tests).
+  try {
+    await BackgroundTrackingService().restoreStateIfNeeded();
+    await bg.BackgroundGeolocation.registerHeadlessTask(
+      BackgroundTrackingService().headlessLocationHandler,
+    );
+  } catch (_) {}
+
   runApp(TraxEmployeeApp(onboardingCompleted: onboardingCompleted, hasSession: hasSession));
 }
 

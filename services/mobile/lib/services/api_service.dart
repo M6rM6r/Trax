@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../config/env.dart';
 
@@ -9,16 +10,16 @@ class ApiService {
   String? _token;
 
   Future<String?> _getToken() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      _token = await user.getIdToken(true);
+      final prefs = await SharedPreferences.getInstance();
+      if (_token != null) await prefs.setString('auth_token', _token!);
+    }
     if (_token != null) return _token;
     final prefs = await SharedPreferences.getInstance();
     _token = prefs.getString('auth_token');
     return _token;
-    }
-
-  Future<void> _saveToken(String token) async {
-    _token = token;
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('auth_token', token);
   }
 
   Future<void> clearToken() async {
@@ -27,9 +28,9 @@ class ApiService {
     await prefs.remove('auth_token');
   }
 
-  Map<String, String> get _headers => {
+  Future<Map<String, String>> _headers() async => {
         'Content-Type': 'application/json',
-        if (_token != null) 'Authorization': 'Bearer $_token',
+        if ((await _getToken()) != null) 'Authorization': 'Bearer $_token',
       };
 
   Map<String, dynamic> _asMap(Object? value) {
@@ -41,22 +42,22 @@ class ApiService {
     String endpoint, {
     Map<String, dynamic>? body,
   }) async {
-    await _getToken();
+    final headers = await _headers();
     final url = Uri.parse('$baseUrl/$endpoint');
 
     http.Response response;
     switch (method) {
       case 'GET':
-        response = await http.get(url, headers: _headers);
+        response = await http.get(url, headers: headers);
         break;
       case 'POST':
-        response = await http.post(url, headers: _headers, body: jsonEncode(body));
+        response = await http.post(url, headers: headers, body: jsonEncode(body));
         break;
       case 'PUT':
-        response = await http.put(url, headers: _headers, body: jsonEncode(body));
+        response = await http.put(url, headers: headers, body: jsonEncode(body));
         break;
       case 'DELETE':
-        response = await http.delete(url, headers: _headers);
+        response = await http.delete(url, headers: headers);
         break;
       default:
         throw ArgumentError('Unsupported method: $method');
@@ -79,19 +80,7 @@ class ApiService {
     return data;
   }
 
-  Future<Map<String, dynamic>> login(String email, String password) async {
-    final data = await _request('POST', 'auth/login', body: {
-      'email': email,
-      'password': password,
-    });
-    final payload = _asMap(data['data']);
-    final token = payload['token']?.toString();
-    if (token != null && token.isNotEmpty) {
-      await _saveToken(token);
-    }
-    return data;
-  }
-
+  /// Mobile auth is handled by [AuthProvider]; this helper is kept for compatibility.
   Future<Map<String, dynamic>> getProfile() => _request('GET', 'auth/me');
 
   Future<Map<String, dynamic>> checkIn({

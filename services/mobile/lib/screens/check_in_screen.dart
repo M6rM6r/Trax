@@ -74,6 +74,9 @@ class _CheckInScreenState extends State<CheckInScreen> {
     String token,
     int employeeId,
   ) async {
+    final location = Provider.of<LocationProvider>(context, listen: false);
+    final scaffold = ScaffoldMessenger.of(context);
+
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -90,7 +93,8 @@ class _CheckInScreenState extends State<CheckInScreen> {
       final success = await attendance.checkOut(token, employeeId);
       if (!mounted) return;
       if (success) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        await location.stopTracking();
+        scaffold.showSnackBar(
           const SnackBar(content: Text("تم تسجيل الانصراف بنجاح")),
         );
       }
@@ -169,7 +173,12 @@ class _CheckInScreenState extends State<CheckInScreen> {
               FilledButton.tonalIcon(
                 onPressed: attendance.isLoading
                     ? null
-                    : () => _confirmCheckOut(attendance, auth.token!, auth.userId ?? 0),
+                    : () async {
+                        final token = await auth.ensureToken();
+                        if (token == null) return;
+                        if (!context.mounted) return;
+                        await _confirmCheckOut(attendance, token, auth.employeeId ?? 0);
+                      },
                 icon: const Icon(Icons.logout),
                 label: attendance.isLoading
                     ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator())
@@ -195,19 +204,25 @@ class _CheckInScreenState extends State<CheckInScreen> {
                     : () async {
                         final authenticated = await _authenticateBiometric();
                         if (!authenticated || !context.mounted) return;
+                        final token = await auth.ensureToken();
+                        if (token == null || !context.mounted) return;
                         final battery = await _getBatteryLevel();
+                        final employeeId = auth.employeeId ?? 0;
                         final success = await attendance.checkIn(
-                          auth.token!,
-                          auth.userId ?? 0,
+                          token,
+                          employeeId,
                           location.lat!,
                           location.lng!,
                           null,
                           batteryLevel: battery,
                         );
                         if (success && context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text("تم تسجيل الحضور بنجاح")),
-                          );
+                          await location.startTracking(employeeId: employeeId);
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text("تم تسجيل الحضور بنجاح")),
+                            );
+                          }
                         }
                       },
                 icon: attendance.isLoading

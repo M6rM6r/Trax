@@ -3,8 +3,8 @@
 import { useState, Suspense } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";
-import { useLocale } from "next-intl";
-import { useSearchParams, useRouter } from "next/navigation";
+import { useSearchParams } from "next/navigation";
+import { useRouter, Link } from "@/i18n/navigation";
 import { MapPin, Lock, CheckCircle2, Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import CustomInput from "@/components/shared/form/CustomInput";
@@ -15,7 +15,6 @@ import { httpClient } from "@/lib/services/httpClient";
 import loginBG from "@/public/images/loginBg.png";
 
 function ResetPasswordForm() {
-  const locale = useLocale();
   const router = useRouter();
   const params = useSearchParams();
   const token = params.get("token") ?? "";
@@ -44,7 +43,7 @@ function ResetPasswordForm() {
       });
       setDone(true);
       toastSuccess("تم تغيير كلمة المرور بنجاح");
-      setTimeout(() => router.push(`/${locale}/login`), 2500);
+      setTimeout(() => router.push("/login"), 2500);
     } catch {
       toastError("الرابط منتهي الصلاحية أو غير صحيح");
     } finally {
@@ -56,12 +55,12 @@ function ResetPasswordForm() {
     return (
       <div className="text-center py-8">
         <p className="text-red-500 font-medium">رابط غير صحيح أو منتهي الصلاحية</p>
-        <a
-          href={`/${locale}/forgot-password`}
+        <Link
+          href="/forgot-password"
           className="mt-3 inline-block text-sm text-blue-600 dark:text-blue-400 hover:underline"
         >
           طلب رابط جديد
-        </a>
+        </Link>
       </div>
     );
   }
@@ -158,8 +157,6 @@ function ResetPasswordForm() {
 }
 
 export default function ResetPasswordPage() {
-  const locale = useLocale();
-
   return (
     <section className="w-screen h-screen flex items-center justify-center relative bg-primaryColor dark:bg-slate-950">
       <Image
@@ -184,18 +181,23 @@ export default function ResetPasswordPage() {
       >
         <div className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-xl border border-white/40 dark:border-slate-700/50 rounded-2xl p-6 shadow-[0_32px_64px_rgba(0,0,0,0.3)]">
           <Suspense
-            fallback={<div className="text-center py-8 text-gray-400">جاري التحميل...</div>}
+            fallback={
+              <div className="flex items-center justify-center py-8 text-gray-400 gap-2">
+                <span className="w-5 h-5 border-2 border-gray-300 border-t-blue-500 rounded-full animate-spin" />
+                جاري التحميل...
+              </div>
+            }
           >
             <ResetPasswordForm />
           </Suspense>
 
           <div className="mt-4 pt-4 border-t border-gray-100 dark:border-slate-700">
-            <a
-              href={`/${locale}/login`}
+            <Link
+              href="/login"
               className="flex items-center justify-center gap-2 text-sm text-gray-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
             >
               العودة إلى تسجيل الدخول
-            </a>
+            </Link>
           </div>
         </div>
       </motion.div>

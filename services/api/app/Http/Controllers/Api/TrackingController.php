@@ -2,17 +2,17 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Http\Controllers\Controller;
 use App\Events\EmployeeLocationUpdated;
+use App\Http\Controllers\Controller;
 use App\Models\Employee;
-use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 class TrackingController extends Controller
 {
     private function companyId(): int
     {
-        return auth()->user()->company_id;
+        return (int) (auth()->user()?->company_id ?? 0);
     }
 
     public function live(): JsonResponse
@@ -67,7 +67,7 @@ class TrackingController extends Controller
     public function updateLocation(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'employee_id' => ['nullable', 'integer', 'exists:employees,id'],
+            'employee_id' => ['nullable', 'integer'],
             'lat' => ['required', 'numeric', 'between:-90,90'],
             'lng' => ['required', 'numeric', 'between:-180,180'],
             'accuracy' => ['nullable', 'numeric', 'min:0'],
@@ -79,7 +79,7 @@ class TrackingController extends Controller
         $linkedEmployee = Employee::where('company_id', $this->companyId())
             ->where(function ($q) use ($user) {
                 $q->where('email', $user->email);
-                if (!empty($user->username)) {
+                if (! empty($user->username)) {
                     $q->orWhere('employee_number', $user->username);
                 }
             })
@@ -87,7 +87,7 @@ class TrackingController extends Controller
 
         $targetEmployeeId = $validated['employee_id'] ?? $linkedEmployee?->id;
 
-        if (!$targetEmployeeId) {
+        if (! $targetEmployeeId) {
             return response()->json([
                 'success' => false,
                 'message' => 'Employee link not found for current user',
@@ -105,7 +105,7 @@ class TrackingController extends Controller
             ->where('company_id', $this->companyId())
             ->find($targetEmployeeId);
 
-        if (!$employee) {
+        if (! $employee) {
             return response()->json([
                 'success' => false,
                 'message' => 'Employee not found',
@@ -162,7 +162,7 @@ class TrackingController extends Controller
                 (float) $employee->current_lng,
                 $status,
                 $geofence?->name,
-                (string) $employee->last_seen?->toIso8601String(),
+                (string) $employee->last_seen->toIso8601String(),
                 $employee->battery_level
             ));
         } catch (\Throwable) {
@@ -179,7 +179,7 @@ class TrackingController extends Controller
                 'status' => $status,
                 'geofenceName' => $geofence?->name,
                 'distance' => $distance !== null ? round($distance, 2) : null,
-                'lastSeen' => $employee->last_seen?->toIso8601String(),
+                'lastSeen' => $employee->last_seen->toIso8601String(),
                 'serverTime' => now()->toIso8601String(),
             ],
         ]);

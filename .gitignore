@@ -48,7 +48,10 @@ FINAL_STATUS.txt
 
 .qodo
 .claude/settings.local.json
-package-lock.json
+
+# Log files
+*.log
+firebase_auth_cache.txt
 
 # But do NOT ignore README.md and DOCUMENTATION folder
 !README.md

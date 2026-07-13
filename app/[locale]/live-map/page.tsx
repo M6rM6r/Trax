@@ -31,12 +31,12 @@ import { Style, Stroke, Fill, Circle as CircleStyle, Text } from "ol/style";
 import "ol/ol.css";
 import { useLiveTracking, useGeofences } from "@/hooks/useApi";
 import { useLiveTrackingSocket } from "@/hooks/useLiveTrackingSocket";
-import { LoadingSkeleton, ErrorState, EmptyState } from "@/components/shared/StateViews";
+import { ErrorState, EmptyState } from "@/components/shared/StateViews";
+import LiveMapSkeleton from "@/components/shared/Skeletons/LiveMapSkeleton";
 import { Input } from "@/components/ui/input";
 import { hapticTap } from "@/lib/utils/haptics";
 import type { LiveTrackingEmployee, Geofence } from "@/lib/types/trackingTypes";
 import { useAuthStore } from "@/stores/useAuthStore";
-import { useLocale } from "next-intl";
 import AccessDeniedCard from "@/components/shared/AccessDeniedCard";
 
 export default function LiveMapPage() {
@@ -44,7 +44,6 @@ export default function LiveMapPage() {
   const { data: initialTracking = [], isLoading, isError, refetch } = useLiveTracking();
   const { data: geofences = [] } = useGeofences();
   const { role } = useAuthStore();
-  const locale = useLocale();
   const {
     employees: liveTracking,
     isConnected: socketConnected,
@@ -139,7 +138,7 @@ export default function LiveMapPage() {
     geofences.forEach((geo: Geofence) => {
       const center = fromLonLat([geo.lng, geo.lat]);
       const circleFeature = new Feature({
-        geometry: new CircleGeom(center, geo.radius * 10),
+        geometry: new CircleGeom(center, geo.radius),
         type: "geofence",
       });
       circleFeature.setStyle(
@@ -321,7 +320,7 @@ export default function LiveMapPage() {
           <AccessDeniedCard
             icon={MapPin}
             message="الخريطة المباشرة مخصصة لمتابعة الإدارة فقط."
-            ctaHref={`/${locale}/check-in`}
+            ctaHref="/check-in"
           />
         </div>
       </MainLayout>
@@ -369,7 +368,7 @@ export default function LiveMapPage() {
           }
         />
 
-        {isLoading && <LoadingSkeleton variant="map" />}
+        {isLoading && <LiveMapSkeleton />}
         {isError && <ErrorState onRetry={() => refetch()} />}
         {!isLoading && !isError && liveTracking.length === 0 && (
           <EmptyState

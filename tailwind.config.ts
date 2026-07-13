@@ -20,9 +20,10 @@ const config: Config = {
         "3xl": "1728px",
       },
       colors: {
-        primaryColor: "#11489B",
+        // Clean emerald accent
+        primaryColor: "#10b981",
         primarySlate700: "#3D4A5C",
-        primaryColorLight: "#E7EDF5",
+        primaryColorLight: "#d1fae5",
         textBG: "#F1F4F4",
         textMain: "#12161C",
         textBorder: "#EBEBEC",

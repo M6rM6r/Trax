@@ -1,11 +1,9 @@
 "use client";
 
-import { useState, type ComponentType } from "react";
+import { useState } from "react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Button } from "@/components/ui/button";
 import { Calendar as CalendarIcon, ChevronDown } from "lucide-react";
 import { format, subDays, startOfMonth, endOfMonth } from "date-fns";
-import { ar as arLocale } from "date-fns/locale";
 import { hapticTap } from "@/lib/utils/haptics";
 
 export type DateRangePreset = "today" | "7days" | "30days" | "month" | "custom";

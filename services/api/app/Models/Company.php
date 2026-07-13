@@ -59,6 +59,7 @@ class Company extends Model
             $slug = "{$base}-{$i}";
             $i++;
         }
+
         return $slug;
     }
 }

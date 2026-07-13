@@ -22,7 +22,7 @@ export function generateStaffUsername(input: {
 export function buildStaffCredentialsMessage(input: {
   companyName?: string | null;
   email: string;
-  username: string;
+  username?: string;
   password: string;
   loginUrl?: string | null;
 }): string {
@@ -32,7 +32,6 @@ export function buildStaffCredentialsMessage(input: {
   const lines = [
     `مرحبًا، تم إنشاء حسابك في ${company}`,
     `البريد الإلكتروني: ${input.email}`,
-    `اسم المستخدم: ${input.username}`,
     `كلمة المرور المؤقتة: ${input.password}`,
     "يرجى تسجيل الدخول وتغيير كلمة المرور فورًا.",
   ];
@@ -47,7 +46,7 @@ export function buildStaffCredentialsMessage(input: {
 export function buildStaffCredentialsEmail(input: {
   companyName?: string | null;
   email: string;
-  username: string;
+  username?: string;
   password: string;
   loginUrl?: string | null;
 }): { subject: string; body: string } {

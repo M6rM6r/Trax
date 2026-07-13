@@ -1,8 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { useRouter } from "next/navigation";
-import { useLocale } from "next-intl";
+import { useRouter } from "@/i18n/navigation";
 import { Command } from "cmdk";
 import {
   LayoutDashboard,
@@ -19,7 +18,8 @@ import {
   UserCircle,
 } from "lucide-react";
 import { useAuthStore } from "@/stores/useAuthStore";
-import { deleteCookie } from "cookies-next";
+import { signOut } from "firebase/auth";
+import { auth } from "@/lib/config/firebase";
 import { hapticTap } from "@/lib/utils/haptics";
 import { useEmployees } from "@/hooks/useApi";
 
@@ -35,15 +35,18 @@ interface CommandItem {
 export function CommandPalette() {
   const [open, setOpen] = useState(false);
   const router = useRouter();
-  const locale = useLocale();
   const { clearUser, token } = useAuthStore();
   const { data: employees = [] } = useEmployees({ enabled: open && !!token });
 
-  const handleLogout = useCallback(() => {
-    deleteCookie("auth_token");
+  const handleLogout = useCallback(async () => {
+    if (auth) {
+      try {
+        await signOut(auth);
+      } catch {}
+    }
     clearUser();
-    router.push(`/${locale}/login`);
-  }, [locale, router, clearUser]);
+    router.push("/login");
+  }, [router, clearUser]);
 
   const navigate = useCallback(
     (path: string) => {
@@ -59,77 +62,77 @@ export function CommandPalette() {
       id: `emp-${emp.id}`,
       label: emp.name,
       icon: UserCircle,
-      action: () => navigate(`/${locale}/employees`),
+      action: () => navigate(`/employees`),
       group: "الموظفون",
     })),
     {
       id: "dashboard",
       label: "لوحة التحكم",
       icon: LayoutDashboard,
-      action: () => navigate(`/${locale}`),
+      action: () => navigate("/"),
       group: "التنقل",
     },
     {
       id: "employees",
       label: "الموظفون",
       icon: Users,
-      action: () => navigate(`/${locale}/employees`),
+      action: () => navigate(`/employees`),
       group: "التنقل",
     },
     {
       id: "employees-inactive",
       label: "الموظفون غير النشطين",
       icon: UserX,
-      action: () => navigate(`/${locale}/employees/inactive`),
+      action: () => navigate(`/employees/inactive`),
       group: "التنقل",
     },
     {
       id: "live-map",
       label: "التتبع المباشر",
       icon: MapPin,
-      action: () => navigate(`/${locale}/live-map`),
+      action: () => navigate(`/live-map`),
       group: "التنقل",
     },
     {
       id: "attendance",
       label: "الحضور والانصراف",
       icon: Calendar,
-      action: () => navigate(`/${locale}/attendance`),
+      action: () => navigate(`/attendance`),
       group: "التنقل",
     },
     {
       id: "attendance-reports",
       label: "تقارير الحضور",
       icon: FileText,
-      action: () => navigate(`/${locale}/attendance/reports`),
+      action: () => navigate(`/attendance/reports`),
       group: "التنقل",
     },
     {
       id: "geofences",
       label: "النطاقات الجغرافية",
       icon: MapPin,
-      action: () => navigate(`/${locale}/geofences`),
+      action: () => navigate(`/geofences`),
       group: "التنقل",
     },
     {
       id: "check-in",
       label: "تسجيل الحضور",
       icon: CheckCircle,
-      action: () => navigate(`/${locale}/check-in`),
+      action: () => navigate(`/check-in`),
       group: "التنقل",
     },
     {
       id: "settings-security",
       label: "إعدادات الأمان",
       icon: Shield,
-      action: () => navigate(`/${locale}/settings/securitySettings`),
+      action: () => navigate(`/settings/securitySettings`),
       group: "الإعدادات",
     },
     {
       id: "settings-notifications",
       label: "إعدادات الإشعارات",
       icon: Bell,
-      action: () => navigate(`/${locale}/settings/notificationSettings`),
+      action: () => navigate(`/settings/notificationSettings`),
       group: "الإعدادات",
     },
     {

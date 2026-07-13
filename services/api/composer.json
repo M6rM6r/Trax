@@ -20,10 +20,10 @@
     "laravel/sanctum": "^4.0",
     "laravel/tinker": "^2.9",
     "predis/predis": "^2.0",
+    "sentry/sentry-laravel": "^4.26",
     "spatie/laravel-activitylog": "^4.9",
     "spatie/laravel-data": "^4.0",
-    "spatie/laravel-permission": "^6.0",
-    "tymon/jwt-auth": "^2.0"
+    "spatie/laravel-permission": "^6.0"
   },
   "require-dev": {
     "fakerphp/faker": "^1.23",

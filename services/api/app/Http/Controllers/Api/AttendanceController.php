@@ -2,13 +2,15 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Http\Controllers\Controller;
-use App\Models\Attendance;
-use App\Http\Resources\AttendanceResource;
-use App\Http\Requests\CheckInRequest;
-use App\Http\Requests\CheckOutRequest;
 use App\Events\AttendanceCheckedIn;
 use App\Events\AttendanceCheckedOut;
+use App\Http\Controllers\Controller;
+use App\Http\Requests\CheckInRequest;
+use App\Http\Requests\CheckOutRequest;
+use App\Http\Resources\AttendanceResource;
+use App\Models\Attendance;
+use App\Models\Employee;
+use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Cache;
 
@@ -16,26 +18,51 @@ class AttendanceController extends Controller
 {
     private function companyId(): int
     {
-        return auth()->user()->company_id;
+        return (int) (auth()->user()?->company_id ?? 0);
     }
 
     public function index(): JsonResponse
     {
-        $records = Attendance::with(['employee', 'geofence'])
-            ->whereHas('employee', fn($q) => $q->where('company_id', $this->companyId()))
-            ->orderBy('date', 'desc')->get();
+        $perPage = min((int) request()->get('per_page', 50), 100);
+        $fromDate = request()->get('from_date');
+        $toDate = request()->get('to_date');
+
+        $query = Attendance::with(['employee', 'geofence'])
+            ->whereHas('employee', fn ($q) => $q->where('company_id', $this->companyId()))
+            ->orderBy('date', 'desc');
+
+        if ($fromDate) {
+            $query->where('date', '>=', $fromDate);
+        }
+        if ($toDate) {
+            $query->where('date', '<=', $toDate);
+        }
+
+        $records = $query->paginate($perPage);
 
         return response()->json([
             'success' => true,
-            'data' => AttendanceResource::collection($records),
+            'data' => AttendanceResource::collection($records->items()),
+            'meta' => [
+                'current_page' => $records->currentPage(),
+                'last_page' => $records->lastPage(),
+                'per_page' => $records->perPage(),
+                'total' => $records->total(),
+            ],
         ]);
     }
 
     public function reports(): JsonResponse
     {
+        $fromDate = request()->get('from_date', now()->subDays(30)->toDateString());
+        $toDate = request()->get('to_date', now()->toDateString());
+
         $records = Attendance::with(['employee', 'geofence'])
-            ->whereHas('employee', fn($q) => $q->where('company_id', $this->companyId()))
-            ->orderBy('date', 'desc')->get();
+            ->whereHas('employee', fn ($q) => $q->where('company_id', $this->companyId()))
+            ->whereBetween('date', [$fromDate, $toDate])
+            ->orderBy('date', 'desc')
+            ->limit(500)
+            ->get();
 
         $stats = [
             'total' => $records->count(),
@@ -60,12 +87,23 @@ class AttendanceController extends Controller
     public function checkIn(CheckInRequest $request): JsonResponse
     {
         $today = now()->toDateString();
+
+        // Verify employee belongs to the same company
+        $employee = Employee::where('company_id', $this->companyId())
+            ->find($request->employee_id);
+
+        if (! $employee) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Employee not found in your company',
+            ], 404);
+        }
+
         $existing = Attendance::where('employee_id', $request->employee_id)
             ->where('date', $today)
-            ->whereIn('status', ['present', 'late'])
             ->first();
 
-        if ($existing) {
+        if ($existing && in_array($existing->status, ['present', 'late'])) {
             return response()->json([
                 'success' => false,
                 'message' => 'Already checked in today',
@@ -75,35 +113,57 @@ class AttendanceController extends Controller
 
         $checkInTime = now()->format('H:i');
         $lateThresholdHour = (int) config('trax.late_threshold_hour', 9);
-        $lateThresholdMin  = (int) config('trax.late_threshold_minute', 0);
+        $lateThresholdMin = (int) config('trax.late_threshold_minute', 0);
         $threshold = now()->setTime($lateThresholdHour, $lateThresholdMin);
         $isLate = now()->gt($threshold);
 
-        $record = Attendance::create([
-            'employee_id' => $request->employee_id,
-            'date' => $today,
-            'check_in_time' => $checkInTime,
-            'check_in_lat' => $request->lat,
-            'check_in_lng' => $request->lng,
-            'geofence_id' => $request->geofence_id,
-            'status' => $isLate ? 'late' : 'present',
-            'late_minutes' => $isLate ? now()->diffInMinutes($threshold) : 0,
-        ]);
+        if ($existing) {
+            $existing->update([
+                'check_in_time' => $checkInTime,
+                'check_in_lat' => $request->lat,
+                'check_in_lng' => $request->lng,
+                'geofence_id' => $request->geofence_id,
+                'status' => $isLate ? 'late' : 'present',
+                'late_minutes' => $isLate ? now()->diffInMinutes($threshold) : 0,
+                'check_out_time' => null,
+                'check_out_lat' => null,
+                'check_out_lng' => null,
+                'worked_hours' => 0,
+            ]);
+            $record = $existing;
+        } else {
+            $record = Attendance::create([
+                'employee_id' => $request->employee_id,
+                'date' => $today,
+                'check_in_time' => $checkInTime,
+                'check_in_lat' => $request->lat,
+                'check_in_lng' => $request->lng,
+                'geofence_id' => $request->geofence_id,
+                'status' => $isLate ? 'late' : 'present',
+                'late_minutes' => $isLate ? now()->diffInMinutes($threshold) : 0,
+            ]);
+        }
 
         if ($request->filled('battery_level')) {
             $record->employee?->update(['battery_level' => $request->battery_level]);
         }
 
-        try { Cache::tags(['attendance', 'dashboard'])->flush(); } catch (\Throwable) {}
+        try {
+            Cache::tags(['attendance', 'dashboard'])->flush();
+        } catch (\Throwable) {
+        }
 
-        event(new AttendanceCheckedIn(
-            $record->employee_id,
-            $record->employee?->name ?? 'Unknown',
-            $record->date,
-            $record->check_in_time?->format('H:i'),
-            $record->status,
-            $record->geofence?->name
-        ));
+        try {
+            event(new AttendanceCheckedIn(
+                $record->employee_id,
+                $record->employee?->name ?? 'Unknown',
+                $record->date,
+                $record->check_in_time?->format('H:i'),
+                $record->status,
+                $record->geofence?->name
+            ));
+        } catch (\Throwable) {
+        }
 
         return response()->json([
             'success' => true,
@@ -115,11 +175,23 @@ class AttendanceController extends Controller
     public function checkOut(CheckOutRequest $request): JsonResponse
     {
         $today = now()->toDateString();
+
+        // Verify employee belongs to the same company
+        $employee = Employee::where('company_id', $this->companyId())
+            ->find($request->employee_id);
+
+        if (! $employee) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Employee not found in your company',
+            ], 404);
+        }
+
         $record = Attendance::where('employee_id', $request->employee_id)
             ->where('date', $today)
             ->first();
 
-        if (!$record) {
+        if (! $record) {
             return response()->json([
                 'success' => false,
                 'message' => 'No check-in record found for today',
@@ -141,16 +213,22 @@ class AttendanceController extends Controller
             'worked_hours' => $this->calculateWorkedHours($record->check_in_time, $checkOutTime),
         ]);
 
-        try { Cache::tags(['attendance', 'dashboard'])->flush(); } catch (\Throwable) {}
+        try {
+            Cache::tags(['attendance', 'dashboard'])->flush();
+        } catch (\Throwable) {
+        }
 
-        event(new AttendanceCheckedOut(
-            $record->employee_id,
-            $record->employee?->name ?? 'Unknown',
-            $record->date,
-            $record->check_out_time?->format('H:i'),
-            $record->status,
-            $record->geofence?->name
-        ));
+        try {
+            event(new AttendanceCheckedOut(
+                $record->employee_id,
+                $record->employee?->name ?? 'Unknown',
+                $record->date,
+                $checkOutTime,
+                $record->status,
+                $record->geofence?->name
+            ));
+        } catch (\Throwable) {
+        }
 
         return response()->json([
             'success' => true,
@@ -161,8 +239,8 @@ class AttendanceController extends Controller
 
     private function calculateWorkedHours(string $checkIn, string $checkOut): float
     {
-        $start = \Carbon\Carbon::parse($checkIn);
-        $end   = \Carbon\Carbon::parse($checkOut);
+        $start = Carbon::parse($checkIn);
+        $end = Carbon::parse($checkOut);
 
         if ($end->lt($start)) {
             $end->addDay();

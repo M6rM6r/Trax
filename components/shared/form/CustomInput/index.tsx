@@ -3,7 +3,7 @@
 import { EyeInput, EyeSlash, InfoCircle } from "@/public/SVG";
 import React, { useState } from "react";
 
-import { ErrorMessage, Field, type FormikProps, useFormikContext } from "formik";
+import { ErrorMessage, Field, type FormikProps, type FieldProps, useFormikContext } from "formik";
 
 const Index = ({
   type,
@@ -193,7 +193,7 @@ const Index = ({
       </label>
       <div className="relative w-full">
         <Field name={name}>
-          {({ field, form }: any) => (
+          {({ field, form }: FieldProps) => (
             <input
               {...field}
               type={inputType}
@@ -214,7 +214,7 @@ const Index = ({
                   handleBlur(e);
                 }
               }}
-              className={`h-[48px] grow w-full outline-none border border-textBorder dark:border-slate-600 bg-white dark:bg-slate-900 rounded-6 px-3 text-textMain dark:text-slate-100 text-16 font-[600] ${className} ${
+              className={`h-[48px] grow w-full outline-none border border-textBorder dark:border-slate-600 bg-white dark:bg-slate-900 rounded-6 px-3 text-textMain dark:text-slate-100 text-16 font-[600] focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 focus:border-blue-500 transition-all ${className} ${
                 as === "textarea" ? "pt-2 h-20" : ""
               }`}
               maxLength={maxLength || undefined}
@@ -225,7 +225,7 @@ const Index = ({
                     : `[0-9]+(\\.[0-9]{1,${maxDecimals}})?`
                   : undefined
               }
-              inputMode={inputMode}
+              inputMode={inputMode as React.HTMLAttributes<HTMLInputElement>["inputMode"]}
               autoComplete={autoComplete}
               step={
                 maxDecimals !== undefined
@@ -234,7 +234,7 @@ const Index = ({
                     : `0.${"0".repeat(maxDecimals - 1)}1`
                   : step
               }
-              onWheel={(e: any) => e.target.blur()}
+              onWheel={(e: React.WheelEvent<HTMLInputElement>) => e.currentTarget.blur()}
             />
           )}
         </Field>

@@ -3,6 +3,7 @@ import "dart:async";
 import "package:provider/provider.dart";
 import "../providers/auth_provider.dart";
 import "../providers/attendance_provider.dart";
+import "../providers/location_provider.dart";
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -11,6 +12,7 @@ class HomeScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final auth = Provider.of<AuthProvider>(context);
     final attendance = Provider.of<AttendanceProvider>(context);
+    final location = Provider.of<LocationProvider>(context);
 
     return Scaffold(
       appBar: AppBar(
@@ -62,7 +64,9 @@ class HomeScreen extends StatelessWidget {
               subtitle: "عرض سجل الحضور والانصراف",
               color: const Color(0xFF3C7EE7),
               onTap: () async {
-                await attendance.fetchHistory(auth.token!);
+                final token = await auth.ensureToken();
+                if (token == null) return;
+                await attendance.fetchHistory(token);
                 if (context.mounted) {
                   unawaited(Navigator.pushNamed(context, "/history"));
                 }
@@ -76,6 +80,54 @@ class HomeScreen extends StatelessWidget {
               subtitle: "عرض وتعديل بياناتك",
               color: const Color(0xFFF59E0B),
               onTap: () => Navigator.pushNamed(context, "/profile"),
+            ),
+            const SizedBox(height: 12),
+            Card(
+              child: ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: (location.isTracking ? const Color(0xFF16A34A) : const Color(0xFF64748B))
+                        .withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(
+                    location.isTracking ? Icons.gps_fixed : Icons.gps_off,
+                    color: location.isTracking ? const Color(0xFF16A34A) : const Color(0xFF64748B),
+                  ),
+                ),
+                title: Text(
+                  location.isTracking ? "تتبع الموقع مفعّل" : "تتبع الموقع متوقف",
+                  style: const TextStyle(fontWeight: FontWeight.w600),
+                ),
+                subtitle: Text(
+                  location.isTracking
+                      ? "يتم إرسال موقعك في الخلفية حتى إغلاق التطبيق"
+                      : "اضغط لتفعيل التتبع المستمر في الخلفية",
+                ),
+                trailing: Switch(
+                  value: location.isTracking,
+                  onChanged: (value) async {
+                    final employeeId = auth.employeeId ?? 0;
+                    if (employeeId == 0) return;
+
+                    if (value) {
+                      final granted = await location.requestPermission();
+                      if (!granted) {
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text("يلزم إذن الموقع في الخلفية")),
+                          );
+                        }
+                        return;
+                      }
+                      await location.startTracking(employeeId: employeeId);
+                    } else {
+                      await location.stopTracking();
+                    }
+                  },
+                ),
+              ),
             ),
           ],
         ),

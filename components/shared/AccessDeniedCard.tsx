@@ -25,7 +25,7 @@ export default function AccessDeniedCard({
         <p className="text-sm text-gray-600 dark:text-slate-400">{message}</p>
         <Link
           href={ctaHref}
-          className="inline-flex items-center justify-center px-4 py-2 rounded-xl bg-blue-600 text-white hover:bg-blue-700 transition-colors"
+          className="inline-flex items-center justify-center px-4 py-2 rounded-xl bg-primaryColor text-white hover:bg-primaryColor/90 transition-colors"
         >
           {ctaLabel}
         </Link>

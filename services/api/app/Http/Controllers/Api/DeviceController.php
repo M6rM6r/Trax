@@ -14,8 +14,8 @@ class DeviceController extends Controller
     {
         $request->validate([
             'employee_id' => ['required', 'exists:employees,id'],
-            'fcm_token'   => ['required', 'string', 'max:512'],
-            'platform'    => ['nullable', 'in:android,ios'],
+            'fcm_token' => ['required', 'string', 'max:512'],
+            'platform' => ['nullable', 'in:android,ios'],
         ]);
 
         $employee = Employee::find($request->employee_id);
@@ -25,7 +25,10 @@ class DeviceController extends Controller
             'fcm_platform' => $request->platform ?? 'android',
         ]);
 
-        try { Cache::tags(['employees'])->flush(); } catch (\Throwable) {}
+        try {
+            Cache::tags(['employees'])->flush();
+        } catch (\Throwable) {
+        }
 
         return response()->json([
             'success' => true,
@@ -40,11 +43,14 @@ class DeviceController extends Controller
         ]);
 
         Employee::where('id', $request->employee_id)->update([
-            'fcm_token'    => null,
+            'fcm_token' => null,
             'fcm_platform' => null,
         ]);
 
-        try { Cache::tags(['employees'])->flush(); } catch (\Throwable) {}
+        try {
+            Cache::tags(['employees'])->flush();
+        } catch (\Throwable) {
+        }
 
         return response()->json([
             'success' => true,

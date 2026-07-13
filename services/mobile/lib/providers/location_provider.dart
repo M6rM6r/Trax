@@ -2,6 +2,8 @@ import "package:flutter/foundation.dart";
 import "package:geolocator/geolocator.dart";
 import "package:permission_handler/permission_handler.dart";
 
+import "../services/background_tracking_service.dart";
+
 class LocationProvider extends ChangeNotifier {
   double? _lat;
   double? _lng;
@@ -17,7 +19,10 @@ class LocationProvider extends ChangeNotifier {
 
   Future<bool> requestPermission() async {
     final permission = await Permission.location.request();
-    return permission.isGranted;
+    if (!permission.isGranted) return false;
+
+    final backgroundPermission = await Permission.locationAlways.request();
+    return backgroundPermission.isGranted;
   }
 
   Future<bool> getCurrentLocation() async {
@@ -62,10 +67,27 @@ class LocationProvider extends ChangeNotifier {
     }
   }
 
-  void startTracking() {
-    _isTracking = true;
-    notifyListeners();
+  Future<void> startTracking({required int employeeId}) async {
+    final service = BackgroundTrackingService();
+    await service.start(employeeId: employeeId);
+    _isTracking = service.isRunning;
 
+    if (_isTracking) {
+      _error = null;
+      _listenToPositionUpdates();
+    }
+
+    notifyListeners();
+  }
+
+  Future<void> stopTracking() async {
+    final service = BackgroundTrackingService();
+    await service.stop();
+    _isTracking = service.isRunning;
+    notifyListeners();
+  }
+
+  void _listenToPositionUpdates() {
     Geolocator.getPositionStream(
       locationSettings: const LocationSettings(
         accuracy: LocationAccuracy.high,
@@ -77,11 +99,6 @@ class LocationProvider extends ChangeNotifier {
       _accuracy = position.accuracy;
       notifyListeners();
     });
-  }
-
-  void stopTracking() {
-    _isTracking = false;
-    notifyListeners();
   }
 
   double distanceTo(double targetLat, double targetLng) {

@@ -90,6 +90,7 @@ class PerfMonitor {
     for (const m of this.metrics) unique.set(m.name, m);
 
     if (process.env.NODE_ENV === "development") {
+      // eslint-disable-next-line no-console
       console.table(Array.from(unique.values()));
     }
 

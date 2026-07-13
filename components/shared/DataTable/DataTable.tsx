@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, type ReactNode } from "react";
+import { useState, useMemo, useEffect, useRef, type ReactNode } from "react";
 import {
   Table,
   TableBody,
@@ -12,7 +12,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Search, Inbox } from "lucide-react";
+import { ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Search, Inbox, X } from "lucide-react";
 
 export interface Column<T> {
   key: string;
@@ -43,16 +43,29 @@ export function DataTable<T extends { id: number | string }>({
   onSelectionChange,
 }: DataTableProps<T>) {
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [sortKey, setSortKey] = useState<string | null>(null);
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
   const [currentPage, setCurrentPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(pageSize);
+  const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    searchTimerRef.current = setTimeout(() => {
+      setDebouncedSearch(search);
+      setCurrentPage(1);
+    }, 300);
+    return () => {
+      if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    };
+  }, [search]);
 
   const filterableKeys = columns.filter((c) => c.filterable).map((c) => c.key);
 
   const filteredData = useMemo(() => {
-    if (!search) return data;
-    const lower = search.toLowerCase();
+    if (!debouncedSearch) return data;
+    const lower = debouncedSearch.toLowerCase();
     return data.filter((row) =>
       filterableKeys.some((key) => {
         const col = columns.find((c) => c.key === key);
@@ -63,7 +76,7 @@ export function DataTable<T extends { id: number | string }>({
         return String(val).toLowerCase().includes(lower);
       })
     );
-  }, [data, search, filterableKeys, columns]);
+  }, [data, debouncedSearch, filterableKeys, columns]);
 
   const sortedData = useMemo(() => {
     if (!sortKey) return filteredData;
@@ -79,7 +92,12 @@ export function DataTable<T extends { id: number | string }>({
     return sorted;
   }, [filteredData, sortKey, sortDir, columns]);
 
-  const totalPages = Math.ceil(sortedData.length / rowsPerPage);
+  const totalPages = Math.max(1, Math.ceil(sortedData.length / rowsPerPage));
+
+  useEffect(() => {
+    if (currentPage > totalPages) setCurrentPage(totalPages);
+  }, [currentPage, totalPages]);
+
   const paginatedData = sortedData.slice(
     (currentPage - 1) * rowsPerPage,
     currentPage * rowsPerPage
@@ -136,14 +154,20 @@ export function DataTable<T extends { id: number | string }>({
             <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <Input
               value={search}
-              onChange={(e) => {
-                setSearch(e.target.value);
-                setCurrentPage(1);
-              }}
+              onChange={(e) => setSearch(e.target.value)}
               placeholder={searchPlaceholder}
-              className="pr-9 dark:bg-slate-900 dark:text-slate-100 dark:placeholder-slate-500"
+              className="pr-9 pl-9 dark:bg-slate-900 dark:text-slate-100 dark:placeholder-slate-500"
               aria-label="البحث"
             />
+            {search && (
+              <button
+                onClick={() => setSearch("")}
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-slate-300 transition-colors"
+                aria-label="مسح البحث"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
           </div>
         </div>
       )}
@@ -233,7 +257,7 @@ export function DataTable<T extends { id: number | string }>({
                 paginatedData.map((row) => (
                   <TableRow
                     key={row.id}
-                    className={`group border-b border-gray-100 hover:bg-gray-50 dark:hover:bg-slate-700/50 dark:border-slate-700 transition-colors ${
+                    className={`group border-b border-gray-100 hover:bg-blue-50/50 dark:hover:bg-slate-700/50 dark:border-slate-700 transition-all duration-150 ${
                       selectedIds.includes(row.id) ? "bg-blue-50 dark:bg-blue-900/10" : ""
                     }`}
                   >

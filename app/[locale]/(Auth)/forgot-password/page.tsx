@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";
-import { useLocale } from "next-intl";
+import { Link } from "@/i18n/navigation";
 import { MapPin, Mail, ArrowRight, CheckCircle2, KeyRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import CustomInput from "@/components/shared/form/CustomInput";
@@ -14,7 +14,6 @@ import { httpClient } from "@/lib/services/httpClient";
 import loginBG from "@/public/images/loginBg.png";
 
 export default function ForgotPasswordPage() {
-  const locale = useLocale();
   const [sent, setSent] = useState(false);
   const [sentTo, setSentTo] = useState("");
 
@@ -141,13 +140,13 @@ export default function ForgotPasswordPage() {
           </AnimatePresence>
 
           <div className="mt-4 pt-4 border-t border-gray-100 dark:border-slate-700">
-            <a
-              href={`/${locale}/login`}
+            <Link
+              href="/login"
               className="flex items-center justify-center gap-2 text-sm text-gray-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
             >
               <ArrowRight className="w-4 h-4" />
               العودة إلى تسجيل الدخول
-            </a>
+            </Link>
           </div>
         </div>
       </motion.div>

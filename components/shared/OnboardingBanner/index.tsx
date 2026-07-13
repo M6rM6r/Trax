@@ -2,36 +2,42 @@
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Users, MapPin, Check, X, ChevronRight, Rocket, ArrowLeft } from "lucide-react";
-import { useLocale } from "next-intl";
-import { Link } from "@/i18n/navigation";
+import { Users, MapPin, Check, X, Rocket, ArrowLeft, CheckCircle } from "lucide-react";
+import { useRouter } from "@/i18n/navigation";
 import { useAuthStore } from "@/stores/useAuthStore";
+import { hapticTap } from "@/lib/utils/haptics";
 
 interface OnboardingBannerProps {
   hasEmployees: boolean;
   hasGeofences: boolean;
+  hasAttendanceToday?: boolean;
 }
 
-const DISMISS_KEY = "trax_onboarding_dismissed";
-
-export default function OnboardingBanner({ hasEmployees, hasGeofences }: OnboardingBannerProps) {
-  const locale = useLocale();
-  const { companyName } = useAuthStore();
+export default function OnboardingBanner({
+  hasEmployees,
+  hasGeofences,
+  hasAttendanceToday,
+}: OnboardingBannerProps) {
+  const router = useRouter();
+  const { companyName, companyId } = useAuthStore();
   const [dismissed, setDismissed] = useState(true);
+
+  const DISMISS_KEY = `trax_onboarding_dismissed_${companyId ?? "default"}`;
 
   useEffect(() => {
     const stored = localStorage.getItem(DISMISS_KEY);
     if (stored !== "true") setDismissed(false);
-  }, []);
+  }, [DISMISS_KEY]);
 
-  const allDone = hasEmployees && hasGeofences;
+  const attendanceDone = hasAttendanceToday || !hasEmployees;
+  const allDone = hasEmployees && hasGeofences && attendanceDone;
 
   useEffect(() => {
     if (allDone) {
       localStorage.setItem(DISMISS_KEY, "true");
       setDismissed(true);
     }
-  }, [allDone]);
+  }, [allDone, DISMISS_KEY]);
 
   const handleDismiss = () => {
     localStorage.setItem(DISMISS_KEY, "true");
@@ -45,9 +51,9 @@ export default function OnboardingBanner({ hasEmployees, hasGeofences }: Onboard
       icon: Users,
       title: "أضف موظفيك",
       description: "أضف أول موظف لبدء تتبع الحضور",
-      href: `/${locale}/employees`,
+      href: "/employees",
       cta: "إضافة موظف",
-      color: "blue",
+      color: "primary",
     },
     {
       id: "geofences",
@@ -55,9 +61,19 @@ export default function OnboardingBanner({ hasEmployees, hasGeofences }: Onboard
       icon: MapPin,
       title: "حدد موقع العمل",
       description: "أنشئ نطاقاً جغرافياً لموقع العمل",
-      href: `/${locale}/geofences`,
+      href: "/geofences",
       cta: "إضافة موقع",
       color: "indigo",
+    },
+    {
+      id: "attendance",
+      done: attendanceDone,
+      icon: CheckCircle,
+      title: "اطلب تسجيل الحضور",
+      description: "اطلب من موظفيك تسجيل الحضور عبر التطبيق",
+      href: "/check-in",
+      cta: "صفحة الحضور",
+      color: "green",
     },
   ];
 
@@ -72,23 +88,23 @@ export default function OnboardingBanner({ hasEmployees, hasGeofences }: Onboard
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: -16, scale: 0.98 }}
           transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
-          className="relative overflow-hidden rounded-2xl border border-blue-200/60 dark:border-blue-800/40 bg-gradient-to-br from-blue-50 via-indigo-50/60 to-white dark:from-slate-800 dark:via-slate-800 dark:to-slate-900 shadow-lg"
+          className="relative rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/80 shadow-lg"
         >
-          {/* Decorative blob */}
-          <div className="absolute -top-10 -left-10 w-48 h-48 rounded-full bg-blue-400/10 dark:bg-blue-500/10 blur-2xl pointer-events-none" />
-
           <div className="relative p-5">
             {/* Header row */}
             <div className="flex items-start justify-between gap-4 mb-4">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-md shadow-blue-500/30">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center shadow-md shadow-emerald-500/20">
                   <Rocket className="w-5 h-5 text-white" />
                 </div>
                 <div>
                   <h2 className="font-bold text-gray-900 dark:text-slate-100 text-base">
                     مرحباً بك في Trax
                     {companyName && (
-                      <span className="text-blue-600 dark:text-blue-400"> — {companyName}</span>
+                      <span className="text-emerald-600 dark:text-emerald-400">
+                        {" "}
+                        — {companyName}
+                      </span>
                     )}
                   </h2>
                   <p className="text-sm text-gray-500 dark:text-slate-400">
@@ -111,13 +127,13 @@ export default function OnboardingBanner({ hasEmployees, hasGeofences }: Onboard
                 <span>
                   {completedCount} من {steps.length} خطوات مكتملة
                 </span>
-                <span className="font-semibold text-blue-600 dark:text-blue-400">
+                <span className="font-semibold text-emerald-600 dark:text-emerald-400">
                   {Math.round(progress)}%
                 </span>
               </div>
               <div className="h-2 rounded-full bg-gray-200 dark:bg-slate-700 overflow-hidden">
                 <motion.div
-                  className="h-full rounded-full bg-gradient-to-r from-blue-500 to-indigo-500"
+                  className="h-full rounded-full bg-emerald-500"
                   initial={{ width: 0 }}
                   animate={{ width: `${progress}%` }}
                   transition={{ duration: 0.7, ease: "easeOut", delay: 0.2 }}
@@ -126,7 +142,7 @@ export default function OnboardingBanner({ hasEmployees, hasGeofences }: Onboard
             </div>
 
             {/* Steps */}
-            <div className="grid sm:grid-cols-2 gap-3">
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
               {steps.map((step, i) => {
                 const Icon = step.icon;
                 return (
@@ -138,7 +154,7 @@ export default function OnboardingBanner({ hasEmployees, hasGeofences }: Onboard
                     className={`relative rounded-xl border p-4 transition-all ${
                       step.done
                         ? "border-green-200 dark:border-green-800/40 bg-green-50/60 dark:bg-green-900/10"
-                        : "border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800/60 hover:border-blue-300 dark:hover:border-blue-700 hover:shadow-md"
+                        : "border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800/60 hover:border-emerald-300 dark:hover:border-emerald-700 hover:shadow-md"
                     }`}
                   >
                     <div className="flex items-start gap-3">
@@ -147,8 +163,8 @@ export default function OnboardingBanner({ hasEmployees, hasGeofences }: Onboard
                         className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${
                           step.done
                             ? "bg-green-100 dark:bg-green-900/30"
-                            : step.color === "blue"
-                              ? "bg-blue-100 dark:bg-blue-900/30"
+                            : step.color === "primary"
+                              ? "bg-emerald-100 dark:bg-emerald-900/30"
                               : "bg-indigo-100 dark:bg-indigo-900/30"
                         }`}
                       >
@@ -156,7 +172,7 @@ export default function OnboardingBanner({ hasEmployees, hasGeofences }: Onboard
                           <Check className="w-5 h-5 text-green-600 dark:text-green-400" />
                         ) : (
                           <Icon
-                            className={`w-5 h-5 ${step.color === "blue" ? "text-blue-600 dark:text-blue-400" : "text-indigo-600 dark:text-indigo-400"}`}
+                            className={`w-5 h-5 ${step.color === "primary" ? "text-emerald-600 dark:text-emerald-400" : "text-indigo-600 dark:text-indigo-400"}`}
                           />
                         )}
                       </div>
@@ -170,17 +186,20 @@ export default function OnboardingBanner({ hasEmployees, hasGeofences }: Onboard
                           {step.description}
                         </p>
                         {!step.done && (
-                          <Link
-                            href={step.href}
+                          <button
+                            onClick={() => {
+                              hapticTap();
+                              router.push(step.href);
+                            }}
                             className={`inline-flex items-center gap-1 mt-2 text-xs font-semibold px-3 py-1.5 rounded-lg transition-all ${
-                              step.color === "blue"
-                                ? "bg-blue-600 hover:bg-blue-700 text-white shadow-sm shadow-blue-500/30"
+                              step.color === "primary"
+                                ? "bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm shadow-emerald-500/30"
                                 : "bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm shadow-indigo-500/30"
                             }`}
                           >
                             {step.cta}
                             <ArrowLeft className="w-3 h-3" />
-                          </Link>
+                          </button>
                         )}
                       </div>
                     </div>

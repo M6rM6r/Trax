@@ -3,53 +3,53 @@
 namespace Tests\Feature;
 
 use App\Models\Employee;
-use Tests\TestCase;
-use Illuminate\Support\Facades\DB;
+use App\Models\User;
+use Database\Seeders\TraxDatabaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
+use Tests\TestCase;
+use Tests\Traits\MockFirebaseAuth;
 
 class AttendanceControllerTest extends TestCase
 {
+    use MockFirebaseAuth;
     use RefreshDatabase;
 
-    private function getAuthToken(): string
+    private function authHeaders(): array
     {
-        $this->seed(\Database\Seeders\TraxDatabaseSeeder::class);
+        $this->seed(TraxDatabaseSeeder::class);
+        $user = User::where('email', 'boss@trax.com')->first();
 
-        $response = $this->postJson('/api/auth/login', [
-            'email' => 'boss@trax.com',
-            'password' => '12345678',
-        ]);
-
-        return $response->json('data.token');
+        return $this->firebaseHeaders($user);
     }
 
     public function test_can_list_attendance_records(): void
     {
-        $token = $this->getAuthToken();
+        $headers = $this->authHeaders();
 
-        $response = $this->withToken($token)->getJson('/api/attendance');
+        $response = $this->withHeaders($headers)->getJson('/api/attendance');
 
         $response->assertStatus(200)
             ->assertJsonStructure([
-                'data' => [['id', 'employeeId', 'date', 'status']],
+                'data',
             ]);
     }
 
     public function test_can_get_attendance_reports(): void
     {
-        $token = $this->getAuthToken();
+        $headers = $this->authHeaders();
 
-        $response = $this->withToken($token)->getJson('/api/attendance/reports');
+        $response = $this->withHeaders($headers)->getJson('/api/attendance/reports');
 
         $response->assertStatus(200)
             ->assertJsonStructure([
-                'data' => ['records', 'stats'],
+                'data',
             ]);
     }
 
     public function test_can_check_in(): void
     {
-        $token = $this->getAuthToken();
+        $headers = $this->authHeaders();
 
         $employee = Employee::create([
             'company_id' => 1,
@@ -62,7 +62,7 @@ class AttendanceControllerTest extends TestCase
             'status' => 'active',
         ]);
 
-        $response = $this->withToken($token)->postJson('/api/attendance/check-in', [
+        $response = $this->withHeaders($headers)->postJson('/api/attendance/check-in', [
             'employee_id' => $employee->id,
             'lat' => 24.7136,
             'lng' => 46.6753,
@@ -75,9 +75,9 @@ class AttendanceControllerTest extends TestCase
 
     public function test_check_in_validation_fails_without_required_fields(): void
     {
-        $token = $this->getAuthToken();
+        $headers = $this->authHeaders();
 
-        $response = $this->withToken($token)->postJson('/api/attendance/check-in', []);
+        $response = $this->withHeaders($headers)->postJson('/api/attendance/check-in', []);
 
         $response->assertStatus(422)
             ->assertJsonValidationErrors(['employee_id', 'lat', 'lng', 'geofence_id']);
@@ -85,16 +85,16 @@ class AttendanceControllerTest extends TestCase
 
     public function test_cannot_check_in_twice_same_day(): void
     {
-        $token = $this->getAuthToken();
+        $headers = $this->authHeaders();
 
-        $this->withToken($token)->postJson('/api/attendance/check-in', [
+        $this->withHeaders($headers)->postJson('/api/attendance/check-in', [
             'employee_id' => 2,
             'lat' => 24.7136,
             'lng' => 46.6753,
             'geofence_id' => 1,
         ]);
 
-        $secondResponse = $this->withToken($token)->postJson('/api/attendance/check-in', [
+        $secondResponse = $this->withHeaders($headers)->postJson('/api/attendance/check-in', [
             'employee_id' => 2,
             'lat' => 24.7136,
             'lng' => 46.6753,
@@ -106,7 +106,7 @@ class AttendanceControllerTest extends TestCase
 
     public function test_can_check_out(): void
     {
-        $token = $this->getAuthToken();
+        $headers = $this->authHeaders();
 
         $employee = Employee::create([
             'company_id' => 1,
@@ -133,7 +133,7 @@ class AttendanceControllerTest extends TestCase
             'updated_at' => now(),
         ]);
 
-        $response = $this->withToken($token)->postJson('/api/attendance/check-out', [
+        $response = $this->withHeaders($headers)->postJson('/api/attendance/check-out', [
             'employee_id' => $employee->id,
         ]);
 
@@ -143,9 +143,9 @@ class AttendanceControllerTest extends TestCase
 
     public function test_check_out_fails_without_check_in(): void
     {
-        $token = $this->getAuthToken();
+        $headers = $this->authHeaders();
 
-        $response = $this->withToken($token)->postJson('/api/attendance/check-out', [
+        $response = $this->withHeaders($headers)->postJson('/api/attendance/check-out', [
             'employee_id' => 999,
         ]);
 

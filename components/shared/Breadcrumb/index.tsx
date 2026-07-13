@@ -1,7 +1,6 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { useLocale } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { ChevronLeft, Home } from "lucide-react";
 
@@ -21,12 +20,11 @@ const routeLabels: Record<string, string> = {
 
 export default function Breadcrumb() {
   const pathname = usePathname();
-  const locale = useLocale();
 
-  const segments = pathname.split("/").filter((s) => s !== locale && s !== "");
+  const segments = pathname.split("/").filter((s) => s !== "" && s !== "ar" && s !== "en");
 
   const crumbs = segments.map((seg, i) => {
-    const path = `/${locale}/${segments.slice(0, i + 1).join("/")}`;
+    const path = `/${segments.slice(0, i + 1).join("/")}`;
     return { label: routeLabels[seg] || seg, path };
   });
 

@@ -5,24 +5,19 @@ import { Form, Formik, FormikHelpers } from "formik";
 import * as Yup from "yup";
 import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
-import { useLocale } from "next-intl";
-import { setCookie } from "cookies-next";
-import {
-  MapPin,
-  Building2,
-  User,
-  Mail,
-  Lock,
-  Phone,
-  Briefcase,
-  ChevronLeft,
-  ChevronRight,
-  Check,
-  Eye,
-  EyeOff,
-} from "lucide-react";
+import { useRouter } from "@/i18n/navigation";
+import { signInWithEmailAndPassword } from "firebase/auth";
+import { auth } from "@/lib/config/firebase";
+import { MapPin, Building2, User, Briefcase, ChevronLeft, ChevronRight, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import CustomInput from "@/components/shared/form/CustomInput";
 import { toastSuccess, toastError } from "@/hooks/use-toast";
 import { hapticSuccess, hapticError } from "@/lib/utils/haptics";
@@ -104,12 +99,14 @@ const STEP_LABELS = ["معلومات الشركة", "حساب المدير", "ا
 
 export default function RegisterPage() {
   const router = useRouter();
-  const locale = useLocale();
   const { setUser } = useAuthStore();
   const [step, setStep] = useState(0);
   const [selectedPlan] = useState("trial");
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirm, setShowConfirm] = useState(false);
+  const [registrationResult, setRegistrationResult] = useState<{
+    companyName: string;
+    adminEmail: string;
+    adminPassword: string;
+  } | null>(null);
 
   const getPasswordStrength = useMemo(
     () => (v: string) => {
@@ -164,10 +161,20 @@ export default function RegisterPage() {
         return;
       }
 
-      const { token, user, company } = resp.data;
+      const { user, company } = resp.data;
       const role: UserRole = "boss";
 
-      setCookie("auth_token", token, { maxAge: 30 * 24 * 60 * 60 });
+      // Sign in with Firebase to get an ID token
+      let idToken = "";
+      if (auth) {
+        const credential = await signInWithEmailAndPassword(
+          auth,
+          values.admin_email,
+          values.admin_password
+        );
+        idToken = await credential.user.getIdToken();
+      }
+
       setUser(
         {
           id: user.id,
@@ -178,7 +185,7 @@ export default function RegisterPage() {
           created_at: new Date().toISOString(),
           profile_image: "",
         },
-        token,
+        idToken,
         role,
         user.company_id,
         company.name
@@ -186,7 +193,11 @@ export default function RegisterPage() {
 
       hapticSuccess();
       toastSuccess(resp.message || "تم إنشاء حسابك بنجاح! مرحباً بك في Trax");
-      router.push(`/${locale}`);
+      setRegistrationResult({
+        companyName: company.name,
+        adminEmail: values.admin_email,
+        adminPassword: values.admin_password,
+      });
     } catch (err: unknown) {
       hapticError();
       if (err instanceof ApiError) {
@@ -212,6 +223,10 @@ export default function RegisterPage() {
   };
 
   const handleBack = () => setStep((s) => Math.max(0, s - 1));
+
+  const handleGoToDashboard = () => {
+    router.push("/");
+  };
 
   return (
     <section className="w-screen min-h-screen flex items-center justify-center relative bg-primaryColor dark:bg-slate-950 py-8">
@@ -304,9 +319,9 @@ export default function RegisterPage() {
                   {step === 0 && (
                     <motion.div
                       key="step0"
-                      initial={{ opacity: 0, x: 20 }}
+                      initial={{ opacity: 0, x: -20 }}
                       animate={{ opacity: 1, x: 0 }}
-                      exit={{ opacity: 0, x: -20 }}
+                      exit={{ opacity: 0, x: 20 }}
                       transition={{ duration: 0.2 }}
                       className="space-y-4"
                     >
@@ -351,9 +366,9 @@ export default function RegisterPage() {
                   {step === 1 && (
                     <motion.div
                       key="step1"
-                      initial={{ opacity: 0, x: 20 }}
+                      initial={{ opacity: 0, x: -20 }}
                       animate={{ opacity: 1, x: 0 }}
-                      exit={{ opacity: 0, x: -20 }}
+                      exit={{ opacity: 0, x: 20 }}
                       transition={{ duration: 0.2 }}
                       className="space-y-4"
                     >
@@ -379,21 +394,10 @@ export default function RegisterPage() {
                       <div className="relative">
                         <CustomInput
                           name="admin_password"
-                          type={showPassword ? "text" : "password"}
+                          type="password"
                           label="كلمة المرور"
                           placeholder="8 أحرف على الأقل"
                         />
-                        <button
-                          type="button"
-                          onClick={() => setShowPassword(!showPassword)}
-                          className="absolute left-3 top-9 text-gray-400 hover:text-gray-600 dark:hover:text-slate-300 transition-colors"
-                        >
-                          {showPassword ? (
-                            <EyeOff className="w-4 h-4" />
-                          ) : (
-                            <Eye className="w-4 h-4" />
-                          )}
-                        </button>
                         {props.values.admin_password.length > 0 &&
                           (() => {
                             const ps = getPasswordStrength(props.values.admin_password);
@@ -418,25 +422,12 @@ export default function RegisterPage() {
                             );
                           })()}
                       </div>
-                      <div className="relative">
-                        <CustomInput
-                          name="confirm_password"
-                          type={showConfirm ? "text" : "password"}
-                          label="تأكيد كلمة المرور"
-                          placeholder="أعد كتابة كلمة المرور"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setShowConfirm(!showConfirm)}
-                          className="absolute left-3 top-9 text-gray-400 hover:text-gray-600 dark:hover:text-slate-300 transition-colors"
-                        >
-                          {showConfirm ? (
-                            <EyeOff className="w-4 h-4" />
-                          ) : (
-                            <Eye className="w-4 h-4" />
-                          )}
-                        </button>
-                      </div>
+                      <CustomInput
+                        name="confirm_password"
+                        type="password"
+                        label="تأكيد كلمة المرور"
+                        placeholder="أعد كتابة كلمة المرور"
+                      />
                     </motion.div>
                   )}
 
@@ -444,9 +435,9 @@ export default function RegisterPage() {
                   {step === 2 && (
                     <motion.div
                       key="step2"
-                      initial={{ opacity: 0, x: 20 }}
+                      initial={{ opacity: 0, x: -20 }}
                       animate={{ opacity: 1, x: 0 }}
-                      exit={{ opacity: 0, x: -20 }}
+                      exit={{ opacity: 0, x: 20 }}
                       transition={{ duration: 0.2 }}
                       className="space-y-4"
                     >
@@ -458,18 +449,24 @@ export default function RegisterPage() {
                       </div>
                       <div className="space-y-3">
                         {PLANS.map((plan) => (
-                          <div
+                          <motion.div
                             key={plan.key}
+                            whileHover={{ y: -4 }}
+                            whileTap={{ scale: 0.98 }}
                             className={`relative rounded-xl border-2 p-4 cursor-pointer transition-all ${
                               selectedPlan === plan.key
-                                ? "border-blue-500 bg-blue-50/60 dark:bg-blue-900/20 shadow-md"
-                                : `${plan.color} bg-white dark:bg-slate-800/60 hover:shadow-sm`
+                                ? "border-blue-500 bg-blue-50/60 dark:bg-blue-900/20 shadow-md scale-[1.02]"
+                                : `${plan.color} bg-white dark:bg-slate-800/60 hover:shadow-lg`
                             }`}
                           >
                             {plan.badge && (
-                              <span className="absolute -top-2.5 left-4 text-xs font-bold bg-blue-500 text-white px-2.5 py-0.5 rounded-full">
+                              <motion.span
+                                animate={{ y: [0, -3, 0] }}
+                                transition={{ repeat: Infinity, duration: 2 }}
+                                className="absolute -top-2.5 left-4 text-xs font-bold bg-blue-500 text-white px-2.5 py-0.5 rounded-full"
+                              >
                                 {plan.badge}
-                              </span>
+                              </motion.span>
                             )}
                             <div className="flex items-center justify-between">
                               <div>
@@ -502,7 +499,7 @@ export default function RegisterPage() {
                                 </div>
                               </div>
                             </div>
-                          </div>
+                          </motion.div>
                         ))}
                       </div>
                       <p className="text-xs text-center text-gray-400 dark:text-slate-500 mt-2">
@@ -579,7 +576,7 @@ export default function RegisterPage() {
                 <p className="text-center text-sm text-gray-500 dark:text-slate-400 mt-4">
                   لديك حساب بالفعل؟{" "}
                   <a
-                    href={`/${locale}/login`}
+                    href="/login"
                     className="text-blue-600 dark:text-blue-400 hover:underline font-medium"
                   >
                     تسجيل الدخول
@@ -590,6 +587,57 @@ export default function RegisterPage() {
           </Formik>
         </div>
       </motion.div>
+
+      <Dialog
+        open={!!registrationResult}
+        onOpenChange={() => registrationResult && handleGoToDashboard()}
+      >
+        <DialogContent className="sm:max-w-md" onInteractOutside={(e) => e.preventDefault()}>
+          <DialogHeader className="text-center">
+            <div className="mx-auto w-14 h-14 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center mb-3">
+              <Check className="w-7 h-7 text-green-600 dark:text-green-400" />
+            </div>
+            <DialogTitle className="text-xl">تم إنشاء حسابك بنجاح</DialogTitle>
+            <DialogDescription>
+              {registrationResult && (
+                <>
+                  مرحباً بك في{" "}
+                  <span className="font-semibold text-foreground">
+                    {registrationResult.companyName}
+                  </span>
+                  . يمكنك الآن الدخول إلى لوحة التحكم.
+                </>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+
+          {registrationResult && (
+            <div className="space-y-3 my-4">
+              <div className="rounded-xl bg-slate-50 dark:bg-slate-800/60 p-3 text-sm">
+                <p className="text-gray-500 dark:text-slate-400 mb-1">البريد الإلكتروني للمدير</p>
+                <p className="font-medium text-gray-900 dark:text-slate-100 ltr" dir="ltr">
+                  {registrationResult.adminEmail}
+                </p>
+              </div>
+              <div className="rounded-xl bg-slate-50 dark:bg-slate-800/60 p-3 text-sm">
+                <p className="text-gray-500 dark:text-slate-400 mb-1">كلمة المرور المؤقتة</p>
+                <p className="font-medium text-gray-900 dark:text-slate-100 ltr" dir="ltr">
+                  {registrationResult.adminPassword}
+                </p>
+              </div>
+              <p className="text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 rounded-lg p-2">
+                احفظ هذه البيانات في مكان آمن. يمكنك تغيير كلمة المرور لاحقاً من الإعدادات.
+              </p>
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button onClick={handleGoToDashboard} className="w-full">
+              الذهاب إلى لوحة التحكم
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </section>
   );
 }

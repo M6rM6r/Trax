@@ -1,3 +1,5 @@
+import os
+
 from fastapi.testclient import TestClient
 
 from app.main import app
@@ -21,7 +23,11 @@ def test_retention_analysis_shape() -> None:
         "absenceRate": 12,
         "checkOutCompletionRate": 86,
     }
-    response = client.post("/api/v1/retention/analyze", json=payload)
+    response = client.post(
+        "/api/v1/retention/analyze",
+        json=payload,
+        headers={"Authorization": f"Bearer {os.environ['TRAX_AI_API_KEY']}"},
+    )
     assert response.status_code == 200
 
     body = response.json()

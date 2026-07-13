@@ -1,14 +1,16 @@
 <?php
 
-use App\Http\Controllers\Api\AuthController;
-use App\Http\Controllers\Api\EmployeeController;
+use App\Http\Controllers\Api\AiProxyController;
 use App\Http\Controllers\Api\AttendanceController;
-use App\Http\Controllers\Api\GeofenceController;
-use App\Http\Controllers\Api\DashboardController;
-use App\Http\Controllers\Api\TrackingController;
-use App\Http\Controllers\Api\DeviceController;
-use App\Http\Controllers\Api\HealthController;
+use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\CompanyController;
+use App\Http\Controllers\Api\DashboardController;
+use App\Http\Controllers\Api\DeviceController;
+use App\Http\Controllers\Api\EmployeeController;
+use App\Http\Controllers\Api\GeofenceController;
+use App\Http\Controllers\Api\HealthController;
+use App\Http\Controllers\Api\MastermindController;
+use App\Http\Controllers\Api\TrackingController;
 use Illuminate\Support\Facades\Route;
 
 // Public health checks — no auth required
@@ -17,11 +19,9 @@ Route::get('ping', [HealthController::class, 'ping']);
 Route::get('metrics', [HealthController::class, 'metrics']);
 Route::get('plans', [CompanyController::class, 'plans']);
 
-// Public auth login
-// Note: no throttle middleware here to keep login available when
-// cache-backed rate limiter storage is not configured.
-Route::post('auth/login', [AuthController::class, 'login']);
-Route::post('auth/firebase', [AuthController::class, 'firebaseLogin']);
+// Public auth — Firebase login only
+Route::post('auth/firebase', [AuthController::class, 'firebaseLogin'])
+    ->middleware('throttle:login');
 
 // Company registration (SaaS signup) — public
 Route::post('companies/register', [CompanyController::class, 'register'])
@@ -33,8 +33,8 @@ Route::post('auth/forgot-password', [AuthController::class, 'forgotPassword'])
 Route::post('auth/reset-password', [AuthController::class, 'resetPassword'])
     ->middleware(['throttle:5,1']);
 
-// Protected
-Route::middleware('auth:api')->group(function () {
+// Protected — Firebase token verification
+Route::middleware('firebase')->group(function () {
     // Company management
     Route::get('company', [CompanyController::class, 'show']);
     Route::put('company', [CompanyController::class, 'update']);
@@ -42,8 +42,6 @@ Route::middleware('auth:api')->group(function () {
     // Auth
     Route::post('auth/logout', [AuthController::class, 'logout']);
     Route::get('auth/me', [AuthController::class, 'me']);
-    Route::post('auth/refresh', [AuthController::class, 'refresh'])
-        ->middleware(['throttle:10,1']);
 
     // Geofences (read-only) — required for employee check-in validation
     Route::middleware(['throttle:60,1'])->group(function () {
@@ -57,6 +55,8 @@ Route::middleware('auth:api')->group(function () {
         // Dashboard
         Route::get('dashboard/stats', [DashboardController::class, 'stats'])
             ->middleware(['throttle:60,1']);
+        Route::post('ai/retention/analyze', [AiProxyController::class, 'retentionAnalyze'])
+            ->middleware(['throttle:30,1']);
         Route::get('dashboard/trends', [DashboardController::class, 'trends'])
             ->middleware(['throttle:60,1']);
         Route::get('dashboard/departments', [DashboardController::class, 'departmentStats'])
@@ -68,16 +68,16 @@ Route::middleware('auth:api')->group(function () {
 
         // Employees — standard API rate limit
         Route::middleware(['throttle:60,1'])->group(function () {
-        Route::get('employees', [EmployeeController::class, 'index']);
-        Route::post('employees', [EmployeeController::class, 'store']);
-        Route::get('employees/{employee}', [EmployeeController::class, 'show']);
-        Route::put('employees/{employee}', [EmployeeController::class, 'update']);
-        Route::patch('employees/{employee}', [EmployeeController::class, 'update']);
-        Route::delete('employees/{employee}', [EmployeeController::class, 'destroy']);
-        Route::post('employees/{employee}/reset-password', [EmployeeController::class, 'resetPassword']);
-        Route::get('employees/inactive/list', [EmployeeController::class, 'inactive']);
-        Route::get('employees/export/csv', [EmployeeController::class, 'export']);
-        Route::get('employees/meta/departments', [EmployeeController::class, 'departments']);
+            Route::get('employees', [EmployeeController::class, 'index']);
+            Route::post('employees', [EmployeeController::class, 'store']);
+            Route::get('employees/{employee}', [EmployeeController::class, 'show']);
+            Route::put('employees/{employee}', [EmployeeController::class, 'update']);
+            Route::patch('employees/{employee}', [EmployeeController::class, 'update']);
+            Route::delete('employees/{employee}', [EmployeeController::class, 'destroy']);
+            Route::post('employees/{employee}/reset-password', [EmployeeController::class, 'resetPassword']);
+            Route::get('employees/inactive/list', [EmployeeController::class, 'inactive']);
+            Route::get('employees/export/csv', [EmployeeController::class, 'export']);
+            Route::get('employees/meta/departments', [EmployeeController::class, 'departments']);
         });
 
         // Attendance reports/listing
@@ -111,4 +111,19 @@ Route::middleware('auth:api')->group(function () {
         Route::delete('device/fcm', [DeviceController::class, 'unregisterFcmToken']);
     });
 
+});
+
+// MasterMind — super admin routes
+Route::post('mastermind/login', [MastermindController::class, 'login']);
+
+Route::middleware(['mastermind'])->prefix('mastermind')->group(function () {
+    Route::get('dashboard', [MastermindController::class, 'dashboard']);
+    Route::get('health', [HealthController::class, 'detailed']);
+    Route::get('companies', [MastermindController::class, 'companies']);
+    Route::post('companies', [MastermindController::class, 'storeCompany']);
+    Route::get('companies/{company}', [MastermindController::class, 'showCompany']);
+    Route::put('companies/{company}', [MastermindController::class, 'updateCompany']);
+    Route::patch('companies/{company}', [MastermindController::class, 'updateCompany']);
+    Route::delete('companies/{company}', [MastermindController::class, 'destroyCompany']);
+    Route::get('reports', [MastermindController::class, 'reports']);
 });

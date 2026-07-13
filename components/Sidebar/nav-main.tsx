@@ -66,54 +66,44 @@ export function NavMain({
       <ul className="space-y-2">
         {items.map((item) => (
           <li key={item.title} className="relative">
-            <div
-              onClick={() => toggleSection(item.title)}
-              className={cn(
-                "flex items-center justify-between hover:bg-primaryColor dark:hover:bg-blue-600 p-2 rounded-md group",
-                (item.isActive || openSections[item.title]) &&
-                  "bg-primaryColor text-white dark:bg-blue-600"
-              )}
-              role="button"
-              tabIndex={0}
-              aria-expanded={openSections[item.title]}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") {
-                  e.preventDefault();
-                  toggleSection(item.title);
-                }
-              }}
-            >
-              <Link
-                href={item.url}
-                className="flex items-center gap-2 w-full  "
-                aria-current={item.isActive ? "page" : undefined}
+            {item.items?.length ? (
+              <div
+                className={cn(
+                  "flex items-center justify-between hover:bg-primaryColor dark:hover:bg-primaryColor p-2 rounded-md group",
+                  (item.isActive || openSections[item.title]) &&
+                    "bg-primaryColor text-white dark:bg-primaryColor"
+                )}
               >
-                <item.icon
-                  width={24}
-                  className={cn(
-                    "text-black dark:text-slate-100 group-hover:text-white z-50",
-                    (item.isActive || openSections[item.title]) && "text-white"
-                  )}
-                />
-                <span
-                  className={cn(
-                    "text-16 text-black dark:text-slate-100 group-hover:text-white",
-                    (item.isActive || openSections[item.title]) && "text-white"
-                  )}
+                <Link
+                  href={item.url}
+                  className="flex items-center gap-2 w-full"
+                  aria-current={item.isActive ? "page" : undefined}
                 >
-                  {item.title}
-                </span>
-              </Link>
-              {item.items?.length ? (
+                  <item.icon
+                    width={24}
+                    className={cn(
+                      "text-black dark:text-slate-100 group-hover:text-white",
+                      (item.isActive || openSections[item.title]) && "text-white"
+                    )}
+                  />
+                  <span
+                    className={cn(
+                      "text-16 text-black dark:text-slate-100 group-hover:text-white",
+                      (item.isActive || openSections[item.title]) && "text-white"
+                    )}
+                  >
+                    {item.title}
+                  </span>
+                </Link>
                 <button
                   onClick={(e) => {
-                    e.preventDefault();
+                    e.stopPropagation();
                     toggleSection(item.title);
                   }}
                   className={cn(
-                    " text-black dark:text-slate-100 group-hover:text-white group-hover:bg-primaryColor focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primaryColor rounded",
+                    "p-1 rounded text-black dark:text-slate-100 group-hover:text-white group-hover:bg-primaryColor/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primaryColor",
                     (item.isActive || openSections[item.title]) &&
-                      "bg-primaryColor text-white dark:bg-blue-600"
+                      "bg-primaryColor text-white dark:bg-primaryColor"
                   )}
                   aria-label={openSections[item.title] ? `طي ${item.title}` : `توسيع ${item.title}`}
                   aria-expanded={openSections[item.title]}
@@ -124,8 +114,33 @@ export function NavMain({
                     } ${(item.isActive || openSections[item.title]) && "text-white"}`}
                   />
                 </button>
-              ) : null}
-            </div>
+              </div>
+            ) : (
+              <Link
+                href={item.url}
+                className={cn(
+                  "flex items-center gap-2 w-full hover:bg-primaryColor dark:hover:bg-primaryColor p-2 rounded-md group",
+                  item.isActive && "bg-primaryColor text-white dark:bg-primaryColor"
+                )}
+                aria-current={item.isActive ? "page" : undefined}
+              >
+                <item.icon
+                  width={24}
+                  className={cn(
+                    "text-black dark:text-slate-100 group-hover:text-white",
+                    item.isActive && "text-white"
+                  )}
+                />
+                <span
+                  className={cn(
+                    "text-16 text-black dark:text-slate-100 group-hover:text-white",
+                    item.isActive && "text-white"
+                  )}
+                >
+                  {item.title}
+                </span>
+              </Link>
+            )}
 
             {item.items?.length && openSections[item.title] ? (
               <ul className="mr-4 mt-2 space-y-1 ">
@@ -144,10 +159,10 @@ export function NavMain({
                         className={cn(
                           "flex items-center justify-between gap-2 text-14 px-2 py-1 rounded-md ms-3 group cursor-pointer",
                           isOpenActive
-                            ? "bg-primaryColor text-white dark:bg-blue-600"
+                            ? "bg-primaryColor text-white dark:bg-primaryColor"
                             : subItemHasActiveChild
-                              ? "bg-primaryColorLight text-primaryColor dark:bg-blue-900/30 dark:text-blue-400"
-                              : "text-black dark:text-slate-100 hover:bg-primaryColor dark:hover:bg-blue-600 hover:text-white"
+                              ? "bg-primaryColorLight text-primaryColor dark:bg-primaryColor/10 dark:text-primaryColor"
+                              : "text-black dark:text-slate-100 hover:bg-primaryColor dark:hover:bg-primaryColor hover:text-white"
                         )}
                         role="group"
                       >
@@ -162,7 +177,7 @@ export function NavMain({
                               isOpenActive && "text-white",
                               !isOpenActive &&
                                 subItemHasActiveChild &&
-                                "text-primaryColor dark:text-blue-400"
+                                "text-primaryColor dark:text-primaryColor"
                             )}
                           />
                           {subItem.title}
@@ -186,7 +201,7 @@ export function NavMain({
                                 isOpenActive
                                   ? "text-white"
                                   : subItemHasActiveChild
-                                    ? "text-primaryColor dark:text-blue-400"
+                                    ? "text-primaryColor dark:text-primaryColor"
                                     : "text-black dark:text-slate-100 group-hover:text-white",
                                 isSubItemOpen && "-rotate-90"
                               )}
@@ -203,15 +218,15 @@ export function NavMain({
                               <Link
                                 href={subSubItem.url}
                                 aria-current={subSubItem.active ? "page" : undefined}
-                                className={`flex items-center gap-2 text-14 text-black dark:text-slate-100 px-2 py-1 hover:bg-primaryColor dark:hover:bg-blue-600 hover:text-white rounded-md ms-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primaryColor ${
+                                className={`flex items-center gap-2 text-14 text-black dark:text-slate-100 px-2 py-1 hover:bg-primaryColor dark:hover:bg-primaryColor hover:text-white rounded-md ms-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primaryColor ${
                                   subSubItem.active
-                                    ? " bg-primaryColorLight text-primaryColor dark:bg-blue-900/30 dark:text-blue-400"
+                                    ? " bg-primaryColorLight text-primaryColor dark:bg-primaryColor/10 dark:text-primaryColor"
                                     : ""
                                 }`}
                               >
                                 <Flash
                                   className={`w-5 h-5 ${
-                                    subSubItem.active && "text-primaryColor dark:text-blue-400"
+                                    subSubItem.active && "text-primaryColor dark:text-primaryColor"
                                   }`}
                                 />
                                 {subSubItem.title}

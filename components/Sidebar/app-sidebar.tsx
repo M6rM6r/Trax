@@ -13,10 +13,11 @@ import {
 } from "@/components/ui/sidebar";
 import { NavMain } from "./nav-main";
 import { useMainNavItems } from "./nav-main-items";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter } from "@/i18n/navigation";
 import { MapPin, LogOut, Search } from "lucide-react";
 import { useAuthStore } from "@/stores/useAuthStore";
-import { deleteCookie } from "cookies-next";
+import { signOut } from "firebase/auth";
+import { auth } from "@/lib/config/firebase";
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const pathname = usePathname();
@@ -25,10 +26,14 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const sidebar = useSidebar();
   const { user, clearUser } = useAuthStore();
 
-  const handleLogout = () => {
-    deleteCookie("auth_token");
+  const handleLogout = async () => {
+    if (auth) {
+      try {
+        await signOut(auth);
+      } catch {}
+    }
     clearUser();
-    router.push("/ar/login");
+    router.push("/login");
   };
 
   const initials = user?.name
@@ -52,7 +57,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           sidebar.state === "collapsed" ? "flex-col" : "flex-row-reverse"
         }  gap-5 items-center justify-between`}
       >
-        <SidebarTrigger className="hover:bg-transparent text-white hover:text-white" />
+        <SidebarTrigger className="hover:bg-transparent text-white hover:text-white h-9 w-9 md:h-7 md:w-7" />
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton
@@ -61,8 +66,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               className=" hover:bg-transparent focus:bg-transparent "
             >
               <div className="flex items-center gap-3 px-1">
-                <div className="w-8 h-8 rounded-xl bg-blue-500/20 flex items-center justify-center shrink-0">
-                  <MapPin className="w-4 h-4 text-blue-400" />
+                <div className="w-8 h-8 rounded-xl bg-primaryColor/20 flex items-center justify-center shrink-0">
+                  <MapPin className="w-4 h-4 text-primaryColor" />
                 </div>
                 {sidebar.state !== "collapsed" && (
                   <span className="text-xl font-bold text-white tracking-wide">Trax</span>
@@ -94,7 +99,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       </SidebarContent>
       <SidebarFooter className="bg-colorTextDark border-t border-white/10 p-2">
         <div className="flex items-center gap-3 px-2 py-2">
-          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white text-xs font-bold shrink-0">
+          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center text-white text-xs font-bold shrink-0">
             {initials}
           </div>
           {sidebar.state !== "collapsed" && (

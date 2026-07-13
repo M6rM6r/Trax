@@ -11,8 +11,14 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        $this->call([
-            TraxDatabaseSeeder::class,
-        ]);
+        if (app()->environment('production')) {
+            $this->call([
+                ProductionSeeder::class,
+            ]);
+        } else {
+            $this->call([
+                TraxDatabaseSeeder::class,
+            ]);
+        }
     }
 }

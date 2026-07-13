@@ -1,7 +1,18 @@
 from __future__ import annotations
 
-from fastapi import FastAPI
+import os
+from contextlib import asynccontextmanager
+from typing import Any
+
+from fastapi import Depends, FastAPI, HTTPException, Request, status
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel, Field
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
+
+
+API_KEY = os.environ.get("TRAX_AI_API_KEY", "")
 
 
 class RetentionFeatures(BaseModel):
@@ -21,11 +32,37 @@ class RetentionInsight(BaseModel):
     confidence: float = Field(ge=0, le=1)
 
 
-app = FastAPI(title="Trax AI Service", version="0.1.0")
+security = HTTPBearer(auto_error=False)
+
+
+def verify_api_key(credentials: HTTPAuthorizationCredentials | None = Depends(security)) -> None:
+    if not API_KEY:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="AI service API key is not configured",
+        )
+    if not credentials or credentials.scheme.lower() != "bearer" or credentials.credentials != API_KEY:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or missing API key",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    if not API_KEY:
+        print("WARNING: TRAX_AI_API_KEY is not set. Retention endpoint is unprotected.")
+    yield
+
+
+app = FastAPI(title="Trax AI Service", version="0.2.0", lifespan=lifespan)
+limiter = Limiter(key_func=get_remote_address)
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 
 def _compute_retention_score(features: RetentionFeatures) -> int:
-    # Deterministic weighted model (easy to audit/operate)
     score = 100.0
     score -= features.absenceRate * 0.55
     score -= max(features.avgLateMinutes - 5, 0) * 0.9
@@ -72,8 +109,12 @@ def health() -> dict[str, str]:
     return {"status": "ok", "service": "trax-ai"}
 
 
-@app.post("/api/v1/retention/analyze")
-def analyze_retention(features: RetentionFeatures) -> dict[str, object]:
+@limiter.limit("30/minute")
+@app.post("/api/v1/retention/analyze", dependencies=[Depends(verify_api_key)])
+async def analyze_retention(
+    request: Request,
+    features: RetentionFeatures,
+) -> dict[str, Any]:
     score = _compute_retention_score(features)
     risk = _risk_level(score)
     actions = _actions(features, score)

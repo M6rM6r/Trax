@@ -87,6 +87,7 @@ export function useEmployees(options?: { enabled?: boolean }) {
   return useQuery<Employee[]>({
     queryKey: queryKeys.employees,
     enabled: options?.enabled ?? true,
+    staleTime: 30 * 1000,
     queryFn: async (): Promise<Employee[]> => {
       if (useMock) {
         const res = await api.employees.list();
@@ -169,6 +170,7 @@ export function useResetEmployeePassword() {
 export function useAttendance() {
   return useQuery<AttendanceRecord[]>({
     queryKey: queryKeys.attendance,
+    staleTime: 30 * 1000,
     queryFn: async (): Promise<AttendanceRecord[]> => {
       if (useMock) {
         const res = await api.attendance.list();
@@ -182,6 +184,7 @@ export function useAttendance() {
 export function useAttendanceReports() {
   return useQuery<AttendanceRecord[]>({
     queryKey: queryKeys.attendanceReports,
+    staleTime: 60 * 1000,
     queryFn: async (): Promise<AttendanceRecord[]> => {
       if (useMock) {
         const res = await api.attendance.reports();
@@ -236,6 +239,7 @@ export function useCheckOut() {
 export function useGeofences() {
   return useQuery<Geofence[]>({
     queryKey: queryKeys.geofences,
+    staleTime: 5 * 60 * 1000,
     queryFn: async (): Promise<Geofence[]> => {
       if (useMock) {
         const res = await api.geofences.list();
@@ -300,6 +304,7 @@ export function useDashboardStats(dateRange?: DashboardDateRange) {
 
   return useQuery<DashboardStats>({
     queryKey: [...queryKeys.dashboard, from ?? "all", to ?? "all"],
+    staleTime: 60 * 1000,
     queryFn: async (): Promise<DashboardStats> => {
       if (useMock) {
         const res = await api.dashboard.stats({ from, to });
@@ -330,6 +335,7 @@ export function useDashboardTrends(dateRange?: DashboardDateRange) {
 export function useLiveTracking() {
   return useQuery<LiveTrackingEmployee[]>({
     queryKey: queryKeys.tracking,
+    staleTime: 10 * 1000,
     queryFn: async (): Promise<LiveTrackingEmployee[]> => {
       if (useMock) {
         const res = await api.tracking.live();
@@ -345,25 +351,15 @@ export function useRetentionInsights(attendance: AttendanceRecord[], employees: 
   return useQuery<RetentionInsightResponse>({
     queryKey: [...queryKeys.aiRetention, attendance.length, employees.length],
     queryFn: async () => {
-      const aiUrl = env.NEXT_PUBLIC_AI_URL || "http://localhost:8001";
       const features: RetentionFeatures = buildRetentionFeatures(attendance, employees);
+      const data = await httpClient.post<unknown>("/ai/retention/analyze", features);
 
-      const response = await fetch(`${aiUrl}/api/v1/retention/analyze`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(features),
-      });
+      const payload =
+        data !== null && typeof data === "object" && "data" in (data as object)
+          ? (data as Record<string, unknown>).data
+          : data;
 
-      if (!response.ok) {
-        throw new Error("AI retention service unavailable");
-      }
-
-      const payload = (await response.json()) as {
-        success: boolean;
-        data: RetentionInsightResponse;
-      };
-
-      return payload.data;
+      return payload as RetentionInsightResponse;
     },
     enabled: attendance.length > 0,
     staleTime: 5 * 60 * 1000,

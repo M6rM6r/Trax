@@ -1,5 +1,6 @@
 import createNextIntlPlugin from "next-intl/plugin";
 import bundleAnalyzer from "@next/bundle-analyzer";
+import { withSentryConfig } from "@sentry/nextjs";
 
 const withBundleAnalyzer = bundleAnalyzer({
   enabled: process.env.ANALYZE === "true",
@@ -38,7 +39,8 @@ const nextConfig = {
   images: {
     formats: ['image/avif', 'image/webp'],
     remotePatterns: [
-      { protocol: "https", hostname: "**" },
+      { protocol: "https", hostname: "firebasestorage.googleapis.com" },
+      { protocol: "https", hostname: "lh3.googleusercontent.com" },
     ],
   },
   webpack(config) {
@@ -66,4 +68,17 @@ const nextConfig = {
 };
 
 const withNextIntl = createNextIntlPlugin();
-export default withBundleAnalyzer(withNextIntl(nextConfig));
+export default withSentryConfig(
+  withBundleAnalyzer(withNextIntl(nextConfig)),
+  {
+    org: process.env.SENTRY_ORG,
+    project: process.env.SENTRY_PROJECT,
+    silent: !process.env.NEXT_PUBLIC_SENTRY_DSN,
+    hideSourceMaps: true,
+    webpack: {
+      treeshake: {
+        removeDebugLogging: true,
+      },
+    },
+  }
+);

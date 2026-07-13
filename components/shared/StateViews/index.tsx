@@ -9,6 +9,31 @@ import { motion } from "framer-motion";
 
 type SkeletonVariant = "cards" | "table" | "list" | "map" | "chart";
 
+interface LoadingStateProps {
+  message?: string;
+  icon?: ComponentType<{ className?: string }>;
+}
+
+export function LoadingState({
+  message = "جاري التحميل...",
+  icon: _Icon = RefreshCw,
+}: LoadingStateProps) {
+  return (
+    <Card className="border-0 shadow-lg dark:bg-slate-800" role="status" aria-label={message}>
+      <CardContent className="py-16 flex flex-col items-center justify-center text-center">
+        <motion.div
+          animate={{ rotate: 360 }}
+          transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+          className="w-16 h-16 rounded-full bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center mb-4"
+        >
+          <_Icon className="w-8 h-8 text-blue-500 dark:text-blue-400" aria-hidden />
+        </motion.div>
+        <h3 className="text-lg font-bold text-gray-700 dark:text-slate-200 mb-2">{message}</h3>
+      </CardContent>
+    </Card>
+  );
+}
+
 export function LoadingSkeleton({ variant }: { variant: SkeletonVariant }) {
   if (variant === "cards") {
     return (
@@ -182,6 +207,7 @@ interface EmptyStateProps {
   secondaryActionLabel?: string;
   onSecondaryAction?: () => void;
   tip?: string;
+  tips?: string[];
   illustration?: "employees" | "attendance" | "geofences" | "ai" | "default";
 }
 
@@ -209,7 +235,7 @@ const illustrationConfig: Record<string, { gradient: string; emoji: string }> = 
 };
 
 export function EmptyState({
-  icon: Icon = Inbox,
+  icon: _Icon = Inbox,
   title = "لا توجد بيانات",
   description = "لم يتم العثور على أي سجلات",
   actionLabel,
@@ -217,22 +243,50 @@ export function EmptyState({
   secondaryActionLabel,
   onSecondaryAction,
   tip,
+  tips,
   illustration = "default",
 }: EmptyStateProps) {
   const config = illustrationConfig[illustration] ?? illustrationConfig.default;
+  const allTips = tips ?? (tip ? [tip] : []);
   return (
     <Card className="border-0 shadow-lg animate-scale-in" role="region" aria-label={title}>
       <CardContent className="py-16 flex flex-col items-center justify-center text-center">
         <motion.div
-          animate={{ y: [0, -8, 0] }}
-          transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
-          className={`w-24 h-24 rounded-3xl bg-gradient-to-br ${config.gradient} flex items-center justify-center mb-6 text-4xl`}
+          initial={{ scale: 0.8, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ type: "spring", stiffness: 260, damping: 20 }}
+          className="mb-6"
         >
-          {config.emoji}
+          <motion.div
+            animate={{ y: [0, -8, 0] }}
+            transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+            className={`w-24 h-24 rounded-3xl bg-gradient-to-br ${config.gradient} flex items-center justify-center text-4xl`}
+          >
+            {config.emoji}
+          </motion.div>
         </motion.div>
-        <h3 className="text-lg font-bold text-gray-700 dark:text-slate-200 mb-2">{title}</h3>
-        <p className="text-sm text-gray-500 dark:text-slate-400 mb-6 max-w-sm">{description}</p>
-        <div className="flex items-center gap-3 flex-wrap justify-center">
+        <motion.h3
+          initial={{ y: 10, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ delay: 0.1 }}
+          className="text-lg font-bold text-gray-700 dark:text-slate-200 mb-2"
+        >
+          {title}
+        </motion.h3>
+        <motion.p
+          initial={{ y: 10, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ delay: 0.2 }}
+          className="text-sm text-gray-500 dark:text-slate-400 mb-6 max-w-sm"
+        >
+          {description}
+        </motion.p>
+        <motion.div
+          initial={{ y: 10, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ delay: 0.3 }}
+          className="flex items-center gap-3 flex-wrap justify-center"
+        >
           {actionLabel && onAction && (
             <Button
               variant="primary"
@@ -253,38 +307,69 @@ export function EmptyState({
               {secondaryActionLabel}
             </Button>
           )}
-        </div>
-        {tip && (
-          <p className="text-xs text-gray-400 dark:text-slate-500 mt-6 max-w-xs">
-            <span className="font-medium">💡 نصيحة: </span>
-            {tip}
-          </p>
+        </motion.div>
+        {allTips.length > 0 && (
+          <div className="mt-6 max-w-xs space-y-2">
+            {allTips.map((t, i) => (
+              <motion.p
+                key={i}
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.4 + i * 0.1 }}
+                className="text-xs text-gray-400 dark:text-slate-500 flex items-start gap-1.5 text-right"
+              >
+                <span className="shrink-0">💡</span>
+                <span>{t}</span>
+              </motion.p>
+            ))}
+          </div>
         )}
       </CardContent>
     </Card>
   );
 }
 
-export function ErrorState({ onRetry }: { onRetry?: () => void }) {
+export function ErrorState({
+  onRetry,
+  message,
+  retryCount,
+  isRetrying,
+}: {
+  onRetry?: () => void;
+  message?: string;
+  retryCount?: number;
+  isRetrying?: boolean;
+}) {
   return (
     <Card className="border-0 shadow-lg animate-scale-in" role="alert">
       <CardContent className="py-16 flex flex-col items-center justify-center text-center">
-        <div className="w-16 h-16 rounded-full bg-red-50 dark:bg-red-900/20 flex items-center justify-center mb-4">
+        <motion.div
+          initial={{ x: 0 }}
+          animate={{ x: [0, -10, 10, -10, 10, 0] }}
+          transition={{ duration: 0.5, delay: 0.2 }}
+          className="w-16 h-16 rounded-full bg-red-50 dark:bg-red-900/20 flex items-center justify-center mb-4"
+        >
           <AlertCircle className="w-8 h-8 text-red-500 dark:text-red-400" aria-hidden />
-        </div>
+        </motion.div>
         <h3 className="text-lg font-bold text-gray-700 dark:text-slate-200 mb-2">
-          حدث خطأ أثناء تحميل البيانات
+          {message || "حدث خطأ أثناء تحميل البيانات"}
         </h3>
         <p className="text-sm text-gray-500 dark:text-slate-400 mb-6">يرجى المحاولة مرة أخرى</p>
+        {retryCount && retryCount > 0 && (
+          <p className="text-xs text-amber-500 dark:text-amber-400 mb-3">
+            المحاولة {retryCount} من 3
+          </p>
+        )}
         {onRetry && (
           <Button
             variant="outline"
             onClick={onRetry}
+            disabled={isRetrying}
             className="flex items-center gap-2"
             aria-label="إعادة المحاولة"
           >
-            <RefreshCw className="w-4 h-4" aria-hidden />
-            إعادة المحاولة
+            <RefreshCw className={`w-4 h-4 ${isRetrying ? "animate-spin" : ""}`} aria-hidden />
+            {isRetrying ? "جاري إعادة المحاولة..." : "إعادة المحاولة"}
           </Button>
         )}
       </CardContent>

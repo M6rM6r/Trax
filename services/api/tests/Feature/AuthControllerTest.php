@@ -2,54 +2,41 @@
 
 namespace Tests\Feature;
 
-use Tests\TestCase;
+use App\Models\User;
+use Database\Seeders\TraxDatabaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\TestCase;
+use Tests\Traits\MockFirebaseAuth;
 
 class AuthControllerTest extends TestCase
 {
+    use MockFirebaseAuth;
     use RefreshDatabase;
 
-    public function test_login_with_valid_credentials_returns_token(): void
+    public function test_firebase_login_returns_user_data(): void
     {
-        $this->seed(\Database\Seeders\TraxDatabaseSeeder::class);
+        $this->seed(TraxDatabaseSeeder::class);
+        $user = User::where('email', 'boss@trax.com')->first();
 
-        $response = $this->postJson('/api/auth/login', [
-            'email' => 'boss@trax.com',
-            'password' => '12345678',
+        $this->mockFirebaseAuth($user);
+
+        $response = $this->postJson('/api/auth/firebase', [
+            'id_token' => 'mock-firebase-token',
         ]);
 
         $response->assertStatus(200)
             ->assertJsonStructure([
-                'data' => ['token', 'user' => ['id', 'name', 'email', 'role']],
+                'success',
+                'data' => ['user' => ['id', 'name', 'email', 'role']],
             ]);
     }
 
-    public function test_login_with_invalid_credentials_returns_401(): void
+    public function test_firebase_login_without_token_returns_422(): void
     {
-        $response = $this->postJson('/api/auth/login', [
-            'email' => 'wrong@trax.com',
-            'password' => 'wrongpassword',
-        ]);
-
-        $response->assertStatus(401);
-    }
-
-    public function test_login_validation_requires_password(): void
-    {
-        $response = $this->postJson('/api/auth/login', []);
+        $response = $this->postJson('/api/auth/firebase', []);
 
         $response->assertStatus(422)
-            ->assertJsonValidationErrors(['password']);
-    }
-
-    public function test_login_validation_requires_identifier_when_password_exists(): void
-    {
-        $response = $this->postJson('/api/auth/login', [
-            'password' => '12345678',
-        ]);
-
-        $response->assertStatus(422)
-            ->assertJsonPath('message', 'Identifier is required');
+            ->assertJsonValidationErrors(['id_token']);
     }
 
     public function test_protected_route_without_token_returns_401(): void

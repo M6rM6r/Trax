@@ -7,25 +7,30 @@ namespace App\OpenApi;
  *     title="Trax API",
  *     description="Employee Tracking & Attendance Management System API",
  *     version="1.0.0",
+ *
  *     @OA\Contact(
  *         email="support@trax.com",
  *         name="Trax Support"
  *     )
  * )
+ *
  * @OA\Server(
  *     url="http://localhost:8000",
  *     description="Local Development Server"
  * )
+ *
  * @OA\SecurityScheme(
  *     securityScheme="bearerAuth",
  *     type="http",
  *     scheme="bearer",
- *     bearerFormat="JWT",
- *     description="Enter JWT token from /api/auth/login"
+ *     bearerFormat="Firebase",
+ *     description="Enter Firebase ID token from Firebase Auth"
  * )
+ *
  * @OA\Schema(
  *     schema="Employee",
  *     type="object",
+ *
  *     @OA\Property(property="id", type="integer", example=1),
  *     @OA\Property(property="name", type="string", example="Ahmed Mohammed"),
  *     @OA\Property(property="email", type="string", example="ahmed@trax.com"),
@@ -40,9 +45,11 @@ namespace App\OpenApi;
  *     @OA\Property(property="currentLng", type="number", nullable=true),
  *     @OA\Property(property="lastSeen", type="string", format="date-time", nullable=true)
  * )
+ *
  * @OA\Schema(
  *     schema="AttendanceRecord",
  *     type="object",
+ *
  *     @OA\Property(property="id", type="integer", example=1),
  *     @OA\Property(property="employeeId", type="integer", example=1),
  *     @OA\Property(property="employeeName", type="string", example="Ahmed Mohammed"),
@@ -56,9 +63,11 @@ namespace App\OpenApi;
  *     @OA\Property(property="checkInLat", type="number", nullable=true),
  *     @OA\Property(property="checkInLng", type="number", nullable=true)
  * )
+ *
  * @OA\Schema(
  *     schema="Geofence",
  *     type="object",
+ *
  *     @OA\Property(property="id", type="integer", example=1),
  *     @OA\Property(property="name", type="string", example="Main Headquarters"),
  *     @OA\Property(property="address", type="string", example="Riyadh, Saudi Arabia"),
@@ -69,9 +78,11 @@ namespace App\OpenApi;
  *     @OA\Property(property="active", type="boolean", example=true),
  *     @OA\Property(property="employeeCount", type="integer", example=5)
  * )
+ *
  * @OA\Schema(
  *     schema="DashboardStats",
  *     type="object",
+ *
  *     @OA\Property(property="totalEmployees", type="integer", example=8),
  *     @OA\Property(property="activeEmployees", type="integer", example=7),
  *     @OA\Property(property="inactiveEmployees", type="integer", example=1),
@@ -84,9 +95,11 @@ namespace App\OpenApi;
  *     @OA\Property(property="avgWorkedHours", type="number", example=8.0),
  *     @OA\Property(property="totalGeofences", type="integer", example=3)
  * )
+ *
  * @OA\Schema(
  *     schema="LiveTrackingEmployee",
  *     type="object",
+ *
  *     @OA\Property(property="id", type="integer", example=1),
  *     @OA\Property(property="name", type="string", example="Ahmed Mohammed"),
  *     @OA\Property(property="lat", type="number", example=24.7136),
@@ -97,6 +110,4 @@ namespace App\OpenApi;
  *     @OA\Property(property="battery", type="integer", example=85)
  * )
  */
-class Schemas
-{
-}
+class Schemas {}

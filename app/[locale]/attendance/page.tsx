@@ -23,7 +23,8 @@ import { useAttendance, useEmployees } from "@/hooks/useApi";
 import { exportAttendanceToCSV, exportAttendanceToPDF } from "@/lib/utils/exportUtils";
 import { toastSuccess } from "@/hooks/use-toast";
 import { hapticTap } from "@/lib/utils/haptics";
-import { LoadingSkeleton, EmptyState, ErrorState } from "@/components/shared/StateViews";
+import { EmptyState, ErrorState } from "@/components/shared/StateViews";
+import AttendanceSkeleton from "@/components/shared/Skeletons/AttendanceSkeleton";
 import { DataTable } from "@/components/shared/DataTable/DataTable";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { motion, AnimatePresence } from "framer-motion";
@@ -539,7 +540,7 @@ export default function AttendancePage() {
           ))}
         </div>
 
-        {isLoading && <LoadingSkeleton variant="table" />}
+        {isLoading && <AttendanceSkeleton />}
         {isError && <ErrorState onRetry={() => refetch()} />}
         {!isLoading && !isError && filteredAttendance.length === 0 && (
           <EmptyState

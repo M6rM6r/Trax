@@ -4,7 +4,7 @@ import { AdminUser } from "@/lib/types/responseTypes";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
-export type UserRole = "boss" | "employee";
+export type UserRole = "boss" | "manager" | "supervisor" | "employee";
 
 interface AuthState {
   user: AdminUser | null;
@@ -41,9 +41,6 @@ export const useAuthStore = create<AuthState>()(
         }),
       setRole: (role) => set({ role }),
       clearUser: () => {
-        if (typeof document !== "undefined") {
-          document.cookie = "auth_token=; Max-Age=0; path=/";
-        }
         set({ user: null, token: null, role: null, companyId: null, companyName: null });
       },
     }),

@@ -4,20 +4,21 @@ namespace App\Http\Middleware;
 
 use Closure;
 use Illuminate\Http\Request;
+use Symfony\Component\HttpFoundation\Response;
 
 class EnsureCompanyActive
 {
-    public function handle(Request $request, Closure $next)
+    public function handle(Request $request, Closure $next): Response
     {
         $user = $request->user();
 
-        if (!$user || !$user->company_id) {
+        if (! $user || ! $user->company_id) {
             return response()->json(['success' => false, 'message' => 'No company associated with this account.'], 403);
         }
 
         $company = $user->company;
 
-        if (!$company || !$company->active) {
+        if (! $company || ! $company->active) {
             return response()->json(['success' => false, 'message' => 'Company account is suspended.'], 403);
         }
 

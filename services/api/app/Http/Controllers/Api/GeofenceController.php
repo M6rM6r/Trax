@@ -3,17 +3,18 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\Geofence;
-use App\Http\Resources\GeofenceResource;
 use App\Http\Requests\StoreGeofenceRequest;
 use App\Http\Requests\UpdateGeofenceRequest;
+use App\Http\Resources\GeofenceResource;
+use App\Models\Geofence;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 class GeofenceController extends Controller
 {
     private function companyId(): int
     {
-        return auth()->user()->company_id;
+        return (int) (auth()->user()?->company_id ?? 0);
     }
 
     public function index(): JsonResponse
@@ -23,11 +24,11 @@ class GeofenceController extends Controller
         return response()->json(['success' => true, 'data' => GeofenceResource::collection($geofences)]);
     }
 
-    public function show($id): JsonResponse
+    public function show(int $id): JsonResponse
     {
         $geofence = Geofence::where('company_id', $this->companyId())->withCount('employees')->find($id);
 
-        if (!$geofence) {
+        if (! $geofence) {
             return response()->json(['success' => false, 'message' => 'Geofence not found'], 404);
         }
 
@@ -41,11 +42,11 @@ class GeofenceController extends Controller
         return response()->json(['success' => true, 'message' => 'Geofence created', 'data' => new GeofenceResource($geofence)], 201);
     }
 
-    public function update(UpdateGeofenceRequest $request, $id): JsonResponse
+    public function update(UpdateGeofenceRequest $request, int $id): JsonResponse
     {
         $geofence = Geofence::where('company_id', $this->companyId())->find($id);
 
-        if (!$geofence) {
+        if (! $geofence) {
             return response()->json(['success' => false, 'message' => 'Geofence not found'], 404);
         }
 
@@ -54,11 +55,11 @@ class GeofenceController extends Controller
         return response()->json(['success' => true, 'message' => 'Geofence updated', 'data' => new GeofenceResource($geofence)]);
     }
 
-    public function destroy($id): JsonResponse
+    public function destroy(int $id): JsonResponse
     {
         $geofence = Geofence::where('company_id', $this->companyId())->find($id);
 
-        if (!$geofence) {
+        if (! $geofence) {
             return response()->json(['success' => false, 'message' => 'Geofence not found'], 404);
         }
 
@@ -67,15 +68,20 @@ class GeofenceController extends Controller
         return response()->json(['success' => true, 'message' => 'Geofence deleted']);
     }
 
-    public function checkInside(\Illuminate\Http\Request $request): JsonResponse
+    public function checkInside(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'lat'         => 'required|numeric|between:-90,90',
-            'lng'         => 'required|numeric|between:-180,180',
+            'lat' => 'required|numeric|between:-90,90',
+            'lng' => 'required|numeric|between:-180,180',
             'geofence_id' => 'required|exists:geofences,id',
         ]);
 
         $geofence = Geofence::where('company_id', $this->companyId())->find($validated['geofence_id']);
+
+        if (! $geofence) {
+            return response()->json(['success' => false, 'message' => 'Geofence not found'], 404);
+        }
+
         $distance = $this->haversineDistance(
             $validated['lat'],
             $validated['lng'],

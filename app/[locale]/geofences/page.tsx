@@ -3,16 +3,17 @@
 import { useState, useEffect, useRef } from "react";
 import MainLayout from "@/components/shared/MainLayout";
 import FullPageHead from "@/components/shared/FullPageHead";
-import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { MapPin, Plus, Trash2, Edit, X, Pencil, Check, Activity, Circle, Eye } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
+import { MapPin, Plus, Trash2, Edit, X, Pencil, Check, Eye } from "lucide-react";
 import {
   useGeofences,
   useCreateGeofence,
   useDeleteGeofence,
   useUpdateGeofence,
 } from "@/hooks/useApi";
-import { LoadingSkeleton, EmptyState, ErrorState } from "@/components/shared/StateViews";
+import { EmptyState, ErrorState } from "@/components/shared/StateViews";
+import GeofenceSkeleton from "@/components/shared/Skeletons/GeofenceSkeleton";
 import ConfirmDialog from "@/components/shared/ConfirmDialog";
 import { FormDrawer } from "@/components/shared/FormDrawer";
 import { useToast } from "@/hooks/use-toast";
@@ -175,13 +176,13 @@ export default function GeofencesPage() {
   ) => {
     const center = fromLonLat([lng, lat]);
 
-    if (!markerFeatureRef.current) {
-      markerFeatureRef.current = new Feature({ geometry: new Point(center) });
-      source.addFeature(markerFeatureRef.current);
-    } else {
-      markerFeatureRef.current.setGeometry(new Point(center));
-    }
+    // Clear everything so no duplicate or leftover circles remain
+    source.clear();
+    markerFeatureRef.current = null;
+    circleFeatureRef.current = null;
 
+    markerFeatureRef.current = new Feature({ geometry: new Point(center) });
+    source.addFeature(markerFeatureRef.current);
     markerFeatureRef.current.setStyle(
       new Style({
         image: new CircleStyle({
@@ -192,13 +193,8 @@ export default function GeofencesPage() {
       })
     );
 
-    if (!circleFeatureRef.current) {
-      circleFeatureRef.current = new Feature({ geometry: new CircleGeom(center, radius) });
-      source.addFeature(circleFeatureRef.current);
-    } else {
-      circleFeatureRef.current.setGeometry(new CircleGeom(center, radius));
-    }
-
+    circleFeatureRef.current = new Feature({ geometry: new CircleGeom(center, radius) });
+    source.addFeature(circleFeatureRef.current);
     circleFeatureRef.current.setStyle(
       new Style({
         stroke: new Stroke({ color, width: 2 }),
@@ -216,13 +212,13 @@ export default function GeofencesPage() {
   ) => {
     const center = fromLonLat([lng, lat]);
 
-    if (!editMarkerFeatureRef.current) {
-      editMarkerFeatureRef.current = new Feature({ geometry: new Point(center) });
-      source.addFeature(editMarkerFeatureRef.current);
-    } else {
-      editMarkerFeatureRef.current.setGeometry(new Point(center));
-    }
+    // Clear everything so no duplicate or leftover circles remain
+    source.clear();
+    editMarkerFeatureRef.current = null;
+    editCircleFeatureRef.current = null;
 
+    editMarkerFeatureRef.current = new Feature({ geometry: new Point(center) });
+    source.addFeature(editMarkerFeatureRef.current);
     editMarkerFeatureRef.current.setStyle(
       new Style({
         image: new CircleStyle({
@@ -233,13 +229,8 @@ export default function GeofencesPage() {
       })
     );
 
-    if (!editCircleFeatureRef.current) {
-      editCircleFeatureRef.current = new Feature({ geometry: new CircleGeom(center, radius) });
-      source.addFeature(editCircleFeatureRef.current);
-    } else {
-      editCircleFeatureRef.current.setGeometry(new CircleGeom(center, radius));
-    }
-
+    editCircleFeatureRef.current = new Feature({ geometry: new CircleGeom(center, radius) });
+    source.addFeature(editCircleFeatureRef.current);
     editCircleFeatureRef.current.setStyle(
       new Style({
         stroke: new Stroke({ color, width: 2 }),
@@ -289,6 +280,7 @@ export default function GeofencesPage() {
 
       map.on("click", (e) => {
         const [lng, lat] = toLonLat(e.coordinate);
+        map!.getView().setCenter(e.coordinate);
         setNewGeofence((prev) => ({
           ...prev,
           lat: Number(lat.toFixed(6)),
@@ -304,8 +296,10 @@ export default function GeofencesPage() {
       clearTimeout(sizeTimer);
       markerFeatureRef.current = null;
       circleFeatureRef.current = null;
+      drawSourceRef.current = null;
       map?.setTarget(undefined);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showAddForm]);
 
   useEffect(() => {
@@ -361,6 +355,7 @@ export default function GeofencesPage() {
 
       map.on("click", (e) => {
         const [lng, lat] = toLonLat(e.coordinate);
+        map!.getView().setCenter(e.coordinate);
         setEditGeofence((prev) => ({
           ...prev,
           lat: Number(lat.toFixed(6)),
@@ -376,6 +371,7 @@ export default function GeofencesPage() {
       clearTimeout(sizeTimer);
       editMarkerFeatureRef.current = null;
       editCircleFeatureRef.current = null;
+      editDrawSourceRef.current = null;
       if (editDrawInteractionRef.current && editDrawerMapInstance.current) {
         editDrawerMapInstance.current.removeInteraction(editDrawInteractionRef.current);
       }
@@ -383,6 +379,7 @@ export default function GeofencesPage() {
       setEditDrawMode(false);
       map?.setTarget(undefined);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editTarget]);
 
   useEffect(() => {
@@ -407,7 +404,22 @@ export default function GeofencesPage() {
         drawInteractionRef.current = null;
       }
       setDrawMode(false);
+      // Restore the static preview based on current form values
+      if (drawSourceRef.current) {
+        syncDrawerCircle(
+          drawSourceRef.current,
+          newGeofence.lng,
+          newGeofence.lat,
+          Math.max(1, Number(newGeofence.radius) || 1),
+          newGeofence.color
+        );
+      }
     } else {
+      // Hide the static preview while the user is drawing a circle
+      drawSourceRef.current.clear();
+      markerFeatureRef.current = null;
+      circleFeatureRef.current = null;
+
       const draw = new Draw({
         source: drawSourceRef.current,
         type: "Circle",
@@ -451,7 +463,22 @@ export default function GeofencesPage() {
         editDrawInteractionRef.current = null;
       }
       setEditDrawMode(false);
+      // Restore the static preview based on current form values
+      if (editDrawSourceRef.current) {
+        syncEditDrawerCircle(
+          editDrawSourceRef.current,
+          editGeofence.lng,
+          editGeofence.lat,
+          Math.max(1, Number(editGeofence.radius) || 1),
+          editGeofence.color
+        );
+      }
     } else {
+      // Hide the static preview while the user is drawing a circle
+      editDrawSourceRef.current.clear();
+      editMarkerFeatureRef.current = null;
+      editCircleFeatureRef.current = null;
+
       const draw = new Draw({
         source: editDrawSourceRef.current,
         type: "Circle",
@@ -580,65 +607,6 @@ export default function GeofencesPage() {
           }
         />
 
-        {/* Stats summary row */}
-        {geofences.length > 0 && (
-          <div className="grid grid-cols-3 gap-4">
-            {[
-              {
-                label: "إجمالي النطاقات",
-                value: geofences.length,
-                icon: MapPin,
-                color: "blue",
-              },
-              {
-                label: "نشطة",
-                value: geofences.filter((g) => g.active).length,
-                icon: Activity,
-                color: "green",
-              },
-              {
-                label: "متوقفة",
-                value: geofences.filter((g) => !g.active).length,
-                icon: Circle,
-                color: "gray",
-              },
-            ].map((stat) => {
-              const Icon = stat.icon;
-              return (
-                <Card key={stat.label} className="border-0 shadow-md dark:bg-slate-800">
-                  <CardContent className="flex items-center gap-3 py-4">
-                    <div
-                      className={`w-9 h-9 rounded-lg flex items-center justify-center ${
-                        stat.color === "blue"
-                          ? "bg-blue-100 dark:bg-blue-900/30"
-                          : stat.color === "green"
-                            ? "bg-green-100 dark:bg-green-900/30"
-                            : "bg-gray-100 dark:bg-slate-700"
-                      }`}
-                    >
-                      <Icon
-                        className={`w-4 h-4 ${
-                          stat.color === "blue"
-                            ? "text-blue-600 dark:text-blue-400"
-                            : stat.color === "green"
-                              ? "text-green-600 dark:text-green-400"
-                              : "text-gray-500 dark:text-slate-400"
-                        }`}
-                      />
-                    </div>
-                    <div>
-                      <p className="text-xl font-bold text-gray-900 dark:text-slate-100">
-                        {stat.value}
-                      </p>
-                      <p className="text-xs text-gray-500 dark:text-slate-400">{stat.label}</p>
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })}
-          </div>
-        )}
-
         {/* Form Drawer */}
         <FormDrawer
           open={showAddForm}
@@ -659,7 +627,7 @@ export default function GeofencesPage() {
                 onClick={toggleDrawMode}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
                   drawMode
-                    ? "bg-blue-600 text-white"
+                    ? "bg-primaryColor text-white"
                     : "bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-slate-300"
                 }`}
               >
@@ -686,7 +654,7 @@ export default function GeofencesPage() {
               type="text"
               value={newGeofence.name}
               onChange={(e) => setNewGeofence({ ...newGeofence, name: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-transparent dark:bg-slate-900 text-gray-900 dark:text-slate-100"
+              className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg outline-none focus:ring-2 focus:ring-primaryColor bg-transparent dark:bg-slate-900 text-gray-900 dark:text-slate-100"
               placeholder="اسم الموقع"
             />
           </div>
@@ -698,7 +666,7 @@ export default function GeofencesPage() {
               type="text"
               value={newGeofence.address}
               onChange={(e) => setNewGeofence({ ...newGeofence, address: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-transparent dark:bg-slate-900 text-gray-900 dark:text-slate-100"
+              className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg outline-none focus:ring-2 focus:ring-primaryColor bg-transparent dark:bg-slate-900 text-gray-900 dark:text-slate-100"
               placeholder="العنوان"
             />
           </div>
@@ -712,7 +680,7 @@ export default function GeofencesPage() {
                 step="0.0001"
                 value={newGeofence.lat}
                 onChange={(e) => setNewGeofence({ ...newGeofence, lat: Number(e.target.value) })}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-transparent dark:bg-slate-900 text-gray-900 dark:text-slate-100"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg outline-none focus:ring-2 focus:ring-primaryColor bg-transparent dark:bg-slate-900 text-gray-900 dark:text-slate-100"
               />
             </div>
             <div>
@@ -724,7 +692,7 @@ export default function GeofencesPage() {
                 step="0.0001"
                 value={newGeofence.lng}
                 onChange={(e) => setNewGeofence({ ...newGeofence, lng: Number(e.target.value) })}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-transparent dark:bg-slate-900 text-gray-900 dark:text-slate-100"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg outline-none focus:ring-2 focus:ring-primaryColor bg-transparent dark:bg-slate-900 text-gray-900 dark:text-slate-100"
               />
             </div>
           </div>
@@ -737,7 +705,7 @@ export default function GeofencesPage() {
                 type="number"
                 value={newGeofence.radius}
                 onChange={(e) => setNewGeofence({ ...newGeofence, radius: Number(e.target.value) })}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-transparent dark:bg-slate-900 text-gray-900 dark:text-slate-100"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg outline-none focus:ring-2 focus:ring-primaryColor bg-transparent dark:bg-slate-900 text-gray-900 dark:text-slate-100"
               />
             </div>
             <div>
@@ -754,7 +722,7 @@ export default function GeofencesPage() {
           </div>
         </FormDrawer>
 
-        {isLoading && <LoadingSkeleton variant="cards" />}
+        {isLoading && <GeofenceSkeleton />}
         {isError && <ErrorState onRetry={() => refetch()} />}
         {!isLoading && !isError && geofences.length === 0 && (
           <EmptyState
@@ -835,7 +803,7 @@ export default function GeofencesPage() {
                           hapticTap();
                           setPreviewGeofence(geo);
                         }}
-                        className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-medium text-gray-600 dark:text-slate-400 hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-blue-900/20 dark:hover:text-blue-400 transition-colors"
+                        className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-medium text-gray-600 dark:text-slate-400 hover:bg-primaryColor/10 hover:text-primaryColor dark:hover:bg-primaryColor/10 dark:hover:text-primaryColor transition-colors"
                         aria-label="عرض على الخريطة"
                       >
                         <Eye className="w-3.5 h-3.5" />
@@ -887,7 +855,7 @@ export default function GeofencesPage() {
                   onClick={toggleEditDrawMode}
                   className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
                     editDrawMode
-                      ? "bg-blue-600 text-white"
+                      ? "bg-primaryColor text-white"
                       : "bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-slate-300"
                   }`}
                 >
@@ -914,7 +882,7 @@ export default function GeofencesPage() {
                 type="text"
                 value={editGeofence.name}
                 onChange={(e) => setEditGeofence({ ...editGeofence, name: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-transparent dark:bg-slate-900 text-gray-900 dark:text-slate-100"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg outline-none focus:ring-2 focus:ring-primaryColor bg-transparent dark:bg-slate-900 text-gray-900 dark:text-slate-100"
                 placeholder="اسم الموقع"
               />
             </div>
@@ -926,7 +894,7 @@ export default function GeofencesPage() {
                 type="text"
                 value={editGeofence.address}
                 onChange={(e) => setEditGeofence({ ...editGeofence, address: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-transparent dark:bg-slate-900 text-gray-900 dark:text-slate-100"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg outline-none focus:ring-2 focus:ring-primaryColor bg-transparent dark:bg-slate-900 text-gray-900 dark:text-slate-100"
                 placeholder="العنوان"
               />
             </div>
@@ -942,7 +910,7 @@ export default function GeofencesPage() {
                   onChange={(e) =>
                     setEditGeofence({ ...editGeofence, lat: Number(e.target.value) })
                   }
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-transparent dark:bg-slate-900 text-gray-900 dark:text-slate-100"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg outline-none focus:ring-2 focus:ring-primaryColor bg-transparent dark:bg-slate-900 text-gray-900 dark:text-slate-100"
                 />
               </div>
               <div>
@@ -956,7 +924,7 @@ export default function GeofencesPage() {
                   onChange={(e) =>
                     setEditGeofence({ ...editGeofence, lng: Number(e.target.value) })
                   }
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-transparent dark:bg-slate-900 text-gray-900 dark:text-slate-100"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg outline-none focus:ring-2 focus:ring-primaryColor bg-transparent dark:bg-slate-900 text-gray-900 dark:text-slate-100"
                 />
               </div>
             </div>
@@ -971,7 +939,7 @@ export default function GeofencesPage() {
                   onChange={(e) =>
                     setEditGeofence({ ...editGeofence, radius: Number(e.target.value) })
                   }
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-transparent dark:bg-slate-900 text-gray-900 dark:text-slate-100"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg outline-none focus:ring-2 focus:ring-primaryColor bg-transparent dark:bg-slate-900 text-gray-900 dark:text-slate-100"
                 />
               </div>
               <div>

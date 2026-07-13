@@ -1,43 +1,99 @@
   Γû▓ Next.js 14.2.18
   - Local:        http://localhost:3000
   - Environments: .env.local, .env
+  - Experiments (use with caution):
+    ┬╖ instrumentationHook
 
  Γ£ô Starting...
- Γ£ô Ready in 1802ms
- Γ£ô Compiled /middleware in 438ms (106 modules)
- Γùï Compiling /[locale]/login ...
- Γ£ô Compiled /[locale]/login in 8.3s (2151 modules)
- Γ£ô Compiled in 389ms (1026 modules)
- Γ£ô Compiled in 132ms (1012 modules)
- GET /ar/login 200 in 1913ms
- GET /ar/login 200 in 9054ms
- Γùï Compiling /favicon.ico ...
- Γ£ô Compiled /favicon.ico in 2.7s (1147 modules)
- GET /favicon.ico 200 in 2739ms
- GET /ar/login 200 in 190ms
- GET /ar/login 200 in 81ms
- GET /favicon.ico 200 in 8ms
+[@sentry/nextjs] It appears you've configured a `sentry.server.config.ts` file. Please ensure to put this file's content into the `register()` function of a Next.js instrumentation file instead. To ensure correct functionality of the SDK, `Sentry.init` must be called inside of an instrumentation file. Learn more about setting up an instrumentation file in Next.js: https://nextjs.org/docs/app/building-your-application/optimizing/instrumentation. You can safely delete the `sentry.server.config.ts` file afterward.
+[@sentry/nextjs] It appears you've configured a `sentry.edge.config.ts` file. Please ensure to put this file's content into the `register()` function of a Next.js instrumentation file instead. To ensure correct functionality of the SDK, `Sentry.init` must be called inside of an instrumentation file. Learn more about setting up an instrumentation file in Next.js: https://nextjs.org/docs/app/building-your-application/optimizing/instrumentation. You can safely delete the `sentry.edge.config.ts` file afterward.
+[@sentry/nextjs] DEPRECATION WARNING: It is recommended renaming your `sentry.client.config.ts` file, or moving its content to `instrumentation-client.ts`. When using Turbopack `sentry.client.config.ts` will no longer work. Read more about the `instrumentation-client.ts` file: https://nextjs.org/docs/app/api-reference/file-conventions/instrumentation-client
+ Γ£ô Ready in 2.4s
+ Γùï Compiling /middleware ...
+ Γ£ô Compiled /middleware in 1458ms (504 modules)
  Γùï Compiling /[locale] ...
- Γ£ô Compiled /[locale] in 5.2s (4537 modules)
- Γùï Compiling /[locale]/check-in ...
- Γ£ô Compiled /[locale]/check-in in 770ms (4622 modules)
- GET /ar/login 200 in 288ms
- GET /ar/login 200 in 54ms
- GET /ar/login 200 in 73ms
- Γ£ô Compiled in 1272ms (4622 modules)
- GET /ar/login?_rsc=3y9k2 200 in 99ms
- GET /ar/login 200 in 95ms
- GET /ar/login 200 in 278ms
- GET /ar/login 200 in 72ms
- GET /ar/check-in 200 in 132ms
- Γùï Compiling /favicon.ico ...
- Γ£ô Compiled /favicon.ico in 508ms (2440 modules)
- GET /favicon.ico 200 in 601ms
- Γ£ô Compiled in 1140ms (4622 modules)
- GET /ar/login?_rsc=3y9k2 200 in 117ms
- GET /ar/check-in?_rsc=pxtbt 200 in 119ms
- Γ£ô Compiled /favicon.ico in 306ms (2440 modules)
- GET /favicon.ico 200 in 406ms
- GET /favicon.ico 200 in 18ms
- GET /favicon.ico 200 in 15ms
- GET /favicon.ico 200 in 17ms
+ Γ£ô Compiled /[locale] in 16s (5614 modules)
+ Γ£ô Compiled in 655ms (2528 modules)
+ GET /ar 200 in 17318ms
+<w> [webpack.cache.PackFileCacheStrategy] Serializing big strings (132kiB) impacts deserialization performance (consider using Buffer instead and decode when needed)
+<w> [webpack.cache.PackFileCacheStrategy] Serializing big strings (139kiB) impacts deserialization performance (consider using Buffer instead and decode when needed)
+ Γ£ô Compiled in 692ms (2528 modules)
+ Γ£ô Compiled in 311ms (2528 modules)
+ Γ£ô Compiled in 334ms (2528 modules)
+ Γ£ô Compiled in 326ms (2528 modules)
+ Γ£ô Compiled in 326ms (2528 modules)
+ Γ£ô Compiled in 334ms (2528 modules)
+ Γ£ô Compiled in 324ms (2528 modules)
+ Γ£ô Compiled in 293ms (2528 modules)
+ Γ£ô Compiled in 320ms (2528 modules)
+ Γ£ô Compiled in 352ms (2528 modules)
+ Γ£ô Compiled in 469ms (2528 modules)
+ Γ£ô Compiled in 302ms (2528 modules)
+ Γùï Compiling /_not-found ...
+ Γ£ô Compiled /_not-found in 825ms (3547 modules)
+ GET /_next/static/chunks/app/%5Blocale%5D/LayoutGroupContext.mjs.map 404 in 611ms
+ GET /.well-known/appspecific/com.chrome.devtools.json 404 in 1142ms
+ GET /_next/static/css/app/%5Blocale%5D/geofences/page.css?v=1783983804753 404 in 1178ms
+ GET /_next/static/chunks/app/%5Blocale%5D/employees/LayoutGroupContext.mjs.map 404 in 352ms
+ GET /_next/static/chunks/app/%5Blocale%5D/geofences/LayoutGroupContext.mjs.map 404 in 353ms
+ GET /_next/static/chunks/app/%5Blocale%5D/LayoutGroupContext.mjs.map 404 in 153ms
+ Γ£ô Compiled in 420ms (2528 modules)
+ Γ£ô Compiled in 343ms (2528 modules)
+ Γùï Compiling /[locale]/employees ...
+ Γ£ô Compiled /[locale]/employees in 2.5s (5015 modules)
+ GET /ar/employees 200 in 3532ms
+ Γùï Compiling /[locale]/employees/[id] ...
+ Γ£ô Compiled /[locale]/employees/[id] in 1115ms (5029 modules)
+ Γ¿» Error: An unsupported type was passed to use(): [object Object]
+    at EmployeeProfilePage (./app/[locale]/employees/[id]/page.tsx:60:62)
+digest: "3668107503"
+ GET /ar/employees/1 200 in 2139ms
+ Γùï Compiling /[locale]/settings ...
+ Γ£ô Compiled /[locale]/settings in 1119ms (5060 modules)
+ GET /ar/settings 200 in 2045ms
+ Γ£ô Compiled in 874ms (5073 modules)
+ Γ£ô Compiled in 895ms (5073 modules)
+ Γ£ô Compiled in 992ms (5073 modules)
+ Γ£ô Compiled in 985ms (5073 modules)
+ Γ£ô Compiled in 880ms (5073 modules)
+ Γ£ô Compiled in 1006ms (5035 modules)
+ Γ£ô Compiled in 397ms (2566 modules)
+ Γ£ô Compiled in 362ms (2566 modules)
+ Γ£ô Compiled in 656ms (2566 modules)
+ Γ£ô Compiled in 383ms (2566 modules)
+ Γùï Compiling /[locale]/employees/[id] ...
+ Γ£ô Compiled /[locale]/employees/[id] in 668ms (2476 modules)
+ GET /ar/employees/1 200 in 1144ms
+ Γùï Compiling /[locale]/live-map ...
+ Γ£ô Compiled /[locale]/live-map in 3.4s (5113 modules)
+ Γùï Compiling /[locale]/attendance ...
+ Γ£ô Compiled /[locale]/attendance in 939ms (5115 modules)
+ Γùï Compiling /[locale]/geofences ...
+ Γ£ô Compiled /[locale]/geofences in 1254ms (5154 modules)
+ Γ£ô Compiled /[locale]/employees in 438ms (2555 modules)
+ GET /ar/employees 200 in 334ms
+ Γ£ô Compiled in 1493ms (5171 modules)
+ GET /ar/employees?_rsc=vg5bo 200 in 116ms
+ Γ£ô Compiled in 934ms (5159 modules)
+ GET /ar/employees?_rsc=vg5bo 200 in 78ms
+ Γ£ô Compiled in 1079ms (5105 modules)
+ GET /ar/employees?_rsc=vg5bo 200 in 75ms
+ Γ£ô Compiled in 863ms (5105 modules)
+ GET /ar/employees?_rsc=vg5bo 200 in 65ms
+ Γ£ô Compiled in 456ms (2624 modules)
+ GET /ar/employees?_rsc=vg5bo 200 in 34ms
+ Γ£ô Compiled in 570ms (2623 modules)
+ GET /ar/employees?_rsc=vg5bo 200 in 46ms
+ Γ£ô Compiled in 399ms (2623 modules)
+ GET /ar/employees?_rsc=vg5bo 200 in 38ms
+ Γùï Compiling /[locale]/employees/[id] ...
+ Γ£ô Compiled /[locale]/employees/[id] in 1921ms (2489 modules)
+ GET /ar/employees/1 200 in 2316ms
+ Γ£ô Compiled in 799ms (5112 modules)
+ GET /ar/employees?_rsc=vg5bo 200 in 242ms
+ Γ£ô Compiled in 972ms (5110 modules)
+ GET /ar/employees?_rsc=vg5bo 200 in 62ms
+ Γ£ô Compiled in 943ms (5110 modules)
+ GET /ar/employees?_rsc=vg5bo 200 in 80ms
+   Reload env: .env.local
+[?25h

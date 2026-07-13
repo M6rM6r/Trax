@@ -9,7 +9,7 @@ export interface ResponseObject {
   message: string;
   data?: {
     errors?: Record<string, string[]>; // For error cases
-    [key: string]: any; // Allow additional data for success cases
+    [key: string]: unknown; // Allow additional data for success cases
   };
 }
 
@@ -24,8 +24,7 @@ export const useResponseToast = () => {
     // Extract the main message
 
     const mainMessage =
-      responseObj.message ||
-      (responseObj.success ? "تمت العملية بنجاح" : "حدث خطأ غير متوقع");
+      responseObj.message || (responseObj.success ? "تمت العملية بنجاح" : "حدث خطأ غير متوقع");
 
     if (responseObj.success) {
       // Success case

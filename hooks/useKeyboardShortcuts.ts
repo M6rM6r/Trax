@@ -1,13 +1,11 @@
 "use client";
 
 import { useEffect } from "react";
-import { usePathname, useRouter } from "next/navigation";
-import { useLocale } from "next-intl";
+import { usePathname, useRouter } from "@/i18n/navigation";
 
 export function useKeyboardShortcuts() {
   const router = useRouter();
   const pathname = usePathname();
-  const locale = useLocale();
 
   useEffect(() => {
     let gPressed = false;
@@ -55,7 +53,7 @@ export function useKeyboardShortcuts() {
         const route = routes[e.key.toLowerCase()];
         if (route) {
           e.preventDefault();
-          router.push(`/${locale}${route === "/" ? "" : route}`);
+          router.push(route);
         }
         gPressed = false;
         if (gTimer) clearTimeout(gTimer);
@@ -66,5 +64,5 @@ export function useKeyboardShortcuts() {
       window.removeEventListener("keydown", handler);
       if (gTimer) clearTimeout(gTimer);
     };
-  }, [router, pathname, locale]);
+  }, [router, pathname]);
 }

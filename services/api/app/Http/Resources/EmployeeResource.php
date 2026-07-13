@@ -2,9 +2,13 @@
 
 namespace App\Http\Resources;
 
+use App\Models\Employee;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
+/**
+ * @mixin Employee
+ */
 class EmployeeResource extends JsonResource
 {
     public function toArray(Request $request): array
@@ -19,7 +23,7 @@ class EmployeeResource extends JsonResource
             'department' => $this->department,
             'avatar' => $this->avatar,
             'geofenceId' => $this->geofence_id,
-            'geofenceName' => $this->whenLoaded('geofence', fn() => $this->geofence->name),
+            'geofenceName' => $this->whenLoaded('geofence', fn () => $this->geofence->name),
             'status' => $this->status,
             'currentLat' => $this->current_lat,
             'currentLng' => $this->current_lng,

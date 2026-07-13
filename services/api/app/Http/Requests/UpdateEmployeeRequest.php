@@ -17,7 +17,7 @@ class UpdateEmployeeRequest extends FormRequest
 
         return [
             'name' => ['sometimes', 'string', 'min:2', 'max:255'],
-            'email' => ['sometimes', 'email', 'unique:employees,email,' . $employeeId],
+            'email' => ['sometimes', 'email', 'unique:employees,email,'.$employeeId],
             'employeeNumber' => [
                 'sometimes',
                 'nullable',

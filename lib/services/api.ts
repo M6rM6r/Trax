@@ -9,7 +9,6 @@ import {
   mockEmployees,
   mockAttendance,
   mockGeofences,
-  mockDashboardStats,
   mockLiveTracking,
 } from "@/lib/mockData/trackingMockData";
 import { logger } from "@/lib/config/logger";

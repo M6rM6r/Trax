@@ -129,12 +129,12 @@ class AttendanceSeeder extends Seeder
         $statuses = ['present', 'late', 'absent', 'checked_out'];
         $today = today();
 
-        for ($day = 0; $day < 30; $day++) {
+        for ($day = 0; $day < 7; $day++) {
             $date = $today->copy()->subDays($day);
             foreach (range(1, 5) as $employeeId) {
                 $status = $statuses[array_rand($statuses)];
-                $checkIn = $status !== 'absent' ? rand(7, 10) . ':' . str_pad(rand(0, 59), 2, '0', STR_PAD_LEFT) : null;
-                $checkOut = in_array($status, ['checked_out', 'present']) ? rand(16, 18) . ':' . str_pad(rand(0, 59), 2, '0', STR_PAD_LEFT) : null;
+                $checkIn = $status !== 'absent' ? rand(7, 10).':'.str_pad(rand(0, 59), 2, '0', STR_PAD_LEFT) : null;
+                $checkOut = in_array($status, ['checked_out', 'present']) ? rand(16, 18).':'.str_pad(rand(0, 59), 2, '0', STR_PAD_LEFT) : null;
                 $lateMinutes = $status === 'late' ? rand(5, 45) : 0;
                 $workedHours = $checkIn && $checkOut ? rand(7, 10) : 0;
 

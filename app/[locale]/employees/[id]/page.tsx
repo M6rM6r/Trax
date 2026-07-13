@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, use } from "react";
+import { useState } from "react";
 import { motion } from "framer-motion";
 import MainLayout from "@/components/shared/MainLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,20 +8,16 @@ import { Button } from "@/components/ui/button";
 import {
   ArrowLeft,
   Mail,
-  Phone,
-  Building2,
   MapPin,
   Edit,
   Trash2,
-  UserCircle,
   Calendar,
   Clock,
   CheckCircle,
   XCircle,
   AlertCircle,
 } from "lucide-react";
-import { useRouter } from "next/navigation";
-import { useLocale } from "next-intl";
+import { useRouter, Link } from "@/i18n/navigation";
 import {
   useEmployees,
   useAttendance,
@@ -31,14 +27,10 @@ import {
 } from "@/hooks/useApi";
 import { FormDrawer } from "@/components/shared/FormDrawer";
 import { LoadingSkeleton, ErrorState, EmptyState } from "@/components/shared/StateViews";
-import { DataTable, type Column } from "@/components/shared/DataTable/DataTable";
+import { DataTable } from "@/components/shared/DataTable/DataTable";
 import ConfirmDialog from "@/components/shared/ConfirmDialog";
-import { toastSuccess, toastError, toastWithUndo, useToast } from "@/hooks/use-toast";
-import { Link } from "@/i18n/navigation";
+import { toastSuccess, toastError, toastWithUndo } from "@/hooks/use-toast";
 import type { AttendanceRecord } from "@/lib/types/trackingTypes";
-import AvatarUpload from "@/components/shared/AvatarUpload";
-import Image from "next/image";
-
 const statusLabels: Record<string, string> = {
   present: "حاضر",
   late: "متأخر",
@@ -52,19 +44,16 @@ const roleLabels: Record<string, string> = {
   supervisor: "مشرف",
 };
 
-export default function EmployeeProfilePage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = use(params);
+export default function EmployeeProfilePage({ params }: { params: { id: string } }) {
+  const { id } = params;
   const router = useRouter();
-  const locale = useLocale();
   const { data: employees = [], isLoading: empLoading, isError: empError } = useEmployees();
   const { data: attendanceData = [] } = useAttendance();
   const { data: geofences = [] } = useGeofences();
   const deleteEmployee = useDeleteEmployee();
   const updateEmployee = useUpdateEmployee();
-  const { toast } = useToast();
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showEditForm, setShowEditForm] = useState(false);
-  const [editAvatarPreview, setEditAvatarPreview] = useState<string | null>(null);
   const [editEmployee, setEditEmployee] = useState({
     name: "",
     email: "",
@@ -96,7 +85,7 @@ export default function EmployeeProfilePage({ params }: { params: Promise<{ id: 
     return (
       <MainLayout>
         <div className="p-6">
-          <ErrorState onRetry={() => router.push(`/${locale}/employees`)} />
+          <ErrorState onRetry={() => router.push(`/employees`)} />
         </div>
       </MainLayout>
     );
@@ -136,9 +125,9 @@ export default function EmployeeProfilePage({ params }: { params: Promise<{ id: 
     deleteEmployee.mutate(employee.id, {
       onSuccess: () => {
         toastWithUndo(`تم حذف الموظف ${deletedEmployee.name}`, () => {
-          router.push(`/${locale}/employees`);
+          router.push(`/employees`);
         });
-        router.push(`/${locale}/employees`);
+        router.push(`/employees`);
       },
       onError: () => {
         toastError("تعذر حذف الموظف");
@@ -152,7 +141,7 @@ export default function EmployeeProfilePage({ params }: { params: Promise<{ id: 
         {/* Breadcrumb */}
         <div className="flex items-center gap-2 text-sm">
           <Link
-            href={`/${locale}/employees`}
+            href={`/employees`}
             className="flex items-center gap-1 text-blue-600 dark:text-blue-400 hover:underline"
           >
             <ArrowLeft className="w-4 h-4" />
@@ -169,29 +158,18 @@ export default function EmployeeProfilePage({ params }: { params: Promise<{ id: 
         >
           {/* Profile Header Card */}
           <Card className="border-0 shadow-xl dark:bg-slate-800 overflow-hidden">
-            <div className="h-24 bg-gradient-to-br from-blue-500 via-purple-600 to-indigo-700" />
+            <div className="h-24 bg-gradient-to-br from-emerald-500 via-emerald-600 to-emerald-800" />
             <CardContent className="pb-6">
               <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 -mt-12">
-                <div className="w-24 h-24 rounded-2xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-3xl font-bold shadow-xl border-4 border-white dark:border-slate-800">
-                  {employee.avatar ? (
-                    <Image
-                      src={employee.avatar}
-                      alt={employee.name}
-                      width={96}
-                      height={96}
-                      unoptimized
-                      className="w-full h-full rounded-2xl object-cover"
-                    />
-                  ) : (
-                    employee.name.charAt(0)
-                  )}
+                <div className="w-24 h-24 rounded-2xl bg-gradient-to-br from-emerald-500 to-emerald-700 flex items-center justify-center text-white text-3xl font-bold shadow-xl border-4 border-white dark:border-slate-800">
+                  {employee.name.charAt(0)}
                 </div>
                 <div className="flex-1 mt-4 sm:mt-0">
                   <h1 className="text-2xl font-bold text-gray-900 dark:text-slate-100">
                     {employee.name}
                   </h1>
                   <div className="flex items-center gap-2 mt-1">
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400">
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400">
                       {roleLabels[employee.role]}
                     </span>
                     <span
@@ -239,30 +217,6 @@ export default function EmployeeProfilePage({ params }: { params: Promise<{ id: 
                       <span dir="ltr" lang="en" style={{ unicodeBidi: "plaintext" }}>
                         {employee.email}
                       </span>
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-slate-700/50">
-                  <div className="w-10 h-10 rounded-lg bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
-                    <Phone className="w-5 h-5 text-green-600 dark:text-green-400" />
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-500 dark:text-slate-400">الهاتف</p>
-                    <p className="text-sm font-medium text-gray-900 dark:text-slate-100">
-                      <span dir="ltr" lang="en" style={{ unicodeBidi: "plaintext" }}>
-                        {employee.phone}
-                      </span>
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-slate-700/50">
-                  <div className="w-10 h-10 rounded-lg bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
-                    <Building2 className="w-5 h-5 text-purple-600 dark:text-purple-400" />
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-500 dark:text-slate-400">القسم</p>
-                    <p className="text-sm font-medium text-gray-900 dark:text-slate-100">
-                      {employee.department || "-"}
                     </p>
                   </div>
                 </div>
@@ -442,16 +396,6 @@ export default function EmployeeProfilePage({ params }: { params: Promise<{ id: 
           isSubmitting={updateEmployee.isPending}
           submitLabel="حفظ التعديلات"
         >
-          <div className="flex justify-center mb-6">
-            <AvatarUpload
-              currentUrl={editAvatarPreview ?? employee.avatar}
-              name={editEmployee.name || employee.name}
-              size={96}
-              folder="avatars"
-              onUpload={(url) => setEditAvatarPreview(url)}
-              onRemove={() => setEditAvatarPreview(null)}
-            />
-          </div>
           <div className="grid grid-cols-1 gap-4">
             {[
               { label: "الاسم", key: "name", type: "text", placeholder: "اسم الموظف" },
@@ -461,10 +405,8 @@ export default function EmployeeProfilePage({ params }: { params: Promise<{ id: 
                 type: "email",
                 placeholder: "email@trax.com",
               },
-              { label: "الهاتف", key: "phone", type: "tel", placeholder: "+966..." },
-              { label: "القسم", key: "department", type: "text", placeholder: "القسم" },
             ].map(({ label, key, type, placeholder }) => {
-              const isLtrField = key === "email" || key === "phone";
+              const isLtrField = key === "email";
 
               return (
                 <div key={key}>

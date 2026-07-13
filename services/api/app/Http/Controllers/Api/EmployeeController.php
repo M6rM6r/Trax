@@ -3,16 +3,18 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\Employee;
-use App\Models\User;
-use App\Http\Resources\EmployeeResource;
 use App\Http\Requests\StoreEmployeeRequest;
 use App\Http\Requests\UpdateEmployeeRequest;
+use App\Http\Resources\EmployeeResource;
+use App\Models\Employee;
+use App\Models\User;
+use App\Services\FirebaseUserService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
@@ -29,15 +31,19 @@ class EmployeeController extends Controller
      *     summary="Get all employees with pagination",
      *     tags={"Employees"},
      *     security={{"bearerAuth":{}}},
+     *
      *     @OA\Parameter(name="page", in="query", @OA\Schema(type="integer")),
      *     @OA\Parameter(name="per_page", in="query", @OA\Schema(type="integer")),
      *     @OA\Parameter(name="search", in="query", @OA\Schema(type="string")),
      *     @OA\Parameter(name="department", in="query", @OA\Schema(type="string")),
      *     @OA\Parameter(name="status", in="query", @OA\Schema(type="string")),
+     *
      *     @OA\Response(
      *         response=200,
      *         description="Paginated list of employees",
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="success", type="boolean", example=true),
      *             @OA\Property(property="data", type="array", @OA\Items(ref="#/components/schemas/Employee")),
      *             @OA\Property(property="meta", type="object")
@@ -66,8 +72,8 @@ class EmployeeController extends Controller
         if ($search) {
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('email', 'like', "%{$search}%")
-                  ->orWhere('phone', 'like', "%{$search}%");
+                    ->orWhere('email', 'like', "%{$search}%")
+                    ->orWhere('phone', 'like', "%{$search}%");
             });
         }
         if ($department) {
@@ -81,11 +87,11 @@ class EmployeeController extends Controller
             'data' => EmployeeResource::collection($result->items()),
             'meta' => [
                 'current_page' => $result->currentPage(),
-                'last_page'    => $result->lastPage(),
-                'per_page'     => $result->perPage(),
-                'total'        => $result->total(),
-                'from'         => $result->firstItem(),
-                'to'           => $result->lastItem(),
+                'last_page' => $result->lastPage(),
+                'per_page' => $result->perPage(),
+                'total' => $result->total(),
+                'from' => $result->firstItem(),
+                'to' => $result->lastItem(),
             ],
         ]);
     }
@@ -117,13 +123,13 @@ class EmployeeController extends Controller
         ]);
     }
 
-    public function show($id): JsonResponse
+    public function show(int $id): JsonResponse
     {
         $employee = Employee::with('geofence')
             ->where('company_id', $this->companyId())
             ->find($id);
 
-        if (!$employee) {
+        if (! $employee) {
             return response()->json(['success' => false, 'message' => 'Employee not found'], 404);
         }
 
@@ -138,45 +144,73 @@ class EmployeeController extends Controller
         DB::beginTransaction();
         try {
             $employee = Employee::create([
-                'company_id'  => $companyId,
-                'name'        => $validated['name'],
-                'email'       => $validated['email'],
+                'company_id' => $companyId,
+                'name' => $validated['name'],
+                'email' => $validated['email'],
                 'employee_number' => $validated['employeeNumber'] ?? null,
-                'phone'       => $validated['phone'],
-                'role'        => $validated['role'],
-                'department'  => $validated['department'],
-                'avatar'      => $validated['avatar'] ?? null,
+                'phone' => $validated['phone'],
+                'role' => $validated['role'],
+                'department' => $validated['department'],
+                'avatar' => $validated['avatar'] ?? null,
                 'geofence_id' => $validated['geofence_id'] ?? $validated['geofenceId'] ?? null,
-                'status'      => $validated['status'] ?? 'active',
+                'status' => $validated['status'] ?? 'active',
             ]);
+
+            // Create Firebase Auth user for this employee
+            $firebaseService = app(FirebaseUserService::class);
+            $firebaseUid = $firebaseService->createUser(
+                $validated['email'],
+                $validated['password'],
+                $validated['name'],
+            );
+
+            // Link firebase_uid to employee record
+            if ($firebaseUid) {
+                $employee->firebase_uid = $firebaseUid;
+                $employee->save();
+            }
 
             User::create([
                 'company_id' => $companyId,
-                'name'       => $validated['name'],
-                'email'      => $validated['email'],
-                'username'   => $validated['employeeNumber'] ?? null,
-                'password'   => $validated['password'],
-                'role'       => $validated['role'],
+                'name' => $validated['name'],
+                'email' => $validated['email'],
+                'firebase_uid' => $firebaseUid,
+                'username' => $validated['employeeNumber'] ?? null,
+                'password' => Hash::make($validated['password']),
+                'role' => $validated['role'],
             ]);
 
             DB::commit();
         } catch (\Throwable $e) {
             DB::rollBack();
-            return response()->json(['success' => false, 'message' => 'Failed to create employee: ' . $e->getMessage()], 500);
+
+            // Clean up orphaned Firebase user if DB transaction failed
+            if (isset($firebaseUid) && $firebaseUid) {
+                try {
+                    $firebaseService = app(FirebaseUserService::class);
+                    $firebaseService->deleteUser($firebaseUid);
+                } catch (\Throwable $cleanupErr) {
+                    Log::error('Failed to cleanup Firebase user after rollback: '.$cleanupErr->getMessage());
+                }
+            }
+
+            Log::error('Employee creation failed: '.$e->getMessage(), ['exception' => $e]);
+
+            return response()->json(['success' => false, 'message' => 'Failed to create employee. Please try again.'], 500);
         }
 
         return response()->json([
             'success' => true,
             'message' => 'Employee created',
-            'data'    => new EmployeeResource($employee),
+            'data' => new EmployeeResource($employee),
         ], 201);
     }
 
-    public function update(UpdateEmployeeRequest $request, $id): JsonResponse
+    public function update(UpdateEmployeeRequest $request, int $id): JsonResponse
     {
         $employee = Employee::where('company_id', $this->companyId())->find($id);
 
-        if (!$employee) {
+        if (! $employee) {
             return response()->json(['success' => false, 'message' => 'Employee not found'], 404);
         }
 
@@ -220,11 +254,11 @@ class EmployeeController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Employee updated',
-            'data'    => new EmployeeResource($employee->fresh('geofence')),
+            'data' => new EmployeeResource($employee->fresh('geofence')),
         ]);
     }
 
-    public function resetPassword(Request $request, $id): JsonResponse
+    public function resetPassword(Request $request, int $id): JsonResponse
     {
         $request->validate([
             'password' => ['required', 'string', 'min:8'],
@@ -232,7 +266,7 @@ class EmployeeController extends Controller
 
         $employee = Employee::where('company_id', $this->companyId())->find($id);
 
-        if (!$employee) {
+        if (! $employee) {
             return response()->json(['success' => false, 'message' => 'Employee not found'], 404);
         }
 
@@ -240,12 +274,22 @@ class EmployeeController extends Controller
             ->where('email', $employee->email)
             ->first();
 
-        if (!$linkedUser) {
+        if (! $linkedUser) {
             return response()->json(['success' => false, 'message' => 'No login account linked to this employee'], 404);
         }
 
-        $linkedUser->password = $request->input('password');
+        $linkedUser->password = Hash::make($request->input('password'));
         $linkedUser->save();
+
+        // Update Firebase Auth password if firebase_uid exists
+        if ($linkedUser->firebase_uid) {
+            try {
+                $firebaseService = app(FirebaseUserService::class);
+                $firebaseService->updatePassword($linkedUser->firebase_uid, $request->input('password'));
+            } catch (\Throwable $e) {
+                Log::error('Failed to update Firebase password: '.$e->getMessage());
+            }
+        }
 
         return response()->json([
             'success' => true,
@@ -253,15 +297,43 @@ class EmployeeController extends Controller
         ]);
     }
 
-    public function destroy($id): JsonResponse
+    public function destroy(int $id): JsonResponse
     {
         $employee = Employee::where('company_id', $this->companyId())->find($id);
 
-        if (!$employee) {
+        if (! $employee) {
             return response()->json(['success' => false, 'message' => 'Employee not found'], 404);
         }
 
-        $employee->delete();
+        $linkedUser = User::where('company_id', $this->companyId())
+            ->where('email', $employee->email)
+            ->first();
+
+        DB::beginTransaction();
+        try {
+            $employee->delete();
+
+            if ($linkedUser) {
+                $linkedUser->delete();
+            }
+
+            // Delete Firebase Auth user
+            if ($employee->firebase_uid) {
+                try {
+                    $firebaseService = app(FirebaseUserService::class);
+                    $firebaseService->deleteUser($employee->firebase_uid);
+                } catch (\Throwable $e) {
+                    Log::error('Failed to delete Firebase user: '.$e->getMessage());
+                }
+            }
+
+            DB::commit();
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            Log::error('Employee deletion failed: '.$e->getMessage());
+
+            return response()->json(['success' => false, 'message' => 'Failed to delete employee.'], 500);
+        }
 
         return response()->json(['success' => true, 'message' => 'Employee deleted']);
     }
@@ -274,19 +346,19 @@ class EmployeeController extends Controller
 
         $headers = [
             'Content-Type' => 'text/csv; charset=UTF-8',
-            'Content-Disposition' => 'attachment; filename="employees_' . now()->format('Y-m-d') . '.csv"',
+            'Content-Disposition' => 'attachment; filename="employees_'.now()->format('Y-m-d').'.csv"',
         ];
 
         $callback = function () use ($companyId, $search, $department) {
             $handle = fopen('php://output', 'w');
-            fprintf($handle, chr(0xEF) . chr(0xBB) . chr(0xBF));
+            fprintf($handle, chr(0xEF).chr(0xBB).chr(0xBF));
             fputcsv($handle, ['ID', 'Name', 'Email', 'Phone', 'Department', 'Role', 'Status', 'Geofence']);
 
             $query = Employee::with('geofence')->where('company_id', $companyId);
             if ($search) {
                 $query->where(function ($q) use ($search) {
                     $q->where('name', 'like', "%{$search}%")
-                      ->orWhere('email', 'like', "%{$search}%");
+                        ->orWhere('email', 'like', "%{$search}%");
                 });
             }
             if ($department) {

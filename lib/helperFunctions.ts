@@ -103,8 +103,12 @@ export const convertDateFormat = (
   }
 };
 
-export function groupByGroupToArray(array: Array<any>) {
-  const groupsMap = array.reduce((acc, item) => {
+export function groupByGroupToArray(
+  array: Array<{ group_en: string; group_ar: string; [key: string]: unknown }>
+) {
+  const groupsMap = array.reduce<
+    Record<string, Array<{ group_en: string; group_ar: string; [key: string]: unknown }>>
+  >((acc, item) => {
     const group = item.group_en;
     if (!acc[group]) {
       acc[group] = [];
@@ -112,7 +116,7 @@ export function groupByGroupToArray(array: Array<any>) {
     acc[group].push(item);
     return acc;
   }, {});
-  return Object.entries(groupsMap).map(([groupName, items]: any) => ({
+  return Object.entries(groupsMap).map(([groupName, items]) => ({
     group_en: groupName,
     group_ar: items[0].group_ar,
     items,
@@ -158,7 +162,7 @@ export const ChangeTimeFormate = (time: string) => {
 
 export function formatArabicTime(startTime: string, endTime: string) {
   // Function to convert single time to Arabic format
-  const convertToArabicTime = (time: any) => {
+  const convertToArabicTime = (time: string | null | undefined) => {
     if (!time) return "";
 
     const [hours, minutes] = time?.split(":").map(Number);

@@ -2,30 +2,30 @@
 
 namespace Tests\Feature;
 
-use Tests\TestCase;
+use App\Models\User;
+use Database\Seeders\TraxDatabaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\TestCase;
+use Tests\Traits\MockFirebaseAuth;
 
 class EmployeeControllerTest extends TestCase
 {
+    use MockFirebaseAuth;
     use RefreshDatabase;
 
-    private function getAuthToken(): string
+    private function authHeaders(): array
     {
-        $this->seed(\Database\Seeders\TraxDatabaseSeeder::class);
+        $this->seed(TraxDatabaseSeeder::class);
+        $user = User::where('email', 'boss@trax.com')->first();
 
-        $response = $this->postJson('/api/auth/login', [
-            'email' => 'boss@trax.com',
-            'password' => '12345678',
-        ]);
-
-        return $response->json('data.token');
+        return $this->firebaseHeaders($user);
     }
 
     public function test_can_list_employees(): void
     {
-        $token = $this->getAuthToken();
+        $headers = $this->authHeaders();
 
-        $response = $this->withToken($token)->getJson('/api/employees');
+        $response = $this->withHeaders($headers)->getJson('/api/employees');
 
         $response->assertStatus(200)
             ->assertJsonStructure([
@@ -35,9 +35,9 @@ class EmployeeControllerTest extends TestCase
 
     public function test_can_create_employee_with_valid_data(): void
     {
-        $token = $this->getAuthToken();
+        $headers = $this->authHeaders();
 
-        $response = $this->withToken($token)->postJson('/api/employees', [
+        $response = $this->withHeaders($headers)->postJson('/api/employees', [
             'name' => 'Test Employee',
             'email' => 'test.employee@trax.com',
             'phone' => '+966509999999',
@@ -53,9 +53,9 @@ class EmployeeControllerTest extends TestCase
 
     public function test_create_employee_validation_fails_without_required_fields(): void
     {
-        $token = $this->getAuthToken();
+        $headers = $this->authHeaders();
 
-        $response = $this->withToken($token)->postJson('/api/employees', []);
+        $response = $this->withHeaders($headers)->postJson('/api/employees', []);
 
         $response->assertStatus(422)
             ->assertJsonValidationErrors(['name', 'email', 'phone', 'role', 'department']);
@@ -63,18 +63,18 @@ class EmployeeControllerTest extends TestCase
 
     public function test_can_get_inactive_employees(): void
     {
-        $token = $this->getAuthToken();
+        $headers = $this->authHeaders();
 
-        $response = $this->withToken($token)->getJson('/api/employees/inactive/list');
+        $response = $this->withHeaders($headers)->getJson('/api/employees/inactive/list');
 
         $response->assertStatus(200);
     }
 
     public function test_can_delete_employee(): void
     {
-        $token = $this->getAuthToken();
+        $headers = $this->authHeaders();
 
-        $response = $this->withToken($token)->postJson('/api/employees', [
+        $response = $this->withHeaders($headers)->postJson('/api/employees', [
             'name' => 'Delete Me',
             'email' => 'delete.me@trax.com',
             'phone' => '+966508888888',
@@ -85,7 +85,7 @@ class EmployeeControllerTest extends TestCase
 
         $employeeId = $response->json('data.id');
 
-        $deleteResponse = $this->withToken($token)->deleteJson("/api/employees/{$employeeId}");
+        $deleteResponse = $this->withHeaders($headers)->deleteJson("/api/employees/{$employeeId}");
 
         $deleteResponse->assertStatus(200);
     }

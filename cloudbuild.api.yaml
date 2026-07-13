@@ -8,5 +8,27 @@ steps:
       - gcr.io/$PROJECT_ID/trax-api:latest
       - .
 
+  - name: gcr.io/google.com/cloudsdktool/cloud-sdk
+    entrypoint: gcloud
+    args:
+      - run
+      - deploy
+      - trax-api
+      - --image=gcr.io/$PROJECT_ID/trax-api:latest
+      - --region=asia-southeast1
+      - --platform=managed
+      - --allow-unauthenticated
+      - --port=8080
+      - --min-instances=1
+      - --max-instances=10
+      - --cpu=1
+      - --memory=1Gi
+      - --add-cloudsql-instances=$_CLOUD_SQL_INSTANCE
+      - --set-env-vars=DB_CONNECTION=mysql,DB_HOST=/cloudsql/$_CLOUD_SQL_INSTANCE,DB_DATABASE=trax,DB_USERNAME=trax,APP_ENV=production,APP_DEBUG=false,CACHE_STORE=file,SESSION_DRIVER=file,QUEUE_CONNECTION=sync,LOG_CHANNEL=stderr,LOG_LEVEL=error,MASTER_EMAIL=mastermind@trax.com
+      - --set-secrets=DB_PASSWORD=trax-db-password:latest,FIREBASE_SERVICE_ACCOUNT_PATH=firebase-service-account-path:latest,AI_API_KEY=trax-ai-api-key:latest
+
 images:
   - gcr.io/$PROJECT_ID/trax-api:latest
+
+substitutions:
+  _CLOUD_SQL_INSTANCE: "${PROJECT_ID}:asia-southeast1:trax-db"

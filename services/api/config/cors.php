@@ -7,6 +7,9 @@ return [
 
     'allowed_origins' => [
         'https://naf--trax-ae.asia-southeast1.hosted.app',
+        'https://trax-ae.web.app',
+        'https://trax-ae.firebaseapp.com',
+        'https://app.trax.com',
     ],
 
     'allowed_origins_patterns' => [

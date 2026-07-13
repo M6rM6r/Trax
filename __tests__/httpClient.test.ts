@@ -18,7 +18,6 @@ describe("HttpClient", () => {
   beforeEach(() => {
     jest.restoreAllMocks();
     localStorage.clear();
-    document.cookie = "auth_token=; Max-Age=0; path=/";
   });
 
   afterEach(() => {
@@ -60,8 +59,8 @@ describe("HttpClient", () => {
       expect(typeof httpClient.delete).toBe("function");
     });
 
-    it("adds Authorization header from auth_token cookie", async () => {
-      document.cookie = `auth_token=${encodeURIComponent("token-123")}; path=/`;
+    it("adds Authorization header from localStorage token", async () => {
+      localStorage.setItem("auth-storage", JSON.stringify({ state: { token: "token-123" } }));
 
       global.fetch = jest.fn(async (_url: string | URL | Request, init?: RequestInit) => {
         expect((init?.headers as Record<string, string>)?.Authorization).toBe("Bearer token-123");
@@ -71,9 +70,7 @@ describe("HttpClient", () => {
       await httpClient.get("/ping");
     });
 
-    it("does not fallback to localStorage token when cookie is missing", async () => {
-      localStorage.setItem("auth-storage", JSON.stringify({ state: { token: "stale-token" } }));
-
+    it("does not add Authorization header when no token in storage", async () => {
       global.fetch = jest.fn(async (_url: string | URL | Request, init?: RequestInit) => {
         expect((init?.headers as Record<string, string>)?.Authorization).toBeUndefined();
         return mockJsonResponse(200, { ok: true });
@@ -91,7 +88,6 @@ describe("HttpClient", () => {
 
       await expect(httpClient.get("/private")).rejects.toBeInstanceOf(ApiError);
       expect(localStorage.getItem("auth-storage")).toBeNull();
-      expect(document.cookie).not.toContain("auth_token=");
     });
   });
 });

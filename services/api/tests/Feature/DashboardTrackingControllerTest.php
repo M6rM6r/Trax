@@ -2,31 +2,31 @@
 
 namespace Tests\Feature;
 
-use Tests\TestCase;
 use App\Models\Employee;
+use App\Models\User;
+use Database\Seeders\TraxDatabaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\TestCase;
+use Tests\Traits\MockFirebaseAuth;
 
 class DashboardTrackingControllerTest extends TestCase
 {
+    use MockFirebaseAuth;
     use RefreshDatabase;
 
-    private function getAuthToken(): string
+    private function authHeaders(): array
     {
-        $this->seed(\Database\Seeders\TraxDatabaseSeeder::class);
+        $this->seed(TraxDatabaseSeeder::class);
+        $user = User::where('email', 'boss@trax.com')->first();
 
-        $response = $this->postJson('/api/auth/login', [
-            'email' => 'boss@trax.com',
-            'password' => '12345678',
-        ]);
-
-        return $response->json('data.token');
+        return $this->firebaseHeaders($user);
     }
 
     public function test_can_get_dashboard_stats(): void
     {
-        $token = $this->getAuthToken();
+        $headers = $this->authHeaders();
 
-        $response = $this->withToken($token)->getJson('/api/dashboard/stats');
+        $response = $this->withHeaders($headers)->getJson('/api/dashboard/stats');
 
         $response->assertStatus(200)
             ->assertJsonStructure([
@@ -43,9 +43,9 @@ class DashboardTrackingControllerTest extends TestCase
 
     public function test_can_get_live_tracking(): void
     {
-        $token = $this->getAuthToken();
+        $headers = $this->authHeaders();
 
-        $response = $this->withToken($token)->getJson('/api/tracking/live');
+        $response = $this->withHeaders($headers)->getJson('/api/tracking/live');
 
         $response->assertStatus(200)
             ->assertJsonStructure(['data']);
@@ -53,9 +53,9 @@ class DashboardTrackingControllerTest extends TestCase
 
     public function test_dashboard_stats_reflect_seeded_data(): void
     {
-        $token = $this->getAuthToken();
+        $headers = $this->authHeaders();
 
-        $response = $this->withToken($token)->getJson('/api/dashboard/stats');
+        $response = $this->withHeaders($headers)->getJson('/api/dashboard/stats');
 
         $response->assertStatus(200)
             ->assertJsonPath('data.totalEmployees', 5)
@@ -64,10 +64,10 @@ class DashboardTrackingControllerTest extends TestCase
 
     public function test_can_update_staff_location_heartbeat(): void
     {
-        $token = $this->getAuthToken();
+        $headers = $this->authHeaders();
         $employee = Employee::query()->firstOrFail();
 
-        $response = $this->withToken($token)->postJson('/api/tracking/location', [
+        $response = $this->withHeaders($headers)->postJson('/api/tracking/location', [
             'employee_id' => $employee->id,
             'lat' => 26.2173,
             'lng' => 50.2905,

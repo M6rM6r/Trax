@@ -1,21 +1,23 @@
 "use client";
 import CustomInput from "@/components/shared/form/CustomInput";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import loginBG from "@/public/images/loginBg.png";
 import { Form, Formik, FormikHelpers } from "formik";
-import { MapPin, Eye, EyeOff, Building2 } from "lucide-react";
-import { setCookie } from "cookies-next";
+import { MapPin, CheckCircle2 } from "lucide-react";
 import * as Yup from "yup";
 import { toastSuccess, toastError } from "@/hooks/use-toast";
 import { useSearchParams } from "next/navigation";
-import { useRouter } from "@/i18n/navigation";
-import { useLocale } from "next-intl";
-import { useState, useMemo } from "react";
+import { useRouter, Link } from "@/i18n/navigation";
+import { useMemo, useState } from "react";
 import { useAuthStore, UserRole } from "@/stores/useAuthStore";
 import { hapticSuccess, hapticError } from "@/lib/utils/haptics";
-import { motion } from "framer-motion";
-import { signInWithEmailAndPassword } from "firebase/auth";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  signInWithEmailAndPassword,
+  browserLocalPersistence,
+  browserSessionPersistence,
+  setPersistence,
+} from "firebase/auth";
 import { auth } from "@/lib/config/firebase";
 
 interface LoginValues {
@@ -24,12 +26,18 @@ interface LoginValues {
   rememberMe: boolean;
 }
 
+const loginSchema = Yup.object({
+  identifier: Yup.string().email("البريد الإلكتروني غير صحيح").required("البريد الإلكتروني مطلوب"),
+  password: Yup.string()
+    .min(8, "كلمة المرور يجب أن تكون 8 أحرف على الأقل")
+    .required("كلمة المرور مطلوبة"),
+});
+
 const Page = () => {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const locale = useLocale();
   const { setUser } = useAuthStore();
-  const [showPassword, setShowPassword] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
 
   const initialIdentifier = useMemo(
     () => searchParams.get("identifier")?.trim() || "",
@@ -38,10 +46,10 @@ const Page = () => {
 
   const applyLoginResponse = async (
     values: LoginValues,
+    idToken: string,
     resp: {
       success: boolean;
       data?: {
-        token: string;
         user: {
           id: number;
           name: string;
@@ -61,15 +69,9 @@ const Page = () => {
       return;
     }
 
-    const { token, user, company } = resp.data;
-    const role = (user.role === "boss" ? "boss" : "employee") as UserRole;
-
-    setCookie("auth_token", token, {
-      maxAge: values.rememberMe ? 30 * 24 * 60 * 60 : 24 * 60 * 60,
-      path: "/",
-      sameSite: "strict",
-      secure: process.env.NODE_ENV === "production",
-    });
+    const { user, company } = resp.data;
+    const adminRoles: UserRole[] = ["boss", "manager", "supervisor"];
+    const role = adminRoles.includes(user.role as UserRole) ? (user.role as UserRole) : "employee";
 
     setUser(
       {
@@ -83,7 +85,7 @@ const Page = () => {
         created_at: new Date().toISOString(),
         profile_image: "",
       },
-      token,
+      idToken,
       role,
       user.company_id,
       company?.name
@@ -91,69 +93,55 @@ const Page = () => {
 
     hapticSuccess();
     toastSuccess("تم تسجيل الدخول بنجاح");
+    setShowSuccess(true);
 
-    // Fix: Using the localized router.push (no need to manually add /ar/)
-    if (role === "employee") {
-      router.push("/check-in");
-    } else {
-      router.push("/");
-    }
-  };
-
-  const legacyLogin = async (values: LoginValues) => {
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
-    const rawResp = await fetch(`${apiUrl}/auth/login`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Accept: "application/json" },
-      body: JSON.stringify({
-        identifier: values.identifier,
-        password: values.password,
-      }),
-    });
-
-    if (!rawResp.ok) {
-      hapticError();
-      toastError("فشل تسجيل الدخول. تأكد من البيانات.");
-      return;
-    }
-
-    const resp = await rawResp.json();
-    await applyLoginResponse(values, resp);
-  };
-
-  const firebaseLogin = async (values: LoginValues) => {
-    if (!auth) {
-      await legacyLogin(values);
-      return;
-    }
-
-    const credential = await signInWithEmailAndPassword(auth, values.identifier, values.password);
-    const idToken = await credential.user.getIdToken();
-
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
-    const rawResp = await fetch(`${apiUrl}/auth/firebase`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Accept: "application/json" },
-      body: JSON.stringify({ id_token: idToken }),
-    });
-
-    if (!rawResp.ok) {
-      await legacyLogin(values);
-      return;
-    }
-
-    const resp = await rawResp.json();
-    await applyLoginResponse(values, resp);
+    setTimeout(() => {
+      if (role === "employee") {
+        router.push("/check-in");
+      } else {
+        router.push("/");
+      }
+    }, 800);
   };
 
   const handleSubmit = async (
     values: LoginValues,
     { setSubmitting }: FormikHelpers<LoginValues>
   ) => {
+    if (!auth) {
+      hapticError();
+      toastError("Firebase غير مكون. تواصل مع الإدارة.");
+      setSubmitting(false);
+      return;
+    }
+
     try {
-      await legacyLogin(values);
+      await setPersistence(
+        auth,
+        values.rememberMe ? browserLocalPersistence : browserSessionPersistence
+      );
+      const credential = await signInWithEmailAndPassword(auth, values.identifier, values.password);
+      const idToken = await credential.user.getIdToken();
+
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
+      const rawResp = await fetch(`${apiUrl}/auth/firebase`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify({ id_token: idToken }),
+      });
+
+      if (!rawResp.ok) {
+        const errBody = await rawResp.json().catch(() => ({}));
+        hapticError();
+        toastError(errBody?.message || "فشل تسجيل الدخول. تأكد من البيانات.");
+        return;
+      }
+
+      const resp = await rawResp.json();
+      await applyLoginResponse(values, idToken, resp);
     } catch {
-      await firebaseLogin(values);
+      hapticError();
+      toastError("البريد الإلكتروني أو كلمة المرور غير صحيحة");
     } finally {
       setSubmitting(false);
     }
@@ -174,6 +162,7 @@ const Page = () => {
       <Formik
         initialValues={{ identifier: initialIdentifier, password: "", rememberMe: false }}
         enableReinitialize
+        validationSchema={loginSchema}
         onSubmit={handleSubmit}
       >
         {(props) => (
@@ -185,48 +174,83 @@ const Page = () => {
             <Form className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl border border-white/20 rounded-3xl p-8 flex flex-col gap-6 shadow-2xl">
               <div className="text-center mb-2">
                 <h1 className="text-2xl font-bold text-gray-900 dark:text-white">تسجيل الدخول</h1>
-                <p className="text-sm text-gray-500 mt-1">مرحباً بك مجدداً في نظام Trax</p>
               </div>
 
               <CustomInput
-                type="text"
+                type="email"
                 name="identifier"
-                placeholder="البريد الإلكتروني"
-                label="اسم المستخدم"
+                placeholder="email@trax.com"
+                label="البريد الإلكتروني"
               />
 
-              <div className="relative">
-                <CustomInput
-                  type={showPassword ? "text" : "password"}
-                  name="password"
-                  placeholder="*********"
-                  label="كلمة المرور"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute left-3 top-10 text-gray-400"
+              <CustomInput
+                type="password"
+                name="password"
+                placeholder="*********"
+                label="كلمة المرور"
+              />
+
+              <div className="flex items-center justify-between text-sm">
+                <label className="flex items-center gap-2 cursor-pointer text-gray-600 dark:text-slate-400">
+                  <input
+                    type="checkbox"
+                    name="rememberMe"
+                    className="w-4 h-4 rounded border-gray-300 dark:border-slate-600 text-primaryColor focus:ring-primaryColor"
+                    checked={props.values.rememberMe}
+                    onChange={() => props.setFieldValue("rememberMe", !props.values.rememberMe)}
+                  />
+                  تذكرني
+                </label>
+                <Link
+                  href="/forgot-password"
+                  className="text-blue-600 dark:text-blue-400 hover:underline text-sm"
                 >
-                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                </button>
+                  نسيت كلمة المرور؟
+                </Link>
               </div>
 
               <Button
                 type="submit"
                 variant="primary"
                 disabled={props.isSubmitting}
-                className="h-12 text-lg font-bold"
+                className="h-12 text-lg font-bold flex items-center justify-center gap-2 transition-transform"
               >
+                {props.isSubmitting && (
+                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                )}
                 {props.isSubmitting ? "جاري التحميل..." : "دخول"}
               </Button>
-
-              <p className="text-center text-xs text-gray-400">
-                تسجيل الدخول يعني موافقتك على شروط الخدمة
-              </p>
             </Form>
           </motion.div>
         )}
       </Formik>
+
+      <AnimatePresence>
+        {showSuccess && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-white/90 dark:bg-slate-950/90 backdrop-blur-sm"
+          >
+            <motion.div
+              initial={{ scale: 0, rotate: -180 }}
+              animate={{ scale: 1, rotate: 0 }}
+              transition={{ type: "spring", stiffness: 260, damping: 20 }}
+            >
+              <CheckCircle2 className="w-20 h-20 text-green-500" />
+            </motion.div>
+            <motion.p
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+              className="mt-4 text-xl font-bold text-gray-900 dark:text-white"
+            >
+              تم تسجيل الدخول
+            </motion.p>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </section>
   );
 };

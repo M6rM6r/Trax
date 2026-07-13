@@ -32,29 +32,19 @@ import { toastSuccess } from "@/hooks/use-toast";
 import AvatarUpload from "@/components/shared/AvatarUpload";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { httpClient } from "@/lib/services/httpClient";
+import { Switch } from "@/components/ui/switch";
 
 type TabId = "profile" | "general" | "appearance" | "notifications" | "security";
 
 function ToggleSwitch({ enabled, onChange }: { enabled: boolean; onChange: () => void }) {
   return (
-    <button
-      type="button"
-      onClick={() => {
+    <Switch
+      checked={enabled}
+      onCheckedChange={() => {
         hapticTap();
         onChange();
       }}
-      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-        enabled ? "bg-blue-600" : "bg-gray-300 dark:bg-slate-600"
-      }`}
-      role="switch"
-      aria-checked={enabled}
-    >
-      <span
-        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-          enabled ? "translate-x-6" : "translate-x-1"
-        }`}
-      />
-    </button>
+    />
   );
 }
 
@@ -277,35 +267,7 @@ export default function SettingsPage() {
                     currentUrl={user?.profile_image || null}
                     name={user?.name ?? "U"}
                     size={120}
-                    folder="avatars"
                     shape="circle"
-                    onUpload={async (url) => {
-                      if (!user) return;
-                      try {
-                        await httpClient.put("auth/profile", { profile_image: url });
-                        setUser(
-                          { ...user, profile_image: url },
-                          token ?? "",
-                          role ?? undefined,
-                          companyId ?? undefined,
-                          companyName ?? undefined
-                        );
-                        hapticSuccess();
-                        toastSuccess("تم تحديث صورة الملف الشخصي");
-                      } catch {
-                        toastSuccess("تم حفظ الصورة محلياً");
-                      }
-                    }}
-                    onRemove={() => {
-                      if (!user) return;
-                      setUser(
-                        { ...user, profile_image: "" },
-                        token ?? "",
-                        role ?? undefined,
-                        companyId ?? undefined,
-                        companyName ?? undefined
-                      );
-                    }}
                   />
                   <div className="text-center">
                     <p className="font-semibold text-gray-900 dark:text-slate-100">
@@ -313,7 +275,7 @@ export default function SettingsPage() {
                     </p>
                     <p className="text-sm text-gray-500 dark:text-slate-400">{user?.email}</p>
                     {companyName && (
-                      <span className="inline-block mt-2 text-xs px-3 py-1 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 font-medium">
+                      <span className="inline-block mt-2 text-xs px-3 py-1 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 font-medium">
                         {companyName}
                       </span>
                     )}

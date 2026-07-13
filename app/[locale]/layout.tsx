@@ -14,6 +14,7 @@ import { TopLoadingBar } from "@/components/shared/TopLoadingBar";
 import { MonitoringProvider } from "@/components/providers/MonitoringProvider";
 import SettingsApplier from "@/components/providers/SettingsApplier";
 import { CommandPalette } from "@/components/shared/CommandPalette";
+import MotionProvider from "@/components/providers/MotionProvider";
 
 const cairo = Cairo({
   subsets: ["latin"],
@@ -50,14 +51,16 @@ export default async function LocaleLayout({
           <QueryProvider>
             <ErrorBoundary>
               <MonitoringProvider>
-                <SettingsApplier />
-                <PWARegistrar />
-                <AppPreloader />
-                <TopLoadingBar />
-                {children}
-                <CommandPalette />
-                <OfflineIndicator />
-                <Toaster />
+                <MotionProvider>
+                  <SettingsApplier />
+                  <PWARegistrar />
+                  <AppPreloader />
+                  <TopLoadingBar />
+                  {children}
+                  <CommandPalette />
+                  <OfflineIndicator />
+                  <Toaster />
+                </MotionProvider>
               </MonitoringProvider>
             </ErrorBoundary>
           </QueryProvider>

@@ -2,11 +2,10 @@
 
 import MainLayout from "@/components/shared/MainLayout";
 import FullPageHead from "@/components/shared/FullPageHead";
-import { Card, CardContent } from "@/components/ui/card";
 import { Users, Mail, Phone } from "lucide-react";
 import { useInactiveEmployees } from "@/hooks/useApi";
 import { LoadingSkeleton, EmptyState, ErrorState } from "@/components/shared/StateViews";
-import { DataTable, type Column } from "@/components/shared/DataTable/DataTable";
+import { DataTable } from "@/components/shared/DataTable/DataTable";
 import type { Employee } from "@/lib/types/trackingTypes";
 
 const roleLabels: Record<string, string> = {
