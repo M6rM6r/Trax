@@ -1,5 +1,5 @@
 runConfig:
-  runtime: nodejs20
+  runtime: nodejs22
   cpu: 1
   memoryMiB: 1024
   minInstances: 1
@@ -29,7 +29,3 @@ env:
     value: "1:651185247129:web:75c1a8bfd7821ca89ef908"
   - variable: NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID
     value: "G-QD1KMM7KTF"
-  - variable: NEXT_PUBLIC_SENTRY_DSN
-    value: ""
-  - variable: NEXT_PUBLIC_FIREBASE_RECAPTCHA_PUBLIC_KEY
-    value: ""
