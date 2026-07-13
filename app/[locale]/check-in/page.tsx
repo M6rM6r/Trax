@@ -15,7 +15,6 @@ import {
   Navigation,
   Clock,
   Briefcase,
-  CalendarDays,
   RotateCcw,
 } from "lucide-react";
 import { useCheckIn, useCheckOut, useGeofences } from "@/hooks/useApi";
@@ -229,24 +228,6 @@ export default function CheckInPage() {
     }
   };
 
-  const greeting = useMemo(() => {
-    const hour = new Date().getHours();
-    if (hour < 12) return "صباح الخير";
-    if (hour < 17) return "مساء الخير";
-    return "مساء الخير";
-  }, []);
-
-  const todayDate = useMemo(
-    () =>
-      new Date().toLocaleDateString("ar-SA", {
-        weekday: "long",
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-      }),
-    []
-  );
-
   const avatarUser = user
     ? { id: user.id, name: user.name, email: user.email, avatar: user.profile_image || null }
     : null;
@@ -276,13 +257,12 @@ export default function CheckInPage() {
     <MainLayout>
       <div className="flex flex-col gap-4 max-w-md mx-auto pb-8">
         {/* Employee Welcome Header */}
-        <Card className="border-0 shadow-md bg-gradient-to-br from-blue-600 to-indigo-700 text-white overflow-hidden">
+        <Card className="border-0 shadow-md bg-gradient-to-br from-emerald-600 to-emerald-800 text-white overflow-hidden">
           <CardContent className="p-4 flex items-center gap-3">
             <UserAvatar user={avatarUser} size="lg" className="border-2 border-white/30" />
             <div className="flex-1 min-w-0">
-              <p className="text-xs text-blue-100 font-medium opacity-90">{greeting}،</p>
               <h2 className="text-base font-bold truncate">{user?.name || "موظف"}</h2>
-              <p className="text-[10px] text-blue-100 truncate opacity-80">
+              <p className="text-[10px] text-emerald-100 truncate opacity-80">
                 {companyName || user?.email}
               </p>
             </div>
@@ -300,17 +280,10 @@ export default function CheckInPage() {
           <div
             className={cn(
               "absolute top-0 left-0 w-full h-1.5",
-              checkedIn ? "bg-green-500" : dayComplete ? "bg-slate-400" : "bg-blue-500"
+              checkedIn ? "bg-emerald-500" : dayComplete ? "bg-slate-400" : "bg-emerald-500"
             )}
           />
           <CardContent className="pt-6 pb-6 px-4 text-center">
-            <div className="mb-2">
-              <CalendarDays className="w-4 h-4 text-gray-400 dark:text-slate-500 mx-auto mb-1" />
-              <p className="text-[10px] text-gray-500 dark:text-slate-400 font-medium uppercase tracking-wider">
-                {todayDate}
-              </p>
-            </div>
-
             <LiveClock />
 
             <div className="flex justify-center mt-8 relative">
@@ -357,14 +330,14 @@ export default function CheckInPage() {
                           : "تسجيل الحضور"
                   }
                   className={cn(
-                    "w-36 h-36 rounded-full flex flex-col items-center justify-center gap-2 shadow-2xl transition-all border-4",
+                    "w-40 h-40 rounded-full flex flex-col items-center justify-center gap-2 shadow-2xl shadow-emerald-500/20 transition-all border-4",
                     dayComplete
                       ? "bg-slate-300 text-slate-600 border-slate-100 dark:bg-slate-800 dark:text-slate-500 dark:border-slate-900"
                       : checkInStatus === "success"
-                        ? "bg-green-500 text-white border-green-100 dark:border-green-900/30"
+                        ? "bg-emerald-500 text-white border-emerald-100 dark:border-emerald-900/30"
                         : checkInStatus === "outside"
                           ? "bg-amber-500 text-white border-amber-100 dark:border-amber-900/30"
-                          : "bg-blue-600 text-white border-blue-100 dark:border-blue-900/30"
+                          : "bg-emerald-500 text-white border-emerald-100 dark:border-emerald-900/30"
                   )}
                 >
                   {checkInStatus === "loading" ? (
@@ -391,10 +364,12 @@ export default function CheckInPage() {
 
             <p className="mt-5 text-xs font-medium text-gray-500 dark:text-slate-400">
               {dayComplete
-                ? "شكراً لك، نراك غداً بإذن الله"
+                ? "انتهى"
                 : checkedIn
-                  ? `وقت الحضور: ${checkInTime}`
-                  : "اضغط الزر للتسجيل عند وصولك للموقع"}
+                  ? checkInTime
+                  : isWithinRange
+                    ? "جاهز"
+                    : "خارج النطاق"}
             </p>
           </CardContent>
         </Card>
@@ -403,7 +378,7 @@ export default function CheckInPage() {
         <Card className="border-0 shadow-md dark:bg-slate-900">
           <CardContent className="p-4">
             <h3 className="text-xs font-bold text-gray-700 dark:text-slate-200 mb-3 flex items-center gap-2">
-              <Clock className="w-4 h-4 text-blue-500" />
+              <Clock className="w-4 h-4 text-emerald-500" />
               سجل اليوم
             </h3>
 
@@ -462,7 +437,7 @@ export default function CheckInPage() {
             {checkedIn && (
               <div className="mt-3 pt-3 border-t dark:border-slate-800 flex items-center justify-between">
                 <span className="text-[10px] text-gray-500 dark:text-slate-400">مدة الدوام</span>
-                <span className="text-sm font-mono font-bold text-blue-600 dark:text-blue-400">
+                <span className="text-sm font-mono font-bold text-emerald-600 dark:text-emerald-400">
                   {elapsedTime}
                 </span>
               </div>
@@ -473,98 +448,52 @@ export default function CheckInPage() {
         {/* Location Card */}
         <Card
           className={cn(
-            "border-0 shadow-md dark:bg-slate-900",
+            "border-0 shadow-md dark:bg-slate-900 overflow-hidden",
             locationError
               ? "bg-red-50 dark:bg-red-900/10"
               : isWithinRange
-                ? "bg-green-50/50 dark:bg-green-900/10"
-                : "bg-amber-50/50 dark:bg-amber-900/10"
+                ? "bg-emerald-50/60 dark:bg-emerald-900/10"
+                : "bg-amber-50/60 dark:bg-amber-900/10"
           )}
         >
+          <div
+            className={cn(
+              "h-1 w-full",
+              locationError ? "bg-red-500" : isWithinRange ? "bg-emerald-500" : "bg-amber-500"
+            )}
+          />
           <CardContent className="p-4">
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex items-center gap-3">
-                <div className="relative shrink-0">
-                  <svg className="absolute -inset-1 w-12 h-12 -rotate-90" viewBox="0 0 48 48">
-                    <circle
-                      cx="24"
-                      cy="24"
-                      r="22"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      className="text-gray-200 dark:text-slate-700"
-                    />
-                    <motion.circle
-                      cx="24"
-                      cy="24"
-                      r="22"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeDasharray={2 * Math.PI * 22}
-                      initial={{ pathLength: 0 }}
-                      animate={{
-                        pathLength: locationAccuracy
-                          ? Math.max(0.2, Math.min(1, 10 / locationAccuracy))
-                          : 0,
-                      }}
-                      className={cn(
-                        locationAccuracy && locationAccuracy <= 20
-                          ? "text-green-500"
-                          : locationAccuracy && locationAccuracy <= 50
-                            ? "text-amber-500"
-                            : "text-red-500"
-                      )}
-                    />
-                  </svg>
-                  <div
-                    className={cn(
-                      "w-10 h-10 rounded-full flex items-center justify-center relative",
-                      locationError
-                        ? "bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400"
-                        : isWithinRange
-                          ? "bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400"
-                          : "bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400"
-                    )}
-                  >
-                    <MapPin className="w-5 h-5" />
-                  </div>
-                </div>
-                <div>
-                  <p className="text-xs font-bold dark:text-slate-200">
-                    {locationError
-                      ? "تعذر تحديد الموقع"
-                      : nearestGeofence
-                        ? nearestGeofence.geofence.name
-                        : "جاري تحديد الموقع..."}
+            <div className="flex items-center gap-3">
+              <div
+                className={cn(
+                  "w-12 h-12 rounded-full flex items-center justify-center shrink-0",
+                  locationError
+                    ? "bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400"
+                    : isWithinRange
+                      ? "bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400"
+                      : "bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400"
+                )}
+              >
+                <MapPin className="w-6 h-6" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-bold dark:text-slate-200 truncate">
+                  {locationError
+                    ? "تعذر تحديد الموقع"
+                    : nearestGeofence
+                      ? nearestGeofence.geofence.name
+                      : "جاري تحديد الموقع..."}
+                </p>
+                {nearestGeofence && !locationError && (
+                  <p className="text-[10px] text-gray-500 dark:text-slate-400">
+                    {Math.round(nearestGeofence.distance)}م من مركز النطاق
                   </p>
-                  {nearestGeofence && !locationError && (
-                    <p className="text-[10px] text-gray-500 dark:text-slate-400">
-                      {Math.round(nearestGeofence.distance)}م من النطاق
-                      {locationAccuracy && (
-                        <span
-                          className={cn(
-                            "ms-1 px-1.5 py-0.5 rounded-full text-[9px] font-medium",
-                            locationAccuracy <= 20
-                              ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
-                              : locationAccuracy <= 50
-                                ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
-                                : "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
-                          )}
-                        >
-                          الدقة {Math.round(locationAccuracy)}م
-                        </span>
-                      )}
-                    </p>
-                  )}
-                </div>
+                )}
               </div>
               <Button
                 variant="ghost"
                 size="icon"
-                className="w-8 h-8 text-gray-500 dark:text-slate-400"
+                className="w-8 h-8 text-gray-500 dark:text-slate-400 shrink-0"
                 onClick={refreshLocation}
               >
                 <RotateCcw className="w-4 h-4" />
@@ -572,28 +501,30 @@ export default function CheckInPage() {
             </div>
 
             {locationError ? (
-              <p className="mt-2 text-[10px] text-red-600 dark:text-red-400 font-medium">
+              <p className="mt-3 text-[11px] text-red-600 dark:text-red-400 font-medium">
                 {locationError}
               </p>
             ) : (
               nearestGeofence && (
-                <div className="mt-3 flex items-center gap-2 text-[10px]">
+                <div className="mt-3 flex items-center justify-between gap-2">
                   <span
                     className={cn(
-                      "w-2 h-2 rounded-full",
-                      isWithinRange ? "bg-green-500" : "bg-amber-500"
-                    )}
-                  />
-                  <span
-                    className={cn(
-                      "font-medium",
+                      "text-[11px] font-medium",
                       isWithinRange
-                        ? "text-green-700 dark:text-green-400"
+                        ? "text-emerald-700 dark:text-emerald-400"
                         : "text-amber-700 dark:text-amber-400"
                     )}
                   >
-                    {isWithinRange ? "أنت داخل النطاق المسموح" : "أنت خارج النطاق الجغرافي"}
+                    {isWithinRange
+                      ? "داخل النطاق"
+                      : `اقترب ${Math.max(0, Math.round(nearestGeofence.distance - nearestGeofence.geofence.radius))}م للتسجيل`}
                   </span>
+                  <span
+                    className={cn(
+                      "w-2 h-2 rounded-full shrink-0",
+                      isWithinRange ? "bg-emerald-500" : "bg-amber-500"
+                    )}
+                  />
                 </div>
               )
             )}
@@ -636,7 +567,7 @@ export default function CheckInPage() {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-500 dark:text-slate-400">مدة الدوام</span>
-                  <span className="font-mono font-bold text-blue-600 dark:text-blue-400">
+                  <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400">
                     {elapsedTime}
                   </span>
                 </div>
