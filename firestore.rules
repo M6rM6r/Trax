@@ -20,26 +20,26 @@ service cloud.firestore {
     }
 
     match /employees/{employeeId} {
-      allow read: if manager() || owns(resource);
-      allow create, update, delete: if manager();
+      allow read: if signedIn();
+      allow create: if signedIn();
+      allow update, delete: if signedIn() && (owns(resource) || request.auth.token.role in ['boss', 'manager', 'supervisor']);
     }
 
     match /geofences/{geofenceId} {
       allow read: if signedIn();
-      allow create, update, delete: if manager();
+      allow create, update, delete: if signedIn();
     }
 
     match /attendance/{attendanceId} {
-      allow read: if manager() || owns(resource);
-      allow create: if signedIn() && request.resource.data.ownerUid == request.auth.uid;
-      allow update: if manager() || owns(resource);
-      allow delete: if manager();
+      allow read: if signedIn();
+      allow create: if signedIn();
+      allow update, delete: if signedIn() && (owns(resource) || request.auth.token.role in ['boss', 'manager', 'supervisor']);
     }
 
     match /locations/{employeeId} {
-      allow read: if manager() || owns(resource);
-      allow create, update: if signedIn() && request.resource.data.ownerUid == request.auth.uid;
-      allow delete: if manager() || owns(resource);
+      allow read: if signedIn();
+      allow create, update: if signedIn();
+      allow delete: if signedIn() && (owns(resource) || request.auth.token.role in ['boss', 'manager', 'supervisor']);
     }
   }
 }
