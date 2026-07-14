@@ -17,7 +17,7 @@ const envSchema = z
     NEXT_PUBLIC_PRODUCTION_API_URL: optionalUrl,
     NEXT_PUBLIC_BASE_URL: optionalUrl,
     NEXT_PUBLIC_WS_URL: optionalUrl,
-    NEXT_PUBLIC_USE_MOCK: z.preprocess((v) => (v as string) === "true", z.boolean()).default(true),
+    NEXT_PUBLIC_USE_MOCK: z.preprocess((v) => (v as string) === "true", z.boolean()).default(false),
     NEXT_PUBLIC_USE_FIREBASE: z
       .preprocess((v) => (v as string) === "true", z.boolean())
       .default(false),
