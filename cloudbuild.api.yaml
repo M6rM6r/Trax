@@ -25,7 +25,7 @@ steps:
       - --memory=1Gi
       - --add-cloudsql-instances=$_CLOUD_SQL_INSTANCE
       - --set-env-vars=DB_CONNECTION=mysql,DB_HOST=/cloudsql/$_CLOUD_SQL_INSTANCE,DB_DATABASE=trax,DB_USERNAME=trax,APP_ENV=production,APP_DEBUG=false,CACHE_STORE=file,SESSION_DRIVER=file,QUEUE_CONNECTION=sync,LOG_CHANNEL=stderr,LOG_LEVEL=error,MASTER_EMAIL=mastermind@trax.com
-      - --set-secrets=DB_PASSWORD=trax-db-password:latest,FIREBASE_SERVICE_ACCOUNT_PATH=firebase-service-account-path:latest,AI_API_KEY=trax-ai-api-key:latest
+      - --set-secrets=DB_PASSWORD=trax-db-password:latest,FIREBASE_PROJECT_ID=FIREBASE_PROJECT_ID:latest,FIREBASE_CLIENT_EMAIL=FIREBASE_CLIENT_EMAIL:latest,FIREBASE_PRIVATE_KEY=FIREBASE_PRIVATE_KEY:latest,AI_API_KEY=ANTHROPIC_API_KEY:latest
 
 images:
   - gcr.io/$PROJECT_ID/trax-api:latest

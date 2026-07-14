@@ -14,10 +14,22 @@ class FirebaseAuthServiceProvider extends ServiceProvider
             $credentials = config('firebase.service_account_path');
 
             if (! is_string($credentials) || $credentials === '') {
-                throw new \RuntimeException('Firebase service account credentials are not configured.');
+                $credentials = [
+                    'type' => 'service_account',
+                    'project_id' => config('firebase.project_id'),
+                    'client_email' => config('firebase.client_email'),
+                    'private_key' => config('firebase.private_key'),
+                    'token_uri' => 'https://oauth2.googleapis.com/token',
+                ];
             }
 
-            if (file_exists($credentials)) {
+            if (is_array($credentials)) {
+                if (empty($credentials['project_id']) || empty($credentials['client_email']) || empty($credentials['private_key'])) {
+                    throw new \RuntimeException('Firebase individual service-account secrets are incomplete.');
+                }
+
+                $factory = (new Factory)->withServiceAccount($credentials);
+            } elseif (file_exists($credentials)) {
                 $factory = (new Factory)->withServiceAccount($credentials);
             } else {
                 $decodedCredentials = json_decode($credentials, true);

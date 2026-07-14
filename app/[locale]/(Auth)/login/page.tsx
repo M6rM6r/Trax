@@ -184,9 +184,24 @@ const Page = () => {
 
       const resp = await rawResp.json();
       await applyLoginResponse(values, idToken, resp);
-    } catch {
+    } catch (err) {
       hapticError();
-      toastError("البريد الإلكتروني أو كلمة المرور غير صحيحة");
+      const firebaseErr = err as { code?: string; message?: string };
+      let msg = "البريد الإلكتروني أو كلمة المرور غير صحيحة";
+      if (firebaseErr?.code === "auth/unauthorized-domain") {
+        msg = "هذا النطاق غير مصرح به. تواصل مع الإدارة.";
+      } else if (firebaseErr?.code === "auth/user-not-found") {
+        msg = "المستخدم غير موجود. تأكد من البريد الإلكتروني.";
+      } else if (firebaseErr?.code === "auth/wrong-password") {
+        msg = "كلمة المرور غير صحيحة.";
+      } else if (firebaseErr?.code === "auth/invalid-credential") {
+        msg = "بيانات الدخول غير صحيحة.";
+      } else if (firebaseErr?.code === "auth/too-many-requests") {
+        msg = "محاولات كثيرة. حاول لاحقاً.";
+      } else if (firebaseErr?.message) {
+        msg = firebaseErr.message;
+      }
+      toastError(msg);
     } finally {
       setSubmitting(false);
     }
