@@ -31,4 +31,4 @@ images:
   - gcr.io/$PROJECT_ID/trax-api:latest
 
 substitutions:
-  _CLOUD_SQL_INSTANCE: "rewrew7:asia-southeast1:trax-db"
+  _CLOUD_SQL_INSTANCE: "${PROJECT_ID}:asia-southeast1:trax-db"

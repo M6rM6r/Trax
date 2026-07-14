@@ -37,7 +37,7 @@ function loadEnv(): EnvConfig {
         "[env] Validation failed, falling back to defaults:",
         result.error.issues.map((i) => i.path.join(".")).join(", ")
       );
-      return envSchema.parse({ NEXT_PUBLIC_USE_MOCK: "true" });
+      return envSchema.parse({ NEXT_PUBLIC_USE_MOCK: "true", NEXT_PUBLIC_USE_FIREBASE: "true" });
     }
     return result.data;
   } catch {
@@ -46,6 +46,7 @@ function loadEnv(): EnvConfig {
       NEXT_PUBLIC_APP_VERSION: "0.1.0",
       NEXT_PUBLIC_DEFAULT_LOCALE: "ar",
       NEXT_PUBLIC_USE_MOCK: true,
+      NEXT_PUBLIC_USE_FIREBASE: true,
       NEXT_PUBLIC_DEFAULT_MAP_LAT: 24.7136,
       NEXT_PUBLIC_DEFAULT_MAP_LNG: 46.6753,
       NEXT_PUBLIC_DEFAULT_MAP_ZOOM: 12,
