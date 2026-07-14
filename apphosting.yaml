@@ -12,9 +12,9 @@ env:
   - variable: NEXT_PUBLIC_USE_FIREBASE
     value: "true"
   - variable: NEXT_PUBLIC_API_URL
-    value: ""
+    value: "https://firebase-only.invalid/api"
   - variable: NEXT_PUBLIC_WS_URL
-    value: ""
+    value: "wss://firebase-only.invalid"
   - variable: NEXT_PUBLIC_APP_URL
     value: "https://naf--trax-ae.asia-southeast1.hosted.app"
   - variable: NEXT_PUBLIC_DEFAULT_LOCALE
