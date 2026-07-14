@@ -98,7 +98,7 @@ export default function EmployeeProfilePage({ params }: { params: { id: string }
     );
   }
 
-  const geofenceName = geofences.find((g) => g.id === employee.geofenceId)?.name || "-";
+  const geofenceName = geofences.find((g) => String(g.id) === String(employee.geofenceId))?.name || "-";
 
   const handleOpenEdit = () => {
     if (!employee) return;

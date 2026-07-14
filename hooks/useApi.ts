@@ -141,7 +141,7 @@ export function useCheckIn() {
       employeeId: string | number;
       lat: number;
       lng: number;
-      geofenceId: number;
+      geofenceId: string | number;
     }) => {
       return firebaseData.attendance.checkIn(payload);
     },

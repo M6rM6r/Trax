@@ -186,7 +186,7 @@ export default function CheckInPage() {
         lat: currentLocation.lat,
         lng: currentLocation.lng,
         geofenceId: nearestGeofence?.geofence.id ?? 0,
-      } as { employeeId: string | number; lat: number; lng: number; geofenceId: number });
+      } as { employeeId: string | number; lat: number; lng: number; geofenceId: string | number });
 
       const now = new Date();
       setCheckInTime(now.toLocaleTimeString("ar-SA", { hour: "2-digit", minute: "2-digit" }));

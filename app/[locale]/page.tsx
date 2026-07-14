@@ -575,11 +575,11 @@ export default function DashboardPage() {
                       sortable: true,
                       filterable: true,
                       sortValue: (r) => {
-                        const emp = employees.find((e) => e.id === r.employeeId);
+                        const emp = employees.find((e) => String(e.id) === String(r.employeeId));
                         return emp?.department || "-";
                       },
                       cell: (r) => {
-                        const emp = employees.find((e) => e.id === r.employeeId);
+                        const emp = employees.find((e) => String(e.id) === String(r.employeeId));
                         return emp?.department || "-";
                       },
                     },

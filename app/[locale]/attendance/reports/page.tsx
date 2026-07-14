@@ -131,7 +131,7 @@ export default function AttendanceReportsPage() {
     >();
 
     attendance.forEach((record) => {
-      const emp = employees.find((e) => e.id === record.employeeId);
+      const emp = employees.find((e) => String(e.id) === String(record.employeeId));
       const department = emp?.department || "غير محدد";
       const current = departmentMap.get(department) ?? {
         department,

@@ -225,9 +225,9 @@ export default function AttendancePage() {
 
   const filteredAttendance = useMemo(() => {
     return attendance.filter((r) => {
-      if (filters.employeeId && r.employeeId !== Number(filters.employeeId)) return false;
+      if (filters.employeeId && String(r.employeeId) !== String(filters.employeeId)) return false;
       if (filters.department) {
-        const emp = employees.find((e) => e.id === r.employeeId);
+        const emp = employees.find((e) => String(e.id) === String(r.employeeId));
         if (emp?.department !== filters.department) return false;
       }
       if (filters.statuses.length > 0 && !filters.statuses.includes(r.status)) return false;
@@ -706,11 +706,11 @@ export default function AttendancePage() {
                         sortable: true,
                         filterable: true,
                         sortValue: (r) => {
-                          const emp = employees.find((e) => e.id === r.employeeId);
+                          const emp = employees.find((e) => String(e.id) === String(r.employeeId));
                           return emp?.department || "-";
                         },
                         cell: (r) => {
-                          const emp = employees.find((e) => e.id === r.employeeId);
+                          const emp = employees.find((e) => String(e.id) === String(r.employeeId));
                           return emp?.department || "-";
                         },
                       },

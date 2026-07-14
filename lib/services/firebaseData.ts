@@ -49,7 +49,7 @@ function mapEmployee(id: string, value: Record<string, unknown>): Employee {
     geofenceId:
       value.geofenceId === null || value.geofenceId === undefined
         ? null
-        : toNumber(value.geofenceId),
+        : (value.geofenceId as string | number),
     status: value.status === "inactive" ? "inactive" : "active",
     currentLat:
       value.currentLat === null || value.currentLat === undefined
@@ -113,7 +113,7 @@ function mapAttendance(id: string, value: Record<string, unknown>): AttendanceRe
     geofenceId:
       value.geofenceId === null || value.geofenceId === undefined
         ? null
-        : toNumber(value.geofenceId),
+        : (value.geofenceId as string | number),
     geofenceName: (value.geofenceName as string | null | undefined) ?? null,
     lateMinutes: toNumber(value.lateMinutes),
     workedHours: toNumber(value.workedHours),
@@ -225,11 +225,11 @@ export const firebaseData = {
       employeeId: string | number;
       lat: number;
       lng: number;
-      geofenceId: number;
+      geofenceId: string | number;
     }): Promise<AttendanceRecord> {
       const geofenceSnapshot = await getDocs(collection(requireDb(), "geofences"));
       const geofenceEntry = geofenceSnapshot.docs.find(
-        (item) => mapGeofence(item.id, item.data()).id === payload.geofenceId
+        (item) => String(mapGeofence(item.id, item.data()).id) === String(payload.geofenceId)
       );
       const geofence = geofenceEntry
         ? mapGeofence(geofenceEntry.id, geofenceEntry.data())
@@ -385,7 +385,7 @@ export const firebaseData = {
         query(collection(requireDb(), "locations"), orderBy("lastSeen", "desc"), limit(500))
       );
       return snapshot.docs.map((item) => ({
-        id: toNumber(item.data().employeeId ?? item.id),
+        id: (item.data().employeeId ?? item.id) as string | number,
         name: String(item.data().name ?? ""),
         lat: toNumber(item.data().lat),
         lng: toNumber(item.data().lng),

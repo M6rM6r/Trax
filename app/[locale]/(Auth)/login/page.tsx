@@ -59,8 +59,8 @@ const Page = () => {
           email: string;
           role: string;
           company_id: number;
-          employee_id?: number | null;
-          assigned_geofence_id?: number | null;
+          employee_id?: string | number | null;
+          assigned_geofence_id?: string | number | null;
         };
         company?: { id: number; name: string };
       };
@@ -157,12 +157,12 @@ const Page = () => {
               employee_id:
                 profileData.employee_id === null || profileData.employee_id === undefined
                   ? numericId
-                  : Number(profileData.employee_id),
+                  : (profileData.employee_id as string | number),
               assigned_geofence_id:
                 profileData.assigned_geofence_id === null ||
                 profileData.assigned_geofence_id === undefined
                   ? null
-                  : Number(profileData.assigned_geofence_id),
+                  : (profileData.assigned_geofence_id as string | number),
             },
             company: {
               id: Number(profileData.company_id ?? 1),

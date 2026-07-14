@@ -233,7 +233,7 @@ export default function LiveMapPage() {
         const type = feature.get("type");
         if (type === "employee") {
           const empId = feature.get("employeeId");
-          const emp = filteredTracking.find((e) => e.id === empId);
+          const emp = filteredTracking.find((e) => String(e.id) === String(empId));
           if (emp) {
             setSelectedEmployee(emp);
             hapticTap();
