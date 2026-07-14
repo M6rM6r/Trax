@@ -3,7 +3,6 @@ import { getStorage } from "firebase/storage";
 import { getAnalytics, isSupported } from "firebase/analytics";
 import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
-import { initializeAppCheck, ReCaptchaV3Provider } from "firebase/app-check";
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -33,36 +32,6 @@ const app = isFirebaseConfigured
     ? initializeApp(firebaseConfig)
     : getApps()[0]
   : null;
-
-// Initialize Firebase App Check for production protection
-if (app && typeof window !== "undefined") {
-  const reCAPTCHAPublicKey = process.env.NEXT_PUBLIC_FIREBASE_RECAPTCHA_PUBLIC_KEY;
-  if (reCAPTCHAPublicKey) {
-    if (process.env.NODE_ENV === "production") {
-      try {
-        initializeAppCheck(app, {
-          provider: new ReCaptchaV3Provider(reCAPTCHAPublicKey),
-          isTokenAutoRefreshEnabled: true,
-        });
-      } catch (e) {
-        console.warn("App Check initialization failed:", e);
-      }
-    } else {
-      // Dev mode — use debug token
-      try {
-        (
-          window as Window & { FIREBASE_APPCHECK_DEBUG_TOKEN?: boolean | string }
-        ).FIREBASE_APPCHECK_DEBUG_TOKEN = true;
-        initializeAppCheck(app, {
-          provider: new ReCaptchaV3Provider(reCAPTCHAPublicKey),
-          isTokenAutoRefreshEnabled: true,
-        });
-      } catch (e) {
-        console.warn("App Check dev initialization failed:", e);
-      }
-    }
-  }
-}
 
 export const storage = app ? getStorage(app) : null;
 
