@@ -31,7 +31,6 @@ import { hapticTap, hapticSuccess } from "@/lib/utils/haptics";
 import { toastSuccess } from "@/hooks/use-toast";
 import AvatarUpload from "@/components/shared/AvatarUpload";
 import { useAuthStore } from "@/stores/useAuthStore";
-import { httpClient } from "@/lib/services/httpClient";
 import { Switch } from "@/components/ui/switch";
 
 type TabId = "profile" | "general" | "appearance" | "notifications" | "security";
@@ -80,7 +79,7 @@ const fontSizeMap: Record<string, string> = {
 
 export default function SettingsPage() {
   const { setTheme } = useTheme();
-  const { user, setUser, token, role, companyId, companyName } = useAuthStore();
+  const { user, companyName } = useAuthStore();
   const [activeTab, setActiveTab] = useState<TabId>("profile");
   const [themeMode, setThemeMode] = useState<string>("system");
   const [accentColor, setAccentColor] = useState<string>("blue");

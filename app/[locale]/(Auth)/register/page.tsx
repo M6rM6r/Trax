@@ -136,7 +136,7 @@ export default function RegisterPage() {
     }
     try {
       if (env.NEXT_PUBLIC_USE_FIREBASE && auth) {
-        const result = await firebaseData.companies.register({
+        await firebaseData.companies.register({
           company_name: values.company_name,
           industry: values.industry,
           admin_name: values.admin_name,

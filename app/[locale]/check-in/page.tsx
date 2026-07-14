@@ -487,6 +487,7 @@ export default function CheckInPage() {
                 {nearestGeofence && !locationError && (
                   <p className="text-[10px] text-gray-500 dark:text-slate-400">
                     {Math.round(nearestGeofence.distance)}م من مركز النطاق
+                    {locationAccuracy !== null && ` · دقة ±${Math.round(locationAccuracy)}م`}
                   </p>
                 )}
               </div>
