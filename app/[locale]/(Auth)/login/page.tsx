@@ -13,12 +13,15 @@ import { useAuthStore, UserRole } from "@/stores/useAuthStore";
 import { hapticSuccess, hapticError } from "@/lib/utils/haptics";
 import { motion, AnimatePresence } from "framer-motion";
 import {
+  getIdTokenResult,
   signInWithEmailAndPassword,
   browserLocalPersistence,
   browserSessionPersistence,
   setPersistence,
 } from "firebase/auth";
 import { auth } from "@/lib/config/firebase";
+import { getFirebaseUserProfile } from "@/lib/services/firebaseData";
+import { env } from "@/lib/config/env";
 
 interface LoginValues {
   identifier: string;
@@ -122,6 +125,48 @@ const Page = () => {
       );
       const credential = await signInWithEmailAndPassword(auth, values.identifier, values.password);
       const idToken = await credential.user.getIdToken();
+
+      if (env.NEXT_PUBLIC_USE_FIREBASE) {
+        const profile = await getFirebaseUserProfile(
+          credential.user.uid,
+          credential.user.email ?? values.identifier
+        );
+        const tokenResult = await getIdTokenResult(credential.user);
+        const profileData = profile ?? {};
+        const numericId = Array.from(credential.user.uid).reduce(
+          (total, character) => (total * 31 + character.charCodeAt(0)) % 2147483647,
+          0
+        );
+        const role = String(profileData.role ?? tokenResult.claims.role ?? "employee");
+        await applyLoginResponse(values, idToken, {
+          success: true,
+          data: {
+            user: {
+              id: Number(profileData.id ?? numericId),
+              name: String(
+                profileData.name ?? credential.user.displayName ?? values.identifier.split("@")[0]
+              ),
+              email: String(profileData.email ?? credential.user.email ?? values.identifier),
+              role,
+              company_id: Number(profileData.company_id ?? 1),
+              employee_id:
+                profileData.employee_id === null || profileData.employee_id === undefined
+                  ? numericId
+                  : Number(profileData.employee_id),
+              assigned_geofence_id:
+                profileData.assigned_geofence_id === null ||
+                profileData.assigned_geofence_id === undefined
+                  ? null
+                  : Number(profileData.assigned_geofence_id),
+            },
+            company: {
+              id: Number(profileData.company_id ?? 1),
+              name: String(profileData.company_name ?? "Trax"),
+            },
+          },
+        });
+        return;
+      }
 
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
       const rawResp = await fetch(`${apiUrl}/auth/firebase`, {

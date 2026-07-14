@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/services/api";
 import { validatedApi } from "@/lib/services/validatedApi";
 import { httpClient } from "@/lib/services/httpClient";
+import { firebaseData } from "@/lib/services/firebaseData";
 import { env } from "@/lib/config/env";
 import { buildRetentionFeatures, type RetentionFeatures } from "@/lib/utils/retentionFeatures";
 import type {
@@ -16,6 +17,7 @@ import type {
 import type { DashboardTrendsSchema } from "@/lib/schemas/dashboard.schema";
 
 const useMock = env.NEXT_PUBLIC_USE_MOCK;
+const useFirebase = env.NEXT_PUBLIC_USE_FIREBASE;
 
 export interface DashboardDateRange {
   from?: Date;
@@ -89,6 +91,7 @@ export function useEmployees(options?: { enabled?: boolean }) {
     enabled: options?.enabled ?? true,
     staleTime: 30 * 1000,
     queryFn: async (): Promise<Employee[]> => {
+      if (useFirebase) return firebaseData.employees.list();
       if (useMock) {
         const res = await api.employees.list();
         return res.data;
@@ -102,6 +105,10 @@ export function useInactiveEmployees() {
   return useQuery<Employee[]>({
     queryKey: queryKeys.employeesInactive,
     queryFn: async (): Promise<Employee[]> => {
+      if (useFirebase) {
+        const employees = await firebaseData.employees.list();
+        return employees.filter((employee) => employee.status === "inactive");
+      }
       if (useMock) {
         const res = await api.employees.inactive();
         return res.data;
@@ -115,6 +122,7 @@ export function useCreateEmployee() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (employee: Omit<Employee, "id">) => {
+      if (useFirebase) return firebaseData.employees.create(employee);
       if (useMock) {
         const res = await api.employees.create(employee);
         return res.data;
@@ -131,6 +139,10 @@ export function useUpdateEmployee() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, data }: { id: number; data: Partial<Employee> }) => {
+      if (useFirebase) {
+        await firebaseData.employees.update(id, data);
+        return firebaseData.employees.getById(id) as Promise<Employee>;
+      }
       if (useMock) {
         const res = await api.employees.update(id, data);
         return res.data;
@@ -147,6 +159,10 @@ export function useDeleteEmployee() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (id: number) => {
+      if (useFirebase) {
+        await firebaseData.employees.delete(id);
+        return { id };
+      }
       if (useMock) {
         const res = await api.employees.delete(id);
         return res.data;
@@ -172,6 +188,7 @@ export function useAttendance() {
     queryKey: queryKeys.attendance,
     staleTime: 30 * 1000,
     queryFn: async (): Promise<AttendanceRecord[]> => {
+      if (useFirebase) return firebaseData.attendance.list();
       if (useMock) {
         const res = await api.attendance.list();
         return res.data;
@@ -186,6 +203,7 @@ export function useAttendanceReports() {
     queryKey: queryKeys.attendanceReports,
     staleTime: 60 * 1000,
     queryFn: async (): Promise<AttendanceRecord[]> => {
+      if (useFirebase) return firebaseData.attendance.list();
       if (useMock) {
         const res = await api.attendance.reports();
         return res.data;
@@ -204,6 +222,7 @@ export function useCheckIn() {
       lng: number;
       geofenceId: number;
     }) => {
+      if (useFirebase) return firebaseData.attendance.checkIn(payload);
       if (useMock) {
         const res = await api.attendance.checkIn(payload);
         return res.data;
@@ -222,6 +241,7 @@ export function useCheckOut() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (payload: { employeeId: number }) => {
+      if (useFirebase) return firebaseData.attendance.checkOut(payload.employeeId);
       if (useMock) {
         const res = await api.attendance.checkOut(payload);
         return res.data;
@@ -241,6 +261,7 @@ export function useGeofences() {
     queryKey: queryKeys.geofences,
     staleTime: 5 * 60 * 1000,
     queryFn: async (): Promise<Geofence[]> => {
+      if (useFirebase) return firebaseData.geofences.list();
       if (useMock) {
         const res = await api.geofences.list();
         return res.data;
@@ -254,6 +275,7 @@ export function useCreateGeofence() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (geofence: Omit<Geofence, "id">) => {
+      if (useFirebase) return firebaseData.geofences.create(geofence);
       if (useMock) {
         const res = await api.geofences.create(geofence);
         return res.data;
@@ -270,6 +292,10 @@ export function useUpdateGeofence() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, data }: { id: number; data: Partial<Geofence> }) => {
+      if (useFirebase) {
+        await firebaseData.geofences.update(id, data);
+        return { id, ...data } as Geofence;
+      }
       if (useMock) {
         const res = await api.geofences.update(id, data);
         return res.data;
@@ -286,6 +312,10 @@ export function useDeleteGeofence() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (id: number) => {
+      if (useFirebase) {
+        await firebaseData.geofences.delete(id);
+        return { id };
+      }
       if (useMock) {
         const res = await api.geofences.delete(id);
         return res.data;
@@ -306,6 +336,7 @@ export function useDashboardStats(dateRange?: DashboardDateRange) {
     queryKey: [...queryKeys.dashboard, from ?? "all", to ?? "all"],
     staleTime: 60 * 1000,
     queryFn: async (): Promise<DashboardStats> => {
+      if (useFirebase) return firebaseData.dashboard.stats();
       if (useMock) {
         const res = await api.dashboard.stats({ from, to });
         return res.data;
@@ -322,6 +353,7 @@ export function useDashboardTrends(dateRange?: DashboardDateRange) {
   return useQuery<DashboardTrendsSchema>({
     queryKey: [...queryKeys.dashboardTrends, from ?? "all", to ?? "all"],
     queryFn: async (): Promise<DashboardTrendsSchema> => {
+      if (useFirebase) return mockTrends;
       if (useMock) {
         await new Promise((r) => setTimeout(r, 100));
         return mockTrends;
@@ -337,6 +369,7 @@ export function useLiveTracking() {
     queryKey: queryKeys.tracking,
     staleTime: 10 * 1000,
     queryFn: async (): Promise<LiveTrackingEmployee[]> => {
+      if (useFirebase) return firebaseData.tracking.live();
       if (useMock) {
         const res = await api.tracking.live();
         return res.data;

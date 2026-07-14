@@ -2,6 +2,7 @@ import { initializeApp, getApps } from "firebase/app";
 import { getStorage } from "firebase/storage";
 import { getAnalytics, isSupported } from "firebase/analytics";
 import { getAuth } from "firebase/auth";
+import { getFirestore } from "firebase/firestore";
 import { initializeAppCheck, ReCaptchaV3Provider } from "firebase/app-check";
 
 const firebaseConfig = {
@@ -66,6 +67,8 @@ if (app && typeof window !== "undefined") {
 export const storage = app ? getStorage(app) : null;
 
 export const auth = app ? getAuth(app) : null;
+
+export const db = app ? getFirestore(app) : null;
 
 export const analytics =
   typeof window !== "undefined" && app
