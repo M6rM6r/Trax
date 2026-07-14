@@ -23,6 +23,8 @@ import { toastSuccess, toastError } from "@/hooks/use-toast";
 import { hapticSuccess, hapticError } from "@/lib/utils/haptics";
 import { useAuthStore, UserRole } from "@/stores/useAuthStore";
 import { httpClient, ApiError } from "@/lib/services/httpClient";
+import { firebaseData } from "@/lib/services/firebaseData";
+import { env } from "@/lib/config/env";
 import loginBG from "@/public/images/loginBg.png";
 
 interface RegisterValues {
@@ -133,6 +135,49 @@ export default function RegisterPage() {
       return;
     }
     try {
+      if (env.NEXT_PUBLIC_USE_FIREBASE && auth) {
+        const result = await firebaseData.companies.register({
+          company_name: values.company_name,
+          industry: values.industry,
+          admin_name: values.admin_name,
+          admin_email: values.admin_email,
+          admin_password: values.admin_password,
+        });
+
+        const credential = await signInWithEmailAndPassword(
+          auth,
+          values.admin_email,
+          values.admin_password
+        );
+        const idToken = await credential.user.getIdToken();
+
+        const role: UserRole = "boss";
+        setUser(
+          {
+            id: 0,
+            name: values.admin_name,
+            email: values.admin_email,
+            role: "boss",
+            permissions: [],
+            created_at: new Date().toISOString(),
+            profile_image: "",
+          },
+          idToken,
+          role,
+          0,
+          values.company_name
+        );
+
+        hapticSuccess();
+        toastSuccess("تم إنشاء حسابك بنجاح! مرحباً بك في Trax");
+        setRegistrationResult({
+          companyName: values.company_name,
+          adminEmail: values.admin_email,
+          adminPassword: values.admin_password,
+        });
+        return;
+      }
+
       const resp = await httpClient.post<{
         success: boolean;
         message: string;

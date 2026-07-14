@@ -177,7 +177,18 @@ export function useDeleteEmployee() {
 
 export function useResetEmployeePassword() {
   return useMutation({
-    mutationFn: async ({ id, password }: { id: number; password: string }) => {
+    mutationFn: async ({
+      id,
+      password,
+      email,
+    }: {
+      id: number;
+      password: string;
+      email?: string;
+    }) => {
+      if (useFirebase && email) {
+        return firebaseData.employees.resetPassword(email);
+      }
       return httpClient.post(`/employees/${id}/reset-password`, { password });
     },
   });

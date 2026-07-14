@@ -1059,7 +1059,11 @@ export default function EmployeesPage() {
                       onClick={() => {
                         if (!editTarget || resetPasswordValue.length < 8) return;
                         resetEmployeePassword.mutate(
-                          { id: editTarget.id, password: resetPasswordValue },
+                          {
+                            id: editTarget.id,
+                            password: resetPasswordValue,
+                            email: editTarget.email,
+                          },
                           {
                             onSuccess: () => {
                               toastSuccess("تم تغيير كلمة المرور بنجاح");

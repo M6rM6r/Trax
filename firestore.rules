@@ -19,6 +19,12 @@ service cloud.firestore {
       allow create, update, delete: if signedIn() && uid == request.auth.uid;
     }
 
+    match /companies/{companyId} {
+      allow read: if signedIn();
+      allow create: if signedIn();
+      allow update, delete: if signedIn() && resource.data.ownerId == request.auth.uid;
+    }
+
     match /employees/{employeeId} {
       allow read: if signedIn();
       allow create: if signedIn();

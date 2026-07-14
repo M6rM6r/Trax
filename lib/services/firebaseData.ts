@@ -13,6 +13,11 @@ import {
   updateDoc,
   where,
 } from "firebase/firestore";
+import {
+  createUserWithEmailAndPassword,
+  updatePassword as authUpdatePassword,
+  sendPasswordResetEmail,
+} from "firebase/auth";
 import { auth, db } from "@/lib/config/firebase";
 import type {
   AttendanceRecord,
@@ -135,18 +140,37 @@ export const firebaseData = {
       const snapshot = await getDoc(doc(requireDb(), "employees", String(id)));
       return snapshot.exists() ? mapEmployee(snapshot.id, snapshot.data()) : null;
     },
-    async create(employee: Omit<Employee, "id">): Promise<Employee> {
+    async create(employee: Omit<Employee, "id"> & { password?: string }): Promise<Employee> {
+      const { password, ...employeeData } = employee;
+
+      if (password && auth) {
+        const cred = await createUserWithEmailAndPassword(auth, employee.email, password);
+        await setDoc(doc(requireDb(), "users", cred.user.uid), {
+          name: employee.name,
+          email: employee.email,
+          role: employee.role ?? "employee",
+          company_id: (employee as Record<string, unknown>).company_id ?? 1,
+          employee_id: null,
+          assigned_geofence_id: employee.geofenceId ?? null,
+          createdAt: serverTimestamp(),
+        });
+      }
+
       const reference = await addDoc(collection(requireDb(), "employees"), {
-        ...employee,
+        ...employeeData,
         createdAt: serverTimestamp(),
       });
-      return mapEmployee(reference.id, { ...employee, id: reference.id });
+      return mapEmployee(reference.id, { ...employeeData, id: reference.id });
     },
     async update(id: number, employee: Partial<Employee>): Promise<void> {
       await updateDoc(doc(requireDb(), "employees", String(id)), employee);
     },
     async delete(id: number): Promise<void> {
       await deleteDoc(doc(requireDb(), "employees", String(id)));
+    },
+    async resetPassword(email: string): Promise<void> {
+      if (!auth) throw new Error("Firebase Auth not configured");
+      await sendPasswordResetEmail(auth, email);
     },
   },
   geofences: {
@@ -314,6 +338,49 @@ export const firebaseData = {
         },
         { merge: true }
       );
+    },
+  },
+  companies: {
+    async list(): Promise<{ id: string; name: string; plan: string; industry: string }[]> {
+      const snapshot = await getDocs(collection(requireDb(), "companies"));
+      return snapshot.docs.map((item) => ({
+        id: item.id,
+        name: String(item.data().name ?? ""),
+        plan: String(item.data().plan ?? "trial"),
+        industry: String(item.data().industry ?? ""),
+      }));
+    },
+    async register(data: {
+      company_name: string;
+      industry: string;
+      admin_name: string;
+      admin_email: string;
+      admin_password: string;
+    }): Promise<{ companyId: string; uid: string }> {
+      if (!auth) throw new Error("Firebase Auth not configured");
+      const cred = await createUserWithEmailAndPassword(
+        auth,
+        data.admin_email,
+        data.admin_password
+      );
+      const companyRef = await addDoc(collection(requireDb(), "companies"), {
+        name: data.company_name,
+        industry: data.industry,
+        plan: "trial",
+        createdAt: serverTimestamp(),
+        ownerId: cred.user.uid,
+      });
+      await setDoc(doc(requireDb(), "users", cred.user.uid), {
+        name: data.admin_name,
+        email: data.admin_email,
+        role: "boss",
+        company_id: companyRef.id,
+        company_name: data.company_name,
+        employee_id: null,
+        assigned_geofence_id: null,
+        createdAt: serverTimestamp(),
+      });
+      return { companyId: companyRef.id, uid: cred.user.uid };
     },
   },
 };
