@@ -122,34 +122,48 @@ export default function CheckInPage() {
     [geofences]
   );
 
+  const handleLocationError = useCallback((err: GeolocationPositionError) => {
+    let message = "تعذر الحصول على الموقع";
+    if (err.code === err.PERMISSION_DENIED) {
+      message = "تم رفض إذن الموقع — يرجى السماح بالوصول للموقع في إعدادات المتصفح";
+    } else if (err.code === err.POSITION_UNAVAILABLE) {
+      message = "تعذر تحديد الموقع — تأكد من تفعيل GPS";
+    } else if (err.code === err.TIMEOUT) {
+      message = "انتهت مهلة تحديد الموقع — حاول مرة أخرى";
+    }
+    console.warn("[geolocation] error:", err.code, err.message);
+    setLocationError(message);
+  }, []);
+
   const refreshLocation = useCallback(() => {
     if (!navigator.geolocation) {
-      setLocationError("الموقع غير مدعوم");
+      setLocationError("الموقع غير مدعوم على هذا الجهاز");
       return;
     }
     navigator.geolocation.getCurrentPosition(
       updateFromPosition,
-      () => setLocationError("تعذر الحصول على الموقع"),
-      { enableHighAccuracy: true, timeout: 10000 }
+      handleLocationError,
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 30000 }
     );
-  }, [updateFromPosition]);
+  }, [updateFromPosition, handleLocationError]);
 
   useEffect(() => {
     if (!navigator.geolocation) {
-      setLocationError("الموقع غير مدعوم");
+      setLocationError("الموقع غير مدعوم على هذا الجهاز");
       return;
     }
     refreshLocation();
     const id = navigator.geolocation.watchPosition(
       updateFromPosition,
-      () => setLocationError("تعذر الحصول على الموقع"),
+      handleLocationError,
       {
         enableHighAccuracy: true,
-        timeout: 10000,
+        timeout: 15000,
+        maximumAge: 30000,
       }
     );
     return () => navigator.geolocation.clearWatch(id);
-  }, [updateFromPosition, refreshLocation]);
+  }, [updateFromPosition, refreshLocation, handleLocationError]);
 
   useEffect(() => {
     if (checkInStatus !== "success" || checkOutTime || !checkInTimestamp) return;
@@ -180,13 +194,21 @@ export default function CheckInPage() {
       return;
     }
 
+    if (!user?.employee_id) {
+      setCheckInStatus("idle");
+      hapticError();
+      toastError("لا يوجد معرف موظف مرتبط بحسابك — يرجى التواصل مع الإدارة");
+      return;
+    }
+
     try {
       await checkInMutation.mutateAsync({
-        employeeId: user?.employee_id ?? 0,
+        employeeId: user.employee_id,
+        employeeName: user.name,
         lat: currentLocation.lat,
         lng: currentLocation.lng,
         geofenceId: nearestGeofence?.geofence.id ?? 0,
-      } as { employeeId: string | number; lat: number; lng: number; geofenceId: string | number });
+      });
 
       const now = new Date();
       setCheckInTime(now.toLocaleTimeString("ar-SA", { hour: "2-digit", minute: "2-digit" }));
@@ -197,9 +219,10 @@ export default function CheckInPage() {
       hapticSuccess();
       fireConfetti();
       toastSuccess("تم تسجيل الحضور بنجاح");
-    } catch {
+    } catch (err) {
+      console.error("[check-in] failed:", err);
       setCheckInStatus("idle");
-      toastError("فشل تسجيل الحضور");
+      toastError("فشل تسجيل الحضور — تأكد من اتصال الإنترنت وحاول مرة أخرى");
     }
   };
 
@@ -214,7 +237,13 @@ export default function CheckInPage() {
     if (checkOutTime || checkOutStatus === "loading") return;
     setCheckOutStatus("loading");
     try {
-      await checkOutMutation.mutateAsync({ employeeId: user?.employee_id ?? 0 } as { employeeId: string | number });
+      if (!user?.employee_id) {
+        hapticError();
+        toastError("لا يوجد معرف موظف مرتبط بحسابك");
+        setCheckOutStatus("idle");
+        return;
+      }
+      await checkOutMutation.mutateAsync({ employeeId: user.employee_id });
       setCheckOutTime(
         new Date().toLocaleTimeString("ar-SA", { hour: "2-digit", minute: "2-digit" })
       );

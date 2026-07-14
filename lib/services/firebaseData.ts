@@ -223,6 +223,7 @@ export const firebaseData = {
     },
     async checkIn(payload: {
       employeeId: string | number;
+      employeeName?: string;
       lat: number;
       lng: number;
       geofenceId: string | number;
@@ -235,14 +236,14 @@ export const firebaseData = {
         ? mapGeofence(geofenceEntry.id, geofenceEntry.data())
         : null;
       const now = new Date();
-      const date = now.toISOString().slice(0, 10);
+      const date = now.toLocaleDateString("sv-SE"); // YYYY-MM-DD in local timezone
       const checkInTime = now.toTimeString().slice(0, 5);
       const reference = doc(collection(requireDb(), "attendance"));
       const record = {
         id: reference.id,
         ownerUid: auth?.currentUser?.uid ?? "",
         employeeId: payload.employeeId,
-        employeeName: auth?.currentUser?.displayName ?? auth?.currentUser?.email ?? "",
+        employeeName: payload.employeeName || auth?.currentUser?.displayName || auth?.currentUser?.email || "",
         date,
         checkInTime,
         checkOutTime: null,
@@ -262,18 +263,18 @@ export const firebaseData = {
       return mapAttendance(reference.id, record);
     },
     async checkOut(employeeId: string | number): Promise<AttendanceRecord> {
-      const today = new Date().toISOString().slice(0, 10);
+      const today = new Date().toLocaleDateString("sv-SE"); // YYYY-MM-DD in local timezone
       const snapshot = await getDocs(
         query(
           collection(requireDb(), "attendance"),
           where("employeeId", "==", employeeId),
           where("date", "==", today),
-          where("checkOutTime", "==", null),
-          limit(1)
+          limit(50)
         )
       );
-      if (snapshot.empty) throw new Error("No open attendance record");
-      const item = snapshot.docs[0];
+      const openDoc = snapshot.docs.find((d) => d.data().checkOutTime === null || d.data().checkOutTime === undefined);
+      if (!openDoc) throw new Error("No open attendance record");
+      const item = openDoc;
       const current = mapAttendance(item.id, item.data());
       const checkOutTime = new Date().toTimeString().slice(0, 5);
       await updateDoc(item.ref, { checkOutTime, status: "checked_out", checkOutStatus: "present" });
@@ -299,7 +300,7 @@ export const firebaseData = {
         firebaseData.attendance.list(),
         firebaseData.geofences.list(),
       ]);
-      const today = new Date().toISOString().slice(0, 10);
+      const today = new Date().toLocaleDateString("sv-SE");
       const todayRecords = attendance.filter((record) => record.date === today);
       const presentToday = todayRecords.filter((record) => record.status === "present").length;
       const lateToday = todayRecords.filter((record) => record.status === "late").length;
@@ -340,7 +341,7 @@ export const firebaseData = {
       for (let i = 6; i >= 0; i--) {
         const d = new Date(today);
         d.setDate(d.getDate() - i);
-        const dateStr = d.toISOString().slice(0, 10);
+        const dateStr = d.toLocaleDateString("sv-SE");
         const dayRecords = attendance.filter((r) => r.date === dateStr);
         const present = dayRecords.filter(
           (r) => r.status === "present" || r.status === "checked_out"

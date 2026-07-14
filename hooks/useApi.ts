@@ -139,6 +139,7 @@ export function useCheckIn() {
   return useMutation({
     mutationFn: async (payload: {
       employeeId: string | number;
+      employeeName?: string;
       lat: number;
       lng: number;
       geofenceId: string | number;
