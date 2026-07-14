@@ -54,17 +54,24 @@ export default function EmployeeProfilePage({ params }: { params: { id: string }
   const updateEmployee = useUpdateEmployee();
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showEditForm, setShowEditForm] = useState(false);
-  const [editEmployee, setEditEmployee] = useState({
+  const [editEmployee, setEditEmployee] = useState<{
+    name: string;
+    email: string;
+    phone: string;
+    department: string;
+    role: "employee" | "supervisor" | "manager";
+    geofenceId: string | number;
+  }>({
     name: "",
     email: "",
     phone: "",
     department: "",
-    role: "employee" as "employee" | "supervisor" | "manager",
+    role: "employee",
     geofenceId: 1,
   });
 
-  const employee = employees.find((e) => e.id === Number(id));
-  const empAttendance = attendanceData.filter((a) => a.employeeId === Number(id)).slice(0, 30);
+  const employee = employees.find((e) => String(e.id) === String(id));
+  const empAttendance = attendanceData.filter((a) => String(a.employeeId) === String(id)).slice(0, 30);
 
   const last7Days = empAttendance.slice(0, 7);
   const presentCount = last7Days.filter((a) => a.status === "present").length;
@@ -452,7 +459,7 @@ export default function EmployeeProfilePage({ params }: { params: { id: string }
               <select
                 value={editEmployee.geofenceId}
                 onChange={(e) =>
-                  setEditEmployee({ ...editEmployee, geofenceId: Number(e.target.value) })
+                  setEditEmployee({ ...editEmployee, geofenceId: e.target.value })
                 }
                 className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-transparent dark:bg-slate-900 text-gray-900 dark:text-slate-100"
               >

@@ -86,23 +86,23 @@ export default function EmployeesPage() {
     username: string;
     password: string;
   } | null>(null);
-  const [newEmployee, setNewEmployee] = useState({
+  const [newEmployee, setNewEmployee] = useState<{ name: string; email: string; employeeNumber: string; phone: string; department: string; role: EmployeeRole; geofenceId: string | number; password: string; }>({
     name: "",
     email: "",
     employeeNumber: "",
     phone: "",
     department: "",
-    role: "employee" as EmployeeRole,
+    role: "employee",
     geofenceId: 1,
     password: "",
   });
-  const [editEmployee, setEditEmployee] = useState({
+  const [editEmployee, setEditEmployee] = useState<{ name: string; email: string; employeeNumber: string; phone: string; department: string; role: EmployeeRole; geofenceId: string | number; }>({
     name: "",
     email: "",
     employeeNumber: "",
     phone: "",
     department: "",
-    role: "employee" as EmployeeRole,
+    role: "employee",
     geofenceId: 1,
   });
 
@@ -429,7 +429,7 @@ export default function EmployeesPage() {
                 <select
                   value={newEmployee.geofenceId}
                   onChange={(e) =>
-                    setNewEmployee({ ...newEmployee, geofenceId: Number(e.target.value) })
+                    setNewEmployee({ ...newEmployee, geofenceId: e.target.value })
                   }
                   className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-transparent dark:bg-slate-900 text-gray-900 dark:text-slate-100"
                 >
@@ -1017,7 +1017,7 @@ export default function EmployeesPage() {
               <select
                 value={editEmployee.geofenceId}
                 onChange={(e) =>
-                  setEditEmployee({ ...editEmployee, geofenceId: Number(e.target.value) })
+                  setEditEmployee({ ...editEmployee, geofenceId: e.target.value })
                 }
                 className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-transparent dark:bg-slate-900 text-gray-900 dark:text-slate-100"
               >

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback } from "react";
 import MainLayout from "@/components/shared/MainLayout";
 import UserAvatar from "@/components/shared/Avatar";
 import { Card, CardContent } from "@/components/ui/card";

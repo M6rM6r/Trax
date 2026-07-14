@@ -82,7 +82,7 @@ export function useCreateEmployee() {
 export function useUpdateEmployee() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, data }: { id: number; data: Partial<Employee> }) => {
+    mutationFn: async ({ id, data }: { id: string | number; data: Partial<Employee> }) => {
       await firebaseData.employees.update(id, data);
       return firebaseData.employees.getById(id) as Promise<Employee>;
     },
@@ -95,7 +95,7 @@ export function useUpdateEmployee() {
 export function useDeleteEmployee() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (id: number) => {
+    mutationFn: async (id: string | number) => {
       await firebaseData.employees.delete(id);
       return { id };
     },
@@ -107,15 +107,7 @@ export function useDeleteEmployee() {
 
 export function useResetEmployeePassword() {
   return useMutation({
-    mutationFn: async ({
-      id,
-      password,
-      email,
-    }: {
-      id: number;
-      password: string;
-      email?: string;
-    }) => {
+    mutationFn: async ({ email }: { id?: string | number; password?: string; email?: string }) => {
       if (email) return firebaseData.employees.resetPassword(email);
       throw new Error("Employee email is required to reset password");
     },
@@ -200,7 +192,7 @@ export function useCreateGeofence() {
 export function useUpdateGeofence() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, data }: { id: number; data: Partial<Geofence> }) => {
+    mutationFn: async ({ id, data }: { id: string | number; data: Partial<Geofence> }) => {
       await firebaseData.geofences.update(id, data);
       return { id, ...data } as Geofence;
     },
@@ -213,7 +205,7 @@ export function useUpdateGeofence() {
 export function useDeleteGeofence() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (id: number) => {
+    mutationFn: async (id: string | number) => {
       await firebaseData.geofences.delete(id);
       return { id };
     },

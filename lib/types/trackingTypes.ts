@@ -3,14 +3,14 @@ export type AttendanceStatus = "present" | "absent" | "late" | "checked_out";
 export type EmployeeRole = "manager" | "employee" | "supervisor";
 
 export interface Employee {
-  id: number;
+  id: string | number;
   name: string;
   email: string;
   phone: string;
   role: EmployeeRole;
   department: string;
   avatar?: string | null;
-  geofenceId?: number | null;
+  geofenceId?: string | number | null;
   status: "active" | "inactive";
   currentLat?: number | null;
   currentLng?: number | null;
@@ -20,20 +20,20 @@ export interface Employee {
 }
 
 export interface Geofence {
-  id: number;
+  id: string | number;
   name: string;
   address: string;
   lat: number;
   lng: number;
-  radius: number; // in meters
+  radius: number;
   color: string;
   active: boolean;
   employeesCount?: number;
 }
 
 export interface AttendanceRecord {
-  id: number;
-  employeeId: number;
+  id: string | number;
+  employeeId: string | number;
   employeeName: string;
   date: string;
   checkInTime?: string | null;
@@ -43,7 +43,7 @@ export interface AttendanceRecord {
   checkInLng?: number | null;
   checkOutLat?: number | null;
   checkOutLng?: number | null;
-  geofenceId?: number | null;
+  geofenceId?: string | number | null;
   geofenceName?: string | null;
   lateMinutes: number;
   workedHours: number;
@@ -65,7 +65,7 @@ export interface DashboardStats {
 }
 
 export interface LiveTrackingEmployee {
-  id: number;
+  id: string | number;
   name: string;
   lat: number;
   lng: number;

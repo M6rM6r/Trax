@@ -37,18 +37,9 @@ function toNumber(value: unknown, fallback = 0): number {
   return fallback;
 }
 
-function toDocumentId(value: unknown, fallback: string): number {
-  const numeric = toNumber(value, Number.NaN);
-  if (Number.isFinite(numeric)) return numeric;
-  return Array.from(value == null ? fallback : String(value)).reduce(
-    (hash, character) => (hash * 31 + character.charCodeAt(0)) >>> 0,
-    0
-  );
-}
-
 function mapEmployee(id: string, value: Record<string, unknown>): Employee {
   return {
-    id: Number(value.id ?? id),
+    id: (value.id as string | number | undefined) ?? id,
     name: String(value.name ?? ""),
     email: String(value.email ?? ""),
     phone: String(value.phone ?? ""),
@@ -79,7 +70,7 @@ function mapEmployee(id: string, value: Record<string, unknown>): Employee {
 
 function mapGeofence(id: string, value: Record<string, unknown>): Geofence {
   return {
-    id: toDocumentId(value.id, id),
+    id: (value.id as string | number | undefined) ?? id,
     name: String(value.name ?? value.title ?? ""),
     address: String(value.address ?? value.location ?? ""),
     lat: toNumber(value.lat ?? value.latitude ?? value.centerLat),
@@ -96,8 +87,8 @@ function mapGeofence(id: string, value: Record<string, unknown>): Geofence {
 
 function mapAttendance(id: string, value: Record<string, unknown>): AttendanceRecord {
   return {
-    id: Number(value.id ?? id),
-    employeeId: toNumber(value.employeeId),
+    id: (value.id as string | number | undefined) ?? id,
+    employeeId: (value.employeeId as string | number | undefined) ?? "",
     employeeName: String(value.employeeName ?? ""),
     date: String(value.date ?? ""),
     checkInTime: (value.checkInTime as string | null | undefined) ?? null,
@@ -147,7 +138,7 @@ export const firebaseData = {
       const snapshot = await getDocs(query(collection(requireDb(), "employees"), orderBy("name")));
       return snapshot.docs.map((item) => mapEmployee(item.id, item.data()));
     },
-    async getById(id: number): Promise<Employee | null> {
+    async getById(id: string | number): Promise<Employee | null> {
       const snapshot = await getDoc(doc(requireDb(), "employees", String(id)));
       return snapshot.exists() ? mapEmployee(snapshot.id, snapshot.data()) : null;
     },
@@ -181,10 +172,10 @@ export const firebaseData = {
 
       return mapEmployee(reference.id, { ...employeeData, id: reference.id });
     },
-    async update(id: number, employee: Partial<Employee>): Promise<void> {
+    async update(id: string | number, employee: Partial<Employee>): Promise<void> {
       await updateDoc(doc(requireDb(), "employees", String(id)), employee);
     },
-    async delete(id: number): Promise<void> {
+    async delete(id: string | number): Promise<void> {
       await deleteDoc(doc(requireDb(), "employees", String(id)));
     },
     async resetPassword(email: string): Promise<void> {
@@ -213,15 +204,15 @@ export const firebaseData = {
       });
       return mapGeofence(reference.id, { ...geofence, id: reference.id });
     },
-    async update(id: number, geofence: Partial<Geofence>): Promise<void> {
+    async update(id: string | number, geofence: Partial<Geofence>): Promise<void> {
       await updateDoc(doc(requireDb(), "geofences", String(id)), geofence);
     },
-    async delete(id: number): Promise<void> {
+    async delete(id: string | number): Promise<void> {
       await updateDoc(doc(requireDb(), "geofences", String(id)), { active: false });
     },
   },
   attendance: {
-    async list(employeeId?: number): Promise<AttendanceRecord[]> {
+    async list(employeeId?: string | number): Promise<AttendanceRecord[]> {
       const base = collection(requireDb(), "attendance");
       const attendanceQuery =
         employeeId === null || employeeId === undefined
@@ -407,7 +398,7 @@ export const firebaseData = {
             : toNumber(item.data().batteryLevel),
       }));
     },
-    async update(employeeId: number, data: Record<string, unknown>): Promise<void> {
+    async update(employeeId: string | number, data: Record<string, unknown>): Promise<void> {
       await setDoc(
         doc(requireDb(), "locations", String(employeeId)),
         {
