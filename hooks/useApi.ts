@@ -146,7 +146,7 @@ export function useCheckIn() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (payload: {
-      employeeId: number;
+      employeeId: string | number;
       lat: number;
       lng: number;
       geofenceId: number;
@@ -164,7 +164,7 @@ export function useCheckIn() {
 export function useCheckOut() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (payload: { employeeId: number }) => {
+    mutationFn: async (payload: { employeeId: string | number }) => {
       return firebaseData.attendance.checkOut(payload.employeeId);
     },
     onSuccess: () => {

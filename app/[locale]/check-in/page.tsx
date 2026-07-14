@@ -165,7 +165,7 @@ export default function CheckInPage() {
 
   const isWithinRange = nearestGeofence
     ? nearestGeofence.distance <= nearestGeofence.geofence.radius + 50
-    : false;
+    : geofences.length === 0;
 
   const handleCheckIn = async () => {
     hapticTap();
@@ -186,7 +186,7 @@ export default function CheckInPage() {
         lat: currentLocation.lat,
         lng: currentLocation.lng,
         geofenceId: nearestGeofence?.geofence.id ?? 0,
-      });
+      } as { employeeId: string | number; lat: number; lng: number; geofenceId: number });
 
       const now = new Date();
       setCheckInTime(now.toLocaleTimeString("ar-SA", { hour: "2-digit", minute: "2-digit" }));
@@ -214,7 +214,7 @@ export default function CheckInPage() {
     if (checkOutTime || checkOutStatus === "loading") return;
     setCheckOutStatus("loading");
     try {
-      await checkOutMutation.mutateAsync({ employeeId: user?.employee_id ?? 0 });
+      await checkOutMutation.mutateAsync({ employeeId: user?.employee_id ?? 0 } as { employeeId: string | number });
       setCheckOutTime(
         new Date().toLocaleTimeString("ar-SA", { hour: "2-digit", minute: "2-digit" })
       );

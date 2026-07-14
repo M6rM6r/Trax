@@ -29,7 +29,21 @@ function requireDb() {
 }
 
 function toNumber(value: unknown, fallback = 0): number {
-  return typeof value === "number" && Number.isFinite(value) ? value : fallback;
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string" && value.trim() !== "") {
+    const parsed = Number(value);
+    if (Number.isFinite(parsed)) return parsed;
+  }
+  return fallback;
+}
+
+function toDocumentId(value: unknown, fallback: string): number {
+  const numeric = toNumber(value, Number.NaN);
+  if (Number.isFinite(numeric)) return numeric;
+  return Array.from(value == null ? fallback : String(value)).reduce(
+    (hash, character) => (hash * 31 + character.charCodeAt(0)) >>> 0,
+    0
+  );
 }
 
 function mapEmployee(id: string, value: Record<string, unknown>): Employee {
@@ -65,12 +79,12 @@ function mapEmployee(id: string, value: Record<string, unknown>): Employee {
 
 function mapGeofence(id: string, value: Record<string, unknown>): Geofence {
   return {
-    id: Number(value.id ?? id),
-    name: String(value.name ?? ""),
-    address: String(value.address ?? ""),
-    lat: toNumber(value.lat),
-    lng: toNumber(value.lng),
-    radius: toNumber(value.radius),
+    id: toDocumentId(value.id, id),
+    name: String(value.name ?? value.title ?? ""),
+    address: String(value.address ?? value.location ?? ""),
+    lat: toNumber(value.lat ?? value.latitude ?? value.centerLat),
+    lng: toNumber(value.lng ?? value.longitude ?? value.centerLng),
+    radius: toNumber(value.radius ?? value.radiusMeters, 100),
     color: String(value.color ?? "#10b981"),
     active: value.active !== false,
     employeesCount:
@@ -139,24 +153,32 @@ export const firebaseData = {
     },
     async create(employee: Omit<Employee, "id"> & { password?: string }): Promise<Employee> {
       const { password, ...employeeData } = employee;
+      let authUid: string | null = null;
 
       if (password && auth) {
         const cred = await createUserWithEmailAndPassword(auth, employee.email, password);
-        await setDoc(doc(requireDb(), "users", cred.user.uid), {
+        authUid = cred.user.uid;
+      }
+
+      const reference = await addDoc(collection(requireDb(), "employees"), {
+        ...employeeData,
+        ...(authUid ? { authUid } : {}),
+        createdAt: serverTimestamp(),
+      });
+      const employeeDocId = reference.id;
+
+      if (authUid) {
+        await setDoc(doc(requireDb(), "users", authUid), {
           name: employee.name,
           email: employee.email,
           role: employee.role ?? "employee",
           company_id: (employee as Record<string, unknown>).company_id ?? 1,
-          employee_id: null,
+          employee_id: employeeDocId,
           assigned_geofence_id: employee.geofenceId ?? null,
           createdAt: serverTimestamp(),
         });
       }
 
-      const reference = await addDoc(collection(requireDb(), "employees"), {
-        ...employeeData,
-        createdAt: serverTimestamp(),
-      });
       return mapEmployee(reference.id, { ...employeeData, id: reference.id });
     },
     async update(id: number, employee: Partial<Employee>): Promise<void> {
@@ -172,10 +194,17 @@ export const firebaseData = {
   },
   geofences: {
     async list(): Promise<Geofence[]> {
-      const snapshot = await getDocs(
-        query(collection(requireDb(), "geofences"), where("active", "==", true))
-      );
-      return snapshot.docs.map((item) => mapGeofence(item.id, item.data()));
+      const snapshot = await getDocs(collection(requireDb(), "geofences"));
+      return snapshot.docs
+        .map((item) => mapGeofence(item.id, item.data()))
+        .filter(
+          (geofence) =>
+            geofence.active &&
+            geofence.lat >= -90 &&
+            geofence.lat <= 90 &&
+            geofence.lng >= -180 &&
+            geofence.lng <= 180
+        );
     },
     async create(geofence: Omit<Geofence, "id">): Promise<Geofence> {
       const reference = await addDoc(collection(requireDb(), "geofences"), {
@@ -202,16 +231,17 @@ export const firebaseData = {
       return snapshot.docs.map((item) => mapAttendance(item.id, item.data()));
     },
     async checkIn(payload: {
-      employeeId: number;
+      employeeId: string | number;
       lat: number;
       lng: number;
       geofenceId: number;
     }): Promise<AttendanceRecord> {
-      const geofenceSnapshot = await getDoc(
-        doc(requireDb(), "geofences", String(payload.geofenceId))
+      const geofenceSnapshot = await getDocs(collection(requireDb(), "geofences"));
+      const geofenceEntry = geofenceSnapshot.docs.find(
+        (item) => mapGeofence(item.id, item.data()).id === payload.geofenceId
       );
-      const geofence = geofenceSnapshot.exists()
-        ? mapGeofence(geofenceSnapshot.id, geofenceSnapshot.data())
+      const geofence = geofenceEntry
+        ? mapGeofence(geofenceEntry.id, geofenceEntry.data())
         : null;
       const now = new Date();
       const date = now.toISOString().slice(0, 10);
@@ -240,7 +270,7 @@ export const firebaseData = {
       await setDoc(reference, record);
       return mapAttendance(reference.id, record);
     },
-    async checkOut(employeeId: number): Promise<AttendanceRecord> {
+    async checkOut(employeeId: string | number): Promise<AttendanceRecord> {
       const today = new Date().toISOString().slice(0, 10);
       const snapshot = await getDocs(
         query(
