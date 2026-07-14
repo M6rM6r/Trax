@@ -127,10 +127,15 @@ const Page = () => {
       const idToken = await credential.user.getIdToken();
 
       if (env.NEXT_PUBLIC_USE_FIREBASE) {
-        const profile = await getFirebaseUserProfile(
-          credential.user.uid,
-          credential.user.email ?? values.identifier
-        );
+        let profile: Record<string, unknown> | null = null;
+        try {
+          profile = await getFirebaseUserProfile(
+            credential.user.uid,
+            credential.user.email ?? values.identifier
+          );
+        } catch (e) {
+          console.warn("[login] Firestore profile lookup failed, using defaults:", e);
+        }
         const tokenResult = await getIdTokenResult(credential.user);
         const profileData = profile ?? {};
         const numericId = Array.from(credential.user.uid).reduce(
