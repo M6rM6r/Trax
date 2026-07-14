@@ -13,11 +13,7 @@ import {
   updateDoc,
   where,
 } from "firebase/firestore";
-import {
-  createUserWithEmailAndPassword,
-  updatePassword as authUpdatePassword,
-  sendPasswordResetEmail,
-} from "firebase/auth";
+import { createUserWithEmailAndPassword, sendPasswordResetEmail } from "firebase/auth";
 import { auth, db } from "@/lib/config/firebase";
 import type {
   AttendanceRecord,
@@ -25,6 +21,7 @@ import type {
   Geofence,
   LiveTrackingEmployee,
 } from "@/lib/types/trackingTypes";
+import type { DashboardTrendsSchema } from "@/lib/schemas/dashboard.schema";
 
 function requireDb() {
   if (!db) throw new Error("Firebase Firestore is not configured");
@@ -305,6 +302,59 @@ export const firebaseData = {
             ? Number((worked.reduce((sum, hours) => sum + hours, 0) / worked.length).toFixed(1))
             : 0,
         totalGeofences: geofences.length,
+      };
+    },
+    async trends(): Promise<DashboardTrendsSchema> {
+      const attendance = await firebaseData.attendance.list();
+      const employees = await firebaseData.employees.list();
+      const today = new Date();
+      const dayNames = ["الأحد", "الإثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"];
+      const weeklyData: {
+        day: string;
+        present: number;
+        late: number;
+        absent: number;
+        avgWorkedHours: number;
+      }[] = [];
+      for (let i = 6; i >= 0; i--) {
+        const d = new Date(today);
+        d.setDate(d.getDate() - i);
+        const dateStr = d.toISOString().slice(0, 10);
+        const dayRecords = attendance.filter((r) => r.date === dateStr);
+        const present = dayRecords.filter(
+          (r) => r.status === "present" || r.status === "checked_out"
+        ).length;
+        const late = dayRecords.filter((r) => r.status === "late").length;
+        const absent = Math.max(0, employees.length - dayRecords.length);
+        const worked = dayRecords.map((r) => r.workedHours).filter((h) => h > 0);
+        weeklyData.push({
+          day: dayNames[d.getDay()],
+          present,
+          late,
+          absent,
+          avgWorkedHours:
+            worked.length > 0
+              ? Number((worked.reduce((s, h) => s + h, 0) / worked.length).toFixed(1))
+              : 0,
+        });
+      }
+      const peakHoursData: { hour: string; count: number }[] = [];
+      for (let h = 6; h <= 19; h++) {
+        const count = attendance.filter((r) => {
+          const checkInHour = parseInt(r.checkInTime?.split(":")[0] ?? "0", 10);
+          return checkInHour === h;
+        }).length;
+        const label = h < 12 ? `${h}ص` : `${h - 12 === 0 ? 12 : h - 12}م`;
+        peakHoursData.push({ hour: label, count });
+      }
+      return {
+        weeklyData,
+        peakHoursData,
+        employeeGrowth: 0,
+        presentChange: 0,
+        lateChange: 0,
+        absentChange: 0,
+        onTimeRateChange: 0,
       };
     },
   },
