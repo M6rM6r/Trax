@@ -11,17 +11,27 @@ class FirebaseAuthServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->singleton(FirebaseAuth::class, function () {
-            $path = config('firebase.service_account_path');
+            $credentials = config('firebase.service_account_path');
 
-            if (! is_string($path) || $path === '' || ! file_exists($path)) {
-                throw new \RuntimeException(
-                    'Firebase service account path is not configured or file does not exist: '.($path ?: 'empty')
-                );
+            if (! is_string($credentials) || $credentials === '') {
+                throw new \RuntimeException('Firebase service account credentials are not configured.');
             }
 
-            return (new Factory)
-                ->withServiceAccount($path)
-                ->createAuth();
+            if (file_exists($credentials)) {
+                $factory = (new Factory)->withServiceAccount($credentials);
+            } else {
+                $decodedCredentials = json_decode($credentials, true);
+
+                if (! is_array($decodedCredentials) || empty($decodedCredentials['project_id'])) {
+                    throw new \RuntimeException(
+                        'Firebase service account must be a valid file path or service-account JSON.'
+                    );
+                }
+
+                $factory = (new Factory)->withServiceAccount($decodedCredentials);
+            }
+
+            return $factory->createAuth();
         });
     }
 

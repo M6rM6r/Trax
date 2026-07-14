@@ -54,3 +54,5 @@
    Reload env: .env.local
  Γ£ô Compiled in 2.9s (5619 modules)
  GET /ar/check-in?_rsc=pxtbt 200 in 259ms
+ Γ£ô Compiled in 1259ms (5129 modules)
+ GET /ar/check-in?_rsc=pxtbt 200 in 201ms
