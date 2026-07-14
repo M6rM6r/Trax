@@ -251,9 +251,9 @@ export default function EmployeesPage() {
     });
   };
 
-  const getGeofenceName = (id: number | null) => {
+  const getGeofenceName = (id: string | number | null) => {
     if (!id) return "-";
-    return geofences.find((g) => g.id === id)?.name || "-";
+    return geofences.find((g) => String(g.id) === String(id))?.name || "-";
   };
 
   const [search, setSearch] = useState("");
