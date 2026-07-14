@@ -8,7 +8,7 @@ import * as Yup from "yup";
 import { toastSuccess, toastError } from "@/hooks/use-toast";
 import { useSearchParams } from "next/navigation";
 import { useRouter, Link } from "@/i18n/navigation";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useAuthStore, UserRole } from "@/stores/useAuthStore";
 import { hapticSuccess, hapticError } from "@/lib/utils/haptics";
 import { motion, AnimatePresence } from "framer-motion";
@@ -16,7 +16,6 @@ import {
   getIdTokenResult,
   signInWithEmailAndPassword,
   browserLocalPersistence,
-  browserSessionPersistence,
   setPersistence,
 } from "firebase/auth";
 import { auth } from "@/lib/config/firebase";
@@ -41,6 +40,13 @@ const Page = () => {
   const searchParams = useSearchParams();
   const { setUser } = useAuthStore();
   const [showSuccess, setShowSuccess] = useState(false);
+  const sessionExpired = searchParams.get("reason") === "session_expired";
+
+  useEffect(() => {
+    if (sessionExpired) {
+      toastError("انتهت الجلسة — يرجى تسجيل الدخول مرة أخرى");
+    }
+  }, [sessionExpired]);
 
   const initialIdentifier = useMemo(
     () => searchParams.get("identifier")?.trim() || "",
@@ -119,10 +125,7 @@ const Page = () => {
     }
 
     try {
-      await setPersistence(
-        auth,
-        values.rememberMe ? browserLocalPersistence : browserSessionPersistence
-      );
+      await setPersistence(auth, browserLocalPersistence);
       const credential = await signInWithEmailAndPassword(auth, values.identifier, values.password);
       const idToken = await credential.user.getIdToken();
 

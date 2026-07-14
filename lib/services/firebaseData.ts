@@ -28,6 +28,13 @@ function requireDb() {
   return db;
 }
 
+function requireAuth() {
+  if (!auth?.currentUser) {
+    throw new Error("AUTH_EXPIRED");
+  }
+  return auth.currentUser;
+}
+
 function toNumber(value: unknown, fallback = 0): number {
   if (typeof value === "number" && Number.isFinite(value)) return value;
   if (typeof value === "string" && value.trim() !== "") {
@@ -228,6 +235,7 @@ export const firebaseData = {
       lng: number;
       geofenceId: string | number;
     }): Promise<AttendanceRecord> {
+      requireAuth();
       const geofenceSnapshot = await getDocs(collection(requireDb(), "geofences"));
       const geofenceEntry = geofenceSnapshot.docs.find(
         (item) => String(mapGeofence(item.id, item.data()).id) === String(payload.geofenceId)
@@ -263,6 +271,7 @@ export const firebaseData = {
       return mapAttendance(reference.id, record);
     },
     async checkOut(employeeId: string | number): Promise<AttendanceRecord> {
+      requireAuth();
       const today = new Date().toLocaleDateString("sv-SE"); // YYYY-MM-DD in local timezone
       const snapshot = await getDocs(
         query(

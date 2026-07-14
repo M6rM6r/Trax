@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import MainLayout from "@/components/shared/MainLayout";
 import UserAvatar from "@/components/shared/Avatar";
 import { Card, CardContent } from "@/components/ui/card";
@@ -103,6 +103,9 @@ export default function CheckInPage() {
     };
   }, []);
 
+  const geofencesRef = useRef(geofences);
+  geofencesRef.current = geofences;
+
   const updateFromPosition = useCallback(
     (position: GeolocationPosition) => {
       const { latitude, longitude, accuracy } = position.coords;
@@ -111,7 +114,7 @@ export default function CheckInPage() {
       setLocationAccuracy(accuracy);
 
       let closest: { geofence: Geofence; distance: number } | null = null;
-      geofences.forEach((geo) => {
+      geofencesRef.current.forEach((geo) => {
         const dist = calculateDistance(latitude, longitude, geo.lat, geo.lng);
         if (!closest || dist < closest.distance) {
           closest = { geofence: geo, distance: dist };
@@ -119,7 +122,7 @@ export default function CheckInPage() {
       });
       setNearestGeofence(closest);
     },
-    [geofences]
+    []
   );
 
   const handleLocationError = useCallback((err: GeolocationPositionError) => {
@@ -222,7 +225,19 @@ export default function CheckInPage() {
     } catch (err) {
       console.error("[check-in] failed:", err);
       setCheckInStatus("idle");
-      toastError("فشل تسجيل الحضور — تأكد من اتصال الإنترنت وحاول مرة أخرى");
+      const errMsg = err instanceof Error ? err.message : String(err);
+      if (errMsg === "AUTH_EXPIRED" || errMsg.includes("permission") || errMsg.includes("PERMISSION")) {
+        toastError("انتهت الجلسة — يرجى تسجيل الدخول مرة أخرى");
+        setTimeout(() => {
+          if (typeof window !== "undefined") {
+            const pathParts = window.location.pathname.split("/");
+            const detectedLocale = pathParts[1] === "en" ? "en" : "ar";
+            window.location.href = `/${detectedLocale}/login?reason=session_expired`;
+          }
+        }, 1500);
+      } else {
+        toastError("فشل تسجيل الحضور — تأكد من اتصال الإنترنت وحاول مرة أخرى");
+      }
     }
   };
 
