@@ -1,5 +1,5 @@
-const CACHE_NAME = "trax-v3";
-const STATIC_ASSETS = ["/", "/manifest.json", "/ar/check-in"];
+const CACHE_NAME = "trax-v4";
+const STATIC_ASSETS = ["/", "/manifest.json", "/ar/check-in", "/en/check-in"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(

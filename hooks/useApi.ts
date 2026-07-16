@@ -277,9 +277,10 @@ export function useRetentionInsights(attendance: AttendanceRecord[], employees: 
   });
 }
 
-export function useCompanySettings() {
+export function useCompanySettings(options?: { enabled?: boolean }) {
   return useQuery<Record<string, unknown> | null>({
     queryKey: queryKeys.companySettings,
+    enabled: options?.enabled ?? true,
     queryFn: async () => {
       return firebaseData.companies.getSettings();
     },

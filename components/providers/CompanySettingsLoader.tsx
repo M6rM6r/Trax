@@ -9,10 +9,16 @@ import { defaultCompanySettings } from "@/lib/types/companySettings";
 export default function CompanySettingsLoader() {
   const { user, role } = useAuthStore();
   const { setSettings, setLoaded } = useCompanySettingsStore();
-  const { data: firestoreSettings } = useCompanySettings();
+  const isAdmin = role === "boss" || role === "manager";
+  const { data: firestoreSettings } = useCompanySettings({ enabled: isAdmin });
 
   useEffect(() => {
     if (!user) return;
+    if (!isAdmin) {
+      setSettings(defaultCompanySettings);
+      setLoaded();
+      return;
+    }
 
     if (firestoreSettings) {
       const merged = { ...defaultCompanySettings };
@@ -26,10 +32,7 @@ export default function CompanySettingsLoader() {
       setSettings(defaultCompanySettings);
     }
     setLoaded();
-  }, [user, firestoreSettings, setSettings, setLoaded]);
-
-  // Only load for boss/manager
-  if (role !== "boss" && role !== "manager") return null;
+  }, [user, isAdmin, firestoreSettings, setSettings, setLoaded]);
 
   return null;
 }

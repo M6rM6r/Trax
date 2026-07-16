@@ -129,6 +129,11 @@ export default function EmployeesPage() {
       toastError("كلمة المرور يجب أن تكون 8 أحرف على الأقل");
       return;
     }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(newEmployee.email)) {
+      toastError("البريد الإلكتروني غير صحيح");
+      return;
+    }
     const email = newEmployee.email;
     const username = generateStaffUsername({
       employeeNumber: newEmployee.employeeNumber,
@@ -193,22 +198,40 @@ export default function EmployeesPage() {
     );
   };
 
-  const handleBulkDelete = () => {
+  const handleBulkDelete = async () => {
     hapticTap();
     const selectedEmployees = employees.filter((e) => selectedIds.includes(e.id));
-    selectedEmployees.forEach((emp) => {
-      deleteEmployee.mutate(emp.id);
-    });
-    toastWithUndo(`تم حذف ${selectedEmployees.length} موظف`, () => {
-      toastError("لا يمكن التراجع — يرجى إعادة إضافة الموظفين يدوياً");
-      void refetch();
-    });
+    if (selectedEmployees.length === 0) {
+      toastError("لم يتم تحديد أي موظف");
+      return;
+    }
+    let successCount = 0;
+    let failCount = 0;
+    await Promise.all(
+      selectedEmployees.map((emp) =>
+        deleteEmployee.mutateAsync(emp.id).then(() => successCount++).catch(() => failCount++)
+      )
+    );
+    if (successCount > 0 && failCount === 0) {
+      toastWithUndo(`تم حذف ${successCount} موظف`, () => {
+        toastError("لا يمكن التراجع — يرجى إعادة إضافة الموظفين يدوياً");
+        void refetch();
+      });
+    } else if (successCount > 0 && failCount > 0) {
+      toastError(`تم حذف ${successCount} موظف، فشل حذف ${failCount} موظف`);
+    } else {
+      toastError("تعذر حذف الموظفين المحددين");
+    }
     setSelectedIds([]);
   };
 
   const handleBulkExport = () => {
-    hapticSuccess();
     const selected = employees.filter((e) => selectedIds.includes(e.id));
+    if (selected.length === 0) {
+      toastError("لم يتم تحديد أي موظف للتصدير");
+      return;
+    }
+    hapticSuccess();
     const headers = ["الاسم", "البريد", "الهاتف", "القسم", "الدور", "الحالة"];
     const rows = selected.map((e) => [
       e.name,
