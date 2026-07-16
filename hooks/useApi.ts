@@ -127,13 +127,7 @@ export function useAttendance(options?: { enabled?: boolean }) {
 }
 
 export function useAttendanceReports() {
-  return useQuery<AttendanceRecord[]>({
-    queryKey: queryKeys.attendanceReports,
-    staleTime: 60 * 1000,
-    queryFn: async (): Promise<AttendanceRecord[]> => {
-      return firebaseData.attendance.list();
-    },
-  });
+  return useAttendance();
 }
 
 export function useCheckIn() {

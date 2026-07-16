@@ -125,13 +125,14 @@ export default function AttendanceReportsPage() {
   }, [attendance]);
 
   const departmentPerformance = useMemo(() => {
+    const employeeMap = new Map(employees.map((e) => [String(e.id), e]));
     const departmentMap = new Map<
       string,
       { department: string; total: number; presentOrLate: number; absent: number; rate: number }
     >();
 
     attendance.forEach((record) => {
-      const emp = employees.find((e) => String(e.id) === String(record.employeeId));
+      const emp = employeeMap.get(String(record.employeeId));
       const department = emp?.department || "غير محدد";
       const current = departmentMap.get(department) ?? {
         department,
