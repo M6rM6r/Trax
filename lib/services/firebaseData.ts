@@ -483,5 +483,20 @@ export const firebaseData = {
       });
       return { companyId: companyRef.id, uid: cred.user.uid };
     },
+    async getSettings(): Promise<Record<string, unknown> | null> {
+      await ensureAuth();
+      const user = auth?.currentUser;
+      if (!user) return null;
+      const ref = doc(requireDb(), "company_settings", user.uid);
+      const snapshot = await getDoc(ref);
+      return snapshot.exists() ? snapshot.data() : null;
+    },
+    async saveSettings(settings: Record<string, unknown>): Promise<void> {
+      await ensureAuth();
+      const user = auth?.currentUser;
+      if (!user) throw new Error("AUTH_EXPIRED");
+      const ref = doc(requireDb(), "company_settings", user.uid);
+      await setDoc(ref, { ...settings, updatedAt: serverTimestamp() }, { merge: true });
+    },
   },
 };

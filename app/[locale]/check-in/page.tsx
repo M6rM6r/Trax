@@ -25,6 +25,7 @@ import { toastSuccess, toastError } from "@/hooks/use-toast";
 import { motion, AnimatePresence } from "framer-motion";
 import type { Geofence } from "@/lib/types/trackingTypes";
 import { useAuthStore } from "@/stores/useAuthStore";
+import { useCompanySettingsStore } from "@/stores/useCompanySettingsStore";
 import { cn } from "@/lib/utils";
 import { addToOfflineQueue } from "@/lib/utils/offlineQueue";
 
@@ -74,6 +75,7 @@ export default function CheckInPage() {
   const checkInMutation = useCheckIn();
   const checkOutMutation = useCheckOut();
   const { user, companyName } = useAuthStore();
+  const companySettings = useCompanySettingsStore();
   const [currentLocation, setCurrentLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [locationAccuracy, setLocationAccuracy] = useState<number | null>(null);
   const [locationError, setLocationError] = useState<string | null>(null);
@@ -182,9 +184,72 @@ export default function CheckInPage() {
     return () => clearInterval(interval);
   }, [checkInStatus, checkOutTime, checkInTimestamp]);
 
+  // Auto check-in when entering geofence (if enabled by company settings)
+  const autoCheckInTriggered = useRef(false);
+  useEffect(() => {
+    if (!companySettings.autoCheckInEnabled) return;
+    if (checkInStatus === "success" || checkInStatus === "loading") return;
+    if (!currentLocation || !user?.employee_id) return;
+    if (autoCheckInTriggered.current) return;
+
+    const isWithinAutoRange = nearestGeofence
+      ? nearestGeofence.distance <= nearestGeofence.geofence.radius + companySettings.autoCheckInRadiusOffset
+      : false;
+
+    if (isWithinAutoRange) {
+      autoCheckInTriggered.current = true;
+      // Trigger check-in automatically
+      (async () => {
+        if (!navigator.onLine) {
+          addToOfflineQueue({
+            id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+            employeeId: user.employee_id!,
+            employeeName: user.name,
+            lat: currentLocation.lat,
+            lng: currentLocation.lng,
+            geofenceId: nearestGeofence?.geofence.id ?? 0,
+            timestamp: Date.now(),
+          });
+          const now = new Date();
+          setCheckInTime(now.toLocaleTimeString("ar-SA", { hour: "2-digit", minute: "2-digit" }));
+          setCheckInTimestamp(now.getTime());
+          setCheckInStatus("success");
+          setShowBurst(true);
+          setTimeout(() => setShowBurst(false), 600);
+          hapticSuccess();
+          toastSuccess("تم تسجيل الحضور تلقائياً (بدون اتصال)");
+          return;
+        }
+        setCheckInStatus("loading");
+        try {
+          await checkInMutation.mutateAsync({
+            employeeId: user.employee_id!,
+            employeeName: user.name,
+            lat: currentLocation.lat,
+            lng: currentLocation.lng,
+            geofenceId: nearestGeofence?.geofence.id ?? 0,
+          });
+          const now = new Date();
+          setCheckInTime(now.toLocaleTimeString("ar-SA", { hour: "2-digit", minute: "2-digit" }));
+          setCheckInTimestamp(now.getTime());
+          setCheckInStatus("success");
+          setShowBurst(true);
+          setTimeout(() => setShowBurst(false), 600);
+          hapticSuccess();
+          fireConfetti();
+          toastSuccess("تم تسجيل الحضور تلقائياً");
+        } catch (err) {
+          console.error("[auto-check-in] failed:", err);
+          setCheckInStatus("idle");
+          autoCheckInTriggered.current = false;
+        }
+      })();
+    }
+  }, [companySettings.autoCheckInEnabled, companySettings.autoCheckInRadiusOffset, checkInStatus, currentLocation, nearestGeofence, user, checkInMutation]);
+
   const isWithinRange = nearestGeofence
     ? nearestGeofence.distance <= nearestGeofence.geofence.radius + 50
-    : geofences.length === 0;
+    : geofences.length === 0 || companySettings.allowCheckInOutsideGeofence;
 
   const handleCheckIn = async () => {
     hapticTap();
@@ -192,10 +257,10 @@ export default function CheckInPage() {
 
     setCheckInStatus("loading");
 
-    if (!isWithinRange) {
+    if (!isWithinRange && companySettings.requireGeofenceForCheckIn) {
       setCheckInStatus("outside");
       hapticError();
-      toastError("أنت خارج النطاق الجغرافي");
+      toastError("أنت خارج النطاق الجغرافي — الحضور خارج النطاق غير مسموح");
       return;
     }
 

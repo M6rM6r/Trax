@@ -9,6 +9,7 @@ import ErrorBoundary from "@/components/shared/ErrorBoundary";
 import OfflineIndicator from "@/components/shared/OfflineIndicator";
 import { QueryProvider } from "@/components/providers/QueryProvider";
 import AuthProvider from "@/components/providers/AuthProvider";
+import CompanySettingsLoader from "@/components/providers/CompanySettingsLoader";
 import { PWARegistrar } from "@/components/shared/PWARegistrar";
 import { ThemeProvider } from "next-themes";
 import { TopLoadingBar } from "@/components/shared/TopLoadingBar";
@@ -54,6 +55,7 @@ export default async function LocaleLayout({
         <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>
           <QueryProvider>
             <AuthProvider>
+              <CompanySettingsLoader />
               <ErrorBoundary>
               <MonitoringProvider>
                 <MotionProvider>

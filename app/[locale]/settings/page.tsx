@@ -24,6 +24,7 @@ import {
   Check,
   Zap,
   User,
+  Building2,
 } from "lucide-react";
 import { Link } from "@/i18n/navigation";
 import { motion, AnimatePresence } from "framer-motion";
@@ -33,7 +34,7 @@ import AvatarUpload from "@/components/shared/AvatarUpload";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { Switch } from "@/components/ui/switch";
 
-type TabId = "profile" | "general" | "appearance" | "notifications" | "security";
+type TabId = "profile" | "general" | "appearance" | "notifications" | "security" | "company";
 
 function ToggleSwitch({ enabled, onChange }: { enabled: boolean; onChange: () => void }) {
   return (
@@ -79,7 +80,7 @@ const fontSizeMap: Record<string, string> = {
 
 export default function SettingsPage() {
   const { setTheme } = useTheme();
-  const { user, companyName } = useAuthStore();
+  const { user, companyName, role } = useAuthStore();
   const [activeTab, setActiveTab] = useState<TabId>("profile");
   const [themeMode, setThemeMode] = useState<string>("system");
   const [accentColor, setAccentColor] = useState<string>("blue");
@@ -147,6 +148,9 @@ export default function SettingsPage() {
     { id: "appearance", label: "المظهر", icon: Palette },
     { id: "notifications", label: "الإشعارات", icon: Bell },
     { id: "security", label: "الأمان", icon: Shield },
+    ...(role === "boss" || role === "manager"
+      ? [{ id: "company" as TabId, label: "الشركة", icon: Building2 }]
+      : []),
   ];
 
   const notificationItems = [
@@ -697,6 +701,47 @@ export default function SettingsPage() {
                       تسجيل الخروج من جميع الأجهزة
                     </button>
                   </div>
+                </CardContent>
+              </Card>
+            </motion.div>
+          )}
+
+          {/* Company Tab */}
+          {activeTab === "company" && (
+            <motion.div
+              key="company"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+            >
+              <Card className="border-0 shadow-lg dark:bg-slate-800">
+                <CardHeader>
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-blue-500 flex items-center justify-center">
+                      <Building2 className="w-5 h-5 text-white" />
+                    </div>
+                    <CardTitle className="text-lg font-bold text-gray-900 dark:text-slate-100">
+                      إعدادات الشركة
+                    </CardTitle>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <Link
+                    href="settings/company"
+                    className="block p-4 rounded-xl bg-gray-50 dark:bg-slate-700/50 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-gray-900 dark:text-slate-100">
+                          التحكم الكامل في الشركة
+                        </p>
+                        <p className="text-xs text-gray-500 dark:text-slate-400 mt-0.5">
+                          ساعات العمل، الحضور التلقائي، الإشعارات، الجلسة، النطاق الجغرافي
+                        </p>
+                      </div>
+                      <span className="text-xs text-blue-600 dark:text-blue-400">إدارة →</span>
+                    </div>
+                  </Link>
                 </CardContent>
               </Card>
             </motion.div>

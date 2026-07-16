@@ -273,3 +273,25 @@ export function useRetentionInsights(attendance: AttendanceRecord[], employees: 
     retry: 0,
   });
 }
+
+export function useCompanySettings() {
+  return useQuery<Record<string, unknown> | null>({
+    queryKey: ["company-settings"],
+    queryFn: async () => {
+      return firebaseData.companies.getSettings();
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+export function useSaveCompanySettings() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (settings: Record<string, unknown> | object) => {
+      await firebaseData.companies.saveSettings(settings as Record<string, unknown>);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["company-settings"] });
+    },
+  });
+}
