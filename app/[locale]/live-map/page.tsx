@@ -129,10 +129,61 @@ export default function LiveMapPage() {
     });
   }, [liveTracking, searchQuery, statusFilter]);
 
+  const vectorSourceRef = useRef<VectorSource | null>(null);
+
+  // Initialize map once
   useEffect(() => {
     if (!mapRef.current) return;
 
     const vectorSource = new VectorSource();
+    vectorSourceRef.current = vectorSource;
+
+    const routeSource = new VectorSource();
+    routeSourceRef.current = routeSource;
+
+    const baseTileLayer = new TileLayer({ source: new OSM() });
+    tileLayerRef.current = baseTileLayer;
+
+    const vectorLayer = new VectorLayer({ source: vectorSource });
+    const routeLayer = new VectorLayer({ source: routeSource, zIndex: 100 });
+
+    const map = new Map({
+      target: mapRef.current,
+      layers: [baseTileLayer, vectorLayer, routeLayer],
+      view: new View({
+        center: fromLonLat([46.6753, 24.7136]),
+        zoom: 12,
+      }),
+    });
+    mapInstanceRef.current = map;
+
+    map.on("click", (evt) => {
+      let clicked = false;
+      map.forEachFeatureAtPixel(evt.pixel, (feature) => {
+        const type = feature.get("type");
+        if (type === "employee") {
+          const empId = feature.get("employeeId");
+          const emp = filteredTracking.find((e) => String(e.id) === String(empId));
+          if (emp) {
+            setSelectedEmployee(emp);
+            hapticTap();
+            clicked = true;
+          }
+        }
+      });
+      if (!clicked) setSelectedEmployee(null);
+    });
+
+    return () => map.setTarget(undefined);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Update vector source features when data changes (no map rebuild)
+  useEffect(() => {
+    const vectorSource = vectorSourceRef.current;
+    if (!vectorSource) return;
+
+    vectorSource.clear();
 
     // Add geofence circles
     geofences.forEach((geo: Geofence) => {
@@ -149,7 +200,6 @@ export default function LiveMapPage() {
       );
       vectorSource.addFeature(circleFeature);
 
-      // Add geofence center marker
       const centerFeature = new Feature({
         geometry: new Point(center),
         type: "geofence-center",
@@ -208,43 +258,6 @@ export default function LiveMapPage() {
       );
       vectorSource.addFeature(feature);
     });
-
-    const vectorLayer = new VectorLayer({ source: vectorSource });
-
-    const routeSource = new VectorSource();
-    routeSourceRef.current = routeSource;
-    const routeLayer = new VectorLayer({ source: routeSource, zIndex: 100 });
-
-    const baseTileLayer = new TileLayer({ source: new OSM() });
-    tileLayerRef.current = baseTileLayer;
-    const map = new Map({
-      target: mapRef.current,
-      layers: [baseTileLayer, vectorLayer, routeLayer],
-      view: new View({
-        center: fromLonLat([46.6753, 24.7136]),
-        zoom: 12,
-      }),
-    });
-    mapInstanceRef.current = map;
-
-    map.on("click", (evt) => {
-      let clicked = false;
-      map.forEachFeatureAtPixel(evt.pixel, (feature) => {
-        const type = feature.get("type");
-        if (type === "employee") {
-          const empId = feature.get("employeeId");
-          const emp = filteredTracking.find((e) => String(e.id) === String(empId));
-          if (emp) {
-            setSelectedEmployee(emp);
-            hapticTap();
-            clicked = true;
-          }
-        }
-      });
-      if (!clicked) setSelectedEmployee(null);
-    });
-
-    return () => map.setTarget(undefined);
   }, [geofences, filteredTracking]);
 
   // Track route history for selected employee

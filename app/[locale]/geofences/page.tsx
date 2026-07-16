@@ -558,6 +558,10 @@ export default function GeofencesPage() {
 
   const handleUpdateGeofence = () => {
     if (!editTarget) return;
+    if (!Number.isFinite(editGeofence.radius) || editGeofence.radius <= 0) {
+      toast({ description: "نصف القطر يجب أن يكون أكبر من صفر", variant: "destructive" });
+      return;
+    }
     updateGeofence.mutate(
       { id: editTarget.id, data: editGeofence },
       {
