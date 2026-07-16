@@ -1,7 +1,7 @@
-import { initializeApp, getApps } from "firebase/app";
+import { initializeApp, getApps, type FirebaseApp } from "firebase/app";
 import { getStorage } from "firebase/storage";
 import { getAnalytics, isSupported } from "firebase/analytics";
-import { getAuth } from "firebase/auth";
+import { getAuth, type Auth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 
 const firebaseConfig = {
@@ -38,6 +38,12 @@ export const storage = app ? getStorage(app) : null;
 export const auth = app ? getAuth(app) : null;
 
 export const db = app ? getFirestore(app) : null;
+
+// Secondary app instance for creating employee auth accounts without signing out the admin
+const secondaryApp: FirebaseApp | null = isFirebaseConfigured
+  ? getApps().find((a) => a.name === "secondary") ?? initializeApp(firebaseConfig, "secondary")
+  : null;
+export const secondaryAuth: Auth | null = secondaryApp ? getAuth(secondaryApp) : null;
 
 export const analytics =
   typeof window !== "undefined" && app

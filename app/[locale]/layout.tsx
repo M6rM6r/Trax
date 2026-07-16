@@ -16,6 +16,9 @@ import { MonitoringProvider } from "@/components/providers/MonitoringProvider";
 import SettingsApplier from "@/components/providers/SettingsApplier";
 import { CommandPalette } from "@/components/shared/CommandPalette";
 import MotionProvider from "@/components/providers/MotionProvider";
+import InstallPrompt from "@/components/shared/InstallPrompt";
+import OfflineSyncManager from "@/components/shared/OfflineSyncManager";
+import NotificationManager from "@/components/shared/NotificationManager";
 
 const cairo = Cairo({
   subsets: ["latin"],
@@ -61,6 +64,9 @@ export default async function LocaleLayout({
                   {children}
                   <CommandPalette />
                   <OfflineIndicator />
+                  <OfflineSyncManager />
+                  <NotificationManager />
+                  <InstallPrompt />
                   <Toaster />
                 </MotionProvider>
               </MonitoringProvider>

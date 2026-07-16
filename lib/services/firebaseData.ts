@@ -13,8 +13,13 @@ import {
   updateDoc,
   where,
 } from "firebase/firestore";
-import { createUserWithEmailAndPassword, sendPasswordResetEmail } from "firebase/auth";
-import { auth, db } from "@/lib/config/firebase";
+import {
+  createUserWithEmailAndPassword,
+  sendPasswordResetEmail,
+  onAuthStateChanged,
+  type User,
+} from "firebase/auth";
+import { auth, db, secondaryAuth } from "@/lib/config/firebase";
 import type {
   AttendanceRecord,
   Employee,
@@ -28,11 +33,16 @@ function requireDb() {
   return db;
 }
 
-function requireAuth() {
-  if (!auth?.currentUser) {
-    throw new Error("AUTH_EXPIRED");
-  }
-  return auth.currentUser;
+async function ensureAuth(): Promise<User> {
+  if (!auth) throw new Error("Firebase Auth is not configured");
+  if (auth.currentUser) return auth.currentUser;
+  return new Promise((resolve, reject) => {
+    const unsubscribe = onAuthStateChanged(auth!, (user) => {
+      unsubscribe();
+      if (user) resolve(user);
+      else reject(new Error("AUTH_EXPIRED"));
+    });
+  });
 }
 
 function toNumber(value: unknown, fallback = 0): number {
@@ -142,19 +152,23 @@ export async function getFirebaseUserProfile(uid: string, email: string) {
 export const firebaseData = {
   employees: {
     async list(): Promise<Employee[]> {
+      await ensureAuth();
       const snapshot = await getDocs(query(collection(requireDb(), "employees"), orderBy("name")));
       return snapshot.docs.map((item) => mapEmployee(item.id, item.data()));
     },
     async getById(id: string | number): Promise<Employee | null> {
+      await ensureAuth();
       const snapshot = await getDoc(doc(requireDb(), "employees", String(id)));
       return snapshot.exists() ? mapEmployee(snapshot.id, snapshot.data()) : null;
     },
     async create(employee: Omit<Employee, "id"> & { password?: string }): Promise<Employee> {
+      await ensureAuth();
       const { password, ...employeeData } = employee;
       let authUid: string | null = null;
 
-      if (password && auth) {
-        const cred = await createUserWithEmailAndPassword(auth, employee.email, password);
+      if (password && secondaryAuth) {
+        // Use secondary app instance so creating the employee doesn't sign out the admin
+        const cred = await createUserWithEmailAndPassword(secondaryAuth, employee.email, password);
         authUid = cred.user.uid;
       }
 
@@ -180,9 +194,11 @@ export const firebaseData = {
       return mapEmployee(reference.id, { ...employeeData, id: reference.id });
     },
     async update(id: string | number, employee: Partial<Employee>): Promise<void> {
+      await ensureAuth();
       await updateDoc(doc(requireDb(), "employees", String(id)), employee);
     },
     async delete(id: string | number): Promise<void> {
+      await ensureAuth();
       await deleteDoc(doc(requireDb(), "employees", String(id)));
     },
     async resetPassword(email: string): Promise<void> {
@@ -192,6 +208,7 @@ export const firebaseData = {
   },
   geofences: {
     async list(): Promise<Geofence[]> {
+      await ensureAuth();
       const snapshot = await getDocs(collection(requireDb(), "geofences"));
       return snapshot.docs
         .map((item) => mapGeofence(item.id, item.data()))
@@ -220,6 +237,7 @@ export const firebaseData = {
   },
   attendance: {
     async list(employeeId?: string | number): Promise<AttendanceRecord[]> {
+      await ensureAuth();
       const base = collection(requireDb(), "attendance");
       const attendanceQuery =
         employeeId === null || employeeId === undefined
@@ -235,7 +253,7 @@ export const firebaseData = {
       lng: number;
       geofenceId: string | number;
     }): Promise<AttendanceRecord> {
-      requireAuth();
+      const currentUser = await ensureAuth();
       const geofenceSnapshot = await getDocs(collection(requireDb(), "geofences"));
       const geofenceEntry = geofenceSnapshot.docs.find(
         (item) => String(mapGeofence(item.id, item.data()).id) === String(payload.geofenceId)
@@ -249,9 +267,9 @@ export const firebaseData = {
       const reference = doc(collection(requireDb(), "attendance"));
       const record = {
         id: reference.id,
-        ownerUid: auth?.currentUser?.uid ?? "",
+        ownerUid: currentUser.uid,
         employeeId: payload.employeeId,
-        employeeName: payload.employeeName || auth?.currentUser?.displayName || auth?.currentUser?.email || "",
+        employeeName: payload.employeeName || currentUser.displayName || currentUser.email || "",
         date,
         checkInTime,
         checkOutTime: null,
@@ -271,7 +289,7 @@ export const firebaseData = {
       return mapAttendance(reference.id, record);
     },
     async checkOut(employeeId: string | number): Promise<AttendanceRecord> {
-      requireAuth();
+      await ensureAuth();
       const today = new Date().toLocaleDateString("sv-SE"); // YYYY-MM-DD in local timezone
       const snapshot = await getDocs(
         query(
@@ -391,6 +409,7 @@ export const firebaseData = {
   },
   tracking: {
     async live(): Promise<LiveTrackingEmployee[]> {
+      await ensureAuth();
       const snapshot = await getDocs(
         query(collection(requireDb(), "locations"), orderBy("lastSeen", "desc"), limit(500))
       );
@@ -423,6 +442,7 @@ export const firebaseData = {
   },
   companies: {
     async list(): Promise<{ id: string; name: string; plan: string; industry: string }[]> {
+      await ensureAuth();
       const snapshot = await getDocs(collection(requireDb(), "companies"));
       return snapshot.docs.map((item) => ({
         id: item.id,

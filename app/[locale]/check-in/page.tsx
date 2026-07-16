@@ -18,6 +18,7 @@ import {
   RotateCcw,
 } from "lucide-react";
 import { useCheckIn, useCheckOut, useGeofences } from "@/hooks/useApi";
+import CheckInMap from "@/components/shared/MapComponent/CheckInMap";
 import { hapticSuccess, hapticError, hapticTap } from "@/lib/utils/haptics";
 import { fireConfetti } from "@/lib/utils/confetti";
 import { toastSuccess, toastError } from "@/hooks/use-toast";
@@ -25,6 +26,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import type { Geofence } from "@/lib/types/trackingTypes";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { cn } from "@/lib/utils";
+import { addToOfflineQueue } from "@/lib/utils/offlineQueue";
 
 function LiveClock() {
   const [time, setTime] = useState("");
@@ -201,6 +203,28 @@ export default function CheckInPage() {
       setCheckInStatus("idle");
       hapticError();
       toastError("لا يوجد معرف موظف مرتبط بحسابك — يرجى التواصل مع الإدارة");
+      return;
+    }
+
+    // Offline check-in: queue locally and show success
+    if (!navigator.onLine) {
+      addToOfflineQueue({
+        id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        employeeId: user.employee_id,
+        employeeName: user.name,
+        lat: currentLocation.lat,
+        lng: currentLocation.lng,
+        geofenceId: nearestGeofence?.geofence.id ?? 0,
+        timestamp: Date.now(),
+      });
+      const now = new Date();
+      setCheckInTime(now.toLocaleTimeString("ar-SA", { hour: "2-digit", minute: "2-digit" }));
+      setCheckInTimestamp(now.getTime());
+      setCheckInStatus("success");
+      setShowBurst(true);
+      setTimeout(() => setShowBurst(false), 600);
+      hapticSuccess();
+      toastSuccess("تم تسجيل الحضور بدون اتصال — سيتم المزامنة عند عودة الإنترنت");
       return;
     }
 
@@ -518,7 +542,18 @@ export default function CheckInPage() {
                       : "bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400"
                 )}
               >
-                <MapPin className="w-6 h-6" />
+                {locationError ? (
+                  <MapPin className="w-6 h-6" />
+                ) : !currentLocation ? (
+                  <motion.div
+                    animate={{ rotate: 360 }}
+                    transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                  >
+                    <Navigation className="w-6 h-6" />
+                  </motion.div>
+                ) : (
+                  <MapPin className="w-6 h-6" />
+                )}
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-xs font-bold dark:text-slate-200 truncate">
@@ -546,9 +581,20 @@ export default function CheckInPage() {
             </div>
 
             {locationError ? (
-              <p className="mt-3 text-[11px] text-red-600 dark:text-red-400 font-medium">
-                {locationError}
-              </p>
+              <div className="mt-3 space-y-2">
+                <p className="text-[11px] text-red-600 dark:text-red-400 font-medium">
+                  {locationError}
+                </p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-7 text-[11px] gap-1.5 w-full"
+                  onClick={refreshLocation}
+                >
+                  <RefreshCw className="w-3 h-3" />
+                  إعادة المحاولة
+                </Button>
+              </div>
             ) : (
               nearestGeofence && (
                 <div className="mt-3 flex items-center justify-between gap-2">
@@ -573,6 +619,23 @@ export default function CheckInPage() {
                 </div>
               )
             )}
+          </CardContent>
+        </Card>
+
+        {/* Location Map */}
+        <Card className="border-0 shadow-md dark:bg-slate-900 overflow-hidden">
+          <div className="h-1 w-full bg-emerald-500" />
+          <CardContent className="p-4 space-y-3">
+            <h3 className="text-xs font-bold text-gray-700 dark:text-slate-200 flex items-center gap-2">
+              <MapPin className="w-4 h-4 text-emerald-500" />
+              موقعك والنطاقات الجغرافية
+            </h3>
+            <CheckInMap
+              geofences={geofences}
+              currentLocation={currentLocation}
+              nearestGeofence={nearestGeofence}
+              className="h-64"
+            />
           </CardContent>
         </Card>
 

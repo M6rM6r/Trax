@@ -1,9 +1,9 @@
-const CACHE_NAME = "trax-v2";
-const STATIC_ASSETS = ["/", "/manifest.json", "/icon-192.png", "/icon-512.png"];
+const CACHE_NAME = "trax-v3";
+const STATIC_ASSETS = ["/", "/manifest.json", "/ar/check-in"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(STATIC_ASSETS))
+    caches.open(CACHE_NAME).then((cache) => cache.addAll(STATIC_ASSETS)).catch(() => {})
   );
   self.skipWaiting();
 });
@@ -32,8 +32,17 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // Avoid caching navigational HTML documents to prevent serving old app shells.
+  // Navigational requests: network-first with offline fallback to cached page
   if (request.mode === "navigate") {
+    event.respondWith(
+      fetch(request)
+        .then((response) => {
+          const responseClone = response.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(request, responseClone));
+          return response;
+        })
+        .catch(() => caches.match(request).then((cached) => cached || caches.match("/")))
+    );
     return;
   }
 

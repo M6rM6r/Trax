@@ -70,7 +70,7 @@ export function useInactiveEmployees() {
 export function useCreateEmployee() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (employee: Omit<Employee, "id">) => {
+    mutationFn: async (employee: Omit<Employee, "id"> & { password?: string }) => {
       return firebaseData.employees.create(employee);
     },
     onSuccess: () => {
@@ -114,10 +114,11 @@ export function useResetEmployeePassword() {
   });
 }
 
-export function useAttendance() {
+export function useAttendance(options?: { enabled?: boolean }) {
   return useQuery<AttendanceRecord[]>({
     queryKey: queryKeys.attendance,
     staleTime: 30 * 1000,
+    enabled: options?.enabled ?? true,
     queryFn: async (): Promise<AttendanceRecord[]> => {
       return firebaseData.attendance.list();
     },
