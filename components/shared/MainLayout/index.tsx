@@ -54,6 +54,13 @@ const Index = ({
   const { saveScrollPosition } = useScrollPreservation();
   useResourcePreload();
 
+  // Auth guard: redirect to login if no user (unless on auth pages)
+  useEffect(() => {
+    if (!user && !pathname.includes("/login") && !pathname.includes("/register") && !pathname.includes("/forgot-password") && !pathname.includes("/reset-password") && !pathname.includes("/mastermind")) {
+      router.replace("/login");
+    }
+  }, [user, pathname, router]);
+
   useEffect(() => {
     setIsSidebarOpen(false);
     saveScrollPosition();

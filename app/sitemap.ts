@@ -1,20 +1,14 @@
 import type { MetadataRoute } from "next";
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const baseUrl = "https://trax.app";
+  const baseUrl = "https://naf--trax-ae.asia-southeast1.hosted.app";
   const locales = ["ar", "en"];
 
   const routes = [
     "",
     "/login",
-    "/check-in",
-    "/employees",
-    "/employees/inactive",
-    "/attendance",
-    "/attendance/reports",
-    "/geofences",
-    "/live-map",
-    "/settings",
+    "/register",
+    "/forgot-password",
   ];
 
   const entries: MetadataRoute.Sitemap = [];
@@ -24,8 +18,8 @@ export default function sitemap(): MetadataRoute.Sitemap {
       entries.push({
         url: `${baseUrl}/${locale}${route}`,
         lastModified: new Date(),
-        changeFrequency: route === "" ? "daily" : "weekly",
-        priority: route === "" ? 1.0 : 0.7,
+        changeFrequency: route === "" ? "daily" : "monthly",
+        priority: route === "" ? 1.0 : 0.6,
       });
     }
   }
