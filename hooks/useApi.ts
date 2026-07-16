@@ -36,6 +36,7 @@ export const queryKeys = {
   dashboardTrends: ["dashboard", "trends"] as const,
   tracking: ["tracking", "live"] as const,
   aiRetention: ["ai", "retention"] as const,
+  companySettings: ["company-settings"] as const,
 };
 
 export interface RetentionInsightResponse {
@@ -276,7 +277,7 @@ export function useRetentionInsights(attendance: AttendanceRecord[], employees: 
 
 export function useCompanySettings() {
   return useQuery<Record<string, unknown> | null>({
-    queryKey: ["company-settings"],
+    queryKey: queryKeys.companySettings,
     queryFn: async () => {
       return firebaseData.companies.getSettings();
     },
@@ -291,7 +292,7 @@ export function useSaveCompanySettings() {
       await firebaseData.companies.saveSettings(settings as Record<string, unknown>);
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["company-settings"] });
+      qc.invalidateQueries({ queryKey: queryKeys.companySettings });
     },
   });
 }

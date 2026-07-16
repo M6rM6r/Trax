@@ -222,6 +222,7 @@ export const firebaseData = {
         );
     },
     async create(geofence: Omit<Geofence, "id">): Promise<Geofence> {
+      await ensureAuth();
       const reference = await addDoc(collection(requireDb(), "geofences"), {
         ...geofence,
         createdAt: serverTimestamp(),
@@ -229,9 +230,11 @@ export const firebaseData = {
       return mapGeofence(reference.id, { ...geofence, id: reference.id });
     },
     async update(id: string | number, geofence: Partial<Geofence>): Promise<void> {
+      await ensureAuth();
       await updateDoc(doc(requireDb(), "geofences", String(id)), geofence);
     },
     async delete(id: string | number): Promise<void> {
+      await ensureAuth();
       await updateDoc(doc(requireDb(), "geofences", String(id)), { active: false });
     },
   },
@@ -254,13 +257,15 @@ export const firebaseData = {
       geofenceId: string | number;
     }): Promise<AttendanceRecord> {
       const currentUser = await ensureAuth();
-      const geofenceSnapshot = await getDocs(collection(requireDb(), "geofences"));
-      const geofenceEntry = geofenceSnapshot.docs.find(
-        (item) => String(mapGeofence(item.id, item.data()).id) === String(payload.geofenceId)
-      );
-      const geofence = geofenceEntry
-        ? mapGeofence(geofenceEntry.id, geofenceEntry.data())
-        : null;
+      let geofence: Geofence | null = null;
+      try {
+        const geofenceDoc = await getDoc(doc(requireDb(), "geofences", String(payload.geofenceId)));
+        if (geofenceDoc.exists()) {
+          geofence = mapGeofence(geofenceDoc.id, geofenceDoc.data());
+        }
+      } catch {
+        // Geofence lookup failed — proceed without geofence name
+      }
       const now = new Date();
       const date = now.toLocaleDateString("sv-SE"); // YYYY-MM-DD in local timezone
       const checkInTime = now.toTimeString().slice(0, 5);
@@ -296,10 +301,11 @@ export const firebaseData = {
           collection(requireDb(), "attendance"),
           where("employeeId", "==", employeeId),
           where("date", "==", today),
-          limit(50)
+          where("checkOutTime", "==", null),
+          limit(1)
         )
       );
-      const openDoc = snapshot.docs.find((d) => d.data().checkOutTime === null || d.data().checkOutTime === undefined);
+      const openDoc = snapshot.docs[0];
       if (!openDoc) throw new Error("No open attendance record");
       const item = openDoc;
       const current = mapAttendance(item.id, item.data());
@@ -428,10 +434,11 @@ export const firebaseData = {
       }));
     },
     async update(employeeId: string | number, data: Record<string, unknown>): Promise<void> {
+      const currentUser = await ensureAuth();
       await setDoc(
         doc(requireDb(), "locations", String(employeeId)),
         {
-          ownerUid: auth?.currentUser?.uid ?? "",
+          ownerUid: currentUser.uid,
           employeeId,
           ...data,
           lastSeen: new Date().toISOString(),
@@ -459,8 +466,9 @@ export const firebaseData = {
       admin_password: string;
     }): Promise<{ companyId: string; uid: string }> {
       if (!auth) throw new Error("Firebase Auth not configured");
+      const authInstance = secondaryAuth ?? auth;
       const cred = await createUserWithEmailAndPassword(
-        auth,
+        authInstance,
         data.admin_email,
         data.admin_password
       );
@@ -484,17 +492,13 @@ export const firebaseData = {
       return { companyId: companyRef.id, uid: cred.user.uid };
     },
     async getSettings(): Promise<Record<string, unknown> | null> {
-      await ensureAuth();
-      const user = auth?.currentUser;
-      if (!user) return null;
+      const user = await ensureAuth();
       const ref = doc(requireDb(), "company_settings", user.uid);
       const snapshot = await getDoc(ref);
       return snapshot.exists() ? snapshot.data() : null;
     },
     async saveSettings(settings: Record<string, unknown>): Promise<void> {
-      await ensureAuth();
-      const user = auth?.currentUser;
-      if (!user) throw new Error("AUTH_EXPIRED");
+      const user = await ensureAuth();
       const ref = doc(requireDb(), "company_settings", user.uid);
       await setDoc(ref, { ...settings, updatedAt: serverTimestamp() }, { merge: true });
     },
