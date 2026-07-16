@@ -1,0 +1,42 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function manager() {
+      return signedIn() && request.auth.token.role in ['boss', 'manager', 'supervisor'];
+    }
+
+    // Avatars: users can read all, write their own; managers can write any
+    match /trax/avatars/{fileName} {
+      allow read: if signedIn();
+      allow write: if signedIn();
+    }
+
+    // Company logos: managers only
+    match /trax/company-logos/{fileName} {
+      allow read: if signedIn();
+      allow write: if manager();
+    }
+
+    // Documents: managers only
+    match /trax/documents/{fileName} {
+      allow read: if signedIn();
+      allow write: if manager();
+    }
+
+    // Attachments: managers only
+    match /trax/attachments/{fileName} {
+      allow read: if signedIn();
+      allow write: if manager();
+    }
+
+    // Default deny
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

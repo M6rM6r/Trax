@@ -315,26 +315,30 @@ export const firebaseData = {
     },
   },
   dashboard: {
-    async stats(): Promise<{
-      totalEmployees: number;
-      activeEmployees: number;
-      inactiveEmployees: number;
-      presentToday: number;
-      absentToday: number;
-      lateToday: number;
-      checkedOutToday: number;
-      onTimeRate: number;
-      avgCheckInTime: string;
-      avgWorkedHours: number;
-      totalGeofences: number;
+    async getDashboardData(): Promise<{
+      stats: {
+        totalEmployees: number;
+        activeEmployees: number;
+        inactiveEmployees: number;
+        presentToday: number;
+        absentToday: number;
+        lateToday: number;
+        checkedOutToday: number;
+        onTimeRate: number;
+        avgCheckInTime: string;
+        avgWorkedHours: number;
+        totalGeofences: number;
+      };
+      trends: DashboardTrendsSchema;
     }> {
       const [employees, attendance, geofences] = await Promise.all([
         firebaseData.employees.list(),
         firebaseData.attendance.list(),
         firebaseData.geofences.list(),
       ]);
-      const today = new Date().toLocaleDateString("sv-SE");
-      const todayRecords = attendance.filter((record) => record.date === today);
+      const today = new Date();
+      const todayStr = today.toLocaleDateString("sv-SE");
+      const todayRecords = attendance.filter((record) => record.date === todayStr);
       const presentToday = todayRecords.filter((record) => record.status === "present").length;
       const lateToday = todayRecords.filter((record) => record.status === "late").length;
       const checkedOutToday = todayRecords.filter(
@@ -342,7 +346,15 @@ export const firebaseData = {
       ).length;
       const worked = todayRecords.map((record) => record.workedHours).filter((hours) => hours > 0);
       const punctualBase = presentToday + lateToday;
-      return {
+      const checkInTimes = todayRecords
+        .map((r) => r.checkInTime)
+        .filter((t): t is string => t !== null && t !== undefined)
+        .sort();
+      const medianCheckIn = checkInTimes.length > 0
+        ? checkInTimes[Math.floor(checkInTimes.length / 2)]
+        : "N/A";
+
+      const stats = {
         totalEmployees: employees.length,
         activeEmployees: employees.filter((employee) => employee.status === "active").length,
         inactiveEmployees: employees.filter((employee) => employee.status === "inactive").length,
@@ -351,18 +363,14 @@ export const firebaseData = {
         lateToday,
         checkedOutToday,
         onTimeRate: punctualBase > 0 ? Number(((presentToday / punctualBase) * 100).toFixed(1)) : 0,
-        avgCheckInTime: todayRecords[0]?.checkInTime ?? "N/A",
+        avgCheckInTime: medianCheckIn,
         avgWorkedHours:
           worked.length > 0
             ? Number((worked.reduce((sum, hours) => sum + hours, 0) / worked.length).toFixed(1))
             : 0,
         totalGeofences: geofences.length,
       };
-    },
-    async trends(): Promise<DashboardTrendsSchema> {
-      const attendance = await firebaseData.attendance.list();
-      const employees = await firebaseData.employees.list();
-      const today = new Date();
+
       const dayNames = ["الأحد", "الإثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"];
       const weeklyData: {
         day: string;
@@ -381,15 +389,15 @@ export const firebaseData = {
         ).length;
         const late = dayRecords.filter((r) => r.status === "late").length;
         const absent = Math.max(0, employees.length - dayRecords.length);
-        const worked = dayRecords.map((r) => r.workedHours).filter((h) => h > 0);
+        const dayWorked = dayRecords.map((r) => r.workedHours).filter((h) => h > 0);
         weeklyData.push({
           day: dayNames[d.getDay()],
           present,
           late,
           absent,
           avgWorkedHours:
-            worked.length > 0
-              ? Number((worked.reduce((s, h) => s + h, 0) / worked.length).toFixed(1))
+            dayWorked.length > 0
+              ? Number((dayWorked.reduce((s, h) => s + h, 0) / dayWorked.length).toFixed(1))
               : 0,
         });
       }
@@ -402,7 +410,8 @@ export const firebaseData = {
         const label = h < 12 ? `${h}ص` : `${h - 12 === 0 ? 12 : h - 12}م`;
         peakHoursData.push({ hour: label, count });
       }
-      return {
+
+      const trends: DashboardTrendsSchema = {
         weeklyData,
         peakHoursData,
         employeeGrowth: 0,
@@ -411,6 +420,8 @@ export const firebaseData = {
         absentChange: 0,
         onTimeRateChange: 0,
       };
+
+      return { stats, trends };
     },
   },
   tracking: {

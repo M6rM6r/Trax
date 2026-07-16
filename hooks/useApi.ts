@@ -226,7 +226,8 @@ export function useDashboardStats(dateRange?: DashboardDateRange) {
     queryKey: [...queryKeys.dashboard, from ?? "all", to ?? "all"],
     staleTime: 60 * 1000,
     queryFn: async (): Promise<DashboardStats> => {
-      return firebaseData.dashboard.stats();
+      const { stats } = await firebaseData.dashboard.getDashboardData();
+      return stats;
     },
   });
 }
@@ -238,7 +239,8 @@ export function useDashboardTrends(dateRange?: DashboardDateRange) {
   return useQuery<DashboardTrendsSchema>({
     queryKey: [...queryKeys.dashboardTrends, from ?? "all", to ?? "all"],
     queryFn: async (): Promise<DashboardTrendsSchema> => {
-      return firebaseData.dashboard.trends();
+      const { trends } = await firebaseData.dashboard.getDashboardData();
+      return trends;
     },
     staleTime: 5 * 60 * 1000,
   });

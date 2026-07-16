@@ -71,7 +71,11 @@ function calculateDistance(lat1: number, lng1: number, lat2: number, lng2: numbe
 }
 
 export default function CheckInPage() {
-  const { data: geofences = [] } = useGeofences();
+  const {
+    data: geofences = [],
+    isLoading: geofencesLoading,
+    isError: geofencesError,
+  } = useGeofences();
   const checkInMutation = useCheckIn();
   const checkOutMutation = useCheckOut();
   const { user, companyName } = useAuthStore();
@@ -186,6 +190,14 @@ export default function CheckInPage() {
 
   // Auto check-in when entering geofence (if enabled by company settings)
   const autoCheckInTriggered = useRef(false);
+  const burstTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (burstTimeoutRef.current) clearTimeout(burstTimeoutRef.current);
+    };
+  }, []);
+
   useEffect(() => {
     if (!companySettings.autoCheckInEnabled) return;
     if (checkInStatus === "success" || checkInStatus === "loading") return;
@@ -215,7 +227,8 @@ export default function CheckInPage() {
           setCheckInTimestamp(now.getTime());
           setCheckInStatus("success");
           setShowBurst(true);
-          setTimeout(() => setShowBurst(false), 600);
+          if (burstTimeoutRef.current) clearTimeout(burstTimeoutRef.current);
+          burstTimeoutRef.current = setTimeout(() => setShowBurst(false), 600);
           hapticSuccess();
           toastSuccess("تم تسجيل الحضور تلقائياً (بدون اتصال)");
           return;
@@ -234,7 +247,8 @@ export default function CheckInPage() {
           setCheckInTimestamp(now.getTime());
           setCheckInStatus("success");
           setShowBurst(true);
-          setTimeout(() => setShowBurst(false), 600);
+          if (burstTimeoutRef.current) clearTimeout(burstTimeoutRef.current);
+          burstTimeoutRef.current = setTimeout(() => setShowBurst(false), 600);
           hapticSuccess();
           fireConfetti();
           toastSuccess("تم تسجيل الحضور تلقائياً");
@@ -247,9 +261,20 @@ export default function CheckInPage() {
     }
   }, [companySettings.autoCheckInEnabled, companySettings.autoCheckInRadiusOffset, checkInStatus, currentLocation, nearestGeofence, user, checkInMutation]);
 
+  // Physical relation to the closest geofence (only for UI / feedback)
   const isWithinRange = nearestGeofence
     ? nearestGeofence.distance <= nearestGeofence.geofence.radius + 50
-    : geofences.length === 0 || companySettings.allowCheckInOutsideGeofence;
+    : false;
+
+  const geofencesLoaded = !geofencesLoading && !geofencesError;
+  const noGeofencesConfigured = geofencesLoaded && geofences.length === 0;
+
+  // Permission to check in based on location + company policy
+  const canCheckIn =
+    isWithinRange ||
+    companySettings.allowCheckInOutsideGeofence ||
+    !companySettings.requireGeofenceForCheckIn ||
+    noGeofencesConfigured;
 
   const handleCheckIn = async () => {
     hapticTap();
@@ -257,7 +282,7 @@ export default function CheckInPage() {
 
     setCheckInStatus("loading");
 
-    if (!isWithinRange && companySettings.requireGeofenceForCheckIn) {
+    if (!canCheckIn) {
       setCheckInStatus("outside");
       hapticError();
       toastError("أنت خارج النطاق الجغرافي — الحضور خارج النطاق غير مسموح");
@@ -287,7 +312,8 @@ export default function CheckInPage() {
       setCheckInTimestamp(now.getTime());
       setCheckInStatus("success");
       setShowBurst(true);
-      setTimeout(() => setShowBurst(false), 600);
+      if (burstTimeoutRef.current) clearTimeout(burstTimeoutRef.current);
+      burstTimeoutRef.current = setTimeout(() => setShowBurst(false), 600);
       hapticSuccess();
       toastSuccess("تم تسجيل الحضور بدون اتصال — سيتم المزامنة عند عودة الإنترنت");
       return;
@@ -307,7 +333,8 @@ export default function CheckInPage() {
       setCheckInTimestamp(now.getTime());
       setCheckInStatus("success");
       setShowBurst(true);
-      setTimeout(() => setShowBurst(false), 600);
+      if (burstTimeoutRef.current) clearTimeout(burstTimeoutRef.current);
+      burstTimeoutRef.current = setTimeout(() => setShowBurst(false), 600);
       hapticSuccess();
       fireConfetti();
       toastSuccess("تم تسجيل الحضور بنجاح");
@@ -351,6 +378,7 @@ export default function CheckInPage() {
       setCheckOutTime(
         new Date().toLocaleTimeString("ar-SA", { hour: "2-digit", minute: "2-digit" })
       );
+      autoCheckInTriggered.current = false;
       hapticSuccess();
       toastSuccess("تم تسجيل انصرافك بنجاح");
     } catch {

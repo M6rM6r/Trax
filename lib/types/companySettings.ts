@@ -26,8 +26,8 @@ export interface CompanySettings {
   autoSignOutTime: string; // "18:00"
 
   // Geofence
-  requireGeofenceForCheckIn: boolean;
-  allowCheckInOutsideGeofence: boolean;
+  requireGeofenceForCheckIn: boolean; // default: true
+  allowCheckInOutsideGeofence: boolean; // default: false
 
   // Company
   companyName: string;
@@ -58,8 +58,8 @@ export const defaultCompanySettings: CompanySettings = {
   autoSignOutEnabled: false,
   autoSignOutTime: "18:00",
 
-  requireGeofenceForCheckIn: false,
-  allowCheckInOutsideGeofence: true,
+  requireGeofenceForCheckIn: true,
+  allowCheckInOutsideGeofence: false,
 
   companyName: "",
   timezone: "Asia/Riyadh",

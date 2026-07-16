@@ -3,12 +3,14 @@
 import { useEffect, useRef } from "react";
 import { onAuthStateChanged, browserLocalPersistence, setPersistence } from "firebase/auth";
 import { auth } from "@/lib/config/firebase";
-import { useAuthStore } from "@/stores/useAuthStore";
+import { useAuthStore, type UserRole } from "@/stores/useAuthStore";
 import { env } from "@/lib/config/env";
 
 export default function AuthProvider({ children }: { children: React.ReactNode }) {
-  const { user, clearUser, token } = useAuthStore();
+  const { user, clearUser, token, setUser, companyId, companyName } = useAuthStore();
   const hasRedirected = useRef(false);
+  const userRef = useRef(user);
+  userRef.current = user;
 
   useEffect(() => {
     if (!auth || !env.NEXT_PUBLIC_USE_FIREBASE) return;
@@ -17,7 +19,7 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
     setPersistence(auth, browserLocalPersistence).catch(() => {});
 
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
-      if (!firebaseUser && user && !hasRedirected.current) {
+      if (!firebaseUser && userRef.current && !hasRedirected.current) {
         // Firebase session ended but we still have a user in store — clear and redirect
         hasRedirected.current = true;
         clearUser();
@@ -33,18 +35,21 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
     });
 
     return () => unsubscribe();
-  }, [user, clearUser]);
+  }, [clearUser]); // subscribe once — don't re-subscribe on user changes
 
-  // If token is missing but Firebase has a user, try to refresh
+  // If token is missing but Firebase has a user, refresh and store the token
   useEffect(() => {
     if (!auth || !env.NEXT_PUBLIC_USE_FIREBASE) return;
     if (!token && auth.currentUser && user) {
-      // Force token refresh to keep session alive
-      auth.currentUser.getIdToken(true).catch((err) => {
+      auth.currentUser.getIdToken(false).then((newToken) => {
+        if (user) {
+          setUser(user, newToken, (user.role as UserRole) ?? "employee", companyId ?? 0, companyName ?? "");
+        }
+      }).catch((err) => {
         console.warn("[auth] Token refresh failed:", err);
       });
     }
-  }, [token, user]);
+  }, [token, user, setUser, companyId, companyName]);
 
   return <>{children}</>;
 }
