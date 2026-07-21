@@ -1,5 +1,12 @@
 import { z } from "zod";
 
+export const workShiftSchema = z.object({
+  startTime: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Invalid time format"),
+  endTime: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Invalid time format"),
+  gracePeriodMinutes: z.coerce.number().int().min(0).max(120),
+  lateThresholdMinutes: z.coerce.number().int().min(0).max(240),
+});
+
 export const employeeSchema = z.object({
   id: z.coerce.number().int().positive(),
   name: z.string().trim().min(2, "Name must be at least 2 characters"),
@@ -15,6 +22,8 @@ export const employeeSchema = z.object({
   lastSeen: z.string().nullable().optional(),
   batteryLevel: z.coerce.number().min(0).max(100).nullable().optional(),
   employeeNumber: z.string().trim().min(1).nullable().optional(),
+  attendanceMode: z.enum(["field", "office_two_shift", "hourly"]).nullable().optional(),
+  shiftOverride: workShiftSchema.partial().nullable().optional(),
   password: z.string().trim().min(8).optional(),
 });
 

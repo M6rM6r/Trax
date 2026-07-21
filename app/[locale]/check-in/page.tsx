@@ -17,7 +17,7 @@ import {
   Briefcase,
   RotateCcw,
 } from "lucide-react";
-import { useCheckIn, useCheckOut, useGeofences } from "@/hooks/useApi";
+import { useCheckIn, useCheckOut, useGeofences, useEmployees } from "@/hooks/useApi";
 import CheckInMap from "@/components/shared/MapComponent/CheckInMap";
 import { hapticSuccess, hapticError, hapticTap } from "@/lib/utils/haptics";
 import { fireConfetti } from "@/lib/utils/confetti";
@@ -28,6 +28,7 @@ import { useAuthStore } from "@/stores/useAuthStore";
 import { useCompanySettingsStore } from "@/stores/useCompanySettingsStore";
 import { cn } from "@/lib/utils";
 import { addToOfflineQueue } from "@/lib/utils/offlineQueue";
+import { resolveEmployeeShift, isSeasonalDate, attendanceModeLabels } from "@/lib/utils/shifts";
 
 function LiveClock() {
   const [time, setTime] = useState("");
@@ -76,10 +77,20 @@ export default function CheckInPage() {
     isLoading: geofencesLoading,
     isError: geofencesError,
   } = useGeofences();
+  const { data: employees = [] } = useEmployees();
   const checkInMutation = useCheckIn();
   const checkOutMutation = useCheckOut();
   const { user, companyName } = useAuthStore();
   const companySettings = useCompanySettingsStore();
+
+  const currentEmployee = employees.find((e) => String(e.id) === String(user?.employee_id));
+  const now = new Date();
+  const {
+    mode: activeMode,
+    shift: activeShift,
+    slot: activeSlot,
+  } = resolveEmployeeShift(currentEmployee ?? {}, companySettings, now, null);
+  const seasonalActive = isSeasonalDate(now, companySettings);
   const [currentLocation, setCurrentLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [locationAccuracy, setLocationAccuracy] = useState<number | null>(null);
   const [locationError, setLocationError] = useState<string | null>(null);
@@ -114,24 +125,21 @@ export default function CheckInPage() {
   const geofencesRef = useRef(geofences);
   geofencesRef.current = geofences;
 
-  const updateFromPosition = useCallback(
-    (position: GeolocationPosition) => {
-      const { latitude, longitude, accuracy } = position.coords;
-      setLocationError(null);
-      setCurrentLocation({ lat: latitude, lng: longitude });
-      setLocationAccuracy(accuracy);
+  const updateFromPosition = useCallback((position: GeolocationPosition) => {
+    const { latitude, longitude, accuracy } = position.coords;
+    setLocationError(null);
+    setCurrentLocation({ lat: latitude, lng: longitude });
+    setLocationAccuracy(accuracy);
 
-      let closest: { geofence: Geofence; distance: number } | null = null;
-      geofencesRef.current.forEach((geo) => {
-        const dist = calculateDistance(latitude, longitude, geo.lat, geo.lng);
-        if (!closest || dist < closest.distance) {
-          closest = { geofence: geo, distance: dist };
-        }
-      });
-      setNearestGeofence(closest);
-    },
-    []
-  );
+    let closest: { geofence: Geofence; distance: number } | null = null;
+    geofencesRef.current.forEach((geo) => {
+      const dist = calculateDistance(latitude, longitude, geo.lat, geo.lng);
+      if (!closest || dist < closest.distance) {
+        closest = { geofence: geo, distance: dist };
+      }
+    });
+    setNearestGeofence(closest);
+  }, []);
 
   const handleLocationError = useCallback((err: GeolocationPositionError) => {
     let message = "تعذر الحصول على الموقع";
@@ -151,11 +159,11 @@ export default function CheckInPage() {
       setLocationError("الموقع غير مدعوم على هذا الجهاز");
       return;
     }
-    navigator.geolocation.getCurrentPosition(
-      updateFromPosition,
-      handleLocationError,
-      { enableHighAccuracy: true, timeout: 15000, maximumAge: 30000 }
-    );
+    navigator.geolocation.getCurrentPosition(updateFromPosition, handleLocationError, {
+      enableHighAccuracy: true,
+      timeout: 15000,
+      maximumAge: 30000,
+    });
   }, [updateFromPosition, handleLocationError]);
 
   useEffect(() => {
@@ -164,15 +172,11 @@ export default function CheckInPage() {
       return;
     }
     refreshLocation();
-    const id = navigator.geolocation.watchPosition(
-      updateFromPosition,
-      handleLocationError,
-      {
-        enableHighAccuracy: true,
-        timeout: 15000,
-        maximumAge: 30000,
-      }
-    );
+    const id = navigator.geolocation.watchPosition(updateFromPosition, handleLocationError, {
+      enableHighAccuracy: true,
+      timeout: 15000,
+      maximumAge: 30000,
+    });
     return () => navigator.geolocation.clearWatch(id);
   }, [updateFromPosition, refreshLocation, handleLocationError]);
 
@@ -205,7 +209,8 @@ export default function CheckInPage() {
     if (autoCheckInTriggered.current) return;
 
     const isWithinAutoRange = nearestGeofence
-      ? nearestGeofence.distance <= nearestGeofence.geofence.radius + companySettings.autoCheckInRadiusOffset
+      ? nearestGeofence.distance <=
+        nearestGeofence.geofence.radius + companySettings.autoCheckInRadiusOffset
       : false;
 
     if (isWithinAutoRange) {
@@ -241,6 +246,39 @@ export default function CheckInPage() {
             lat: currentLocation.lat,
             lng: currentLocation.lng,
             geofenceId: nearestGeofence?.geofence.id ?? 0,
+            companySettings: {
+              workStartTime: companySettings.workStartTime,
+              workEndTime: companySettings.workEndTime,
+              gracePeriodMinutes: companySettings.gracePeriodMinutes,
+              lateThresholdMinutes: companySettings.lateThresholdMinutes,
+              attendanceMode: companySettings.attendanceMode,
+              defaultShift: companySettings.defaultShift,
+              morningShift: companySettings.morningShift,
+              eveningShift: companySettings.eveningShift,
+              seasonalAttendanceEnabled: companySettings.seasonalAttendanceEnabled,
+              seasonalMonths: companySettings.seasonalMonths,
+              seasonalShift: companySettings.seasonalShift,
+              autoCheckInEnabled: companySettings.autoCheckInEnabled,
+              autoCheckInRadiusOffset: companySettings.autoCheckInRadiusOffset,
+              notificationsEnabled: companySettings.notificationsEnabled,
+              lateAlertsEnabled: companySettings.lateAlertsEnabled,
+              attendanceAlertsEnabled: companySettings.attendanceAlertsEnabled,
+              geofenceBreachAlertsEnabled: companySettings.geofenceBreachAlertsEnabled,
+              anomalyAlertsEnabled: companySettings.anomalyAlertsEnabled,
+              emailNotificationsEnabled: companySettings.emailNotificationsEnabled,
+              pushNotificationsEnabled: companySettings.pushNotificationsEnabled,
+              checkInReminderEnabled: companySettings.checkInReminderEnabled,
+              checkInReminderTime: companySettings.checkInReminderTime,
+              sessionTimeoutMinutes: companySettings.sessionTimeoutMinutes,
+              autoSignOutEnabled: companySettings.autoSignOutEnabled,
+              autoSignOutTime: companySettings.autoSignOutTime,
+              requireGeofenceForCheckIn: companySettings.requireGeofenceForCheckIn,
+              allowCheckInOutsideGeofence: companySettings.allowCheckInOutsideGeofence,
+              companyName: companySettings.companyName,
+              timezone: companySettings.timezone,
+              weekendDays: companySettings.weekendDays,
+            },
+            employee: currentEmployee ?? null,
           });
           const now = new Date();
           setCheckInTime(now.toLocaleTimeString("ar-SA", { hour: "2-digit", minute: "2-digit" }));
@@ -259,7 +297,17 @@ export default function CheckInPage() {
         }
       })();
     }
-  }, [companySettings.autoCheckInEnabled, companySettings.autoCheckInRadiusOffset, checkInStatus, currentLocation, nearestGeofence, user, checkInMutation]);
+  }, [
+    companySettings,
+    companySettings.autoCheckInEnabled,
+    companySettings.autoCheckInRadiusOffset,
+    checkInStatus,
+    currentLocation,
+    nearestGeofence,
+    user,
+    checkInMutation,
+    currentEmployee,
+  ]);
 
   // Physical relation to the closest geofence (only for UI / feedback)
   const isWithinRange = nearestGeofence
@@ -307,9 +355,11 @@ export default function CheckInPage() {
         geofenceId: nearestGeofence?.geofence.id ?? 0,
         timestamp: Date.now(),
       });
-      const now = new Date();
-      setCheckInTime(now.toLocaleTimeString("ar-SA", { hour: "2-digit", minute: "2-digit" }));
-      setCheckInTimestamp(now.getTime());
+      const nowOffline = new Date();
+      setCheckInTime(
+        nowOffline.toLocaleTimeString("ar-SA", { hour: "2-digit", minute: "2-digit" })
+      );
+      setCheckInTimestamp(nowOffline.getTime());
       setCheckInStatus("success");
       setShowBurst(true);
       if (burstTimeoutRef.current) clearTimeout(burstTimeoutRef.current);
@@ -326,6 +376,39 @@ export default function CheckInPage() {
         lat: currentLocation.lat,
         lng: currentLocation.lng,
         geofenceId: nearestGeofence?.geofence.id ?? 0,
+        companySettings: {
+          workStartTime: companySettings.workStartTime,
+          workEndTime: companySettings.workEndTime,
+          gracePeriodMinutes: companySettings.gracePeriodMinutes,
+          lateThresholdMinutes: companySettings.lateThresholdMinutes,
+          attendanceMode: companySettings.attendanceMode,
+          defaultShift: companySettings.defaultShift,
+          morningShift: companySettings.morningShift,
+          eveningShift: companySettings.eveningShift,
+          seasonalAttendanceEnabled: companySettings.seasonalAttendanceEnabled,
+          seasonalMonths: companySettings.seasonalMonths,
+          seasonalShift: companySettings.seasonalShift,
+          autoCheckInEnabled: companySettings.autoCheckInEnabled,
+          autoCheckInRadiusOffset: companySettings.autoCheckInRadiusOffset,
+          notificationsEnabled: companySettings.notificationsEnabled,
+          lateAlertsEnabled: companySettings.lateAlertsEnabled,
+          attendanceAlertsEnabled: companySettings.attendanceAlertsEnabled,
+          geofenceBreachAlertsEnabled: companySettings.geofenceBreachAlertsEnabled,
+          anomalyAlertsEnabled: companySettings.anomalyAlertsEnabled,
+          emailNotificationsEnabled: companySettings.emailNotificationsEnabled,
+          pushNotificationsEnabled: companySettings.pushNotificationsEnabled,
+          checkInReminderEnabled: companySettings.checkInReminderEnabled,
+          checkInReminderTime: companySettings.checkInReminderTime,
+          sessionTimeoutMinutes: companySettings.sessionTimeoutMinutes,
+          autoSignOutEnabled: companySettings.autoSignOutEnabled,
+          autoSignOutTime: companySettings.autoSignOutTime,
+          requireGeofenceForCheckIn: companySettings.requireGeofenceForCheckIn,
+          allowCheckInOutsideGeofence: companySettings.allowCheckInOutsideGeofence,
+          companyName: companySettings.companyName,
+          timezone: companySettings.timezone,
+          weekendDays: companySettings.weekendDays,
+        },
+        employee: currentEmployee ?? null,
       });
 
       const now = new Date();
@@ -342,7 +425,11 @@ export default function CheckInPage() {
       console.error("[check-in] failed:", err);
       setCheckInStatus("idle");
       const errMsg = err instanceof Error ? err.message : String(err);
-      if (errMsg === "AUTH_EXPIRED" || errMsg.includes("permission") || errMsg.includes("PERMISSION")) {
+      if (
+        errMsg === "AUTH_EXPIRED" ||
+        errMsg.includes("permission") ||
+        errMsg.includes("PERMISSION")
+      ) {
         toastError("انتهت الجلسة — يرجى تسجيل الدخول مرة أخرى");
         setTimeout(() => {
           if (typeof window !== "undefined") {
@@ -413,6 +500,11 @@ export default function CheckInPage() {
           color: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
           icon: Clock,
         };
+
+  const shiftBadgeLabel = activeSlot
+    ? `الفترة ${activeSlot === "morning" ? "الصباحية" : "المسائية"}`
+    : attendanceModeLabels[activeMode];
+  const expectedTimeLabel = `${activeShift.startTime} - ${activeShift.endTime}`;
 
   return (
     <MainLayout>
@@ -532,6 +624,27 @@ export default function CheckInPage() {
                     ? "جاهز"
                     : "خارج النطاق"}
             </p>
+
+            {/* Active shift indicator */}
+            <div className="flex items-center justify-center gap-2 mt-4 flex-wrap">
+              <Badge
+                variant="outline"
+                className="text-xs border-blue-200 text-blue-700 dark:border-blue-800 dark:text-blue-300"
+              >
+                {shiftBadgeLabel}
+              </Badge>
+              {seasonalActive && (
+                <Badge className="text-xs bg-amber-100 text-amber-800 border-0 dark:bg-amber-900/30 dark:text-amber-300">
+                  دوام موسمي
+                </Badge>
+              )}
+              <Badge
+                variant="outline"
+                className="text-xs border-slate-200 text-slate-600 dark:border-slate-700 dark:text-slate-400"
+              >
+                {expectedTimeLabel}
+              </Badge>
+            </div>
           </CardContent>
         </Card>
 
@@ -727,7 +840,9 @@ export default function CheckInPage() {
               geofences={geofences}
               currentLocation={currentLocation}
               nearestGeofence={nearestGeofence}
-              className="h-64"
+              isWithinRange={isWithinRange}
+              loading={geofencesLoading}
+              className="h-80"
             />
           </CardContent>
         </Card>

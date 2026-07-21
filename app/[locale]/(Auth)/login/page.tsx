@@ -7,9 +7,9 @@ import { MapPin, CheckCircle2 } from "lucide-react";
 import * as Yup from "yup";
 import { toastSuccess, toastError } from "@/hooks/use-toast";
 import { useSearchParams } from "next/navigation";
-import { useRouter, Link } from "@/i18n/navigation";
-import { useMemo, useState, useEffect } from "react";
-import { useAuthStore, UserRole } from "@/stores/useAuthStore";
+import { Link } from "@/i18n/navigation";
+import { useMemo, useState } from "react";
+import { useAuthStore } from "@/stores/useAuthStore";
 import { hapticSuccess, hapticError } from "@/lib/utils/haptics";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -20,7 +20,8 @@ import {
 } from "firebase/auth";
 import { auth } from "@/lib/config/firebase";
 import { getFirebaseUserProfile } from "@/lib/services/firebaseData";
-import { env } from "@/lib/config/env";
+import { useFirebaseAuth } from "@/lib/config/env";
+import { normalizeUserRole, resolveUserRole } from "@/lib/utils/auth";
 
 interface LoginValues {
   identifier: string;
@@ -36,22 +37,13 @@ const loginSchema = Yup.object({
 });
 
 const Page = () => {
-  const router = useRouter();
   const searchParams = useSearchParams();
-  const { setUser } = useAuthStore();
-  const [showSuccess, setShowSuccess] = useState(false);
-  const sessionExpired = searchParams.get("reason") === "session_expired";
-
-  useEffect(() => {
-    if (sessionExpired) {
-      toastError("انتهت الجلسة — يرجى تسجيل الدخول مرة أخرى");
-    }
-  }, [sessionExpired]);
-
   const initialIdentifier = useMemo(
     () => searchParams.get("identifier")?.trim() || "",
     [searchParams]
   );
+  const { setUser, setRememberMe } = useAuthStore();
+  const [showSuccess, setShowSuccess] = useState(false);
 
   const applyLoginResponse = async (
     values: LoginValues,
@@ -79,15 +71,19 @@ const Page = () => {
     }
 
     const { user, company } = resp.data;
-    const adminRoles: UserRole[] = ["boss", "manager", "supervisor"];
-    const role = adminRoles.includes(user.role as UserRole) ? (user.role as UserRole) : "employee";
+    let role = normalizeUserRole(user.role);
+    const hasCompany = user.company_id !== null && user.company_id !== undefined;
+    const hasEmployeeId = user.employee_id !== null && user.employee_id !== undefined;
+    if (hasCompany && !hasEmployeeId) {
+      role = "boss";
+    }
 
     setUser(
       {
         id: user.id,
         name: user.name,
         email: user.email,
-        role: user.role,
+        role,
         employee_id: user.employee_id ?? null,
         assigned_geofence_id: user.assigned_geofence_id ?? null,
         permissions: [],
@@ -105,10 +101,13 @@ const Page = () => {
     setShowSuccess(true);
 
     setTimeout(() => {
-      if (role === "employee") {
-        router.push("/check-in");
-      } else {
-        router.push("/");
+      const currentLocale =
+        typeof window !== "undefined" && window.location.pathname.split("/")[1] === "en"
+          ? "en"
+          : "ar";
+      const targetPath = role === "employee" ? `/${currentLocale}/check-in` : `/${currentLocale}`;
+      if (typeof window !== "undefined") {
+        window.location.assign(targetPath);
       }
     }, 800);
   };
@@ -128,24 +127,38 @@ const Page = () => {
       await setPersistence(auth, browserLocalPersistence);
       const credential = await signInWithEmailAndPassword(auth, values.identifier, values.password);
       const idToken = await credential.user.getIdToken();
+      setRememberMe(values.rememberMe);
 
-      if (env.NEXT_PUBLIC_USE_FIREBASE) {
+      if (useFirebaseAuth) {
         let profile: Record<string, unknown> | null = null;
         try {
           profile = await getFirebaseUserProfile(
             credential.user.uid,
             credential.user.email ?? values.identifier
           );
-        } catch (e) {
-          console.warn("[login] Firestore profile lookup failed, using defaults:", e);
+        } catch {
+          // Firestore profile lookup failed; continue with defaults below.
         }
         const tokenResult = await getIdTokenResult(credential.user);
-        const profileData = profile ?? {};
+        const profileData = (profile ?? {}) as Record<string, unknown> & {
+          company?: { id?: unknown; name?: unknown };
+        };
+        const companyProfile = profileData.company;
         const numericId = Array.from(credential.user.uid).reduce(
           (total, character) => (total * 31 + character.charCodeAt(0)) % 2147483647,
           0
         );
-        const role = String(profileData.role ?? tokenResult.claims.role ?? "employee");
+        const role = resolveUserRole(
+          profileData,
+          tokenResult.claims,
+          credential.user.email ?? values.identifier
+        );
+        const isEmployee = role === "employee";
+
+        const companyId = Number(profileData.company_id ?? companyProfile?.id ?? 1);
+        const hasEmployeeId =
+          profileData.employee_id !== null && profileData.employee_id !== undefined;
+
         await applyLoginResponse(values, idToken, {
           success: true,
           data: {
@@ -156,11 +169,12 @@ const Page = () => {
               ),
               email: String(profileData.email ?? credential.user.email ?? values.identifier),
               role,
-              company_id: Number(profileData.company_id ?? 1),
-              employee_id:
-                profileData.employee_id === null || profileData.employee_id === undefined
+              company_id: companyId,
+              employee_id: hasEmployeeId
+                ? (profileData.employee_id as string | number)
+                : isEmployee
                   ? numericId
-                  : (profileData.employee_id as string | number),
+                  : null,
               assigned_geofence_id:
                 profileData.assigned_geofence_id === null ||
                 profileData.assigned_geofence_id === undefined
@@ -168,8 +182,8 @@ const Page = () => {
                   : (profileData.assigned_geofence_id as string | number),
             },
             company: {
-              id: Number(profileData.company_id ?? 1),
-              name: String(profileData.company_name ?? "Trax"),
+              id: companyId,
+              name: String(profileData.company_name ?? companyProfile?.name ?? "Trax"),
             },
           },
         });

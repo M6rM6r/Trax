@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { Crosshair, Maximize } from "lucide-react";
 import Map from "ol/Map";
 import View from "ol/View";
 import TileLayer from "ol/layer/Tile";
@@ -18,6 +19,8 @@ interface CheckInMapProps {
   geofences: Geofence[];
   currentLocation: { lat: number; lng: number } | null;
   nearestGeofence?: { geofence: Geofence; distance: number } | null;
+  isWithinRange?: boolean;
+  loading?: boolean;
   className?: string;
 }
 
@@ -25,11 +28,29 @@ export default function CheckInMap({
   geofences,
   currentLocation,
   nearestGeofence,
+  isWithinRange = false,
+  loading = false,
   className = "",
 }: CheckInMapProps) {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<Map | null>(null);
   const vectorSourceRef = useRef<VectorSource | null>(null);
+
+  const recenterOnUser = () => {
+    const map = mapInstanceRef.current;
+    if (!map || !currentLocation) return;
+    map.getView().setCenter(fromLonLat([currentLocation.lng, currentLocation.lat]));
+    map.getView().setZoom(17);
+  };
+
+  const fitToAll = () => {
+    const map = mapInstanceRef.current;
+    const source = vectorSourceRef.current;
+    if (!map || !source) return;
+    const extent = source.getExtent();
+    if (extent[0] === Infinity) return;
+    map.getView().fit(extent, { padding: [50, 50, 50, 50], maxZoom: 18 });
+  };
 
   useEffect(() => {
     if (!mapRef.current) return;
@@ -127,7 +148,8 @@ export default function CheckInMap({
         extent = circleExtent.slice();
       } else {
         for (let i = 0; i < 4; i++) {
-          extent[i] = i < 2 ? Math.min(extent[i], circleExtent[i]) : Math.max(extent[i], circleExtent[i]);
+          extent[i] =
+            i < 2 ? Math.min(extent[i], circleExtent[i]) : Math.max(extent[i], circleExtent[i]);
         }
       }
     });
@@ -161,7 +183,8 @@ export default function CheckInMap({
         extent = pointExtent.slice();
       } else {
         for (let i = 0; i < 4; i++) {
-          extent[i] = i < 2 ? Math.min(extent[i], pointExtent[i]) : Math.max(extent[i], pointExtent[i]);
+          extent[i] =
+            i < 2 ? Math.min(extent[i], pointExtent[i]) : Math.max(extent[i], pointExtent[i]);
         }
       }
     }
@@ -175,5 +198,69 @@ export default function CheckInMap({
     }
   }, [geofences, currentLocation, nearestGeofence]);
 
-  return <div ref={mapRef} className={`w-full rounded-xl ${className}`} />;
+  const statusText = isWithinRange ? "داخل النطاق" : "خارج النطاق";
+  const statusColor = isWithinRange ? "bg-emerald-500" : "bg-amber-500";
+
+  return (
+    <div className={`relative w-full overflow-hidden rounded-xl ${className}`}>
+      <div ref={mapRef} className="absolute inset-0" />
+
+      {/* Map controls */}
+      <div className="absolute top-3 right-3 z-10 flex flex-col gap-2">
+        <button
+          type="button"
+          onClick={recenterOnUser}
+          disabled={!currentLocation}
+          className="p-2 rounded-lg bg-slate-800/80 text-white shadow-md backdrop-blur-sm hover:bg-slate-700/90 disabled:opacity-40 transition-colors"
+          title="توسيط على موقعي"
+          aria-label="توسيط على موقعي"
+        >
+          <Crosshair className="w-4 h-4" />
+        </button>
+        <button
+          type="button"
+          onClick={fitToAll}
+          className="p-2 rounded-lg bg-slate-800/80 text-white shadow-md backdrop-blur-sm hover:bg-slate-700/90 transition-colors"
+          title="عرض الكل"
+          aria-label="عرض الكل"
+        >
+          <Maximize className="w-4 h-4" />
+        </button>
+      </div>
+
+      {/* Location / geofence info */}
+      <div className="absolute bottom-3 left-3 z-10 max-w-[85%] rounded-xl bg-slate-900/80 p-3 text-white shadow-lg backdrop-blur-sm">
+        {loading ? (
+          <p className="text-[11px]">جاري تحميل النطاقات الجغرافية...</p>
+        ) : geofences.length === 0 ? (
+          <p className="text-[11px]">لم يتم إعداد نطاق جغرافي بعد.</p>
+        ) : !currentLocation ? (
+          <p className="text-[11px]">جاري تحديد موقعك...</p>
+        ) : nearestGeofence ? (
+          <div className="space-y-1.5">
+            <div className="flex items-center gap-2">
+              <span
+                className="w-2.5 h-2.5 rounded-full"
+                style={{
+                  backgroundColor:
+                    nearestGeofence.geofence.color || (isWithinRange ? "#10b981" : "#6366f1"),
+                }}
+              />
+              <span className="text-xs font-bold truncate">{nearestGeofence.geofence.name}</span>
+            </div>
+            <div className="text-[11px] text-slate-300">
+              المسافة: {Math.round(nearestGeofence.distance)}م · نصف القطر:{" "}
+              {Math.round(nearestGeofence.geofence.radius)}م
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className={`w-2 h-2 rounded-full ${statusColor}`} />
+              <span className="text-[11px] font-medium">{statusText}</span>
+            </div>
+          </div>
+        ) : (
+          <p className="text-[11px]">لا يوجد نطاق جغرافي مطابق.</p>
+        )}
+      </div>
+    </div>
+  );
 }

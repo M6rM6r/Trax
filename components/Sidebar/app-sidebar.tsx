@@ -16,6 +16,7 @@ import { useMainNavItems } from "./nav-main-items";
 import { usePathname, useRouter } from "@/i18n/navigation";
 import { MapPin, LogOut, Search } from "lucide-react";
 import { useAuthStore } from "@/stores/useAuthStore";
+import Image from "next/image";
 import { signOut } from "firebase/auth";
 import { auth } from "@/lib/config/firebase";
 
@@ -70,7 +71,20 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                   <MapPin className="w-4 h-4 text-primaryColor" />
                 </div>
                 {sidebar.state !== "collapsed" && (
-                  <span className="text-xl font-bold text-white tracking-wide">Trax</span>
+                  <>
+                    <Image
+                      src="/images/trax-logo.svg"
+                      alt="Trax"
+                      width={32}
+                      height={32}
+                      className="h-8 w-auto hidden md:inline-block"
+                      unoptimized
+                      onError={(e) => {
+                        (e.currentTarget as HTMLImageElement).style.display = "none";
+                      }}
+                    />
+                    <span className="text-xl font-bold text-white tracking-wide">Trax</span>
+                  </>
                 )}
               </div>
             </SidebarMenuButton>

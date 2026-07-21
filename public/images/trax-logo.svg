@@ -1,0 +1,10 @@
+<svg width="240" height="80" viewBox="0 0 240 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="240" height="80" rx="16" fill="#0F172A"/>
+  <path d="M24 56L48 32L76 56" stroke="#22C55E" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M52 16L76 40" stroke="#22C55E" stroke-width="10" stroke-linecap="round"/>
+  <path d="M38 34C38 22.9543 47.9543 13 59 13C70.0457 13 80 22.9543 80 34C80 45.0457 70.0457 55 59 55C47.9543 55 38 45.0457 38 34Z" stroke="#22C55E" stroke-width="6"/>
+  <text x="102" y="49" fill="#F8FAFC" font-family="Inter, Arial, sans-serif" font-size="42" font-weight="800">TRAX</text>
+  <path d="M190 22L220 22L220 12" stroke="#22C55E" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M190 22L220 22L220 52" stroke="#22C55E" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M176 58L216 18" stroke="#22C55E" stroke-width="10" stroke-linecap="round"/>
+</svg>

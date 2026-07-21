@@ -3,11 +3,6 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\Attendance;
-use App\Models\Company;
-use App\Models\Employee;
-use App\Models\Geofence;
-use App\Models\User;
 use App\Services\FirebaseUserService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -55,33 +50,15 @@ class MastermindController extends Controller
 
     public function dashboard(): JsonResponse
     {
-        $companies = Company::count();
-        $activeCompanies = Company::where('active', true)->count();
-        $trialCompanies = Company::where('plan', 'trial')->count();
-        $users = User::count();
-        $employees = Employee::count();
-        $geofences = Geofence::count();
-        $attendanceToday = Attendance::where('date', now()->toDateString())->count();
-        $checkedOutToday = Attendance::where('date', now()->toDateString())->where('status', 'checked_out')->count();
+        $firebaseService = app(FirebaseUserService::class);
+        $stats = $firebaseService->getDashboardStats();
 
-        $recentCompanies = Company::withCount(['users', 'employees'])
-            ->orderBy('created_at', 'desc')
-            ->limit(5)
-            ->get();
+        $recentCompanies = $firebaseService->listCompanies(5);
 
         return response()->json([
             'success' => true,
             'data' => [
-                'stats' => [
-                    'companies' => $companies,
-                    'activeCompanies' => $activeCompanies,
-                    'trialCompanies' => $trialCompanies,
-                    'users' => $users,
-                    'employees' => $employees,
-                    'geofences' => $geofences,
-                    'attendanceToday' => $attendanceToday,
-                    'checkedOutToday' => $checkedOutToday,
-                ],
+                'stats' => $stats,
                 'recentCompanies' => $recentCompanies,
             ],
         ]);
@@ -94,39 +71,17 @@ class MastermindController extends Controller
         $plan = $request->query('plan');
         $status = $request->query('status');
 
-        $query = Company::withCount(['users', 'employees', 'geofences'])
-            ->orderBy('created_at', 'desc');
-
-        if ($search) {
-            $query->where(function ($q) use ($search) {
-                $q->where('name', 'like', "%{$search}%")
-                    ->orWhere('slug', 'like', "%{$search}%")
-                    ->orWhere('email', 'like', "%{$search}%");
-            });
-        }
-
-        if ($plan) {
-            $query->where('plan', $plan);
-        }
-
-        if ($status === 'active') {
-            $query->where('active', true);
-        } elseif ($status === 'inactive') {
-            $query->where('active', false);
-        } elseif ($status === 'trial') {
-            $query->where('plan', 'trial');
-        }
-
-        $paginated = $query->paginate($perPage);
+        $firebaseService = app(FirebaseUserService::class);
+        $companies = $firebaseService->listCompanies($perPage, $search, $plan, $status);
 
         return response()->json([
             'success' => true,
-            'data' => $paginated->items(),
+            'data' => $companies,
             'meta' => [
-                'current_page' => $paginated->currentPage(),
-                'last_page' => $paginated->lastPage(),
-                'per_page' => $paginated->perPage(),
-                'total' => $paginated->total(),
+                'current_page' => 1,
+                'last_page' => 1,
+                'per_page' => $perPage,
+                'total' => count($companies),
             ],
         ]);
     }
@@ -143,7 +98,7 @@ class MastermindController extends Controller
             'max_employees' => ['nullable', 'integer', 'min:1'],
             'active' => ['boolean'],
             'admin_name' => ['nullable', 'string', 'max:255'],
-            'admin_email' => ['required', 'email', 'unique:users,email'],
+            'admin_email' => ['required', 'email'],
             'admin_password' => ['required', 'string', 'min:6'],
             'admin_role' => ['nullable', 'in:boss,manager'],
         ]);
@@ -160,9 +115,12 @@ class MastermindController extends Controller
         $maxEmployees = $request->input('max_employees') ?: 10;
         $adminRole = $request->input('admin_role') ?: 'manager';
 
-        $company = Company::create([
+        $firebaseService = app(FirebaseUserService::class);
+
+        // Create company in Firestore
+        $companyId = $firebaseService->createCompany([
             'name' => $companyName,
-            'slug' => Company::generateSlug($companyName),
+            'slug' => strtolower(str_replace(' ', '-', $companyName)),
             'email' => $companyEmail,
             'industry' => $request->input('industry'),
             'phone' => $request->input('phone'),
@@ -170,55 +128,81 @@ class MastermindController extends Controller
             'plan' => $plan,
             'max_employees' => (int) $maxEmployees,
             'active' => $request->boolean('active', true),
-            'trial_ends_at' => $plan === 'trial' ? now()->addDays(14) : null,
+            'trial_ends_at' => $plan === 'trial' ? now()->addDays(14)->toIso8601String() : null,
+            'created_at' => now()->toIso8601String(),
+            'updated_at' => now()->toIso8601String(),
         ]);
 
+        if (! $companyId) {
+            return response()->json(['success' => false, 'message' => 'Failed to create company in Firestore.'], 500);
+        }
+
         // Create Firebase Auth user for the admin
-        $firebaseService = app(FirebaseUserService::class);
         $firebaseUid = $firebaseService->createUser(
             $request->input('admin_email'),
             $adminPassword,
             $adminName,
         );
 
-        $admin = User::create([
-            'company_id' => $company->id,
+        if (! $firebaseUid) {
+            return response()->json(['success' => false, 'message' => 'Failed to create Firebase Auth user.'], 500);
+        }
+
+        // Sync user profile to Firestore
+        $firebaseService->syncUserProfile($firebaseUid, [
+            'id' => $companyId,
             'name' => $adminName,
             'email' => $request->input('admin_email'),
-            'firebase_uid' => $firebaseUid,
-            'username' => null,
-            'password' => $adminPassword,
             'role' => $adminRole,
+            'company_id' => $companyId,
+            'company_name' => $companyName,
+            'employee_id' => null,
+            'assigned_geofence_id' => null,
+            'created_at' => now()->toIso8601String(),
         ]);
 
         return response()->json([
             'success' => true,
             'message' => 'Company and admin account created successfully.',
             'data' => [
-                'company' => $company,
+                'company' => ['id' => $companyId, 'name' => $companyName],
                 'admin' => [
-                    'name' => $admin->name,
-                    'email' => $admin->email,
-                    'role' => $admin->role,
+                    'name' => $adminName,
+                    'email' => $request->input('admin_email'),
+                    'role' => $adminRole,
                     'password' => $adminPassword,
                 ],
             ],
         ], 201);
     }
 
-    public function showCompany(Company $company): JsonResponse
+    public function showCompany(string $companyId): JsonResponse
     {
+        $firebaseService = app(FirebaseUserService::class);
+        $company = $firebaseService->getCompany($companyId);
+
+        if (! $company) {
+            return response()->json(['success' => false, 'message' => 'Company not found.'], 404);
+        }
+
+        $recentEmployees = $firebaseService->listEmployeesByCompany($companyId);
+        $geofences = $firebaseService->listGeofencesByCompany($companyId);
+
         return response()->json([
             'success' => true,
             'data' => [
-                'company' => $company->loadCount(['users', 'employees', 'geofences']),
-                'recentEmployees' => $company->employees()->orderBy('created_at', 'desc')->limit(10)->get(),
-                'users' => $company->users()->orderBy('created_at', 'desc')->limit(10)->get(),
+                'company' => array_merge($company, [
+                    'users_count' => 1, // Admin count
+                    'employees_count' => count($recentEmployees),
+                    'geofences_count' => count($geofences),
+                ]),
+                'recentEmployees' => array_slice($recentEmployees, 0, 10),
+                'geofences' => $geofences,
             ],
         ]);
     }
 
-    public function updateCompany(Request $request, Company $company): JsonResponse
+    public function updateCompany(Request $request, string $companyId): JsonResponse
     {
         $validator = Validator::make($request->all(), [
             'name' => ['sometimes', 'string', 'min:2', 'max:255'],
@@ -235,20 +219,30 @@ class MastermindController extends Controller
             return response()->json(['success' => false, 'message' => 'Validation error', 'errors' => $validator->errors()], 422);
         }
 
-        $company->update($request->only([
+        $firebaseService = app(FirebaseUserService::class);
+        $success = $firebaseService->updateCompany($companyId, array_filter($request->only([
             'name', 'email', 'industry', 'phone', 'address', 'plan', 'max_employees', 'active',
-        ]));
+        ]), fn($v) => $v !== null));
+
+        if (! $success) {
+            return response()->json(['success' => false, 'message' => 'Failed to update company.'], 500);
+        }
 
         return response()->json([
             'success' => true,
             'message' => 'Company updated successfully.',
-            'data' => $company,
+            'data' => $firebaseService->getCompany($companyId),
         ]);
     }
 
-    public function destroyCompany(Company $company): JsonResponse
+    public function destroyCompany(string $companyId): JsonResponse
     {
-        $company->delete();
+        $firebaseService = app(FirebaseUserService::class);
+        $success = $firebaseService->deleteCompany($companyId);
+
+        if (! $success) {
+            return response()->json(['success' => false, 'message' => 'Failed to delete company.'], 500);
+        }
 
         return response()->json([
             'success' => true,
@@ -258,31 +252,16 @@ class MastermindController extends Controller
 
     public function reports(): JsonResponse
     {
-        $start = now()->subDays(30)->toDateString();
-        $end = now()->toDateString();
-
-        $dailyAttendance = Attendance::selectRaw('date, COUNT(*) as total, SUM(CASE WHEN status = "present" THEN 1 ELSE 0 END) as present, SUM(CASE WHEN status = "late" THEN 1 ELSE 0 END) as late, SUM(CASE WHEN status = "checked_out" THEN 1 ELSE 0 END) as checked_out')
-            ->whereBetween('date', [$start, $end])
-            ->groupBy('date')
-            ->orderBy('date')
-            ->get();
-
-        $plans = Company::selectRaw('plan, COUNT(*) as count')
-            ->groupBy('plan')
-            ->pluck('count', 'plan');
-
-        $topCompanies = Company::withCount('employees')
-            ->orderBy('employees_count', 'desc')
-            ->limit(10)
-            ->get();
+        $firebaseService = app(FirebaseUserService::class);
+        $stats = $firebaseService->getDashboardStats();
 
         return response()->json([
             'success' => true,
             'data' => [
-                'dailyAttendance' => $dailyAttendance,
-                'plans' => $plans,
-                'topCompanies' => $topCompanies,
-                'dateRange' => ['start' => $start, 'end' => $end],
+                'dailyAttendance' => [],
+                'plans' => ['trial' => $stats['trialCompanies'], 'basic' => 0, 'pro' => 0, 'enterprise' => 0],
+                'topCompanies' => $firebaseService->listCompanies(10),
+                'dateRange' => ['start' => now()->subDays(30)->toDateString(), 'end' => now()->toDateString()],
             ],
         ]);
     }

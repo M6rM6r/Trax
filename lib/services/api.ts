@@ -89,6 +89,9 @@ function buildDashboardStats(params?: DashboardQueryParams): DashboardStats {
     avgCheckInTime: averageCheckInTime(scoped),
     avgWorkedHours,
     totalGeofences: mockGeofences.length,
+    fieldToday: scoped.filter((r) => r.attendanceMode === "field").length,
+    officeToday: scoped.filter((r) => r.attendanceMode === "office_two_shift").length,
+    hourlyToday: scoped.filter((r) => r.attendanceMode === "hourly").length,
   };
 }
 

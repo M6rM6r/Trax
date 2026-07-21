@@ -41,6 +41,13 @@ class CompanyController extends Controller
             return response()->json(['success' => false, 'message' => 'Validation error', 'errors' => $validator->errors()], 422);
         }
 
+        if (config('app.disable_company_self_registration', true)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Company self-registration is disabled. Please contact MasterMind to create your company.',
+            ], 403);
+        }
+
         try {
             DB::beginTransaction();
 

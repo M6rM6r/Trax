@@ -18,6 +18,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { useAuthStore } from "@/stores/useAuthStore";
+import Image from "next/image";
 import UserAvatar from "../Avatar";
 import ThemeToggle from "../ThemeToggle";
 import Breadcrumb from "../Breadcrumb";
@@ -28,6 +29,7 @@ import { ShortcutsHelp } from "../ShortcutsHelp";
 import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
 import { useScrollPreservation } from "@/hooks/useScrollPreservation";
 import { useResourcePreload } from "@/hooks/useResourcePreload";
+import type { AdminUser } from "@/lib/types/responseTypes";
 import { TopLoadingBar } from "../TopLoadingBar";
 import { ScrollProgress } from "../ScrollProgress";
 import OfflineBanner from "../OfflineBanner";
@@ -49,17 +51,48 @@ const Index = ({
   const router = useRouter();
 
   const { user, role, clearUser } = useAuthStore();
+  const [authReady, setAuthReady] = useState(false);
 
   useKeyboardShortcuts();
   const { saveScrollPosition } = useScrollPreservation();
   useResourcePreload();
 
+  // Synchronously peek at persisted auth so the guard doesn't flash-redirect
+  // before Zustand persist rehydrates on the client.
+  const storedUser = useRef<AdminUser | null>(null);
+  if (typeof window !== "undefined" && storedUser.current === null) {
+    try {
+      const raw = sessionStorage.getItem("auth-storage") ?? localStorage.getItem("auth-storage");
+      if (raw) {
+        const parsed = JSON.parse(raw) as { state?: { user?: AdminUser } };
+        storedUser.current = parsed?.state?.user ?? null;
+      }
+    } catch {
+      storedUser.current = null;
+    }
+  }
+
+  useEffect(() => {
+    // Give Zustand persist one tick to rehydrate before enforcing the guard.
+    const timer = setTimeout(() => setAuthReady(true), 0);
+    return () => clearTimeout(timer);
+  }, []);
+
   // Auth guard: redirect to login if no user (unless on auth pages)
   useEffect(() => {
-    if (!user && !pathname.includes("/login") && !pathname.includes("/register") && !pathname.includes("/forgot-password") && !pathname.includes("/reset-password") && !pathname.includes("/mastermind")) {
+    if (!authReady) return;
+    const effectiveUser = user ?? storedUser.current;
+    if (
+      !effectiveUser &&
+      !pathname.includes("/login") &&
+      !pathname.includes("/register") &&
+      !pathname.includes("/forgot-password") &&
+      !pathname.includes("/reset-password") &&
+      !pathname.includes("/mastermind")
+    ) {
       router.replace("/login");
     }
-  }, [user, pathname, router]);
+  }, [authReady, user, pathname, router]);
 
   useEffect(() => {
     setIsSidebarOpen(false);
@@ -141,6 +174,19 @@ const Index = ({
             />
             <Link href="/" className="flex items-center gap-2">
               <MapPin className="w-6 h-6 text-primaryColor" suppressHydrationWarning />
+              {/* Use the custom logo at /images/trax-logo.svg. If missing, fall back to the text brand. */}
+              <Image
+                src="/images/trax-logo.svg"
+                alt="Trax"
+                width={32}
+                height={32}
+                className="h-8 w-auto hidden sm:inline-block object-contain"
+                unoptimized
+                onError={(e) => {
+                  // hide broken image and allow text fallback
+                  (e.currentTarget as HTMLImageElement).style.display = "none";
+                }}
+              />
               <span className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-400 dark:to-indigo-400">
                 Trax
               </span>

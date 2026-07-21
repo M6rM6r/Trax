@@ -291,6 +291,9 @@ export const mockDashboardStats: DashboardStats = {
   avgCheckInTime: "08:11",
   avgWorkedHours: 7.5,
   totalGeofences: 3,
+  fieldToday: 3,
+  officeToday: 2,
+  hourlyToday: 2,
 };
 
 export const mockLiveTracking: LiveTrackingEmployee[] = [

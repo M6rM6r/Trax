@@ -73,7 +73,7 @@ class GeofenceSeeder extends Seeder
             ]));
 
         $geofences = [
-            ['name' => 'المقر الرئيسي', 'address' => 'البحرين، المنامة', 'lat' => 26.2905, 'lng' => 50.2173, 'radius' => 5000, 'color' => '#3C7EE7'],
+            ['name' => 'المقر الرئيسي', 'address' => 'الرياض، حي العليا', 'lat' => 24.7136, 'lng' => 46.6753, 'radius' => 200, 'color' => '#3C7EE7'],
             ['name' => 'فرع جدة', 'address' => 'جدة، حي الروضة', 'lat' => 21.4858, 'lng' => 39.1925, 'radius' => 120, 'color' => '#10B981'],
             ['name' => 'فرع الدمام', 'address' => 'الدمام، حي الشاطئ', 'lat' => 26.4207, 'lng' => 50.0888, 'radius' => 100, 'color' => '#F59E0B'],
         ];

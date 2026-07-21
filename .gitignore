@@ -52,6 +52,8 @@ FINAL_STATUS.txt
 # Log files
 *.log
 firebase_auth_cache.txt
+services/api/.phpunit.cache/
+services/api/storage/logs/
 
 # But do NOT ignore README.md and DOCUMENTATION folder
 !README.md

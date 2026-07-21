@@ -2,7 +2,6 @@ import { NextIntlClientProvider } from "next-intl";
 import { getMessages } from "next-intl/server";
 import { notFound } from "next/navigation";
 import { routing } from "@/i18n/routing";
-import { Cairo } from "next/font/google";
 import { Toaster } from "@/components/ui/toaster";
 import AppPreloader from "@/components/shared/AppPreloader";
 import ErrorBoundary from "@/components/shared/ErrorBoundary";
@@ -21,11 +20,6 @@ import InstallPrompt from "@/components/shared/InstallPrompt";
 import OfflineSyncManager from "@/components/shared/OfflineSyncManager";
 import NotificationManager from "@/components/shared/NotificationManager";
 
-const cairo = Cairo({
-  subsets: ["latin"],
-  weight: ["400", "600", "700"], // Load only essential weights for better performance
-  display: "swap", // Prevent layout shift when font loads
-});
 export default async function LocaleLayout({
   children,
   params,
@@ -48,7 +42,7 @@ export default async function LocaleLayout({
     <div
       lang={locale}
       dir={locale === "ar" ? "rtl" : "ltr"}
-      className={`${cairo.className} relative`}
+      className="relative"
       suppressHydrationWarning
     >
       <NextIntlClientProvider messages={messages}>
@@ -57,22 +51,22 @@ export default async function LocaleLayout({
             <AuthProvider>
               <CompanySettingsLoader />
               <ErrorBoundary>
-              <MonitoringProvider>
-                <MotionProvider>
-                  <SettingsApplier />
-                  <PWARegistrar />
-                  <AppPreloader />
-                  <TopLoadingBar />
-                  {children}
-                  <CommandPalette />
-                  <OfflineIndicator />
-                  <OfflineSyncManager />
-                  <NotificationManager />
-                  <InstallPrompt />
-                  <Toaster />
-                </MotionProvider>
-              </MonitoringProvider>
-            </ErrorBoundary>
+                <MonitoringProvider>
+                  <MotionProvider>
+                    <SettingsApplier />
+                    <PWARegistrar />
+                    <AppPreloader />
+                    <TopLoadingBar />
+                    {children}
+                    <CommandPalette />
+                    <OfflineIndicator />
+                    <OfflineSyncManager />
+                    <NotificationManager />
+                    <InstallPrompt />
+                    <Toaster />
+                  </MotionProvider>
+                </MonitoringProvider>
+              </ErrorBoundary>
             </AuthProvider>
           </QueryProvider>
         </ThemeProvider>

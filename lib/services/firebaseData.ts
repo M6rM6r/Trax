@@ -27,6 +27,8 @@ import type {
   LiveTrackingEmployee,
 } from "@/lib/types/trackingTypes";
 import type { DashboardTrendsSchema } from "@/lib/schemas/dashboard.schema";
+import { resolveEmployeeShift, evaluateCheckIn, calculateWorkedHours } from "@/lib/utils/shifts";
+import { defaultCompanySettings } from "@/lib/types/companySettings";
 
 function requireDb() {
   if (!db) throw new Error("Firebase Firestore is not configured");
@@ -82,6 +84,8 @@ function mapEmployee(id: string, value: Record<string, unknown>): Employee {
         ? null
         : toNumber(value.batteryLevel),
     employeeNumber: (value.employeeNumber as string | null | undefined) ?? null,
+    attendanceMode: (value.attendanceMode as Employee["attendanceMode"]) ?? null,
+    shiftOverride: (value.shiftOverride as Employee["shiftOverride"]) ?? null,
   };
 }
 
@@ -135,6 +139,9 @@ function mapAttendance(id: string, value: Record<string, unknown>): AttendanceRe
     lateMinutes: toNumber(value.lateMinutes),
     workedHours: toNumber(value.workedHours),
     checkOutStatus: (value.checkOutStatus as AttendanceRecord["checkOutStatus"]) ?? null,
+    attendanceMode: (value.attendanceMode as AttendanceRecord["attendanceMode"]) ?? null,
+    appliedShift: (value.appliedShift as AttendanceRecord["appliedShift"]) ?? null,
+    shiftSlot: (value.shiftSlot as AttendanceRecord["shiftSlot"]) ?? null,
   };
 }
 
@@ -143,10 +150,50 @@ export async function getFirebaseUserProfile(uid: string, email: string) {
   const direct = await getDoc(doc(database, "users", uid));
   if (direct.exists()) return direct.data();
 
-  const byEmail = await getDocs(
-    query(collection(database, "users"), where("email", "==", email), limit(1))
-  );
-  return byEmail.empty ? null : byEmail.docs[0].data();
+  const normalizedEmail = String(email ?? "")
+    .trim()
+    .toLowerCase();
+  if (normalizedEmail) {
+    const byEmail = await getDocs(
+      query(collection(database, "users"), where("email", "==", email), limit(1))
+    );
+    if (!byEmail.empty) return byEmail.docs[0].data();
+
+    // Fallback for case-mismatched email or alternate storage formats.
+    const allUsers = await getDocs(collection(database, "users"));
+    const matched = allUsers.docs.find((item) => {
+      const userEmail = String(item.data().email ?? "")
+        .trim()
+        .toLowerCase();
+      return userEmail === normalizedEmail;
+    });
+    if (matched) return matched.data();
+  }
+
+  return null;
+}
+
+export async function getFirebaseUserProfileFromApi(idToken: string) {
+  if (!idToken || typeof window === "undefined") return null;
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
+  try {
+    const response = await fetch(`${apiUrl.replace(/\/$/, "")}/auth/firebase`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id_token: idToken }),
+    });
+
+    if (!response.ok) return null;
+    const payload = await response.json();
+    if (!payload?.success || !payload?.data?.user) return null;
+
+    return {
+      ...payload.data.user,
+      company_name: payload.data.company?.name ?? payload.data.user.company_name,
+    };
+  } catch {
+    return null;
+  }
 }
 
 export const firebaseData = {
@@ -187,6 +234,7 @@ export const firebaseData = {
           company_id: (employee as Record<string, unknown>).company_id ?? 1,
           employee_id: employeeDocId,
           assigned_geofence_id: employee.geofenceId ?? null,
+          attendanceMode: employee.attendanceMode ?? null,
           createdAt: serverTimestamp(),
         });
       }
@@ -255,6 +303,8 @@ export const firebaseData = {
       lat: number;
       lng: number;
       geofenceId: string | number;
+      companySettings?: Record<string, unknown>;
+      employee?: Pick<Employee, "attendanceMode" | "shiftOverride"> | null;
     }): Promise<AttendanceRecord> {
       const currentUser = await ensureAuth();
       let geofence: Geofence | null = null;
@@ -266,9 +316,25 @@ export const firebaseData = {
       } catch {
         // Geofence lookup failed — proceed without geofence name
       }
+
+      // Resolve company settings with safe defaults
+      const settings = {
+        ...defaultCompanySettings,
+        ...(payload.companySettings ?? {}),
+      };
+
       const now = new Date();
       const date = now.toLocaleDateString("sv-SE"); // YYYY-MM-DD in local timezone
       const checkInTime = now.toTimeString().slice(0, 5);
+
+      const { mode, shift, slot } = resolveEmployeeShift(
+        payload.employee ?? {},
+        settings as typeof defaultCompanySettings,
+        now,
+        null
+      );
+      const { status, lateMinutes } = evaluateCheckIn(checkInTime, shift);
+
       const reference = doc(collection(requireDb(), "attendance"));
       const record = {
         id: reference.id,
@@ -278,16 +344,19 @@ export const firebaseData = {
         date,
         checkInTime,
         checkOutTime: null,
-        status: "present",
+        status,
         checkInLat: payload.lat,
         checkInLng: payload.lng,
         checkOutLat: null,
         checkOutLng: null,
         geofenceId: payload.geofenceId,
         geofenceName: geofence?.name ?? null,
-        lateMinutes: 0,
+        lateMinutes,
         workedHours: 0,
         checkOutStatus: null,
+        attendanceMode: mode,
+        appliedShift: shift,
+        shiftSlot: slot,
         createdAt: serverTimestamp(),
       } satisfies Record<string, unknown>;
       await setDoc(reference, record);
@@ -310,25 +379,27 @@ export const firebaseData = {
       const item = openDoc;
       const current = mapAttendance(item.id, item.data());
       const checkOutTime = new Date().toTimeString().slice(0, 5);
-      await updateDoc(item.ref, { checkOutTime, status: "checked_out", checkOutStatus: "present" });
-      return { ...current, checkOutTime, status: "checked_out", checkOutStatus: "present" };
+      const workedHours = current.checkInTime
+        ? calculateWorkedHours(current.checkInTime, checkOutTime)
+        : 0;
+      await updateDoc(item.ref, {
+        checkOutTime,
+        status: "checked_out",
+        checkOutStatus: "present",
+        workedHours,
+      });
+      return {
+        ...current,
+        checkOutTime,
+        status: "checked_out",
+        checkOutStatus: "present",
+        workedHours,
+      };
     },
   },
   dashboard: {
     async getDashboardData(): Promise<{
-      stats: {
-        totalEmployees: number;
-        activeEmployees: number;
-        inactiveEmployees: number;
-        presentToday: number;
-        absentToday: number;
-        lateToday: number;
-        checkedOutToday: number;
-        onTimeRate: number;
-        avgCheckInTime: string;
-        avgWorkedHours: number;
-        totalGeofences: number;
-      };
+      stats: import("@/lib/types/trackingTypes").DashboardStats;
       trends: DashboardTrendsSchema;
     }> {
       const [employees, attendance, geofences] = await Promise.all([
@@ -339,7 +410,9 @@ export const firebaseData = {
       const today = new Date();
       const todayStr = today.toLocaleDateString("sv-SE");
       const todayRecords = attendance.filter((record) => record.date === todayStr);
-      const presentToday = todayRecords.filter((record) => record.status === "present").length;
+      const presentToday = todayRecords.filter(
+        (record) => record.status === "present" || record.status === "checked_out"
+      ).length;
       const lateToday = todayRecords.filter((record) => record.status === "late").length;
       const checkedOutToday = todayRecords.filter(
         (record) => record.status === "checked_out"
@@ -350,9 +423,8 @@ export const firebaseData = {
         .map((r) => r.checkInTime)
         .filter((t): t is string => t !== null && t !== undefined)
         .sort();
-      const medianCheckIn = checkInTimes.length > 0
-        ? checkInTimes[Math.floor(checkInTimes.length / 2)]
-        : "N/A";
+      const medianCheckIn =
+        checkInTimes.length > 0 ? checkInTimes[Math.floor(checkInTimes.length / 2)] : "N/A";
 
       const stats = {
         totalEmployees: employees.length,
@@ -369,6 +441,10 @@ export const firebaseData = {
             ? Number((worked.reduce((sum, hours) => sum + hours, 0) / worked.length).toFixed(1))
             : 0,
         totalGeofences: geofences.length,
+        // Shift/seasonal breakdown
+        fieldToday: todayRecords.filter((r) => r.attendanceMode === "field").length,
+        officeToday: todayRecords.filter((r) => r.attendanceMode === "office_two_shift").length,
+        hourlyToday: todayRecords.filter((r) => r.attendanceMode === "hourly").length,
       };
 
       const dayNames = ["الأحد", "الإثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"];
@@ -476,31 +552,9 @@ export const firebaseData = {
       admin_email: string;
       admin_password: string;
     }): Promise<{ companyId: string; uid: string }> {
-      if (!auth) throw new Error("Firebase Auth not configured");
-      const authInstance = secondaryAuth ?? auth;
-      const cred = await createUserWithEmailAndPassword(
-        authInstance,
-        data.admin_email,
-        data.admin_password
+      throw new Error(
+        "Company self-registration is disabled. Please contact MasterMind to create your company."
       );
-      const companyRef = await addDoc(collection(requireDb(), "companies"), {
-        name: data.company_name,
-        industry: data.industry,
-        plan: "trial",
-        createdAt: serverTimestamp(),
-        ownerId: cred.user.uid,
-      });
-      await setDoc(doc(requireDb(), "users", cred.user.uid), {
-        name: data.admin_name,
-        email: data.admin_email,
-        role: "boss",
-        company_id: companyRef.id,
-        company_name: data.company_name,
-        employee_id: null,
-        assigned_geofence_id: null,
-        createdAt: serverTimestamp(),
-      });
-      return { companyId: companyRef.id, uid: cred.user.uid };
     },
     async getSettings(): Promise<Record<string, unknown> | null> {
       const user = await ensureAuth();

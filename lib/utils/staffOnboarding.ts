@@ -29,12 +29,16 @@ export function buildStaffCredentialsMessage(input: {
   const company = input.companyName?.trim() || "Trax";
   const loginUrl = input.loginUrl?.trim();
 
-  const lines = [
-    `مرحبًا، تم إنشاء حسابك في ${company}`,
-    `البريد الإلكتروني: ${input.email}`,
+  const lines = [`مرحبًا، تم إنشاء حسابك في ${company}`, `البريد الإلكتروني: ${input.email}`];
+
+  if (input.username?.trim()) {
+    lines.push(`اسم المستخدم: ${input.username.trim()}`);
+  }
+
+  lines.push(
     `كلمة المرور المؤقتة: ${input.password}`,
-    "يرجى تسجيل الدخول وتغيير كلمة المرور فورًا.",
-  ];
+    "يرجى تسجيل الدخول وتغيير كلمة المرور فورًا."
+  );
 
   if (loginUrl) {
     lines.push(`رابط تسجيل الدخول: ${loginUrl}`);

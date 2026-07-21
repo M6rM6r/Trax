@@ -5,6 +5,41 @@ export interface CompanySettings {
   gracePeriodMinutes: number; // 15
   lateThresholdMinutes: number; // 15
 
+  // Attendance modes & shifts
+  attendanceMode: "field" | "office_two_shift" | "hourly";
+  /** Start/end/grace/late for the default single shift (field / hourly). */
+  defaultShift: {
+    startTime: string;
+    endTime: string;
+    gracePeriodMinutes: number;
+    lateThresholdMinutes: number;
+  };
+  /** Morning shift for office two-shift mode. */
+  morningShift: {
+    startTime: string;
+    endTime: string;
+    gracePeriodMinutes: number;
+    lateThresholdMinutes: number;
+  };
+  /** Evening shift for office two-shift mode. */
+  eveningShift: {
+    startTime: string;
+    endTime: string;
+    gracePeriodMinutes: number;
+    lateThresholdMinutes: number;
+  };
+  /** When true, Ramadan/seasonal hours are applied automatically based on the Hijri calendar. */
+  seasonalAttendanceEnabled: boolean;
+  /** Hijri month indexes (1-12) to treat as seasonal, e.g. [9] for Ramadan. */
+  seasonalMonths: number[];
+  /** Reduced work hours during seasonal months. */
+  seasonalShift: {
+    startTime: string;
+    endTime: string;
+    gracePeriodMinutes: number;
+    lateThresholdMinutes: number;
+  };
+
   // Auto check-in
   autoCheckInEnabled: boolean;
   autoCheckInRadiusOffset: number; // meters beyond geofence radius to trigger
@@ -40,6 +75,34 @@ export const defaultCompanySettings: CompanySettings = {
   workEndTime: "17:00",
   gracePeriodMinutes: 15,
   lateThresholdMinutes: 15,
+
+  attendanceMode: "field",
+  defaultShift: {
+    startTime: "08:00",
+    endTime: "17:00",
+    gracePeriodMinutes: 15,
+    lateThresholdMinutes: 15,
+  },
+  morningShift: {
+    startTime: "08:00",
+    endTime: "12:00",
+    gracePeriodMinutes: 15,
+    lateThresholdMinutes: 15,
+  },
+  eveningShift: {
+    startTime: "13:00",
+    endTime: "17:00",
+    gracePeriodMinutes: 15,
+    lateThresholdMinutes: 15,
+  },
+  seasonalAttendanceEnabled: false,
+  seasonalMonths: [9], // Ramadan is the 9th Hijri month
+  seasonalShift: {
+    startTime: "09:00",
+    endTime: "15:00",
+    gracePeriodMinutes: 15,
+    lateThresholdMinutes: 15,
+  },
 
   autoCheckInEnabled: false,
   autoCheckInRadiusOffset: 50,

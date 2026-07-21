@@ -1,5 +1,39 @@
 import { z } from "zod";
 
+export interface RuntimeEnvOverrides {
+  NEXT_PUBLIC_USE_FIREBASE?: string | boolean;
+  NEXT_PUBLIC_FIREBASE_API_KEY?: string;
+  NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN?: string;
+  NEXT_PUBLIC_FIREBASE_PROJECT_ID?: string;
+  NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET?: string;
+  NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID?: string;
+  NEXT_PUBLIC_FIREBASE_APP_ID?: string;
+}
+
+export function resolveFirebaseAuthMode(overrides: RuntimeEnvOverrides = {}): boolean {
+  const explicitValue = overrides.NEXT_PUBLIC_USE_FIREBASE;
+  if (typeof explicitValue === "boolean") {
+    return explicitValue;
+  }
+
+  if (typeof explicitValue === "string") {
+    const normalized = explicitValue.trim().toLowerCase();
+    if (normalized === "false") return false;
+    if (normalized === "true") return true;
+  }
+
+  const firebaseClientConfig = [
+    overrides.NEXT_PUBLIC_FIREBASE_API_KEY,
+    overrides.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+    overrides.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+    overrides.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+    overrides.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+    overrides.NEXT_PUBLIC_FIREBASE_APP_ID,
+  ].every((value) => typeof value === "string" && value.trim().length > 0);
+
+  return firebaseClientConfig;
+}
+
 const optionalUrl = z.preprocess(
   (value) => (typeof value === "string" && value.trim() === "" ? undefined : value),
   z.string().url().optional()
@@ -72,3 +106,13 @@ function loadEnv(): EnvConfig {
 }
 
 export const env = loadEnv();
+
+export const useFirebaseAuth = resolveFirebaseAuthMode({
+  NEXT_PUBLIC_USE_FIREBASE: process.env.NEXT_PUBLIC_USE_FIREBASE,
+  NEXT_PUBLIC_FIREBASE_API_KEY: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+  NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  NEXT_PUBLIC_FIREBASE_PROJECT_ID: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+  NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  NEXT_PUBLIC_FIREBASE_APP_ID: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+});

@@ -1,6 +1,6 @@
 "use client";
 
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import { httpClient } from "@/lib/services/httpClient";
 import { firebaseData } from "@/lib/services/firebaseData";
 import { buildRetentionFeatures, type RetentionFeatures } from "@/lib/utils/retentionFeatures";
@@ -10,6 +10,7 @@ import type {
   Geofence,
   DashboardStats,
   LiveTrackingEmployee,
+  AttendanceMode,
 } from "@/lib/types/trackingTypes";
 import type { DashboardTrendsSchema } from "@/lib/schemas/dashboard.schema";
 
@@ -32,8 +33,10 @@ export const queryKeys = {
   attendance: ["attendance"] as const,
   attendanceReports: ["attendance", "reports"] as const,
   geofences: ["geofences"] as const,
-  dashboard: ["dashboard", "stats"] as const,
-  dashboardTrends: ["dashboard", "trends"] as const,
+  /** Unified dashboard data key. Stats and trends are fetched together to avoid duplicate Firestore reads. */
+  dashboard: ["dashboard", "data"] as const,
+  /** @deprecated Use queryKeys.dashboard for invalidations; stats and trends share a single query. */
+  dashboardTrends: ["dashboard", "data"] as const,
   tracking: ["tracking", "live"] as const,
   aiRetention: ["ai", "retention"] as const,
   companySettings: ["company-settings"] as const,
@@ -139,13 +142,27 @@ export function useCheckIn() {
       lat: number;
       lng: number;
       geofenceId: string | number;
+      companySettings?: Record<string, unknown>;
+      employee?: Pick<Employee, "attendanceMode" | "shiftOverride"> | null;
     }) => {
       return firebaseData.attendance.checkIn(payload);
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: queryKeys.attendance });
       qc.invalidateQueries({ queryKey: queryKeys.dashboard });
-      qc.invalidateQueries({ queryKey: queryKeys.dashboardTrends });
+    },
+  });
+}
+
+export function useEmployeesByMode(mode: AttendanceMode) {
+  return useQuery<Employee[]>({
+    queryKey: [...queryKeys.employees, "mode", mode],
+    staleTime: 30 * 1000,
+    queryFn: async (): Promise<Employee[]> => {
+      const employees = await firebaseData.employees.list();
+      return employees.filter(
+        (e) => e.attendanceMode === mode || (!e.attendanceMode && mode === "field")
+      );
     },
   });
 }
@@ -159,7 +176,6 @@ export function useCheckOut() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: queryKeys.attendance });
       qc.invalidateQueries({ queryKey: queryKeys.dashboard });
-      qc.invalidateQueries({ queryKey: queryKeys.dashboardTrends });
     },
   });
 }
@@ -212,32 +228,35 @@ export function useDeleteGeofence() {
   });
 }
 
-export function useDashboardStats(dateRange?: DashboardDateRange) {
+export function useDashboardData(dateRange?: DashboardDateRange) {
   const from = toApiDate(dateRange?.from);
   const to = toApiDate(dateRange?.to);
 
-  return useQuery<DashboardStats>({
+  return useQuery<{ stats: DashboardStats; trends: DashboardTrendsSchema }>({
     queryKey: [...queryKeys.dashboard, from ?? "all", to ?? "all"],
     staleTime: 60 * 1000,
-    queryFn: async (): Promise<DashboardStats> => {
-      const { stats } = await firebaseData.dashboard.getDashboardData();
-      return stats;
-    },
+    placeholderData: keepPreviousData,
+    queryFn: async () => firebaseData.dashboard.getDashboardData(),
   });
 }
 
-export function useDashboardTrends(dateRange?: DashboardDateRange) {
-  const from = toApiDate(dateRange?.from);
-  const to = toApiDate(dateRange?.to);
+export function useDashboardStats(dateRange?: DashboardDateRange) {
+  const { data, isLoading, isError, refetch } = useDashboardData(dateRange);
+  return {
+    data: data?.stats,
+    isLoading,
+    isError,
+    refetch,
+  };
+}
 
-  return useQuery<DashboardTrendsSchema>({
-    queryKey: [...queryKeys.dashboardTrends, from ?? "all", to ?? "all"],
-    queryFn: async (): Promise<DashboardTrendsSchema> => {
-      const { trends } = await firebaseData.dashboard.getDashboardData();
-      return trends;
-    },
-    staleTime: 5 * 60 * 1000,
-  });
+export function useDashboardTrends(dateRange?: DashboardDateRange) {
+  const { data, isLoading, isError } = useDashboardData(dateRange);
+  return {
+    data: data?.trends,
+    isLoading,
+    isError,
+  };
 }
 
 export function useLiveTracking() {

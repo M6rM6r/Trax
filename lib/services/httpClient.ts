@@ -198,7 +198,8 @@ httpClient.addRequestInterceptor(async (config) => {
 
     if (!token) {
       try {
-        const stored = localStorage.getItem("auth-storage");
+        const stored =
+          sessionStorage.getItem("auth-storage") ?? localStorage.getItem("auth-storage");
         if (stored) {
           const parsed = JSON.parse(stored) as { state?: { token?: string } };
           token = parsed?.state?.token ?? null;
@@ -226,7 +227,9 @@ httpClient.addResponseInterceptor((response) => {
     logger.warn("Unauthorized — redirecting to login");
     try {
       localStorage.removeItem("auth-storage");
+      sessionStorage.removeItem("auth-storage");
       localStorage.removeItem("trax_emp_creds");
+      sessionStorage.removeItem("trax_emp_creds");
     } catch {
       // ignore storage cleanup failures
     }

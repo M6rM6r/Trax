@@ -5,17 +5,25 @@ import { useRouter } from "next/navigation";
 
 export default function NotFound() {
   const router = useRouter();
-  const [countdown, setCountdown] = useState(20);
+  const [countdown, setCountdown] = useState<number | null>(null);
+  const [mounted, setMounted] = useState(false);
+
+  // Prevent hydration mismatch
+  useEffect(() => {
+    setMounted(true);
+    setCountdown(20);
+  }, []);
 
   // Countdown for automatic redirect
   useEffect(() => {
+    if (!mounted || countdown === null) return;
     if (countdown > 0) {
       const timer = setTimeout(() => setCountdown(countdown - 1), 1000);
       return () => clearTimeout(timer);
     } else {
       router.push("/");
     }
-  }, [countdown, router]);
+  }, [countdown, router, mounted]);
 
   const goHome = () => router.push("/");
   const goBack = () => router.back();

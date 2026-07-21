@@ -12,6 +12,9 @@ export const dashboardStatsSchema = z.object({
   avgCheckInTime: z.string(),
   avgWorkedHours: z.coerce.number().min(0).max(24),
   totalGeofences: z.coerce.number().int().min(0),
+  fieldToday: z.coerce.number().int().min(0).default(0),
+  officeToday: z.coerce.number().int().min(0).default(0),
+  hourlyToday: z.coerce.number().int().min(0).default(0),
 });
 
 export const liveTrackingEmployeeSchema = z.object({
