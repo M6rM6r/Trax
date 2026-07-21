@@ -1,15 +1,9 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 "use client";
 import { EyeInput, EyeSlash, InfoCircle } from "@/public/SVG";
-import type React from "react";
+import React, { useState } from "react";
 
-import {
-  ErrorMessage,
-  Field,
-  type FormikProps,
-  useFormikContext,
-} from "formik";
-import { useState } from "react";
+import { ErrorMessage, Field, type FormikProps, type FieldProps, useFormikContext } from "formik";
 
 const Index = ({
   type,
@@ -28,6 +22,7 @@ const Index = ({
   step,
   preventLeadingZero = false,
   maxDecimals,
+  autoComplete,
 }: {
   type: string;
   name: string;
@@ -47,6 +42,7 @@ const Index = ({
   step?: string;
   preventLeadingZero?: boolean;
   maxDecimals?: number;
+  autoComplete?: string;
 }) => {
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
   const isPasswordType = type === "password";
@@ -100,11 +96,7 @@ const Index = ({
 
       // Prevent leading zeros (except 0.x)
       if (preventLeadingZero) {
-        if (
-          value.length > 1 &&
-          value.startsWith("0") &&
-          !value.startsWith("0.")
-        ) {
+        if (value.length > 1 && value.startsWith("0") && !value.startsWith("0.")) {
           value = value.replace(/^0+/, "");
         }
       }
@@ -113,7 +105,7 @@ const Index = ({
       setFieldValue(name, value);
       return; // Don't call the default Formik handler
     }
-    
+
     // For non-number types, let Formik handle it via setFieldValue
     setFieldValue(name, value);
   };
@@ -144,20 +136,8 @@ const Index = ({
         const decimalPosition = currentValue.indexOf(".");
 
         // If cursor is after decimal point and we're at max decimals, prevent input
-        if (
-          cursorPosition > decimalPosition &&
-          decimalPart.length >= maxDecimals
-        ) {
-          if (
-            ![
-              "Backspace",
-              "Delete",
-              "ArrowLeft",
-              "ArrowRight",
-              "Tab",
-              "Enter",
-            ].includes(e.key)
-          ) {
+        if (cursorPosition > decimalPosition && decimalPart.length >= maxDecimals) {
+          if (!["Backspace", "Delete", "ArrowLeft", "ArrowRight", "Tab", "Enter"].includes(e.key)) {
             e.preventDefault();
           }
         }
@@ -206,14 +186,14 @@ const Index = ({
     <div className={`flex flex-col gap-2 ${containerClassName}`}>
       <label
         htmlFor={name}
-        className={`text-16 text-primarySlate700 font-[600] ${labelStyle}`}
+        className={`text-16 text-primarySlate700 dark:text-slate-300 font-[600] ${labelStyle}`}
       >
         {label}
         {required && <span className="text-red-500 ml-1">*</span>}
       </label>
       <div className="relative w-full">
         <Field name={name}>
-          {({ field, form }: any) => (
+          {({ field, form }: FieldProps) => (
             <input
               {...field}
               type={inputType}
@@ -221,6 +201,8 @@ const Index = ({
               placeholder={placeholder}
               disabled={disabled}
               required={required}
+              aria-invalid={!!form.errors[name] && !!form.touched[name]}
+              aria-describedby={`${name}-error`}
               min={type === "number" ? 0 : undefined}
               onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
                 handleChange(e);
@@ -232,7 +214,7 @@ const Index = ({
                   handleBlur(e);
                 }
               }}
-              className={`h-[48px] grow w-full outline-none border border-textBorder bg-white rounded-6 px-3 text-textMain text-16 font-[600] ${className} ${
+              className={`h-[48px] grow w-full outline-none border border-textBorder dark:border-slate-600 bg-white dark:bg-slate-900 rounded-6 px-3 text-textMain dark:text-slate-100 text-16 font-[600] focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 focus:border-blue-500 transition-all ${className} ${
                 as === "textarea" ? "pt-2 h-20" : ""
               }`}
               maxLength={maxLength || undefined}
@@ -243,7 +225,8 @@ const Index = ({
                     : `[0-9]+(\\.[0-9]{1,${maxDecimals}})?`
                   : undefined
               }
-              inputMode={inputMode}
+              inputMode={inputMode as React.HTMLAttributes<HTMLInputElement>["inputMode"]}
+              autoComplete={autoComplete}
               step={
                 maxDecimals !== undefined
                   ? maxDecimals === 0
@@ -251,7 +234,7 @@ const Index = ({
                     : `0.${"0".repeat(maxDecimals - 1)}1`
                   : step
               }
-              onWheel={(e: any) => e.target.blur()}
+              onWheel={(e: React.WheelEvent<HTMLInputElement>) => e.currentTarget.blur()}
             />
           )}
         </Field>
@@ -274,6 +257,7 @@ const Index = ({
       )}
       <ErrorMessage
         component={"div"}
+        id={`${name}-error`}
         name={name}
         className="text-14 text-red-500"
       />

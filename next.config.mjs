@@ -1,51 +1,85 @@
 import createNextIntlPlugin from "next-intl/plugin";
+import bundleAnalyzer from "@next/bundle-analyzer";
+import { withSentryConfig } from "@sentry/nextjs";
+
+const withBundleAnalyzer = bundleAnalyzer({
+  enabled: process.env.ANALYZE === "true",
+});
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   swcMinify: true,
+  poweredByHeader: false,
+  compress: true,
+
   experimental: {
-    staleTimes: {
-      dynamic: 0,
-      static: 0,
-    },
+    optimizePackageImports: ["lucide-react", "recharts", "date-fns", "framer-motion", "ol", "@radix-ui/react-dialog", "@radix-ui/react-popover"],
+  },
+
+  // Removed manual redirects as next-intl handles this automatically
+
+  async headers() {
+    return [
+      {
+        source: "/(.*)",
+        headers: [
+          { key: "X-Content-Type-Options", value: "nosniff" },
+          { key: "X-Frame-Options", value: "DENY" },
+          { key: "X-XSS-Protection", value: "1; mode=block" },
+          { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+          { key: "Strict-Transport-Security", value: "max-age=31536000; includeSubDomains; preload" },
+          {
+            key: "Permissions-Policy",
+            value: "camera=(), microphone=(), geolocation=(self)",
+          },
+        ],
+      },
+    ];
   },
 
   images: {
+    formats: ['image/avif', 'image/webp'],
     remotePatterns: [
-      { protocol: "https", hostname: "zeem.live" },
-      { protocol: "https", hostname: "dev.zeem.live" },
-      { protocol: "https", hostname: "stg.zeem.live" },
-      { protocol: "https", hostname: "zeem-buket.s3.eu-central-1.amazonaws.com" },
+      { protocol: "https", hostname: "firebasestorage.googleapis.com" },
+      { protocol: "https", hostname: "lh3.googleusercontent.com" },
     ],
   },
   webpack(config) {
-    // Grab the existing rule that handles SVG imports
     const fileLoaderRule = config.module.rules.find((rule) =>
       rule.test?.test?.('.svg'),
     )
 
     config.module.rules.push(
-      // Reapply the existing rule, but only for svg imports ending in ?url
       {
         ...fileLoaderRule,
         test: /\.svg$/i,
-        resourceQuery: /url/, // *.svg?url
+        resourceQuery: /url/,
       },
-      // Convert all other *.svg imports to React components
       {
         test: /\.svg$/i,
         issuer: fileLoaderRule.issuer,
-        resourceQuery: { not: [...fileLoaderRule.resourceQuery.not, /url/] }, // exclude if *.svg?url
-        use: ['@svgr/webpack'],
+        resourceQuery: { not: [...fileLoaderRule.resourceQuery.not, /url/] },
+        use: [{ loader: '@svgr/webpack', options: { svgProps: { suppressHydrationWarning: true } } }],
       },
     )
 
-    // Modify the file loader rule to ignore *.svg, since we have it handled now.
     fileLoaderRule.exclude = /\.svg$/i
-
     return config
   },
 };
 
 const withNextIntl = createNextIntlPlugin();
-export default withNextIntl(nextConfig);
+export default withSentryConfig(
+  withBundleAnalyzer(withNextIntl(nextConfig)),
+  {
+    org: process.env.SENTRY_ORG,
+    project: process.env.SENTRY_PROJECT,
+    silent: !process.env.NEXT_PUBLIC_SENTRY_DSN,
+    hideSourceMaps: true,
+    webpack: {
+      treeshake: {
+        removeDebugLogging: true,
+      },
+    },
+  }
+);

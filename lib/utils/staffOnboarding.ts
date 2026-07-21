@@ -1,0 +1,61 @@
+export function generateStaffUsername(input: {
+  name?: string;
+  email?: string;
+  employeeNumber?: string;
+}): string {
+  if (input.employeeNumber?.trim()) return input.employeeNumber.trim();
+
+  const emailLocal = input.email?.split("@")[0]?.trim();
+  if (emailLocal) return emailLocal.toLowerCase();
+
+  const normalizedName = (input.name || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9\s_-]/g, "")
+    .trim()
+    .replace(/\s+/g, "_");
+
+  if (normalizedName) return normalizedName;
+
+  return `staff_${Date.now().toString().slice(-6)}`;
+}
+
+export function buildStaffCredentialsMessage(input: {
+  companyName?: string | null;
+  email: string;
+  username?: string;
+  password: string;
+  loginUrl?: string | null;
+}): string {
+  const company = input.companyName?.trim() || "Trax";
+  const loginUrl = input.loginUrl?.trim();
+
+  const lines = [`مرحبًا، تم إنشاء حسابك في ${company}`, `البريد الإلكتروني: ${input.email}`];
+
+  if (input.username?.trim()) {
+    lines.push(`اسم المستخدم: ${input.username.trim()}`);
+  }
+
+  lines.push(
+    `كلمة المرور المؤقتة: ${input.password}`,
+    "يرجى تسجيل الدخول وتغيير كلمة المرور فورًا."
+  );
+
+  if (loginUrl) {
+    lines.push(`رابط تسجيل الدخول: ${loginUrl}`);
+  }
+
+  return lines.join("\n");
+}
+
+export function buildStaffCredentialsEmail(input: {
+  companyName?: string | null;
+  email: string;
+  username?: string;
+  password: string;
+  loginUrl?: string | null;
+}): { subject: string; body: string } {
+  const company = input.companyName?.trim() || "Trax";
+  const subject = `بيانات الدخول إلى ${company}`;
+  const body = buildStaffCredentialsMessage(input);
+  return { subject, body };
+}

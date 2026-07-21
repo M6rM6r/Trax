@@ -20,9 +20,10 @@ const config: Config = {
         "3xl": "1728px",
       },
       colors: {
-        primaryColor: "#11489B",
+        // Clean emerald accent
+        primaryColor: "#10b981",
         primarySlate700: "#3D4A5C",
-        primaryColorLight: "#E7EDF5",
+        primaryColorLight: "#d1fae5",
         textBG: "#F1F4F4",
         textMain: "#12161C",
         textBorder: "#EBEBEC",
@@ -95,6 +96,9 @@ const config: Config = {
           ring: "hsl(var(--sidebar-ring))",
         },
       },
+      gridTemplateColumns: {
+        14: "repeat(14, minmax(0, 1fr))",
+      },
       borderRadius: {
         "6": "6px",
         "8": "8px",
@@ -126,10 +130,30 @@ const config: Config = {
             height: "0",
           },
         },
+        "fade-in": {
+          from: { opacity: "0" },
+          to: { opacity: "1" },
+        },
+        "slide-up": {
+          from: { opacity: "0", transform: "translateY(12px)" },
+          to: { opacity: "1", transform: "translateY(0)" },
+        },
+        "scale-in": {
+          from: { opacity: "0", transform: "scale(0.95)" },
+          to: { opacity: "1", transform: "scale(1)" },
+        },
+        "hover-lift": {
+          from: { transform: "translateY(0)" },
+          to: { transform: "translateY(-4px)" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
+        "fade-in": "fade-in 0.3s ease-out",
+        "slide-up": "slide-up 0.4s ease-out",
+        "scale-in": "scale-in 0.3s ease-out",
+        "hover-lift": "hover-lift 0.2s ease-out",
       },
     },
   },

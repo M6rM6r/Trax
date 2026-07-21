@@ -1,16 +1,14 @@
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
-import { fetcherClient } from "./fetcherClient";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
 type NumberRecord = Record<string, number>;
-export const getSum = (obj: NumberRecord) =>
-  Object.values(obj).reduce((sum, val) => sum + val, 0);
+export const getSum = (obj: NumberRecord) => Object.values(obj).reduce((sum, val) => sum + val, 0);
 
-export function isTruthy(value: any): boolean {
+export function isTruthy(value: unknown): boolean {
   if (Array.isArray(value)) {
     return value.length > 0;
   }
@@ -22,18 +20,13 @@ export function isTruthy(value: any): boolean {
   return Boolean(value);
 }
 
-export async function blobUrlToFile(
-  blobUrl: string,
-  filename?: string
-): Promise<File> {
+export async function blobUrlToFile(blobUrl: string, filename?: string): Promise<File> {
   // fetch works for both remote (https://...) and blob: URLs in the same document
   const res = await fetch(blobUrl);
   const blob = await res.blob();
-  return new File(
-    [blob],
-    filename ?? (getFilenameFromUrl(blobUrl) || "file.jpg"),
-    { type: blob.type || "application/octet-stream" }
-  );
+  return new File([blob], filename ?? (getFilenameFromUrl(blobUrl) || "file.jpg"), {
+    type: blob.type || "application/octet-stream",
+  });
 }
 
 export function getFirstTwoWords(name: string): string {
@@ -55,7 +48,7 @@ function getFilenameFromUrl(url: string): string | null {
 }
 
 export async function normalizeFile(
-  value: any,
+  value: string | Blob | File | null | undefined,
   filename = "file.jpg"
 ): Promise<File | null> {
   if (!value) return null;
@@ -69,12 +62,13 @@ export async function normalizeFile(
   if (typeof value === "string") {
     try {
       // 🔥 FIX: Remove extra JSON quotes if passed as "\"url\""
+      let urlString: string = value;
       if (value.startsWith('"') && value.endsWith('"')) {
-        value = JSON.parse(value);
+        urlString = JSON.parse(value) as string;
       }
 
       // Convert relative to absolute URL
-      const url = value.startsWith("http") ? value : getFullImageUrl(value);
+      const url = urlString.startsWith("http") ? urlString : getFullImageUrl(urlString);
 
       const res = await fetch(url, { mode: "cors" });
 
@@ -93,7 +87,7 @@ export async function normalizeFile(
       return new File([blob], nameFromUrl, {
         type: blob.type || "image/jpeg",
       });
-    } catch (err) {
+    } catch {
       return null;
     }
   }
@@ -125,18 +119,12 @@ export const handleDownload = (url: string | null, filename: string) => {
   document.body.removeChild(link);
 };
 
-type DownloadItem =
-  | string
-  | { [k: string]: any }
-  | File
-  | Blob
-  | null
-  | undefined;
+type DownloadItem = string | Record<string, unknown> | File | Blob | null | undefined;
 
 /**
  * Try to find a URL-like string inside an object (depth-limited DFS).
  */
-function findUrlInObject(obj: any, depth = 3): string | null {
+function findUrlInObject(obj: unknown, depth = 3): string | null {
   if (!obj || depth < 0) return null;
 
   // quick reject
@@ -149,34 +137,24 @@ function findUrlInObject(obj: any, depth = 3): string | null {
   // If it's File/Blob => no string url here
   if (obj instanceof File || obj instanceof Blob) return null;
 
+  if (typeof obj !== "object") return null;
+
+  const record = obj as Record<string, unknown>;
+
   try {
     // check common keys first
-    const keys = [
-      "url",
-      "downloadUrl",
-      "fileUrl",
-      "path",
-      "src",
-      "location",
-      "href",
-    ];
+    const keys = ["url", "downloadUrl", "fileUrl", "path", "src", "location", "href"];
     for (const k of keys) {
-      const v = obj[k];
-      if (
-        typeof v === "string" &&
-        /^(https?:\/\/|data:|blob:|\/)/i.test(v.trim())
-      ) {
+      const v = record[k];
+      if (typeof v === "string" && /^(https?:\/\/|data:|blob:|\/)/i.test(v.trim())) {
         return v.trim();
       }
     }
 
     // then search recursively
-    for (const k of Object.keys(obj)) {
-      const v = obj[k];
-      if (
-        typeof v === "string" &&
-        /^(https?:\/\/|data:|blob:|\/)/i.test(v.trim())
-      ) {
+    for (const k of Object.keys(record)) {
+      const v = record[k];
+      if (typeof v === "string" && /^(https?:\/\/|data:|blob:|\/)/i.test(v.trim())) {
         return v.trim();
       }
       if (typeof v === "object" && v !== null) {
@@ -184,7 +162,7 @@ function findUrlInObject(obj: any, depth = 3): string | null {
         if (found) return found;
       }
     }
-  } catch (err) {
+  } catch {
     // ignore and continue
   }
   return null;
@@ -258,10 +236,7 @@ export const handleDownloadFiles = async (
 
             const res = await fetch(apiUrl);
             if (!res.ok) {
-              console.error(
-                `Failed to fetch remote file: ${res.status}`,
-                await res.text()
-              );
+              console.error(`Failed to fetch remote file: ${res.status}`, await res.text());
               return;
             }
             const blob = await res.blob();
@@ -283,9 +258,7 @@ export const handleDownloadFiles = async (
           )}&filename=${encodeURIComponent(suggestedName)}`;
           const res = await fetch(apiUrl);
           if (!res.ok) {
-            console.error(
-              `Failed to fetch remote file (fallback): ${res.status}`
-            );
+            console.error(`Failed to fetch remote file (fallback): ${res.status}`);
             return;
           }
           const blob = await res.blob();
@@ -330,9 +303,7 @@ export const handleDownloadFiles = async (
           }
 
           // 4) No URL found inside object -> create a JSON file fallback so item is still downloadable
-          console.warn(
-            `No URL found in object at index ${index}. Creating JSON file download.`
-          );
+          console.warn(`No URL found in object at index ${index}. Creating JSON file download.`);
           const jsonStr = JSON.stringify(item, null, 2);
           const blob = new Blob([jsonStr], { type: "application/json" });
           const blobUrl = window.URL.createObjectURL(blob);
@@ -367,42 +338,6 @@ export const handleDownloadFiles = async (
 };
 
 // Getting a key of key-value pairs object by label
-export const getKeyByLabel = (
-  label: string,
-  enumObj: Record<string, string>
-) => {
-  return (
-    Object.entries(enumObj).find(([key, val]) => val === label)?.[0] ?? null
-  );
-};
-
-// Normalize trip status values (accept English key, return Arabic label)
-export const normalizeTripStatus = (value: string) => {
-  if (!value) return value;
-
-  const map: Record<string, string> = {
-    pending: "معلقة",
-    in_progress: "قيد التنفيذ",
-    completed: "الرحلة اكتملت",
-    cancelled: "ملغاة",
-    auto_cancelled: "تم الالغاء تلقائيا",
-    cancelled_by_customer: "ألغيت من قبل العميل",
-    accepted: "مقبول",
-  };
-
-  // If value is already an exact English key, return mapped Arabic
-  if (map[value as keyof typeof map]) return map[value as keyof typeof map];
-
-  // Normalize and try again (handles values like "In Progress" or "in-progress")
-  const normalized = String(value)
-    .toLowerCase()
-    .replace(/[\s-]+/g, "_");
-  if (map[normalized as keyof typeof map])
-    return map[normalized as keyof typeof map];
-
-  // If value already appears to be Arabic (one of the map values), return it
-  if (Object.values(map).includes(value)) return value;
-
-  // Fallback: return original value
-  return value;
+export const getKeyByLabel = (label: string, enumObj: Record<string, string>) => {
+  return Object.entries(enumObj).find(([_key, val]) => val === label)?.[0] ?? null;
 };

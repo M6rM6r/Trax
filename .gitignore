@@ -2,6 +2,9 @@
 
 # dependencies
 /node_modules
+services/api/vendor/
+services/mobile/.dart_tool/
+services/mobile/build/
 /.pnp
 .pnp.js
 .yarn/install-state.gz
@@ -29,6 +32,9 @@ yarn-error.log*
 *.env
 .env*.local
 
+# Firebase service account keys
+services/api/storage/firebase/
+
 # vercel
 .vercel
 
@@ -42,7 +48,12 @@ FINAL_STATUS.txt
 
 .qodo
 .claude/settings.local.json
-package-lock.json
+
+# Log files
+*.log
+firebase_auth_cache.txt
+services/api/.phpunit.cache/
+services/api/storage/logs/
 
 # But do NOT ignore README.md and DOCUMENTATION folder
 !README.md

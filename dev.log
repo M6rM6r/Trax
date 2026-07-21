@@ -1,0 +1,309 @@
+  Γû▓ Next.js 14.2.18
+  - Local:        http://localhost:3000
+  - Environments: .env.local, .env
+  - Experiments (use with caution):
+    ┬╖ instrumentationHook
+
+ Γ£ô Starting...
+[@sentry/nextjs] It appears you've configured a `sentry.server.config.ts` file. Please ensure to put this file's content into the `register()` function of a Next.js instrumentation file instead. To ensure correct functionality of the SDK, `Sentry.init` must be called inside of an instrumentation file. Learn more about setting up an instrumentation file in Next.js: https://nextjs.org/docs/app/building-your-application/optimizing/instrumentation. You can safely delete the `sentry.server.config.ts` file afterward.
+[@sentry/nextjs] It appears you've configured a `sentry.edge.config.ts` file. Please ensure to put this file's content into the `register()` function of a Next.js instrumentation file instead. To ensure correct functionality of the SDK, `Sentry.init` must be called inside of an instrumentation file. Learn more about setting up an instrumentation file in Next.js: https://nextjs.org/docs/app/building-your-application/optimizing/instrumentation. You can safely delete the `sentry.edge.config.ts` file afterward.
+[@sentry/nextjs] DEPRECATION WARNING: It is recommended renaming your `sentry.client.config.ts` file, or moving its content to `instrumentation-client.ts`. When using Turbopack `sentry.client.config.ts` will no longer work. Read more about the `instrumentation-client.ts` file: https://nextjs.org/docs/app/api-reference/file-conventions/instrumentation-client
+ Γ£ô Ready in 3.9s
+ Γ£ô Compiled /middleware in 155ms
+ Γ£ô Compiled (504 modules)
+ Γùï Compiling /[locale]/check-in ...
+ Γ£ô Compiled /[locale]/check-in in 13.5s (4382 modules)
+ Γ£ô Compiled in 523ms (1912 modules)
+ GET /ar/check-in 200 in 14406ms
+<w> [webpack.cache.PackFileCacheStrategy] Serializing big strings (132kiB) impacts deserialization performance (consider using Buffer instead and decode when needed)
+<w> [webpack.cache.PackFileCacheStrategy] Serializing big strings (139kiB) impacts deserialization performance (consider using Buffer instead and decode when needed)
+ Γùï Compiling /[locale] ...
+ Γ£ô Compiled /[locale] in 3.6s (5609 modules)
+ Γùï Compiling /[locale]/login ...
+ Γ£ô Compiled /[locale]/login in 1754ms (5879 modules)
+ GET /ar/login 200 in 2515ms
+ Γ£ô Compiled in 1279ms (5131 modules)
+ GET /ar/check-in?_rsc=pxtbt 200 in 291ms
+ Γ£ô Compiled in 790ms (5131 modules)
+ GET /ar/check-in?_rsc=pxtbt 200 in 154ms
+ Γ£ô Compiled in 828ms (5131 modules)
+ GET /ar/check-in?_rsc=pxtbt 200 in 68ms
+ Γ£ô Compiled in 621ms (5131 modules)
+ GET /ar/check-in?_rsc=pxtbt 200 in 74ms
+ Γ£ô Compiled in 792ms (5131 modules)
+ GET /ar/check-in?_rsc=pxtbt 200 in 61ms
+ Γ£ô Compiled in 708ms (5131 modules)
+ GET /ar/check-in?_rsc=pxtbt 200 in 91ms
+ Γ£ô Compiled in 612ms (5131 modules)
+ GET /ar/check-in?_rsc=pxtbt 200 in 100ms
+ Γ£ô Compiled in 692ms (5131 modules)
+ GET /ar/check-in?_rsc=pxtbt 200 in 63ms
+ Γ£ô Compiled in 2.7s (5129 modules)
+ GET /ar/check-in?_rsc=pxtbt 200 in 206ms
+ Γ£ô Compiled in 801ms (5129 modules)
+ GET /ar/check-in?_rsc=pxtbt 200 in 108ms
+ Γ£ô Compiled in 878ms (5129 modules)
+ GET /ar/check-in?_rsc=pxtbt 200 in 73ms
+ Γ£ô Compiled in 815ms (5129 modules)
+ GET /ar/check-in?_rsc=pxtbt 200 in 115ms
+ Γ£ô Compiled in 1011ms (5129 modules)
+ GET /ar/check-in?_rsc=pxtbt 200 in 74ms
+ Γ£ô Compiled in 1104ms (5129 modules)
+ GET /ar/check-in?_rsc=pxtbt 200 in 71ms
+ GET /ar/check-in 200 in 259ms
+   Reload env: .env.local
+ Γ£ô Compiled in 2.9s (5619 modules)
+ GET /ar/check-in?_rsc=pxtbt 200 in 259ms
+ Γ£ô Compiled in 1259ms (5129 modules)
+ GET /ar/check-in?_rsc=pxtbt 200 in 201ms
+ Γ£ô Compiled in 15.1s (5255 modules)
+ Γ£ô Compiled in 12.7s (5241 modules)
+ Γ£ô Compiled in 9.6s (5243 modules)
+ Γ£ô Compiled in 1558ms (5243 modules)
+ Γ£ô Compiled in 673ms (5243 modules)
+ Γ£ô Compiled in 942ms (2676 modules)
+ Γ£ô Compiled in 1587ms (5243 modules)
+ Γ£ô Compiled in 752ms (5243 modules)
+ Γ£ô Compiled in 2.2s (5243 modules)
+ Γ£ô Compiled in 761ms (5243 modules)
+ Γ£ô Compiled in 2.6s (5243 modules)
+ Γ£ô Compiled in 879ms (5243 modules)
+ Γ£ô Compiled in 3s (2676 modules)
+ Γ£ô Compiled in 2.3s (2676 modules)
+ Γ£ô Compiled in 6.7s (5257 modules)
+ Γ¿» Error: Cannot find module './vendor-chunks/@grpc.js'
+Require stack:
+- C:\Desktop44\Trax\.next\server\webpack-runtime.js
+- C:\Desktop44\Trax\.next\server\app\[locale]\check-in\page.js
+- C:\Desktop44\Trax\node_modules\next\dist\server\require.js
+- C:\Desktop44\Trax\node_modules\next\dist\server\load-components.js
+- C:\Desktop44\Trax\node_modules\next\dist\build\utils.js
+- C:\Desktop44\Trax\node_modules\next\dist\server\dev\hot-middleware.js
+- C:\Desktop44\Trax\node_modules\next\dist\server\dev\hot-reloader-webpack.js
+- C:\Desktop44\Trax\node_modules\next\dist\server\lib\router-utils\setup-dev-bundler.js
+- C:\Desktop44\Trax\node_modules\next\dist\server\lib\router-server.js
+- C:\Desktop44\Trax\node_modules\next\dist\server\lib\start-server.js
+    at Module.<anonymous> (node:internal/modules/cjs/loader:1448:15)
+    at C:\Desktop44\Trax\node_modules\next\dist\server\require-hook.js:55:36
+    at defaultResolveImpl (node:internal/modules/cjs/loader:1059:19)
+    at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1064:22)
+    at Module._load (node:internal/modules/cjs/loader:1234:25)
+    at TracingChannel.traceSync (node:diagnostics_channel:328:14)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:245:24)
+    at Module.<anonymous> (node:internal/modules/cjs/loader:1548:12)
+    at mod.require (C:\Desktop44\Trax\node_modules\next\dist\server\require-hook.js:65:28)
+    at require (node:internal/modules/helpers:152:16)
+    at __webpack_require__.f.require (C:\Desktop44\Trax\.next\server\webpack-runtime.js:206:28)
+    at C:\Desktop44\Trax\.next\server\webpack-runtime.js:114:40
+    at Array.reduce (<anonymous>)
+    at __webpack_require__.e (C:\Desktop44\Trax\.next\server\webpack-runtime.js:113:67)
+    at Array.map (<anonymous>)
+    at __webpack_require__.X (C:\Desktop44\Trax\.next\server\webpack-runtime.js:165:22)
+    at C:\Desktop44\Trax\.next\server\app\[locale]\check-in\page.js:2907:47
+    at Object.<anonymous> (C:\Desktop44\Trax\.next\server\app\[locale]\check-in\page.js:2910:3)
+    at Module._compile (node:internal/modules/cjs/loader:1804:14)
+    at Object..js (node:internal/modules/cjs/loader:1936:10)
+    at Module.load (node:internal/modules/cjs/loader:1525:32)
+    at Module._load (node:internal/modules/cjs/loader:1327:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:328:14)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:245:24)
+    at Module.<anonymous> (node:internal/modules/cjs/loader:1548:12)
+    at mod.require (C:\Desktop44\Trax\node_modules\next\dist\server\require-hook.js:65:28)
+    at require (node:internal/modules/helpers:152:16)
+    at requirePage (C:\Desktop44\Trax\node_modules\next\dist\server\require.js:109:84)
+    at C:\Desktop44\Trax\node_modules\next\dist\server\load-components.js:98:84
+    at async loadComponentsImpl (C:\Desktop44\Trax\node_modules\next\dist\server\load-components.js:98:26)
+    at async DevServer.findPageComponentsImpl (C:\Desktop44\Trax\node_modules\next\dist\server\next-server.js:709:36)
+    at async DevServer.findPageComponents (C:\Desktop44\Trax\node_modules\next\dist\server\dev\next-dev-server.js:577:20)
+    at async DevServer.renderPageComponent (C:\Desktop44\Trax\node_modules\next\dist\server\base-server.js:1897:24)
+    at async DevServer.renderToResponseImpl (C:\Desktop44\Trax\node_modules\next\dist\server\base-server.js:1949:32)
+    at async DevServer.pipeImpl (C:\Desktop44\Trax\node_modules\next\dist\server\base-server.js:921:25)
+    at async NextNodeServer.handleCatchallRenderRequest (C:\Desktop44\Trax\node_modules\next\dist\server\next-server.js:272:17)
+    at async DevServer.handleRequestImpl (C:\Desktop44\Trax\node_modules\next\dist\server\base-server.js:817:17)
+    at async C:\Desktop44\Trax\node_modules\next\dist\server\dev\next-dev-server.js:339:20
+    at async Span.traceAsyncFn (C:\Desktop44\Trax\node_modules\next\dist\trace\trace.js:154:20)
+    at async DevServer.handleRequest (C:\Desktop44\Trax\node_modules\next\dist\server\dev\next-dev-server.js:336:24)
+    at async invokeRender (C:\Desktop44\Trax\node_modules\next\dist\server\lib\router-server.js:173:21)
+    at async handleRequest (C:\Desktop44\Trax\node_modules\next\dist\server\lib\router-server.js:350:24)
+    at async requestHandlerImpl (C:\Desktop44\Trax\node_modules\next\dist\server\lib\router-server.js:374:13)
+    at async Server.requestListener (C:\Desktop44\Trax\node_modules\next\dist\server\lib\start-server.js:141:13) {
+  code: 'MODULE_NOT_FOUND',
+  requireStack: [
+    'C:\\Desktop44\\Trax\\.next\\server\\webpack-runtime.js',
+    'C:\\Desktop44\\Trax\\.next\\server\\app\\[locale]\\check-in\\page.js',
+    'C:\\Desktop44\\Trax\\node_modules\\next\\dist\\server\\require.js',
+    'C:\\Desktop44\\Trax\\node_modules\\next\\dist\\server\\load-components.js',
+    'C:\\Desktop44\\Trax\\node_modules\\next\\dist\\build\\utils.js',
+    'C:\\Desktop44\\Trax\\node_modules\\next\\dist\\server\\dev\\hot-middleware.js',
+    'C:\\Desktop44\\Trax\\node_modules\\next\\dist\\server\\dev\\hot-reloader-webpack.js',
+    'C:\\Desktop44\\Trax\\node_modules\\next\\dist\\server\\lib\\router-utils\\setup-dev-bundler.js',
+    'C:\\Desktop44\\Trax\\node_modules\\next\\dist\\server\\lib\\router-server.js',
+    'C:\\Desktop44\\Trax\\node_modules\\next\\dist\\server\\lib\\start-server.js'
+  ],
+  page: '/ar/check-in'
+}
+ Γùï Compiling /_error ...
+ Γ£ô Compiled /_error in 6s (5858 modules)
+ GET /ar/check-in 500 in 6792ms
+ Γùï Compiling /[locale]/employees ...
+ Γ£ô Compiled /[locale]/employees in 5.8s (5921 modules)
+ ΓÜá Fast Refresh had to perform a full reload due to a runtime error.
+ Γùï Compiling /_not-found ...
+ ΓÜá Fast Refresh had to perform a full reload due to a runtime error.
+ Γ£ô Compiled /_not-found in 1555ms (5922 modules)
+ GET /ar/check-in 200 in 200ms
+ GET /ar/employees 404 in 7892ms
+ GET /_next/static/css/app/layout.css?v=1784017228979 404 in 56ms
+ GET /ar/check-in 404 in 102ms
+ GET /_next/static/css/app/layout.css?v=1784017229439 404 in 61ms
+ GET /_next/static/chunks/main-app.js?v=1784017229439 404 in 241ms
+ GET /_next/static/chunks/app-pages-internals.js 404 in 237ms
+ GET /_next/static/chunks/app/not-found.js 404 in 238ms
+ GET /_next/static/chunks/app/global-error.js 404 in 239ms
+ GET /_next/static/chunks/app/error.js 404 in 239ms
+ GET /_next/static/css/app/layout.css?v=1784017229439 404 in 72ms
+ GET /_next/static/chunks/app-pages-internals.js 404 in 56ms
+ GET /_next/static/chunks/main-app.js?v=1784017228979 404 in 54ms
+ GET /_next/static/chunks/app/not-found.js 404 in 53ms
+ GET /_next/static/chunks/app/error.js 404 in 90ms
+ GET /_next/static/chunks/app/global-error.js 404 in 89ms
+ GET /_next/static/css/app/layout.css?v=1784017228979 404 in 76ms
+<w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: ENOENT: no such file or directory, lstat 'C:\Desktop44\Trax\.next\server\vendor-chunks\has-flag.js'
+<w> [webpack.cache.PackFileCacheStrategy/webpack.FileSystemInfo] Resolving './vendor-chunks/has-flag' in C:\Desktop44\Trax\.next\server for build dependencies doesn't lead to expected result 'C:\Desktop44\Trax\.next\server\vendor-chunks\has-flag.js', but to 'Error: Can't resolve './vendor-chunks/has-flag' in 'C:\Desktop44\Trax\.next\server'' instead. Resolving dependencies are ignored for this path.
+<w>  at resolve commonjs file ./vendor-chunks/has-flag (expected C:\Desktop44\Trax\.next\server\vendor-chunks\has-flag.js)
+<w>  at file dependencies C:\Desktop44\Trax\.next\server\webpack-runtime.js
+<w>  at file C:\Desktop44\Trax\.next\server\webpack-runtime.js
+<w>  at file dependencies C:\Desktop44\Trax\.next\server\app\[locale]\(Auth)\login\page.js
+<w>  at file C:\Desktop44\Trax\.next\server\app\[locale]\(Auth)\login\page.js
+<w>  at file dependencies C:\Desktop44\Trax\node_modules\next\dist\server\require.js
+<w>  at file C:\Desktop44\Trax\node_modules\next\dist\server\require.js
+<w>  at file dependencies C:\Desktop44\Trax\node_modules\next\dist\server\load-components.js
+<w>  at file C:\Desktop44\Trax\node_modules\next\dist\server\load-components.js
+<w>  at file dependencies C:\Desktop44\Trax\node_modules\next\dist\build\utils.js
+<w>  at file C:\Desktop44\Trax\node_modules\next\dist\build\utils.js
+<w>  at file dependencies C:\Desktop44\Trax\node_modules\next\dist\build\webpack\loaders\next-route-loader\index.js
+<w>  at file C:\Desktop44\Trax\node_modules\next\dist\build\webpack\loaders\next-route-loader\index.js
+<w>  at resolve commonjs C:\Desktop44\Trax\node_modules\next\dist\build\webpack\loaders\next-route-loader\index.js
+<w> [webpack.cache.PackFileCacheStrategy/webpack.FileSystemInfo] Resolving './vendor-chunks/module-details-from-path' in C:\Desktop44\Trax\.next\server for build dependencies doesn't lead to expected result 'C:\Desktop44\Trax\.next\server\vendor-chunks\module-details-from-path.js', but to 'Error: Can't resolve './vendor-chunks/module-details-from-path' in 'C:\Desktop44\Trax\.next\server'' instead. Resolving dependencies are ignored for this path.
+<w>  at resolve commonjs file ./vendor-chunks/module-details-from-path (expected C:\Desktop44\Trax\.next\server\vendor-chunks\module-details-from-path.js)
+<w>  at file dependencies C:\Desktop44\Trax\.next\server\webpack-runtime.js
+<w>  at file C:\Desktop44\Trax\.next\server\webpack-runtime.js
+<w>  at file dependencies C:\Desktop44\Trax\.next\server\app\[locale]\(Auth)\login\page.js
+<w>  at file C:\Desktop44\Trax\.next\server\app\[locale]\(Auth)\login\page.js
+<w>  at file dependencies C:\Desktop44\Trax\node_modules\next\dist\server\require.js
+<w>  at file C:\Desktop44\Trax\node_modules\next\dist\server\require.js
+<w>  at file dependencies C:\Desktop44\Trax\node_modules\next\dist\server\load-components.js
+<w>  at file C:\Desktop44\Trax\node_modules\next\dist\server\load-components.js
+<w>  at file dependencies C:\Desktop44\Trax\node_modules\next\dist\build\utils.js
+<w>  at file C:\Desktop44\Trax\node_modules\next\dist\build\utils.js
+<w>  at file dependencies C:\Desktop44\Trax\node_modules\next\dist\build\webpack\loaders\next-route-loader\index.js
+<w>  at file C:\Desktop44\Trax\node_modules\next\dist\build\webpack\loaders\next-route-loader\index.js
+<w>  at resolve commonjs C:\Desktop44\Trax\node_modules\next\dist\build\webpack\loaders\next-route-loader\index.js
+   Reload env: .env
+ Γ£ô Compiled in 28.8s (6394 modules)
+   Reload env: .env.local
+ Γ£ô Compiled in 5.7s (6380 modules)
+<w> [webpack.cache.PackFileCacheStrategy] Serializing big strings (132kiB) impacts deserialization performance (consider using Buffer instead and decode when needed)
+<w> [webpack.cache.PackFileCacheStrategy] Serializing big strings (139kiB) impacts deserialization performance (consider using Buffer instead and decode when needed)
+ Γ£ô Compiled in 6s (3269 modules)
+ Γ£ô Compiled in 504ms (3269 modules)
+ Γ£ô Compiled in 3.6s (5890 modules)
+   Reload env: .env.local
+ Γ£ô Compiled in 2s (6380 modules)
+ Γ£ô Compiled in 985ms (5876 modules)
+ Γ£ô Compiled in 2.4s (5876 modules)
+ Γ£ô Compiled in 4.2s (3269 modules)
+ Γ£ô Compiled in 6.5s (5872 modules)
+ Γ£ô Compiled in 3.2s (5872 modules)
+ Γ£ô Compiled in 1409ms (5872 modules)
+   Reload env: .env
+ Γ£ô Compiled in 3.6s (6390 modules)
+   Reload env: .env.local
+ Γ£ô Compiled in 39.4s (6399 modules)
+<w> [webpack.cache.PackFileCacheStrategy] Serializing big strings (132kiB) impacts deserialization performance (consider using Buffer instead and decode when needed)
+<w> [webpack.cache.PackFileCacheStrategy] Serializing big strings (139kiB) impacts deserialization performance (consider using Buffer instead and decode when needed)
+ Γ£ô Compiled in 4s (5886 modules)
+ Γ£ô Compiled in 1339ms (5872 modules)
+ Γ£ô Compiled in 928ms (5872 modules)
+ Γ£ô Compiled in 1172ms (5872 modules)
+ Γ£ô Compiled in 586ms (3267 modules)
+ Γ£ô Compiled in 6.1s (3267 modules)
+ Γ£ô Compiled in 7.6s (5886 modules)
+ Γ£ô Compiled in 3.6s (5886 modules)
+ Γ£ô Compiled in 3.5s (5872 modules)
+ Γ£ô Compiled in 1320ms (5858 modules)
+ Γ£ô Compiled in 1804ms (5858 modules)
+ Γ£ô Compiled in 1858ms (5858 modules)
+ Γ£ô Compiled in 3.4s (5858 modules)
+ Γ£ô Compiled in 3.3s (5858 modules)
+ Γ£ô Compiled in 2.7s (5858 modules)
+ Γ£ô Compiled in 4.8s (5872 modules)
+ Γ£ô Compiled in 4.5s (5872 modules)
+ Γ£ô Compiled in 1019ms (5858 modules)
+ Γ£ô Compiled in 1558ms (5858 modules)
+ Γ£ô Compiled in 1857ms (5858 modules)
+ Γ£ô Compiled in 1302ms (5872 modules)
+ Γ£ô Compiled in 2.2s (5872 modules)
+ Γ£ô Compiled in 3.9s (5872 modules)
+ Γ£ô Compiled in 3.4s (5872 modules)
+ Γ£ô Compiled in 2.9s (5858 modules)
+ Γ£ô Compiled in 3.2s (5858 modules)
+ Γ£ô Compiled in 1359ms (5858 modules)
+ Γ£ô Compiled in 902ms (5858 modules)
+ Γ£ô Compiled in 1135ms (5858 modules)
+ Γ£ô Compiled in 5.7s (3260 modules)
+ Γ£ô Compiled in 773ms (3260 modules)
+ Γ£ô Compiled in 1395ms (3260 modules)
+ Γ£ô Compiled in 1348ms (3260 modules)
+ Γ£ô Compiled in 3.2s (5858 modules)
+ Γ£ô Compiled in 4.4s (5872 modules)
+ Γ£ô Compiled in 1082ms (5858 modules)
+ Γ£ô Compiled in 2.2s (5858 modules)
+ Γ£ô Compiled in 4.2s (3260 modules)
+ Γ£ô Compiled in 5s (5872 modules)
+ Γ£ô Compiled in 924ms (3260 modules)
+ Γ£ô Compiled in 576ms (3260 modules)
+ Γ£ô Compiled in 1794ms (3260 modules)
+ Γ¿» Module not found: Error: Can't resolve './sentry.client.config.ts' in 'C:\Desktop44\Trax'
+ Γ¿» Module not found: Error: Can't resolve './sentry.client.config.ts' in 'C:\Desktop44\Trax'
+ Γ¿» Module not found: Error: Can't resolve './sentry.client.config.ts' in 'C:\Desktop44\Trax'
+ Γ¿» Module not found: Error: Can't resolve './sentry.client.config.ts' in 'C:\Desktop44\Trax'
+ Γ¿» Module not found: Error: Can't resolve './sentry.client.config.ts' in 'C:\Desktop44\Trax'
+ Γ¿» Module not found: Error: Can't resolve './sentry.client.config.ts' in 'C:\Desktop44\Trax'
+ Γ¿» Module not found: Error: Can't resolve './sentry.client.config.ts' in 'C:\Desktop44\Trax'
+ Γ¿» Module not found: Error: Can't resolve './sentry.client.config.ts' in 'C:\Desktop44\Trax'
+ Γ¿» Module not found: Error: Can't resolve './sentry.client.config.ts' in 'C:\Desktop44\Trax'
+ Γ¿» Module not found: Error: Can't resolve './sentry.client.config.ts' in 'C:\Desktop44\Trax'
+ Γ¿» Module not found: Error: Can't resolve './sentry.client.config.ts' in 'C:\Desktop44\Trax'
+ Γ¿» Module not found: Error: Can't resolve './sentry.client.config.ts' in 'C:\Desktop44\Trax'
+ Γ¿» Module not found: Error: Can't resolve './sentry.client.config.ts' in 'C:\Desktop44\Trax'
+ Γ¿» Module not found: Error: Can't resolve './sentry.client.config.ts' in 'C:\Desktop44\Trax'
+ Γ¿» Module not found: Error: Can't resolve './sentry.client.config.ts' in 'C:\Desktop44\Trax'
+ Γ¿» Module not found: Error: Can't resolve './sentry.client.config.ts' in 'C:\Desktop44\Trax'
+ Γ¿» Module not found: Error: Can't resolve './sentry.client.config.ts' in 'C:\Desktop44\Trax'
+ Γ¿» Module not found: Error: Can't resolve './sentry.client.config.ts' in 'C:\Desktop44\Trax'
+ Γ¿» Module not found: Error: Can't resolve './sentry.client.config.ts' in 'C:\Desktop44\Trax'
+ Γ¿» Module not found: Error: Can't resolve './sentry.client.config.ts' in 'C:\Desktop44\Trax'
+ Γ¿» Module not found: Error: Can't resolve './sentry.client.config.ts' in 'C:\Desktop44\Trax'
+ Γ¿» Module not found: Error: Can't resolve './sentry.client.config.ts' in 'C:\Desktop44\Trax'
+ Γ¿» Module not found: Error: Can't resolve './sentry.client.config.ts' in 'C:\Desktop44\Trax'
+ Γ¿» Module not found: Error: Can't resolve './sentry.client.config.ts' in 'C:\Desktop44\Trax'
+ Γ¿» Module not found: Error: Can't resolve './sentry.client.config.ts' in 'C:\Desktop44\Trax'
+ Γ¿» Module not found: Error: Can't resolve './sentry.client.config.ts' in 'C:\Desktop44\Trax'
+ Γ¿» Module not found: Error: Can't resolve './sentry.client.config.ts' in 'C:\Desktop44\Trax'
+ Γ¿» Module not found: Error: Can't resolve './sentry.client.config.ts' in 'C:\Desktop44\Trax'
+ Γ¿» Module not found: Error: Can't resolve './sentry.client.config.ts' in 'C:\Desktop44\Trax'
+ Γ¿» Module not found: Error: Can't resolve './sentry.client.config.ts' in 'C:\Desktop44\Trax'
+ Γ¿» Module not found: Error: Can't resolve './sentry.client.config.ts' in 'C:\Desktop44\Trax'
+ Γ¿» Module not found: Error: Can't resolve './sentry.client.config.ts' in 'C:\Desktop44\Trax'
+ Γ¿» Module not found: Error: Can't resolve './sentry.client.config.ts' in 'C:\Desktop44\Trax'
+ Γ¿» Module not found: Error: Can't resolve './sentry.client.config.ts' in 'C:\Desktop44\Trax'
+ Γ¿» Module not found: Error: Can't resolve './sentry.client.config.ts' in 'C:\Desktop44\Trax'
+ Γ¿» Module not found: Error: Can't resolve './sentry.client.config.ts' in 'C:\Desktop44\Trax'
+ Γ¿» Module not found: Error: Can't resolve './sentry.client.config.ts' in 'C:\Desktop44\Trax'
+ Γ¿» Module not found: Error: Can't resolve './sentry.client.config.ts' in 'C:\Desktop44\Trax'
+ Γ¿» Module not found: Error: Can't resolve './sentry.client.config.ts' in 'C:\Desktop44\Trax'
+ Γ¿» Module not found: Error: Can't resolve './sentry.client.config.ts' in 'C:\Desktop44\Trax'
+ Γ¿» Module not found: Error: Can't resolve './sentry.client.config.ts' in 'C:\Desktop44\Trax'
+ Γ¿» Module not found: Error: Can't resolve './sentry.client.config.ts' in 'C:\Desktop44\Trax'
+ Γ¿» Module not found: Error: Can't resolve './sentry.client.config.ts' in 'C:\Desktop44\Trax'

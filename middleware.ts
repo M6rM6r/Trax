@@ -3,51 +3,38 @@ import type { NextRequest } from "next/server";
 import createMiddleware from "next-intl/middleware";
 import { routing } from "./i18n/routing";
 
-// Step 1: Create the next-intl middleware
 const intlMiddleware = createMiddleware(routing);
 
-// Step 2: Define the middleware function
 export default function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Define public routes that don't require authentication
-  const publicRoutes = ["/login", "/register"];
-
-  // Extract the locale and the path after the locale
-  const [, locale, ...rest] = pathname?.split("/");
-  const pathAfterLocale = `/${rest.join("/")}` || "/";
-
-  // Check if the current route (after locale) is public
-  const isPublicRoute = publicRoutes.some((route) =>
-    pathAfterLocale.startsWith(route)
-  );
-
-  // If the route is public, apply intlMiddleware and stop further checks
-  if (isPublicRoute) {
-    return intlMiddleware(request);
+  // 1. Completely ignore static files and system paths
+  if (
+    pathname.includes(".") ||
+    pathname.startsWith("/_next") ||
+    pathname.startsWith("/api") ||
+    pathname === "/favicon.ico"
+  ) {
+    return NextResponse.next();
   }
 
-  // Check for the token in cookies
+  // 2. Run i18n middleware first
+  const response = intlMiddleware(request);
+
+  // 3. Simple Auth Check (Local testing only)
+  // If you want to force sign-in locally, uncomment the lines below:
+  /*
   const token = request.cookies.get("auth_token")?.value;
+  const isAuthPage = pathname.includes("/login") || pathname.includes("/register");
 
-  // If no token is found, redirect to the login page
-  if (!token) {
-    const localeToUse = locale || "ar"; // Fallback to default locale
-    const loginUrl = new URL(`/${localeToUse}/login`, request.url);
-
-    // Prevent redirect loop: if already on the login page, don't redirect again
-    if (pathAfterLocale === "/login") {
-      return intlMiddleware(request);
-    }
-
-    return NextResponse.redirect(loginUrl);
+  if (!token && !isAuthPage) {
+     return NextResponse.redirect(new URL("/ar/login", request.url));
   }
+  */
 
-  // If the token exists, continue with the request
-  return intlMiddleware(request);
+  return response;
 }
 
-// Step 3: Specify the paths to apply the middleware
 export const config = {
-  matcher: ["/", "/(en|ar)/:path*"], // Apply middleware to internationalized pathnames
+  matcher: ["/((?!api|_next|.*\\..*).*)"],
 };

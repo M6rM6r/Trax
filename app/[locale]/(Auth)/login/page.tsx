@@ -1,280 +1,338 @@
 "use client";
 import CustomInput from "@/components/shared/form/CustomInput";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import loginBG from "@/public/images/loginBg.png";
-import { LogoWhite } from "@/public/SVG";
 import { Form, Formik, FormikHelpers } from "formik";
-import Image from "next/image";
-import { setCookie } from "cookies-next";
+import { MapPin, CheckCircle2 } from "lucide-react";
 import * as Yup from "yup";
-import { useToast } from "@/hooks/use-toast";
-import { LoginResponse } from "@/lib/types/responseTypes";
-import { useRouter } from "next/navigation";
-import { useLocale } from "next-intl";
-import { fetcherClient } from "@/lib/fetcherClient";
-import { FetcherError } from "@/lib/fetcherTypes";
-import { useState } from "react";
-import TwoFactorMethodSelection from "@/components/shared/TwoFactorMethodSelection";
-import TwoFactorOTPVerification from "@/components/shared/TwoFactorOTPVerification";
+import { toastSuccess, toastError } from "@/hooks/use-toast";
+import { useSearchParams } from "next/navigation";
+import { Link } from "@/i18n/navigation";
+import { useMemo, useState } from "react";
 import { useAuthStore } from "@/stores/useAuthStore";
+import { hapticSuccess, hapticError } from "@/lib/utils/haptics";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  getIdTokenResult,
+  signInWithEmailAndPassword,
+  browserLocalPersistence,
+  setPersistence,
+} from "firebase/auth";
+import { auth } from "@/lib/config/firebase";
+import { getFirebaseUserProfile } from "@/lib/services/firebaseData";
+import { useFirebaseAuth } from "@/lib/config/env";
+import { normalizeUserRole, resolveUserRole } from "@/lib/utils/auth";
 
 interface LoginValues {
-  email: string;
+  identifier: string;
   password: string;
   rememberMe: boolean;
 }
 
-type TwoFactorStep = "login" | "method_selection" | "otp_verification";
+const loginSchema = Yup.object({
+  identifier: Yup.string().email("البريد الإلكتروني غير صحيح").required("البريد الإلكتروني مطلوب"),
+  password: Yup.string()
+    .min(8, "كلمة المرور يجب أن تكون 8 أحرف على الأقل")
+    .required("كلمة المرور مطلوبة"),
+});
 
 const Page = () => {
-  const { toast } = useToast();
-  const router = useRouter();
-  const locale = useLocale();
-  const { setUser } = useAuthStore();
+  const searchParams = useSearchParams();
+  const initialIdentifier = useMemo(
+    () => searchParams.get("identifier")?.trim() || "",
+    [searchParams]
+  );
+  const { setUser, setRememberMe } = useAuthStore();
+  const [showSuccess, setShowSuccess] = useState(false);
 
-  // 2FA state
-  const [twoFactorStep, setTwoFactorStep] = useState<TwoFactorStep>("login");
-  const [selectedMethod, setSelectedMethod] = useState<
-    "sms" | "authenticator" | null
-  >(null);
-  const [twoFactorData, setTwoFactorData] = useState<{
-    userId: number;
-    secret: string;
-    method: string;
-  } | null>(null);
+  const applyLoginResponse = async (
+    values: LoginValues,
+    idToken: string,
+    resp: {
+      success: boolean;
+      data?: {
+        user: {
+          id: number;
+          name: string;
+          email: string;
+          role: string;
+          company_id: number;
+          employee_id?: string | number | null;
+          assigned_geofence_id?: string | number | null;
+        };
+        company?: { id: number; name: string };
+      };
+    }
+  ) => {
+    if (!resp.success || !resp.data) {
+      hapticError();
+      toastError("البريد الإلكتروني أو كلمة المرور غير صحيحة");
+      return;
+    }
+
+    const { user, company } = resp.data;
+    let role = normalizeUserRole(user.role);
+    const hasCompany = user.company_id !== null && user.company_id !== undefined;
+    const hasEmployeeId = user.employee_id !== null && user.employee_id !== undefined;
+    if (hasCompany && !hasEmployeeId) {
+      role = "boss";
+    }
+
+    setUser(
+      {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role,
+        employee_id: user.employee_id ?? null,
+        assigned_geofence_id: user.assigned_geofence_id ?? null,
+        permissions: [],
+        created_at: new Date().toISOString(),
+        profile_image: "",
+      },
+      idToken,
+      role,
+      user.company_id,
+      company?.name
+    );
+
+    hapticSuccess();
+    toastSuccess("تم تسجيل الدخول بنجاح");
+    setShowSuccess(true);
+
+    setTimeout(() => {
+      const currentLocale =
+        typeof window !== "undefined" && window.location.pathname.split("/")[1] === "en"
+          ? "en"
+          : "ar";
+      const targetPath = role === "employee" ? `/${currentLocale}/check-in` : `/${currentLocale}`;
+      if (typeof window !== "undefined") {
+        window.location.assign(targetPath);
+      }
+    }, 800);
+  };
 
   const handleSubmit = async (
     values: LoginValues,
     { setSubmitting }: FormikHelpers<LoginValues>
   ) => {
-    const formdata = new FormData();
-    formdata.append("email", values.email);
-    formdata.append("password", values.password);
+    if (!auth) {
+      hapticError();
+      toastError("Firebase غير مكون. تواصل مع الإدارة.");
+      setSubmitting(false);
+      return;
+    }
+
     try {
-      const response = await fetcherClient<LoginResponse>("/login", {
-        method: "POST",
-        body: formdata,
-      });
+      await setPersistence(auth, browserLocalPersistence);
+      const credential = await signInWithEmailAndPassword(auth, values.identifier, values.password);
+      const idToken = await credential.user.getIdToken();
+      setRememberMe(values.rememberMe);
 
-      // Check if 2FA is required
-      if (response.data.pass_2fa === false) {
-        // 2FA is required
-        const userId = response.data.user_id || response.data.user.id;
-        const secret = response.data["2fa_secret"] || "";
-        const method = response.data.method || "";
-
-        if (!userId || !secret) {
-          toast({
-            description: "خطأ في بيانات التحقق الثنائي",
-            variant: "destructive",
-          });
-          setSubmitting(false);
-          return;
+      if (useFirebaseAuth) {
+        let profile: Record<string, unknown> | null = null;
+        try {
+          profile = await getFirebaseUserProfile(
+            credential.user.uid,
+            credential.user.email ?? values.identifier
+          );
+        } catch {
+          // Firestore profile lookup failed; continue with defaults below.
         }
+        const tokenResult = await getIdTokenResult(credential.user);
+        const profileData = (profile ?? {}) as Record<string, unknown> & {
+          company?: { id?: unknown; name?: unknown };
+        };
+        const companyProfile = profileData.company;
+        const numericId = Array.from(credential.user.uid).reduce(
+          (total, character) => (total * 31 + character.charCodeAt(0)) % 2147483647,
+          0
+        );
+        const role = resolveUserRole(
+          profileData,
+          tokenResult.claims,
+          credential.user.email ?? values.identifier
+        );
+        const isEmployee = role === "employee";
 
-        setTwoFactorData({
-          userId,
-          secret,
-          method: method.toLowerCase(),
+        const companyId = Number(profileData.company_id ?? companyProfile?.id ?? 1);
+        const hasEmployeeId =
+          profileData.employee_id !== null && profileData.employee_id !== undefined;
+
+        await applyLoginResponse(values, idToken, {
+          success: true,
+          data: {
+            user: {
+              id: Number(profileData.id ?? numericId),
+              name: String(
+                profileData.name ?? credential.user.displayName ?? values.identifier.split("@")[0]
+              ),
+              email: String(profileData.email ?? credential.user.email ?? values.identifier),
+              role,
+              company_id: companyId,
+              employee_id: hasEmployeeId
+                ? (profileData.employee_id as string | number)
+                : isEmployee
+                  ? numericId
+                  : null,
+              assigned_geofence_id:
+                profileData.assigned_geofence_id === null ||
+                profileData.assigned_geofence_id === undefined
+                  ? null
+                  : (profileData.assigned_geofence_id as string | number),
+            },
+            company: {
+              id: companyId,
+              name: String(profileData.company_name ?? companyProfile?.name ?? "Trax"),
+            },
+          },
         });
-
-        // Check if user has multiple 2FA methods
-        if (response.data.has_multi_2fa === true) {
-          // Show method selection
-          setTwoFactorStep("method_selection");
-        } else {
-          // Go directly to OTP verification with the method from response
-          setSelectedMethod(method.toLowerCase() as "sms" | "authenticator");
-          setTwoFactorStep("otp_verification");
-        }
-      } else {
-        // No 2FA required, proceed normally
-        setCookie("auth_token", response.data.token, {
-          maxAge: 30 * 24 * 60 * 60,
-        });
-
-        // Save user data in the global auth store
-        setUser(response.data.user, response.data.token);
-
-        toast({
-          description: response.message,
-          variant: "default",
-        });
-        router.push(`/${locale}`);
+        return;
       }
-    } catch (error: unknown) {
-      const errorMessage = (error as FetcherError)?.info?.message || "Error";
-      toast({
-        description: errorMessage,
-        variant: "destructive",
+
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
+      const rawResp = await fetch(`${apiUrl}/auth/firebase`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify({ id_token: idToken }),
       });
+
+      if (!rawResp.ok) {
+        const errBody = await rawResp.json().catch(() => ({}));
+        hapticError();
+        toastError(errBody?.message || "فشل تسجيل الدخول. تأكد من البيانات.");
+        return;
+      }
+
+      const resp = await rawResp.json();
+      await applyLoginResponse(values, idToken, resp);
+    } catch (err) {
+      hapticError();
+      const firebaseErr = err as { code?: string; message?: string };
+      let msg = "البريد الإلكتروني أو كلمة المرور غير صحيحة";
+      if (firebaseErr?.code === "auth/unauthorized-domain") {
+        msg = "هذا النطاق غير مصرح به. تواصل مع الإدارة.";
+      } else if (firebaseErr?.code === "auth/user-not-found") {
+        msg = "المستخدم غير موجود. تأكد من البريد الإلكتروني.";
+      } else if (firebaseErr?.code === "auth/wrong-password") {
+        msg = "كلمة المرور غير صحيحة.";
+      } else if (firebaseErr?.code === "auth/invalid-credential") {
+        msg = "بيانات الدخول غير صحيحة.";
+      } else if (firebaseErr?.code === "auth/too-many-requests") {
+        msg = "محاولات كثيرة. حاول لاحقاً.";
+      } else if (firebaseErr?.message) {
+        msg = firebaseErr.message;
+      }
+      toastError(msg);
     } finally {
       setSubmitting(false);
     }
   };
 
-  const handleMethodSelectionContinue = async () => {
-    if (!selectedMethod || !twoFactorData) return;
-
-    try {
-      const formdata = new FormData();
-      formdata.append("user_id", twoFactorData.userId.toString());
-      formdata.append("2fa_secret", twoFactorData.secret);
-      formdata.append("2fa_method", selectedMethod);
-
-      await fetcherClient("/2fa/otp/send", {
-        method: "POST",
-        body: formdata,
-      });
-
-      toast({
-        description: "تم إرسال رمز التحقق بنجاح",
-        variant: "default",
-      });
-
-      // Update method and go to OTP verification
-      setTwoFactorData({
-        ...twoFactorData,
-        method: selectedMethod,
-      });
-      setTwoFactorStep("otp_verification");
-    } catch (error: unknown) {
-      const errorMessage =
-        (error as FetcherError)?.info?.message || "خطأ في إرسال رمز التحقق";
-      toast({
-        description: errorMessage,
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleOTPResend = async () => {
-    if (!selectedMethod || !twoFactorData) return;
-
-    const formdata = new FormData();
-    formdata.append("user_id", twoFactorData.userId.toString());
-    formdata.append("2fa_secret", twoFactorData.secret);
-    formdata.append("2fa_method", selectedMethod);
-
-    await fetcherClient("/2fa/otp/send", {
-      method: "POST",
-      body: formdata,
-    });
-  };
-
-  const handleOTPVerify = (token: string) => {
-    // Store the token in cookies
-    setCookie("auth_token", token, {
-      maxAge: 30 * 24 * 60 * 60,
-    });
-
-    toast({
-      description: "تم تسجيل الدخول بنجاح",
-      variant: "default",
-    });
-
-    router.push(`/${locale}`);
-  };
-
-  const handleCancel = () => {
-    setTwoFactorStep("login");
-    setSelectedMethod(null);
-    setTwoFactorData(null);
-  };
-  const loginSchema = Yup.object({
-    email: Yup.string()
-      .email("البريد الإلكتروني غير صحيح")
-      .required("البريد الإلكتروني مطلوب"),
-    password: Yup.string()
-      .min(8, "كلمة المرور يجب أن تكون 8 أحرف على الأقل")
-      .required("كلمة المرور مطلوبة"),
-  });
   return (
-    <section className="w-screen h-screen flex items-center justify-center relative bg-primaryColor">
-      <Image
-        src={loginBG}
-        alt="loginBG"
-        fill
-        className="object-center object-cover z-0"
+    <section className="w-screen h-screen flex items-center justify-center relative bg-primaryColor dark:bg-slate-950 overflow-hidden">
+      <div
+        className="absolute inset-0 z-0 bg-center bg-cover opacity-40 dark:opacity-20"
+        style={{ backgroundImage: `url(${loginBG.src})` }}
       />
-      <LogoWhite className="absolute left-1/2 -translate-x-1/2 -top-5" />
 
-      {twoFactorStep === "login" ? (
-        <Formik<LoginValues>
-          validationSchema={loginSchema}
-          initialValues={{ email: "", password: "", rememberMe: false }}
-          onSubmit={handleSubmit}
-        >
-          {(props) => (
-            <Form className="bg-white rounded-16 p-5 flex flex-col gap-5 m-5 w-full max-w-[557px] relative z-10">
-              <h1 className="text-24 font-[700] bg-clip-text text-transparent bg-[linear-gradient(270deg,#3C7EE7_0%,#10489B_100%)]">
-                تسجيل الدخول
-              </h1>
-              <p className="text-18 text-textSubText mb-5 -mt-4">
-                من فضلك قم بإستكمال بياناتك لتسجيل الدخول!
-              </p>
+      <div className="absolute top-10 flex items-center gap-2 z-20">
+        <MapPin className="w-8 h-8 text-white" />
+        <span className="text-3xl font-black text-white tracking-tighter">Trax</span>
+      </div>
+
+      <Formik
+        initialValues={{ identifier: initialIdentifier, password: "", rememberMe: false }}
+        enableReinitialize
+        validationSchema={loginSchema}
+        onSubmit={handleSubmit}
+      >
+        {(props) => (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="relative z-10 w-full max-w-[420px] px-6"
+          >
+            <Form className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl border border-white/20 rounded-3xl p-8 flex flex-col gap-6 shadow-2xl">
+              <div className="text-center mb-2">
+                <h1 className="text-2xl font-bold text-gray-900 dark:text-white">تسجيل الدخول</h1>
+              </div>
+
               <CustomInput
                 type="email"
-                name="email"
-                placeholder="example@gmail.com"
-                label="بريد إلكتروني"
+                name="identifier"
+                placeholder="email@trax.com"
+                label="البريد الإلكتروني"
               />
+
               <CustomInput
                 type="password"
                 name="password"
                 placeholder="*********"
                 label="كلمة المرور"
               />
-              <div className="flex items-center gap-2">
-                <Checkbox
-                  id="terms"
-                  onCheckedChange={(value) =>
-                    props.setFieldValue("rememberMe", value)
-                  }
-                  disabled={props.isSubmitting}
-                />
-                <label
-                  htmlFor="terms"
-                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                >
-                  تذكرنى
+
+              <div className="flex items-center justify-between text-sm">
+                <label className="flex items-center gap-2 cursor-pointer text-gray-600 dark:text-slate-400">
+                  <input
+                    type="checkbox"
+                    name="rememberMe"
+                    className="w-4 h-4 rounded border-gray-300 dark:border-slate-600 text-primaryColor focus:ring-primaryColor"
+                    checked={props.values.rememberMe}
+                    onChange={() => props.setFieldValue("rememberMe", !props.values.rememberMe)}
+                  />
+                  تذكرني
                 </label>
+                <Link
+                  href="/forgot-password"
+                  className="text-blue-600 dark:text-blue-400 hover:underline text-sm"
+                >
+                  نسيت كلمة المرور؟
+                </Link>
               </div>
+
               <Button
                 type="submit"
-                variant={"primary"}
+                variant="primary"
                 disabled={props.isSubmitting}
+                className="h-12 text-lg font-bold flex items-center justify-center gap-2 transition-transform"
               >
-                تسجيل الدخول
+                {props.isSubmitting && (
+                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                )}
+                {props.isSubmitting ? "جاري التحميل..." : "دخول"}
               </Button>
             </Form>
-          )}
-        </Formik>
-      ) : twoFactorStep === "method_selection" ? (
-        <div className="bg-white rounded-16 p-5 flex flex-col gap-5 m-5 w-full max-w-[557px] relative z-10">
-          <TwoFactorMethodSelection
-            selectedMethod={selectedMethod}
-            onMethodChange={setSelectedMethod}
-            onContinue={handleMethodSelectionContinue}
-            onCancel={handleCancel}
-          />
-        </div>
-      ) : twoFactorStep === "otp_verification" &&
-        twoFactorData &&
-        selectedMethod ? (
-        <div className="bg-white rounded-16 p-5 flex flex-col gap-5 m-5 w-full max-w-[557px] relative z-10">
-          <TwoFactorOTPVerification
-            method={selectedMethod}
-            userId={twoFactorData.userId}
-            twoFactorSecret={twoFactorData.secret}
-            onVerify={handleOTPVerify}
-            onCancel={handleCancel}
-            onResend={handleOTPResend}
-            showResend={selectedMethod === "sms"}
-          />
-        </div>
-      ) : null}
+          </motion.div>
+        )}
+      </Formik>
+
+      <AnimatePresence>
+        {showSuccess && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-white/90 dark:bg-slate-950/90 backdrop-blur-sm"
+          >
+            <motion.div
+              initial={{ scale: 0, rotate: -180 }}
+              animate={{ scale: 1, rotate: 0 }}
+              transition={{ type: "spring", stiffness: 260, damping: 20 }}
+            >
+              <CheckCircle2 className="w-20 h-20 text-green-500" />
+            </motion.div>
+            <motion.p
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+              className="mt-4 text-xl font-bold text-gray-900 dark:text-white"
+            >
+              تم تسجيل الدخول
+            </motion.p>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </section>
   );
 };

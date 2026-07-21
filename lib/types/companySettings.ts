@@ -1,0 +1,130 @@
+export interface CompanySettings {
+  // Work hours
+  workStartTime: string; // "08:00"
+  workEndTime: string; // "17:00"
+  gracePeriodMinutes: number; // 15
+  lateThresholdMinutes: number; // 15
+
+  // Attendance modes & shifts
+  attendanceMode: "field" | "office_two_shift" | "hourly";
+  /** Start/end/grace/late for the default single shift (field / hourly). */
+  defaultShift: {
+    startTime: string;
+    endTime: string;
+    gracePeriodMinutes: number;
+    lateThresholdMinutes: number;
+  };
+  /** Morning shift for office two-shift mode. */
+  morningShift: {
+    startTime: string;
+    endTime: string;
+    gracePeriodMinutes: number;
+    lateThresholdMinutes: number;
+  };
+  /** Evening shift for office two-shift mode. */
+  eveningShift: {
+    startTime: string;
+    endTime: string;
+    gracePeriodMinutes: number;
+    lateThresholdMinutes: number;
+  };
+  /** When true, Ramadan/seasonal hours are applied automatically based on the Hijri calendar. */
+  seasonalAttendanceEnabled: boolean;
+  /** Hijri month indexes (1-12) to treat as seasonal, e.g. [9] for Ramadan. */
+  seasonalMonths: number[];
+  /** Reduced work hours during seasonal months. */
+  seasonalShift: {
+    startTime: string;
+    endTime: string;
+    gracePeriodMinutes: number;
+    lateThresholdMinutes: number;
+  };
+
+  // Auto check-in
+  autoCheckInEnabled: boolean;
+  autoCheckInRadiusOffset: number; // meters beyond geofence radius to trigger
+
+  // Notifications
+  notificationsEnabled: boolean;
+  lateAlertsEnabled: boolean;
+  attendanceAlertsEnabled: boolean;
+  geofenceBreachAlertsEnabled: boolean;
+  anomalyAlertsEnabled: boolean;
+  emailNotificationsEnabled: boolean;
+  pushNotificationsEnabled: boolean;
+  checkInReminderEnabled: boolean;
+  checkInReminderTime: string; // "08:00"
+
+  // Session
+  sessionTimeoutMinutes: number; // 60
+  autoSignOutEnabled: boolean;
+  autoSignOutTime: string; // "18:00"
+
+  // Geofence
+  requireGeofenceForCheckIn: boolean; // default: true
+  allowCheckInOutsideGeofence: boolean; // default: false
+
+  // Company
+  companyName: string;
+  timezone: string;
+  weekendDays: number[]; // [5, 6] = Friday, Saturday
+}
+
+export const defaultCompanySettings: CompanySettings = {
+  workStartTime: "08:00",
+  workEndTime: "17:00",
+  gracePeriodMinutes: 15,
+  lateThresholdMinutes: 15,
+
+  attendanceMode: "field",
+  defaultShift: {
+    startTime: "08:00",
+    endTime: "17:00",
+    gracePeriodMinutes: 15,
+    lateThresholdMinutes: 15,
+  },
+  morningShift: {
+    startTime: "08:00",
+    endTime: "12:00",
+    gracePeriodMinutes: 15,
+    lateThresholdMinutes: 15,
+  },
+  eveningShift: {
+    startTime: "13:00",
+    endTime: "17:00",
+    gracePeriodMinutes: 15,
+    lateThresholdMinutes: 15,
+  },
+  seasonalAttendanceEnabled: false,
+  seasonalMonths: [9], // Ramadan is the 9th Hijri month
+  seasonalShift: {
+    startTime: "09:00",
+    endTime: "15:00",
+    gracePeriodMinutes: 15,
+    lateThresholdMinutes: 15,
+  },
+
+  autoCheckInEnabled: false,
+  autoCheckInRadiusOffset: 50,
+
+  notificationsEnabled: true,
+  lateAlertsEnabled: true,
+  attendanceAlertsEnabled: true,
+  geofenceBreachAlertsEnabled: false,
+  anomalyAlertsEnabled: true,
+  emailNotificationsEnabled: true,
+  pushNotificationsEnabled: true,
+  checkInReminderEnabled: true,
+  checkInReminderTime: "08:00",
+
+  sessionTimeoutMinutes: 60,
+  autoSignOutEnabled: false,
+  autoSignOutTime: "18:00",
+
+  requireGeofenceForCheckIn: true,
+  allowCheckInOutsideGeofence: false,
+
+  companyName: "",
+  timezone: "Asia/Riyadh",
+  weekendDays: [5, 6],
+};

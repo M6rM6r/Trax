@@ -1,0 +1,45 @@
+{
+  "login": {
+    "title": "تسجيل الدخول",
+    "subtitle": "من فضلك قم بإستكمال بياناتك لتسجيل الدخول",
+    "email": "البريد الإلكتروني",
+    "password": "كلمة المرور",
+    "rememberMe": "تذكرني",
+    "submit": "تسجيل الدخول",
+    "forgotPassword": "نسيت كلمة المرور؟",
+    "invalidCredentials": "البريد الإلكتروني أو كلمة المرور غير صحيحة",
+    "success": "تم تسجيل الدخول بنجاح"
+  },
+  "home": {
+    "title": "الرئيسية",
+    "welcome": "مرحباً",
+    "checkIn": "تسجيل الحضور",
+    "checkOut": "تسجيل الانصراف",
+    "history": "السجل",
+    "profile": "الملف الشخصي"
+  },
+  "checkIn": {
+    "title": "تسجيل الحضور",
+    "insideGeofence": "أنت داخل نطاق العمل",
+    "outsideGeofence": "أنت خارج نطاق العمل",
+    "checkingIn": "جاري التسجيل...",
+    "success": "تم تسجيل الحضور بنجاح",
+    "error": "فشل في تسجيل الحضور",
+    "locationRequired": "إذن الموقع مطلوب"
+  },
+  "history": {
+    "title": "سجل الحضور",
+    "present": "حاضر",
+    "late": "متأخر",
+    "absent": "غائب",
+    "noRecords": "لا توجد سجلات حضور"
+  },
+  "profile": {
+    "title": "الملف الشخصي",
+    "settings": "الإعدادات",
+    "darkMode": "الوضع الليلي",
+    "language": "اللغة",
+    "logout": "تسجيل الخروج",
+    "version": "الإصدار"
+  }
+}

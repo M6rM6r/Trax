@@ -1,0 +1,14 @@
+.git
+.next
+node_modules
+services/api/vendor
+services/api/storage/logs
+services/api/storage/framework
+services/ai/.venv
+services/ai/.pytest_cache
+services/ai/.ruff_cache
+services/mobile/.dart_tool
+services/mobile/build
+*.log
+.env.local
+.env.production

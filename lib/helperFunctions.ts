@@ -1,5 +1,4 @@
 import { parse, format, set, isValid } from "date-fns";
-import { ServiceSettingsData } from "./types/responseTypes";
 
 export function DateFormat(dateString?: string) {
   if (!dateString) return { time: "", dayMonthYear: "" };
@@ -7,9 +6,7 @@ export function DateFormat(dateString?: string) {
   // Validate input format (e.g., "2025-09-28 08:51 PM")
   const regex = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2} (AM|PM)$/;
   if (!regex.test(dateString)) {
-    throw new Error(
-      "Invalid date string format. Expected 'YYYY-MM-DD HH:MM AM/PM'"
-    );
+    throw new Error("Invalid date string format. Expected 'YYYY-MM-DD HH:MM AM/PM'");
   }
 
   // Split date and time
@@ -106,8 +103,12 @@ export const convertDateFormat = (
   }
 };
 
-export function groupByGroupToArray(array: Array<any>) {
-  const groupsMap = array.reduce((acc, item) => {
+export function groupByGroupToArray(
+  array: Array<{ group_en: string; group_ar: string; [key: string]: unknown }>
+) {
+  const groupsMap = array.reduce<
+    Record<string, Array<{ group_en: string; group_ar: string; [key: string]: unknown }>>
+  >((acc, item) => {
     const group = item.group_en;
     if (!acc[group]) {
       acc[group] = [];
@@ -115,7 +116,7 @@ export function groupByGroupToArray(array: Array<any>) {
     acc[group].push(item);
     return acc;
   }, {});
-  return Object.entries(groupsMap).map(([groupName, items]: any) => ({
+  return Object.entries(groupsMap).map(([groupName, items]) => ({
     group_en: groupName,
     group_ar: items[0].group_ar,
     items,
@@ -123,29 +124,25 @@ export function groupByGroupToArray(array: Array<any>) {
 }
 
 export function getServiceSettingsValue(
-  data: ServiceSettingsData[],
+  data: Array<{ key: string; value: string | number; service_subtype?: string | null | number }>,
   key: string,
   service_subtype?: string | null | number
 ): string | number {
   // First try to find item with matching key and subtype (if subtype is provided)
   if (service_subtype) {
     const itemWithSubtype = data.find(
-      (item) => item.key == key && item.service_subtype == service_subtype
+      (item) => item.key === key && item.service_subtype === service_subtype
     );
     if (itemWithSubtype) {
       return itemWithSubtype.value;
     }
     // If no match with subtype, fallback to general value (service_subtype == null)
-    const fallbackItem = data.find(
-      (item) => item.key === key && item.service_subtype == null
-    );
+    const fallbackItem = data.find((item) => item.key === key && item.service_subtype === null);
     return fallbackItem ? fallbackItem.value : 0;
   }
 
   // If no subtype provided, look for item with just matching key
-  const item = data.find(
-    (item) => item.key === key && item.service_subtype == null
-  );
+  const item = data.find((item) => item.key === key && item.service_subtype === null);
 
   return item ? item.value : 0;
 }
@@ -165,7 +162,7 @@ export const ChangeTimeFormate = (time: string) => {
 
 export function formatArabicTime(startTime: string, endTime: string) {
   // Function to convert single time to Arabic format
-  const convertToArabicTime = (time: any) => {
+  const convertToArabicTime = (time: string | null | undefined) => {
     if (!time) return "";
 
     const [hours, minutes] = time?.split(":").map(Number);

@@ -1,13 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter } from "@/i18n/navigation";
 import { useTranslations } from "next-intl";
 
 export default function NotFound() {
   const router = useRouter();
   const t = useTranslations("NotFound");
   const [countdown, setCountdown] = useState(20);
+  const [currentPath, setCurrentPath] = useState("");
 
   // Countdown for automatic redirect
   useEffect(() => {
@@ -21,19 +22,18 @@ export default function NotFound() {
 
   const goHome = () => router.push("/");
   const goBack = () => router.back();
-  const searchSite = () => {
-    // You can implement search functionality or redirect to search page
-    router.push("/search");
-  };
+  useEffect(() => {
+    setCurrentPath(window.location.pathname);
+  }, []);
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-yellow-50 to-amber-100 p-4 transition-colors duration-300">
-      <div className="bg-white shadow-2xl rounded-3xl p-8 md:p-12 text-center max-w-md w-full mx-auto border border-gray-200">
+    <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-yellow-50 to-amber-100 dark:from-slate-900 dark:to-slate-800 p-4 transition-colors duration-300">
+      <div className="bg-white dark:bg-slate-800 shadow-2xl rounded-3xl p-8 md:p-12 text-center max-w-md w-full mx-auto border border-gray-200 dark:border-slate-700">
         {/* Animated Icon */}
         <div className="mb-6">
-          <div className="w-20 h-20 mx-auto bg-yellow-100 rounded-full flex items-center justify-center animate-pulse">
+          <div className="w-20 h-20 mx-auto bg-yellow-100 dark:bg-yellow-900/30 rounded-full flex items-center justify-center animate-pulse">
             <svg
-              className="w-12 h-12 text-yellow-600"
+              className="w-12 h-12 text-yellow-600 dark:text-yellow-400"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -50,27 +50,27 @@ export default function NotFound() {
         </div>
 
         {/* Error Code Badge */}
-        <div className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium mb-4 bg-yellow-100 text-yellow-800">
+        <div className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium mb-4 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-400">
           خطأ 404 - {t("title")}
         </div>
 
         {/* Main Content */}
-        <h1 className="text-2xl md:text-3xl font-bold text-gray-800 mb-4">
+        <h1 className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-slate-100 mb-4">
           🗺️ {t("title")}
         </h1>
 
-        <p className="text-gray-600 mb-3 text-lg leading-relaxed">
+        <p className="text-gray-600 dark:text-slate-300 mb-3 text-lg leading-relaxed">
           {t("subtitle")}
         </p>
 
-        <p className="text-gray-500 mb-6 text-sm">
-          {t("description")}
-        </p>
+        <p className="text-gray-500 dark:text-slate-400 mb-6 text-sm">{t("description")}</p>
 
         {/* Suggestions */}
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6 text-right">
-          <h3 className="text-blue-800 font-semibold mb-2">💡 {t("suggestions.title")}</h3>
-          <ul className="text-blue-700 text-sm space-y-1">
+        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-6 text-right">
+          <h3 className="text-blue-800 dark:text-blue-400 font-semibold mb-2">
+            💡 {t("suggestions.title")}
+          </h3>
+          <ul className="text-blue-700 dark:text-blue-300 text-sm space-y-1">
             <li>• {t("suggestions.checkUrl")}</li>
             <li>• {t("suggestions.goBack")}</li>
             <li>• {t("suggestions.goHome")}</li>
@@ -79,10 +79,10 @@ export default function NotFound() {
         </div>
 
         {/* Countdown Timer */}
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-6">
-          <p className="text-yellow-700 text-sm font-medium">
+        <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-3 mb-6">
+          <p className="text-yellow-700 dark:text-yellow-400 text-sm font-medium">
             {t("redirectMessage")}{" "}
-            <span className="font-bold text-yellow-800 text-lg">
+            <span className="font-bold text-yellow-800 dark:text-yellow-300 text-lg">
               {countdown}
             </span>{" "}
             {t("seconds")}
@@ -95,12 +95,7 @@ export default function NotFound() {
             onClick={goHome}
             className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl shadow-lg transition-all duration-300 transform hover:scale-105 flex items-center justify-center gap-2 font-medium"
           >
-            <svg
-              className="w-5 h-5"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -115,12 +110,7 @@ export default function NotFound() {
             onClick={goBack}
             className="bg-gray-600 hover:bg-gray-700 text-white px-6 py-3 rounded-xl shadow-lg transition-all duration-300 transform hover:scale-105 flex items-center justify-center gap-2 font-medium"
           >
-            <svg
-              className="w-5 h-5"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -134,9 +124,8 @@ export default function NotFound() {
 
         {/* Current Path Info */}
         <div className="mt-6">
-          <p className="text-xs text-gray-400">
-            {t("currentPath")}{" "}
-            {typeof window !== "undefined" ? window.location.pathname : ""}
+          <p className="text-xs text-gray-400 dark:text-slate-500">
+            {t("currentPath")} {currentPath}
           </p>
         </div>
       </div>

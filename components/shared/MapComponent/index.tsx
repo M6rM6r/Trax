@@ -6,7 +6,7 @@ import View from "ol/View";
 import TileLayer from "ol/layer/Tile";
 import VectorLayer from "ol/layer/Vector";
 import VectorSource from "ol/source/Vector";
-import OSM from "ol/source/OSM";
+import XYZ from "ol/source/XYZ";
 import { fromLonLat, toLonLat } from "ol/proj";
 import { Point, LineString, Polygon } from "ol/geom";
 import Feature from "ol/Feature";
@@ -34,15 +34,13 @@ export default function OLMap({
   formikProps,
 }: {
   name: string;
-  formikProps: FormikProps<any>;
+  formikProps: FormikProps<Record<string, unknown>>;
 }) {
   const mapRef = useRef<HTMLDivElement>(null);
   const [map, setMap] = useState<Map | null>(null);
   const [currentShape, setCurrentShape] = useState<Shape | null>(null);
   const [isDrawing, setIsDrawing] = useState(false);
-  const [mousePosition, setMousePosition] = useState<[number, number] | null>(
-    null
-  );
+  const [mousePosition, setMousePosition] = useState<[number, number] | null>(null);
   const [showSaveButton, setShowSaveButton] = useState(false);
   const vectorSourceRef = useRef<VectorSource | null>(null);
   const modifyRef = useRef<Modify | null>(null);
@@ -72,7 +70,12 @@ export default function OLMap({
       target: mapRef.current,
       layers: [
         new TileLayer({
-          source: new OSM(),
+          source: new XYZ({
+            url: "https://{a-c}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
+            attributions:
+              '© <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> contributors, © CARTO',
+            maxZoom: 19,
+          }),
         }),
       ],
       view: new View({
@@ -178,13 +181,9 @@ export default function OLMap({
       // Add shape (line or polygon)
       let geometry;
       if (currentShape.type === "line") {
-        geometry = new LineString(
-          currentShape.coordinates.map((coord) => fromLonLat(coord))
-        );
+        geometry = new LineString(currentShape.coordinates.map((coord) => fromLonLat(coord)));
       } else {
-        geometry = new Polygon([
-          currentShape.coordinates.map((coord) => fromLonLat(coord)),
-        ]);
+        geometry = new Polygon([currentShape.coordinates.map((coord) => fromLonLat(coord))]);
       }
 
       const shapeFeature = new Feature({
@@ -212,17 +211,10 @@ export default function OLMap({
     }
 
     // Add preview line if drawing
-    if (
-      isDrawing &&
-      currentShape &&
-      mousePosition &&
-      currentShape.coordinates.length > 0
-    ) {
+    if (isDrawing && currentShape && mousePosition && currentShape.coordinates.length > 0) {
       const previewLine = new Feature({
         geometry: new LineString([
-          fromLonLat(
-            currentShape.coordinates[currentShape.coordinates.length - 1]
-          ),
+          fromLonLat(currentShape.coordinates[currentShape.coordinates.length - 1]),
           fromLonLat(mousePosition),
         ]),
         type: "preview-line",
@@ -246,15 +238,14 @@ export default function OLMap({
   useEffect(() => {
     if (!map || !isDrawing || !mousePosition || !currentShape) return;
 
-    const clickHandler = (evt: any) => {
+    const clickHandler = (evt: { coordinate: number[] }) => {
       const lonLat = toLonLat(evt.coordinate);
 
       // Check if we're clicking near the first point to close the shape
       if (currentShape.coordinates.length > 2) {
         const firstPoint = currentShape.coordinates[0];
         const distance = Math.sqrt(
-          Math.pow(firstPoint[0] - lonLat[0], 2) +
-            Math.pow(firstPoint[1] - lonLat[1], 2)
+          Math.pow(firstPoint[0] - lonLat[0], 2) + Math.pow(firstPoint[1] - lonLat[1], 2)
         );
 
         if (distance < 0.0005) {
@@ -262,10 +253,7 @@ export default function OLMap({
           setCurrentShape({
             ...currentShape,
             type: "polygon",
-            coordinates: [
-              ...currentShape.coordinates,
-              currentShape.coordinates[0],
-            ],
+            coordinates: [...currentShape.coordinates, currentShape.coordinates[0]],
           });
           setIsDrawing(false);
           setShowSaveButton(true);
@@ -308,9 +296,7 @@ export default function OLMap({
           ? currentShape.coordinates.slice(0, -1)
           : currentShape.coordinates;
 
-      const formattedCoordinates = coords
-        .map((coord) => `(${coord[1]}, ${coord[0]})`)
-        .join(",");
+      const formattedCoordinates = coords.map((coord) => `(${coord[1]}, ${coord[0]})`).join(",");
 
       // alert(`Shape saved with coordinates: ${formattedCoordinates}`);
       formikProps.setFieldValue(name, formattedCoordinates);
@@ -324,11 +310,7 @@ export default function OLMap({
 
       <div className=" flex gap-5 mt-5">
         {currentShape && (
-          <Button
-            variant={"primaryLight"}
-            onClick={clearCurrentShape}
-            type="button"
-          >
+          <Button variant={"primaryLight"} onClick={clearCurrentShape} type="button">
             حذف الشكل
           </Button>
         )}
