@@ -20,10 +20,8 @@ import DashboardSkeleton from "@/components/shared/Skeletons/DashboardSkeleton";
 import { DataTable } from "@/components/shared/DataTable/DataTable";
 import type { DashboardStats, AttendanceRecord } from "@/lib/types/trackingTypes";
 import { useAuthStore } from "@/stores/useAuthStore";
-import OnboardingBanner from "@/components/shared/OnboardingBanner";
 import AttendancePieChart from "@/components/dashboard/AttendancePieChart";
 import InsightsBarChart from "@/components/dashboard/InsightsBarChart";
-import PeakHoursHeatmap from "@/components/dashboard/PeakHoursHeatmap";
 import {
   DndContext,
   closestCenter,
@@ -102,7 +100,7 @@ export default function DashboardPage() {
   const { data: employees = [] } = useEmployees();
 
   const { data: trends } = useDashboardTrends(dateRange);
-  const { data: geofences = [] } = useGeofences();
+  useGeofences();
   const [lastUpdated, setLastUpdated] = useState<string>("");
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [cardOrder, setCardOrder] = useState<string[]>(DEFAULT_CARD_IDS);
@@ -130,7 +128,7 @@ export default function DashboardPage() {
       );
     }, 30000);
     return () => clearInterval(interval);
-  }, [stats]);
+  }, []);
 
   // Real-time WebSocket listener for attendance updates
   useEffect(() => {
@@ -512,18 +510,6 @@ export default function DashboardPage() {
               )}
             </div>
 
-            {/* Onboarding checklist — shown to new accounts */}
-            <OnboardingBanner
-              hasEmployees={employees.length > 0}
-              hasGeofences={geofences.length > 0}
-              hasAttendanceToday={
-                Array.isArray(attendanceData) &&
-                attendanceData.some(
-                  (r: AttendanceRecord) => r.date === new Date().toISOString().split("T")[0]
-                )
-              }
-            />
-
             {/* Date range picker — standalone */}
             <div className="flex justify-end">
               <DateRangePicker value={dateRange} onChange={setDateRange} />
@@ -571,10 +557,6 @@ export default function DashboardPage() {
                   </div>
                 </CardContent>
               </Card>
-
-              {trends?.peakHoursData && trends.peakHoursData.length > 0 && (
-                <PeakHoursHeatmap data={trends.peakHoursData} />
-              )}
 
               <Card className="border border-slate-700/50 bg-slate-800">
                 <CardHeader className="pb-4">

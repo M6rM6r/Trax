@@ -12,13 +12,11 @@ import {
   WifiOff,
   RefreshCw,
   MapPin,
-  Navigation,
   Clock,
   Briefcase,
   RotateCcw,
 } from "lucide-react";
-import { useCheckIn, useCheckOut, useGeofences, useEmployees } from "@/hooks/useApi";
-import CheckInMap from "@/components/shared/MapComponent/CheckInMap";
+import { useCheckIn, useCheckOut, useGeofences, useEmployees, useAttendance } from "@/hooks/useApi";
 import { hapticSuccess, hapticError, hapticTap } from "@/lib/utils/haptics";
 import { fireConfetti } from "@/lib/utils/confetti";
 import { toastSuccess, toastError } from "@/hooks/use-toast";
@@ -27,8 +25,8 @@ import type { Geofence } from "@/lib/types/trackingTypes";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useCompanySettingsStore } from "@/stores/useCompanySettingsStore";
 import { cn } from "@/lib/utils";
-import { addToOfflineQueue } from "@/lib/utils/offlineQueue";
-import { resolveEmployeeShift, isSeasonalDate, attendanceModeLabels } from "@/lib/utils/shifts";
+import { addToOfflineQueue, addToOfflineCheckOutQueue } from "@/lib/utils/offlineQueue";
+import { calculateDistance, GEOFENCE_DISTANCE_BUFFER_METERS } from "@/lib/utils/geo";
 
 function LiveClock() {
   const [time, setTime] = useState("");
@@ -61,16 +59,6 @@ function LiveClock() {
   );
 }
 
-function calculateDistance(lat1: number, lng1: number, lat2: number, lng2: number): number {
-  const R = 6371000;
-  const dLat = ((lat2 - lat1) * Math.PI) / 180;
-  const dLng = ((lng2 - lng1) * Math.PI) / 180;
-  const a =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * Math.sin(dLng / 2) ** 2;
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-}
-
 export default function CheckInPage() {
   const {
     data: geofences = [],
@@ -78,21 +66,18 @@ export default function CheckInPage() {
     isError: geofencesError,
   } = useGeofences();
   const { data: employees = [] } = useEmployees();
+  const { data: attendanceRecords = [] } = useAttendance();
   const checkInMutation = useCheckIn();
   const checkOutMutation = useCheckOut();
   const { user, companyName } = useAuthStore();
   const companySettings = useCompanySettingsStore();
+  const todayStr = new Date().toLocaleDateString("sv-SE");
+  const todayRecord = attendanceRecords.find(
+    (r) => r.date === todayStr && String(r.employeeId) === String(user?.employee_id)
+  );
 
   const currentEmployee = employees.find((e) => String(e.id) === String(user?.employee_id));
-  const now = new Date();
-  const {
-    mode: activeMode,
-    shift: activeShift,
-    slot: activeSlot,
-  } = resolveEmployeeShift(currentEmployee ?? {}, companySettings, now, null);
-  const seasonalActive = isSeasonalDate(now, companySettings);
   const [currentLocation, setCurrentLocation] = useState<{ lat: number; lng: number } | null>(null);
-  const [locationAccuracy, setLocationAccuracy] = useState<number | null>(null);
   const [locationError, setLocationError] = useState<string | null>(null);
   const [nearestGeofence, setNearestGeofence] = useState<{
     geofence: Geofence;
@@ -109,6 +94,8 @@ export default function CheckInPage() {
   const [showCheckoutConfirm, setShowCheckoutConfirm] = useState(false);
   const [elapsedTime, setElapsedTime] = useState("");
   const [isOnline, setIsOnline] = useState(true);
+  const autoCheckInTriggered = useRef(false);
+  const burstTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     const handleOnline = () => setIsOnline(true);
@@ -122,14 +109,30 @@ export default function CheckInPage() {
     };
   }, []);
 
+  // Restore check-in state from today's attendance record (survives page refresh)
+  useEffect(() => {
+    if (!todayRecord) return;
+    if (todayRecord.checkInTime) {
+      setCheckInTime(todayRecord.checkInTime);
+      const checkInDate = new Date(`${todayRecord.date}T${todayRecord.checkInTime}`);
+      if (!isNaN(checkInDate.getTime())) {
+        setCheckInTimestamp(checkInDate.getTime());
+      }
+      setCheckInStatus("success");
+      autoCheckInTriggered.current = true;
+    }
+    if (todayRecord.checkOutTime) {
+      setCheckOutTime(todayRecord.checkOutTime);
+    }
+  }, [todayRecord]);
+
   const geofencesRef = useRef(geofences);
   geofencesRef.current = geofences;
 
   const updateFromPosition = useCallback((position: GeolocationPosition) => {
-    const { latitude, longitude, accuracy } = position.coords;
+    const { latitude, longitude } = position.coords;
     setLocationError(null);
     setCurrentLocation({ lat: latitude, lng: longitude });
-    setLocationAccuracy(accuracy);
 
     let closest: { geofence: Geofence; distance: number } | null = null;
     geofencesRef.current.forEach((geo) => {
@@ -193,8 +196,6 @@ export default function CheckInPage() {
   }, [checkInStatus, checkOutTime, checkInTimestamp]);
 
   // Auto check-in when entering geofence (if enabled by company settings)
-  const autoCheckInTriggered = useRef(false);
-  const burstTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     return () => {
@@ -224,8 +225,10 @@ export default function CheckInPage() {
             employeeName: user.name,
             lat: currentLocation.lat,
             lng: currentLocation.lng,
-            geofenceId: nearestGeofence?.geofence.id ?? 0,
+            geofenceId: nearestGeofence?.geofence ? nearestGeofence.geofence.id : null,
             timestamp: Date.now(),
+            requireGeofenceForCheckIn: companySettings.requireGeofenceForCheckIn,
+            allowCheckInOutsideGeofence: companySettings.allowCheckInOutsideGeofence,
           });
           const now = new Date();
           setCheckInTime(now.toLocaleTimeString("ar-SA", { hour: "2-digit", minute: "2-digit" }));
@@ -245,7 +248,7 @@ export default function CheckInPage() {
             employeeName: user.name,
             lat: currentLocation.lat,
             lng: currentLocation.lng,
-            geofenceId: nearestGeofence?.geofence.id ?? 0,
+            ...(nearestGeofence?.geofence ? { geofenceId: nearestGeofence.geofence.id } : {}),
             companySettings: {
               workStartTime: companySettings.workStartTime,
               workEndTime: companySettings.workEndTime,
@@ -311,7 +314,7 @@ export default function CheckInPage() {
 
   // Physical relation to the closest geofence (only for UI / feedback)
   const isWithinRange = nearestGeofence
-    ? nearestGeofence.distance <= nearestGeofence.geofence.radius + 50
+    ? nearestGeofence.distance <= nearestGeofence.geofence.radius + GEOFENCE_DISTANCE_BUFFER_METERS
     : false;
 
   const geofencesLoaded = !geofencesLoading && !geofencesError;
@@ -352,8 +355,10 @@ export default function CheckInPage() {
         employeeName: user.name,
         lat: currentLocation.lat,
         lng: currentLocation.lng,
-        geofenceId: nearestGeofence?.geofence.id ?? 0,
+        geofenceId: nearestGeofence?.geofence ? nearestGeofence.geofence.id : null,
         timestamp: Date.now(),
+        requireGeofenceForCheckIn: companySettings.requireGeofenceForCheckIn,
+        allowCheckInOutsideGeofence: companySettings.allowCheckInOutsideGeofence,
       });
       const nowOffline = new Date();
       setCheckInTime(
@@ -375,7 +380,7 @@ export default function CheckInPage() {
         employeeName: user.name,
         lat: currentLocation.lat,
         lng: currentLocation.lng,
-        geofenceId: nearestGeofence?.geofence.id ?? 0,
+        ...(nearestGeofence?.geofence ? { geofenceId: nearestGeofence.geofence.id } : {}),
         companySettings: {
           workStartTime: companySettings.workStartTime,
           workEndTime: companySettings.workEndTime,
@@ -461,6 +466,23 @@ export default function CheckInPage() {
         setCheckOutStatus("idle");
         return;
       }
+
+      // Offline check-out: queue locally and show success
+      if (!navigator.onLine) {
+        addToOfflineCheckOutQueue({
+          id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+          employeeId: user.employee_id,
+          timestamp: Date.now(),
+        });
+        setCheckOutTime(
+          new Date().toLocaleTimeString("ar-SA", { hour: "2-digit", minute: "2-digit" })
+        );
+        autoCheckInTriggered.current = false;
+        hapticSuccess();
+        toastSuccess("تم تسجيل الانصراف بدون اتصال — سيتم المزامنة عند عودة الإنترنت");
+        return;
+      }
+
       await checkOutMutation.mutateAsync({ employeeId: user.employee_id });
       setCheckOutTime(
         new Date().toLocaleTimeString("ar-SA", { hour: "2-digit", minute: "2-digit" })
@@ -500,11 +522,6 @@ export default function CheckInPage() {
           color: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
           icon: Clock,
         };
-
-  const shiftBadgeLabel = activeSlot
-    ? `الفترة ${activeSlot === "morning" ? "الصباحية" : "المسائية"}`
-    : attendanceModeLabels[activeMode];
-  const expectedTimeLabel = `${activeShift.startTime} - ${activeShift.endTime}`;
 
   return (
     <MainLayout>
@@ -607,7 +624,7 @@ export default function CheckInPage() {
                     </>
                   ) : (
                     <>
-                      <Navigation className="w-10 h-10" />
+                      <MapPin className="w-10 h-10" />
                       <span className="text-sm font-bold">تسجيل</span>
                     </>
                   )}
@@ -624,27 +641,6 @@ export default function CheckInPage() {
                     ? "جاهز"
                     : "خارج النطاق"}
             </p>
-
-            {/* Active shift indicator */}
-            <div className="flex items-center justify-center gap-2 mt-4 flex-wrap">
-              <Badge
-                variant="outline"
-                className="text-xs border-blue-200 text-blue-700 dark:border-blue-800 dark:text-blue-300"
-              >
-                {shiftBadgeLabel}
-              </Badge>
-              {seasonalActive && (
-                <Badge className="text-xs bg-amber-100 text-amber-800 border-0 dark:bg-amber-900/30 dark:text-amber-300">
-                  دوام موسمي
-                </Badge>
-              )}
-              <Badge
-                variant="outline"
-                className="text-xs border-slate-200 text-slate-600 dark:border-slate-700 dark:text-slate-400"
-              >
-                {expectedTimeLabel}
-              </Badge>
-            </div>
           </CardContent>
         </Card>
 
@@ -719,133 +715,58 @@ export default function CheckInPage() {
           </CardContent>
         </Card>
 
-        {/* Location Card */}
-        <Card
+        {/* Compact Location Status */}
+        <div
           className={cn(
-            "border-0 shadow-md dark:bg-slate-900 overflow-hidden",
+            "flex items-center justify-between gap-3 px-4 py-3 rounded-xl border shadow-sm",
             locationError
-              ? "bg-red-50 dark:bg-red-900/10"
+              ? "bg-red-50 border-red-100 dark:bg-red-900/10 dark:border-red-900/30"
               : isWithinRange
-                ? "bg-emerald-50/60 dark:bg-emerald-900/10"
-                : "bg-amber-50/60 dark:bg-amber-900/10"
+                ? "bg-emerald-50 border-emerald-100 dark:bg-emerald-900/10 dark:border-emerald-900/30"
+                : "bg-amber-50 border-amber-100 dark:bg-amber-900/10 dark:border-amber-900/30"
           )}
         >
-          <div
-            className={cn(
-              "h-1 w-full",
-              locationError ? "bg-red-500" : isWithinRange ? "bg-emerald-500" : "bg-amber-500"
-            )}
-          />
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div
-                className={cn(
-                  "w-12 h-12 rounded-full flex items-center justify-center shrink-0",
-                  locationError
-                    ? "bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400"
-                    : isWithinRange
-                      ? "bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400"
-                      : "bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400"
-                )}
-              >
-                {locationError ? (
-                  <MapPin className="w-6 h-6" />
-                ) : !currentLocation ? (
-                  <motion.div
-                    animate={{ rotate: 360 }}
-                    transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-                  >
-                    <Navigation className="w-6 h-6" />
-                  </motion.div>
-                ) : (
-                  <MapPin className="w-6 h-6" />
-                )}
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-xs font-bold dark:text-slate-200 truncate">
-                  {locationError
-                    ? "تعذر تحديد الموقع"
-                    : nearestGeofence
-                      ? nearestGeofence.geofence.name
-                      : "جاري تحديد الموقع..."}
-                </p>
-                {nearestGeofence && !locationError && (
-                  <p className="text-[10px] text-gray-500 dark:text-slate-400">
-                    {Math.round(nearestGeofence.distance)}م من مركز النطاق
-                    {locationAccuracy !== null && ` · دقة ±${Math.round(locationAccuracy)}م`}
-                  </p>
-                )}
-              </div>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="w-8 h-8 text-gray-500 dark:text-slate-400 shrink-0"
-                onClick={refreshLocation}
-              >
-                <RotateCcw className="w-4 h-4" />
-              </Button>
-            </div>
-
-            {locationError ? (
-              <div className="mt-3 space-y-2">
-                <p className="text-[11px] text-red-600 dark:text-red-400 font-medium">
-                  {locationError}
-                </p>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-7 text-[11px] gap-1.5 w-full"
-                  onClick={refreshLocation}
-                >
-                  <RefreshCw className="w-3 h-3" />
-                  إعادة المحاولة
-                </Button>
-              </div>
-            ) : (
-              nearestGeofence && (
-                <div className="mt-3 flex items-center justify-between gap-2">
-                  <span
-                    className={cn(
-                      "text-[11px] font-medium",
-                      isWithinRange
-                        ? "text-emerald-700 dark:text-emerald-400"
-                        : "text-amber-700 dark:text-amber-400"
-                    )}
-                  >
-                    {isWithinRange
-                      ? "داخل النطاق"
-                      : `اقترب ${Math.max(0, Math.round(nearestGeofence.distance - nearestGeofence.geofence.radius))}م للتسجيل`}
-                  </span>
-                  <span
-                    className={cn(
-                      "w-2 h-2 rounded-full shrink-0",
-                      isWithinRange ? "bg-emerald-500" : "bg-amber-500"
-                    )}
-                  />
-                </div>
-              )
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Location Map */}
-        <Card className="border-0 shadow-md dark:bg-slate-900 overflow-hidden">
-          <div className="h-1 w-full bg-emerald-500" />
-          <CardContent className="p-4 space-y-3">
-            <h3 className="text-xs font-bold text-gray-700 dark:text-slate-200 flex items-center gap-2">
-              <MapPin className="w-4 h-4 text-emerald-500" />
-              موقعك والنطاقات الجغرافية
-            </h3>
-            <CheckInMap
-              geofences={geofences}
-              currentLocation={currentLocation}
-              nearestGeofence={nearestGeofence}
-              isWithinRange={isWithinRange}
-              loading={geofencesLoading}
-              className="h-80"
+          <div className="flex items-center gap-2 min-w-0">
+            <MapPin
+              className={cn(
+                "w-4 h-4 shrink-0",
+                locationError
+                  ? "text-red-500"
+                  : isWithinRange
+                    ? "text-emerald-600"
+                    : "text-amber-600"
+              )}
             />
-          </CardContent>
-        </Card>
+            <span className="text-xs font-medium truncate dark:text-slate-200">
+              {locationError
+                ? "تعذر تحديد الموقع"
+                : nearestGeofence
+                  ? nearestGeofence.geofence.name
+                  : "جاري تحديد الموقع..."}
+            </span>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            {!locationError && nearestGeofence && (
+              <span
+                className={cn(
+                  "text-[10px] px-2 py-0.5 rounded-full font-medium",
+                  isWithinRange
+                    ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400"
+                    : "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
+                )}
+              >
+                {isWithinRange ? "جاهز" : "اقترب"}
+              </span>
+            )}
+            <button
+              onClick={refreshLocation}
+              className="p-1.5 rounded-md hover:bg-black/5 dark:hover:bg-white/10 text-gray-500 dark:text-slate-400"
+              aria-label="تحديث الموقع"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </div>
 
         {/* Offline Banner */}
         {!isOnline && (

@@ -5,11 +5,13 @@ namespace App\Http\Controllers\Api;
 use App\Events\EmployeeLocationUpdated;
 use App\Http\Controllers\Controller;
 use App\Models\Employee;
+use App\Traits\GeoDistance;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class TrackingController extends Controller
 {
+    use GeoDistance;
     private function companyId(): int
     {
         return (int) (auth()->user()?->company_id ?? 0);
@@ -185,16 +187,4 @@ class TrackingController extends Controller
         ]);
     }
 
-    private function haversineDistance(float $lat1, float $lng1, float $lat2, float $lng2): float
-    {
-        $earthRadius = 6371000;
-        $dLat = deg2rad($lat2 - $lat1);
-        $dLng = deg2rad($lng2 - $lng1);
-        $a = sin($dLat / 2) * sin($dLat / 2) +
-            cos(deg2rad($lat1)) * cos(deg2rad($lat2)) *
-            sin($dLng / 2) * sin($dLng / 2);
-        $c = 2 * atan2(sqrt($a), sqrt(1 - $a));
-
-        return $earthRadius * $c;
-    }
 }

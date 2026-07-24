@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class CheckOutRequest extends FormRequest
 {
@@ -13,8 +14,10 @@ class CheckOutRequest extends FormRequest
 
     public function rules(): array
     {
+        $companyId = $this->user()?->company_id;
+
         return [
-            'employee_id' => ['required', 'exists:employees,id'],
+            'employee_id' => ['required', Rule::exists('employees', 'id')->where(fn ($q) => $q->where('company_id', $companyId))],
         ];
     }
 
@@ -22,7 +25,7 @@ class CheckOutRequest extends FormRequest
     {
         return [
             'employee_id.required' => 'The employee ID is required.',
-            'employee_id.exists' => 'The selected employee does not exist.',
+            'employee_id.exists' => 'The selected employee does not exist in your company.',
         ];
     }
 }

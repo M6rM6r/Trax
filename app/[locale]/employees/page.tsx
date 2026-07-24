@@ -55,12 +55,6 @@ const roleLabels: Record<string, string> = {
   supervisor: "مشرف",
 };
 
-const attendanceModeLabels: Record<string, string> = {
-  field: "ميداني",
-  office_two_shift: "مكتبي بفترتين",
-  hourly: "بالساعة",
-};
-
 export default function EmployeesPage() {
   const { data: employees = [], isLoading, isError, error, refetch } = useEmployees();
   const { data: geofences = [] } = useGeofences();
@@ -500,32 +494,6 @@ export default function EmployeesPage() {
               </div>
               <div>
                 <label className="text-sm font-medium text-gray-700 dark:text-slate-300 mb-1 block">
-                  نوع الدوام
-                </label>
-                <select
-                  value={newEmployee.attendanceMode ?? ""}
-                  onChange={(e) =>
-                    setNewEmployee({
-                      ...newEmployee,
-                      attendanceMode:
-                        e.target.value === ""
-                          ? null
-                          : (e.target.value as Employee["attendanceMode"]),
-                    })
-                  }
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-transparent dark:bg-slate-900 text-gray-900 dark:text-slate-100"
-                >
-                  <option value="">افتراضي الشركة</option>
-                  <option value="field">ميداني</option>
-                  <option value="office_two_shift">مكتبي بفترتين</option>
-                  <option value="hourly">بالساعة</option>
-                </select>
-                <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">
-                  يمكن للموظف تجاوز إعداد الشركة الافتراضي
-                </p>
-              </div>
-              <div>
-                <label className="text-sm font-medium text-gray-700 dark:text-slate-300 mb-1 block">
                   كلمة المرور <span className="text-red-500">*</span>
                 </label>
                 <input
@@ -780,11 +748,6 @@ export default function EmployeesPage() {
                             <span className="inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400">
                               {roleLabels[emp.role] || emp.role}
                             </span>
-                            {emp.attendanceMode && (
-                              <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-xs font-medium bg-purple-50 text-purple-700 dark:bg-purple-900/20 dark:text-purple-300">
-                                {attendanceModeLabels[emp.attendanceMode]}
-                              </span>
-                            )}
                             {emp.geofenceId && (
                               <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-50 text-indigo-700 dark:bg-indigo-900/20 dark:text-indigo-400">
                                 <MapPin className="w-2.5 h-2.5" />
@@ -918,18 +881,6 @@ export default function EmployeesPage() {
                       </span>
                     </div>
                   ),
-                },
-                {
-                  key: "attendanceMode",
-                  header: "نوع الدوام",
-                  cell: (emp) =>
-                    emp.attendanceMode ? (
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400">
-                        {attendanceModeLabels[emp.attendanceMode]}
-                      </span>
-                    ) : (
-                      <span className="text-xs text-gray-400 dark:text-slate-500">افتراضي</span>
-                    ),
                 },
                 {
                   key: "geofenceId",
@@ -1127,28 +1078,6 @@ export default function EmployeesPage() {
                 ))}
               </select>
             </div>
-            <div>
-              <label className="text-sm font-medium text-gray-700 dark:text-slate-300 mb-1 block">
-                نوع الدوام
-              </label>
-              <select
-                value={editEmployee.attendanceMode ?? ""}
-                onChange={(e) =>
-                  setEditEmployee({
-                    ...editEmployee,
-                    attendanceMode:
-                      e.target.value === "" ? null : (e.target.value as Employee["attendanceMode"]),
-                  })
-                }
-                className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-transparent dark:bg-slate-900 text-gray-900 dark:text-slate-100"
-              >
-                <option value="">افتراضي الشركة</option>
-                <option value="field">ميداني</option>
-                <option value="office_two_shift">مكتبي بفترتين</option>
-                <option value="hourly">بالساعة</option>
-              </select>
-            </div>
-
             {/* Reset password section */}
             <div className="pt-3 border-t border-gray-200 dark:border-slate-700">
               {!showResetPassword ? (

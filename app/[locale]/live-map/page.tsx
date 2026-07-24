@@ -63,6 +63,7 @@ export default function LiveMapPage() {
   const mapInstanceRef = useRef<Map | null>(null);
   const routeSourceRef = useRef<VectorSource | null>(null);
   const tileLayerRef = useRef<TileLayer<OSM | XYZ> | null>(null);
+  const filteredTrackingRef = useRef<LiveTrackingEmployee[]>([]);
 
   const toggleFullscreen = () => {
     const el = mapContainerRef.current;
@@ -129,6 +130,10 @@ export default function LiveMapPage() {
     });
   }, [liveTracking, searchQuery, statusFilter]);
 
+  useEffect(() => {
+    filteredTrackingRef.current = filteredTracking;
+  }, [filteredTracking]);
+
   const vectorSourceRef = useRef<VectorSource | null>(null);
 
   // Initialize map once
@@ -163,7 +168,7 @@ export default function LiveMapPage() {
         const type = feature.get("type");
         if (type === "employee") {
           const empId = feature.get("employeeId");
-          const emp = filteredTracking.find((e) => String(e.id) === String(empId));
+          const emp = filteredTrackingRef.current.find((e) => String(e.id) === String(empId));
           if (emp) {
             setSelectedEmployee(emp);
             hapticTap();

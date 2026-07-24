@@ -101,9 +101,8 @@ Route::middleware('firebase')->group(function () {
     });
 
     // Tracking heartbeat — all authenticated roles (employees send live location)
-    // NOTE: keep this endpoint free of explicit throttling to avoid runtime failures
-    // when cache-backed rate-limiter storage is unavailable in local/dev environments.
-    Route::post('tracking/location', [TrackingController::class, 'updateLocation']);
+    Route::post('tracking/location', [TrackingController::class, 'updateLocation'])
+        ->middleware(['throttle:120,1']);
 
     // Device / FCM token
     Route::middleware(['throttle:30,1'])->group(function () {

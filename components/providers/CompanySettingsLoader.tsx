@@ -7,22 +7,18 @@ import { useCompanySettings } from "@/hooks/useApi";
 import { defaultCompanySettings } from "@/lib/types/companySettings";
 
 export default function CompanySettingsLoader() {
-  const { user, role } = useAuthStore();
+  const { user } = useAuthStore();
   const { setSettings, setLoaded } = useCompanySettingsStore();
-  const isAdmin = role === "boss" || role === "manager";
-  const { data: firestoreSettings } = useCompanySettings({ enabled: isAdmin });
+  const { data: firestoreSettings } = useCompanySettings({ enabled: !!user });
 
   useEffect(() => {
     if (!user) return;
-    if (!isAdmin) {
-      setSettings(defaultCompanySettings);
-      setLoaded();
-      return;
-    }
 
     if (firestoreSettings) {
       const merged = { ...defaultCompanySettings };
-      for (const key of Object.keys(defaultCompanySettings) as (keyof typeof defaultCompanySettings)[]) {
+      for (const key of Object.keys(
+        defaultCompanySettings
+      ) as (keyof typeof defaultCompanySettings)[]) {
         if (key in firestoreSettings && firestoreSettings[key] !== undefined) {
           (merged as Record<string, unknown>)[key] = firestoreSettings[key];
         }
@@ -32,7 +28,7 @@ export default function CompanySettingsLoader() {
       setSettings(defaultCompanySettings);
     }
     setLoaded();
-  }, [user, isAdmin, firestoreSettings, setSettings, setLoaded]);
+  }, [user, firestoreSettings, setSettings, setLoaded]);
 
   return null;
 }

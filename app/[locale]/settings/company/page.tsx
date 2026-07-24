@@ -6,18 +6,7 @@ import FullPageHead from "@/components/shared/FullPageHead";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
-import {
-  Bell,
-  Clock,
-  MapPin,
-  Zap,
-  Building2,
-  Save,
-  Navigation,
-  Timer,
-  CalendarDays,
-  Briefcase,
-} from "lucide-react";
+import { Bell, Clock, MapPin, Zap, Building2, Save, Navigation, Timer } from "lucide-react";
 import { motion } from "framer-motion";
 import { hapticTap, hapticSuccess, hapticError } from "@/lib/utils/haptics";
 import { toastSuccess, toastError } from "@/hooks/use-toast";
@@ -26,7 +15,7 @@ import { useCompanySettingsStore } from "@/stores/useCompanySettingsStore";
 import { useSaveCompanySettings } from "@/hooks/useApi";
 import type { CompanySettings } from "@/lib/types/companySettings";
 
-type TabId = "work" | "shifts" | "auto" | "notifications" | "session" | "geofence";
+type TabId = "work" | "auto" | "notifications" | "session" | "geofence";
 
 export default function CompanySettingsPage() {
   const { role } = useAuthStore();
@@ -91,7 +80,6 @@ export default function CompanySettingsPage() {
 
   const tabs: Array<{ id: TabId; label: string; icon: typeof Clock }> = [
     { id: "work", label: "ساعات العمل", icon: Clock },
-    { id: "shifts", label: "أنواع الدوام", icon: Briefcase },
     { id: "auto", label: "الحضور التلقائي", icon: Navigation },
     { id: "notifications", label: "الإشعارات", icon: Bell },
     { id: "session", label: "الجلسة", icon: Timer },
@@ -245,126 +233,6 @@ export default function CompanySettingsPage() {
                 </CardContent>
               </Card>
             </>
-          )}
-
-          {/* Shifts / Attendance Types Tab */}
-          {activeTab === "shifts" && (
-            <div className="space-y-6">
-              <Card className="border-0 shadow-lg dark:bg-slate-800">
-                <CardHeader>
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-indigo-500 flex items-center justify-center">
-                      <Briefcase className="w-5 h-5 text-white" />
-                    </div>
-                    <CardTitle className="text-lg font-bold text-gray-900 dark:text-slate-100">
-                      نوع الدوام الافتراضي
-                    </CardTitle>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div>
-                    <label className="text-sm font-medium text-gray-700 dark:text-slate-300 mb-2 block">
-                      نمط الحضور
-                    </label>
-                    <select
-                      value={local.attendanceMode}
-                      onChange={(e) =>
-                        update("attendanceMode", e.target.value as typeof local.attendanceMode)
-                      }
-                      className="w-full px-3 py-2.5 rounded-xl border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100"
-                    >
-                      <option value="field">ميداني</option>
-                      <option value="office_two_shift">مكتبي بفترتين</option>
-                      <option value="hourly">بالساعة</option>
-                    </select>
-                    <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">
-                      يحدد كيفية احتساب ساعات العمل والتأخير للموظفين الذين لا يملكون إعداداً خاصاً
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="border-0 shadow-lg dark:bg-slate-800">
-                <CardHeader>
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-sky-500 flex items-center justify-center">
-                      <Clock className="w-5 h-5 text-white" />
-                    </div>
-                    <CardTitle className="text-lg font-bold text-gray-900 dark:text-slate-100">
-                      {local.attendanceMode === "office_two_shift"
-                        ? "فترات الدوام المكتبي"
-                        : "الفترة الافتراضية للدوام"}
-                    </CardTitle>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  {local.attendanceMode === "office_two_shift" ? (
-                    <>
-                      <ShiftEditor
-                        title="الفترة الصباحية"
-                        shift={local.morningShift}
-                        onChange={(shift) => update("morningShift", shift)}
-                      />
-                      <ShiftEditor
-                        title="الفترة المسائية"
-                        shift={local.eveningShift}
-                        onChange={(shift) => update("eveningShift", shift)}
-                      />
-                    </>
-                  ) : (
-                    <ShiftEditor
-                      title="الفترة الافتراضية"
-                      shift={local.defaultShift}
-                      onChange={(shift) => update("defaultShift", shift)}
-                    />
-                  )}
-                </CardContent>
-              </Card>
-
-              <Card className="border-0 shadow-lg dark:bg-slate-800">
-                <CardHeader>
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-amber-500 flex items-center justify-center">
-                      <CalendarDays className="w-5 h-5 text-white" />
-                    </div>
-                    <CardTitle className="text-lg font-bold text-gray-900 dark:text-slate-100">
-                      الدوام الموسمي (رمضان)
-                    </CardTitle>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="flex items-center justify-between p-4 rounded-xl bg-gray-50 dark:bg-slate-700/50">
-                    <div>
-                      <p className="text-sm font-medium text-gray-900 dark:text-slate-100">
-                        تفعيل الدوام الموسمي تلقائياً
-                      </p>
-                      <p className="text-xs text-gray-500 dark:text-slate-400 mt-0.5">
-                        يُطبق ساعات رمضان تلقائياً خلال الشهر الهجري التاسع
-                      </p>
-                    </div>
-                    <Switch
-                      checked={local.seasonalAttendanceEnabled}
-                      onCheckedChange={() => {
-                        hapticTap();
-                        update("seasonalAttendanceEnabled", !local.seasonalAttendanceEnabled);
-                      }}
-                    />
-                  </div>
-                  {local.seasonalAttendanceEnabled && (
-                    <div className="p-4 rounded-xl bg-amber-50 dark:bg-amber-900/10 space-y-4">
-                      <ShiftEditor
-                        title="ساعات رمضان"
-                        shift={local.seasonalShift}
-                        onChange={(shift) => update("seasonalShift", shift)}
-                      />
-                      <p className="text-xs text-amber-700 dark:text-amber-300">
-                        يتم احتساب التأخير والانصراف بناءً على هذه الفترة خلال رمضان فقط.
-                      </p>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
           )}
 
           {/* Auto Check-in Tab */}
@@ -669,80 +537,5 @@ export default function CompanySettingsPage() {
         </div>
       </div>
     </MainLayout>
-  );
-}
-
-type ShiftEditorValue = {
-  startTime: string;
-  endTime: string;
-  gracePeriodMinutes: number;
-  lateThresholdMinutes: number;
-};
-
-function ShiftEditor({
-  title,
-  shift,
-  onChange,
-}: {
-  title: string;
-  shift: ShiftEditorValue;
-  onChange: (shift: ShiftEditorValue) => void;
-}) {
-  return (
-    <div className="space-y-4 border-b border-gray-100 dark:border-slate-700 last:border-0 pb-4 last:pb-0">
-      <p className="text-sm font-semibold text-gray-800 dark:text-slate-200">{title}</p>
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <label className="text-xs font-medium text-gray-600 dark:text-slate-400 mb-1 block">
-            بدء العمل
-          </label>
-          <input
-            type="time"
-            value={shift.startTime}
-            onChange={(e) => onChange({ ...shift, startTime: e.target.value })}
-            className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100"
-          />
-        </div>
-        <div>
-          <label className="text-xs font-medium text-gray-600 dark:text-slate-400 mb-1 block">
-            انتهاء العمل
-          </label>
-          <input
-            type="time"
-            value={shift.endTime}
-            onChange={(e) => onChange({ ...shift, endTime: e.target.value })}
-            className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100"
-          />
-        </div>
-      </div>
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <label className="text-xs font-medium text-gray-600 dark:text-slate-400 mb-1 block">
-            فترة السماح (دقائق)
-          </label>
-          <input
-            type="number"
-            min={0}
-            max={120}
-            value={shift.gracePeriodMinutes}
-            onChange={(e) => onChange({ ...shift, gracePeriodMinutes: Number(e.target.value) })}
-            className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100"
-          />
-        </div>
-        <div>
-          <label className="text-xs font-medium text-gray-600 dark:text-slate-400 mb-1 block">
-            حد التأخير (دقائق)
-          </label>
-          <input
-            type="number"
-            min={0}
-            max={240}
-            value={shift.lateThresholdMinutes}
-            onChange={(e) => onChange({ ...shift, lateThresholdMinutes: Number(e.target.value) })}
-            className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100"
-          />
-        </div>
-      </div>
-    </div>
   );
 }

@@ -14,6 +14,8 @@ class StoreEmployeeRequest extends FormRequest
 
     public function rules(): array
     {
+        $companyId = $this->user()?->company_id;
+
         return [
             'name' => ['required', 'string', 'min:2', 'max:255'],
             'email' => ['required', 'email', 'unique:employees,email', 'unique:users,email'],
@@ -22,13 +24,13 @@ class StoreEmployeeRequest extends FormRequest
                 'string',
                 'max:100',
                 Rule::unique('users', 'username')->where(
-                    fn ($query) => $query->where('company_id', $this->user()?->company_id)
+                    fn ($query) => $query->where('company_id', $companyId)
                 ),
             ],
             'phone' => ['required', 'string', 'max:20'],
             'role' => ['required', 'in:manager,employee,supervisor'],
             'department' => ['required', 'string', 'max:255'],
-            'geofence_id' => ['nullable', 'exists:geofences,id'],
+            'geofence_id' => ['nullable', 'integer', Rule::exists('geofences', 'id')->where(fn ($q) => $q->where('company_id', $companyId))],
             'geofenceId' => ['nullable', 'integer'],
             'avatar' => ['nullable', 'string'],
             'status' => ['nullable', 'in:active,inactive'],

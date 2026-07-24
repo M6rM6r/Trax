@@ -2,8 +2,8 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { NavMain } from "@/components/Sidebar/nav-main";
 import { usePathname, useRouter, Link } from "@/i18n/navigation";
-import { Category, CheckCircle, Logout, Menu, Profile, ShieldTick, Location } from "@/public/SVG";
-import { MapPin, Settings, User as UserIcon } from "lucide-react";
+import { Category, CheckCircle, Logout, Profile, ShieldTick, Location } from "@/public/SVG";
+import { Settings, User as UserIcon } from "lucide-react";
 import { signOut } from "firebase/auth";
 import { auth } from "@/lib/config/firebase";
 import { cn } from "@/lib/utils";
@@ -107,10 +107,6 @@ const Index = ({
     return () => window.removeEventListener("keydown", handleEsc);
   }, []);
 
-  const toggleSidebar = useCallback(() => {
-    setIsSidebarOpen((prev) => !prev);
-  }, []);
-
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
     touchStartX.current = e.touches[0].clientX;
     touchStartY.current = e.touches[0].clientY;
@@ -166,30 +162,18 @@ const Index = ({
       >
         <header className="flex items-center justify-between gap-4 p-3 md:px-6 h-16 md:h-20">
           <div className="flex items-center gap-3">
-            <Menu
-              className="w-6 h-6 text-gray-700 dark:text-slate-200 lg:hidden cursor-pointer"
-              onClick={toggleSidebar}
-              aria-label="القائمة"
-              suppressHydrationWarning
-            />
             <Link href="/" className="flex items-center gap-2">
-              <MapPin className="w-6 h-6 text-primaryColor" suppressHydrationWarning />
-              {/* Use the custom logo at /images/trax-logo.svg. If missing, fall back to the text brand. */}
               <Image
-                src="/images/trax-logo.svg"
+                src="/images/logo.png"
                 alt="Trax"
                 width={32}
                 height={32}
-                className="h-8 w-auto hidden sm:inline-block object-contain"
+                className="h-8 w-auto object-contain"
                 unoptimized
                 onError={(e) => {
-                  // hide broken image and allow text fallback
                   (e.currentTarget as HTMLImageElement).style.display = "none";
                 }}
               />
-              <span className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-400 dark:to-indigo-400">
-                Trax
-              </span>
             </Link>
           </div>
 

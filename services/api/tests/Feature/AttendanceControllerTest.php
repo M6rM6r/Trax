@@ -80,7 +80,7 @@ class AttendanceControllerTest extends TestCase
         $response = $this->withHeaders($headers)->postJson('/api/attendance/check-in', []);
 
         $response->assertStatus(422)
-            ->assertJsonValidationErrors(['employee_id', 'lat', 'lng', 'geofence_id']);
+            ->assertJsonValidationErrors(['employee_id', 'lat', 'lng']);
     }
 
     public function test_cannot_check_in_twice_same_day(): void

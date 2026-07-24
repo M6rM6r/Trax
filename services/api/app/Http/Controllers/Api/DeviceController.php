@@ -10,15 +10,25 @@ use Illuminate\Support\Facades\Cache;
 
 class DeviceController extends Controller
 {
+    private function companyId(): int
+    {
+        return (int) (auth()->user()?->company_id ?? 0);
+    }
+
     public function registerFcmToken(Request $request): JsonResponse
     {
         $request->validate([
-            'employee_id' => ['required', 'exists:employees,id'],
+            'employee_id' => ['required', 'integer', 'exists:employees,id'],
             'fcm_token' => ['required', 'string', 'max:512'],
             'platform' => ['nullable', 'in:android,ios'],
         ]);
 
-        $employee = Employee::find($request->employee_id);
+        $employee = Employee::where('company_id', $this->companyId())
+            ->find($request->employee_id);
+
+        if (! $employee) {
+            return response()->json(['success' => false, 'message' => 'Employee not found in your company'], 404);
+        }
 
         $employee->update([
             'fcm_token' => $request->fcm_token,
@@ -39,10 +49,17 @@ class DeviceController extends Controller
     public function unregisterFcmToken(Request $request): JsonResponse
     {
         $request->validate([
-            'employee_id' => ['required', 'exists:employees,id'],
+            'employee_id' => ['required', 'integer', 'exists:employees,id'],
         ]);
 
-        Employee::where('id', $request->employee_id)->update([
+        $employee = Employee::where('company_id', $this->companyId())
+            ->find($request->employee_id);
+
+        if (! $employee) {
+            return response()->json(['success' => false, 'message' => 'Employee not found in your company'], 404);
+        }
+
+        $employee->update([
             'fcm_token' => null,
             'fcm_platform' => null,
         ]);

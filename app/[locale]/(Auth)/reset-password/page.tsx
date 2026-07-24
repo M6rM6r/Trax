@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";
 import { useSearchParams } from "next/navigation";
 import { useRouter, Link } from "@/i18n/navigation";
-import { MapPin, Lock, CheckCircle2, Eye, EyeOff } from "lucide-react";
+import { Lock, CheckCircle2, Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import CustomInput from "@/components/shared/form/CustomInput";
 import { toastSuccess, toastError } from "@/hooks/use-toast";
@@ -168,9 +168,17 @@ export default function ResetPasswordPage() {
         quality={85}
       />
 
-      <div className="absolute left-1/2 -translate-x-1/2 top-6 z-20 flex items-center gap-2">
-        <MapPin className="w-8 h-8 text-white" />
-        <span className="text-2xl font-bold text-white">Trax</span>
+      <div className="absolute left-1/2 -translate-x-1/2 top-6 z-20">
+        <div className="relative h-10 w-40">
+          <Image
+            src="/images/logo.png"
+            alt="Trax"
+            fill
+            className="object-contain"
+            unoptimized
+            priority
+          />
+        </div>
       </div>
 
       <motion.div

@@ -9,33 +9,24 @@ use App\Http\Requests\CheckInRequest;
 use App\Http\Requests\CheckOutRequest;
 use App\Http\Resources\AttendanceResource;
 use App\Models\Attendance;
+use App\Models\Company;
 use App\Models\Employee;
 use App\Models\Geofence;
+use App\Traits\GeoDistance;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Cache;
 
 class AttendanceController extends Controller
 {
+    use GeoDistance;
+
     private function companyId(): int
     {
         return (int) (auth()->user()?->company_id ?? 0);
     }
 
     private const GEOFENCE_DISTANCE_BUFFER_METERS = 50;
-
-    private function haversineDistance(float $lat1, float $lng1, float $lat2, float $lng2): float
-    {
-        $earthRadius = 6371000;
-        $dLat = deg2rad($lat2 - $lat1);
-        $dLng = deg2rad($lng2 - $lng1);
-
-        $a =
-            sin($dLat / 2) ** 2 +
-            cos(deg2rad($lat1)) * cos(deg2rad($lat2)) * sin($dLng / 2) ** 2;
-
-        return $earthRadius * 2 * atan2(sqrt($a), sqrt(1 - $a));
-    }
 
     public function index(): JsonResponse
     {
@@ -115,30 +106,53 @@ class AttendanceController extends Controller
             ], 404);
         }
 
-        // Verify geofence belongs to the same company and the user is within its radius
-        $geofence = Geofence::where('company_id', $this->companyId())
-            ->active()
-            ->find($request->geofence_id);
+        // Load company geofence policy from Company.settings
+        $company = Company::find($this->companyId());
+        $companySettings = $company?->settings ?? [];
+        $requireGeofence = (bool) ($companySettings['requireGeofenceForCheckIn'] ?? true);
+        $allowOutside = (bool) ($companySettings['allowCheckInOutsideGeofence'] ?? false);
 
-        if (! $geofence) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Geofence not found in your company',
-            ], 422);
+        // Resolve geofence if provided (company-scoped + active)
+        $geofence = null;
+        if ($request->filled('geofence_id')) {
+            $geofence = Geofence::where('company_id', $this->companyId())
+                ->active()
+                ->find($request->geofence_id);
+
+            if (! $geofence) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Geofence not found in your company',
+                ], 422);
+            }
+        } else {
+            // No geofence provided — block only if policy requires it, outside not allowed, and active geofences exist
+            if ($requireGeofence && ! $allowOutside) {
+                $hasActive = Geofence::where('company_id', $this->companyId())->active()->exists();
+                if ($hasActive) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Geofence is required for check-in',
+                    ], 422);
+                }
+            }
         }
 
-        $distance = $this->haversineDistance(
-            (float) $request->lat,
-            (float) $request->lng,
-            (float) $geofence->lat,
-            (float) $geofence->lng
-        );
+        // Enforce distance only when a geofence is resolved and outside is not permitted
+        if ($geofence && ! $allowOutside) {
+            $distance = $this->haversineDistance(
+                (float) $request->lat,
+                (float) $request->lng,
+                (float) $geofence->lat,
+                (float) $geofence->lng
+            );
 
-        if ($distance > ($geofence->radius + self::GEOFENCE_DISTANCE_BUFFER_METERS)) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Check-in location is outside the allowed geofence area',
-            ], 422);
+            if ($distance > ($geofence->radius + self::GEOFENCE_DISTANCE_BUFFER_METERS)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Check-in location is outside the allowed geofence area',
+                ], 422);
+            }
         }
 
         $existing = Attendance::where('employee_id', $request->employee_id)

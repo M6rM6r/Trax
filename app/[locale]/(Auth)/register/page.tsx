@@ -8,7 +8,7 @@ import Image from "next/image";
 import { useRouter } from "@/i18n/navigation";
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { auth } from "@/lib/config/firebase";
-import { MapPin, Building2, User, Briefcase, ChevronLeft, ChevronRight, Check } from "lucide-react";
+import { Building2, User, Briefcase, ChevronLeft, ChevronRight, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -297,9 +297,17 @@ export default function RegisterPage() {
         quality={85}
       />
 
-      <div className="absolute left-1/2 -translate-x-1/2 top-6 z-20 flex items-center gap-2">
-        <MapPin className="w-8 h-8 text-white" />
-        <span className="text-2xl font-bold text-white">Trax</span>
+      <div className="absolute left-1/2 -translate-x-1/2 top-6 z-20">
+        <div className="relative h-10 w-40">
+          <Image
+            src="/images/logo.png"
+            alt="Trax"
+            fill
+            className="object-contain"
+            unoptimized
+            priority
+          />
+        </div>
       </div>
 
       <motion.div

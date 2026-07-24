@@ -132,11 +132,63 @@ class AuthController extends Controller
 
     public function forgotPassword(Request $request): JsonResponse
     {
-        return response()->json(['success' => true, 'message' => 'Reset disabled in easy-mode']);
+        $validator = Validator::make($request->all(), [
+            'email' => 'required|email',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['success' => false, 'message' => 'Validation error', 'errors' => $validator->errors()], 422);
+        }
+
+        try {
+            $firebaseAuth = app(FirebaseAuth::class);
+            $firebaseAuth->sendPasswordResetLink($request->input('email'));
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Password reset link sent to your email.',
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('Forgot password failed: '.$e->getMessage());
+
+            return response()->json([
+                'success' => true,
+                'message' => 'If an account exists for this email, a reset link has been sent.',
+            ]);
+        }
     }
 
     public function resetPassword(Request $request): JsonResponse
     {
-        return response()->json(['success' => true, 'message' => 'Reset disabled in easy-mode']);
+        $validator = Validator::make($request->all(), [
+            'email' => 'required|email',
+            'password' => 'required|string|min:8|confirmed',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['success' => false, 'message' => 'Validation error', 'errors' => $validator->errors()], 422);
+        }
+
+        $user = User::where('email', $request->input('email'))->first();
+        if (! $user) {
+            return response()->json(['success' => false, 'message' => 'No account found for this email.'], 404);
+        }
+
+        $user->password = \Illuminate\Support\Facades\Hash::make($request->input('password'));
+        $user->save();
+
+        if ($user->firebase_uid) {
+            try {
+                $firebaseService = app(\App\Services\FirebaseUserService::class);
+                $firebaseService->updatePassword($user->firebase_uid, $request->input('password'));
+            } catch (\Throwable $e) {
+                Log::error('Failed to update Firebase password: '.$e->getMessage());
+            }
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Password reset successfully.',
+        ]);
     }
 }

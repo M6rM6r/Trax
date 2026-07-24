@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreEmployeeRequest;
 use App\Http\Requests\UpdateEmployeeRequest;
 use App\Http\Resources\EmployeeResource;
+use App\Models\Company;
 use App\Models\Employee;
 use App\Models\User;
 use App\Services\FirebaseUserService;
@@ -140,6 +141,14 @@ class EmployeeController extends Controller
     {
         $validated = $request->validated();
         $companyId = $this->companyId();
+
+        $company = Company::find($companyId);
+        if ($company && ! $company->canAddMoreEmployees()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Employee limit reached for your plan. Upgrade to add more employees.',
+            ], 403);
+        }
 
         DB::beginTransaction();
         try {

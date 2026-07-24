@@ -29,6 +29,12 @@ import type {
 import type { DashboardTrendsSchema } from "@/lib/schemas/dashboard.schema";
 import { resolveEmployeeShift, evaluateCheckIn, calculateWorkedHours } from "@/lib/utils/shifts";
 import { defaultCompanySettings } from "@/lib/types/companySettings";
+import { calculateDistance, GEOFENCE_DISTANCE_BUFFER_METERS } from "@/lib/utils/geo";
+import { useAuthStore } from "@/stores/useAuthStore";
+
+function getCompanyId(): string | number | null {
+  return useAuthStore.getState().companyId;
+}
 
 function requireDb() {
   if (!db) throw new Error("Firebase Firestore is not configured");
@@ -155,19 +161,9 @@ export async function getFirebaseUserProfile(uid: string, email: string) {
     .toLowerCase();
   if (normalizedEmail) {
     const byEmail = await getDocs(
-      query(collection(database, "users"), where("email", "==", email), limit(1))
+      query(collection(database, "users"), where("email", "==", normalizedEmail), limit(1))
     );
     if (!byEmail.empty) return byEmail.docs[0].data();
-
-    // Fallback for case-mismatched email or alternate storage formats.
-    const allUsers = await getDocs(collection(database, "users"));
-    const matched = allUsers.docs.find((item) => {
-      const userEmail = String(item.data().email ?? "")
-        .trim()
-        .toLowerCase();
-      return userEmail === normalizedEmail;
-    });
-    if (matched) return matched.data();
   }
 
   return null;
@@ -200,7 +196,13 @@ export const firebaseData = {
   employees: {
     async list(): Promise<Employee[]> {
       await ensureAuth();
-      const snapshot = await getDocs(query(collection(requireDb(), "employees"), orderBy("name")));
+      const cid = getCompanyId();
+      const base = collection(requireDb(), "employees");
+      const q =
+        cid !== null
+          ? query(base, where("company_id", "==", cid), orderBy("name"))
+          : query(base, orderBy("name"));
+      const snapshot = await getDocs(q);
       return snapshot.docs.map((item) => mapEmployee(item.id, item.data()));
     },
     async getById(id: string | number): Promise<Employee | null> {
@@ -222,6 +224,7 @@ export const firebaseData = {
       const reference = await addDoc(collection(requireDb(), "employees"), {
         ...employeeData,
         ...(authUid ? { authUid } : {}),
+        company_id: getCompanyId() ?? 1,
         createdAt: serverTimestamp(),
       });
       const employeeDocId = reference.id;
@@ -257,7 +260,10 @@ export const firebaseData = {
   geofences: {
     async list(): Promise<Geofence[]> {
       await ensureAuth();
-      const snapshot = await getDocs(collection(requireDb(), "geofences"));
+      const cid = getCompanyId();
+      const base = collection(requireDb(), "geofences");
+      const q = cid !== null ? query(base, where("company_id", "==", cid)) : base;
+      const snapshot = await getDocs(q);
       return snapshot.docs
         .map((item) => mapGeofence(item.id, item.data()))
         .filter(
@@ -273,6 +279,7 @@ export const firebaseData = {
       await ensureAuth();
       const reference = await addDoc(collection(requireDb(), "geofences"), {
         ...geofence,
+        company_id: getCompanyId(),
         createdAt: serverTimestamp(),
       });
       return mapGeofence(reference.id, { ...geofence, id: reference.id });
@@ -289,11 +296,13 @@ export const firebaseData = {
   attendance: {
     async list(employeeId?: string | number): Promise<AttendanceRecord[]> {
       await ensureAuth();
+      const cid = getCompanyId();
       const base = collection(requireDb(), "attendance");
-      const attendanceQuery =
-        employeeId === null || employeeId === undefined
-          ? query(base, orderBy("date", "desc"), limit(500))
-          : query(base, where("employeeId", "==", employeeId), orderBy("date", "desc"), limit(500));
+      const filters: ReturnType<typeof where>[] = [];
+      if (cid !== null) filters.push(where("companyId", "==", cid));
+      if (employeeId !== null && employeeId !== undefined)
+        filters.push(where("employeeId", "==", employeeId));
+      const attendanceQuery = query(base, ...filters, orderBy("date", "desc"), limit(500));
       const snapshot = await getDocs(attendanceQuery);
       return snapshot.docs.map((item) => mapAttendance(item.id, item.data()));
     },
@@ -302,19 +311,23 @@ export const firebaseData = {
       employeeName?: string;
       lat: number;
       lng: number;
-      geofenceId: string | number;
+      geofenceId?: string | number | null;
       companySettings?: Record<string, unknown>;
       employee?: Pick<Employee, "attendanceMode" | "shiftOverride"> | null;
     }): Promise<AttendanceRecord> {
       const currentUser = await ensureAuth();
       let geofence: Geofence | null = null;
-      try {
-        const geofenceDoc = await getDoc(doc(requireDb(), "geofences", String(payload.geofenceId)));
-        if (geofenceDoc.exists()) {
-          geofence = mapGeofence(geofenceDoc.id, geofenceDoc.data());
+      if (payload.geofenceId) {
+        try {
+          const geofenceDoc = await getDoc(
+            doc(requireDb(), "geofences", String(payload.geofenceId))
+          );
+          if (geofenceDoc.exists()) {
+            geofence = mapGeofence(geofenceDoc.id, geofenceDoc.data());
+          }
+        } catch {
+          // Geofence lookup failed — proceed without geofence name
         }
-      } catch {
-        // Geofence lookup failed — proceed without geofence name
       }
 
       // Resolve company settings with safe defaults
@@ -322,6 +335,33 @@ export const firebaseData = {
         ...defaultCompanySettings,
         ...(payload.companySettings ?? {}),
       };
+
+      const requireGeofence = Boolean(settings.requireGeofenceForCheckIn);
+      const allowOutside = Boolean(settings.allowCheckInOutsideGeofence);
+
+      // Server-authoritative geofence distance + policy enforcement (Firebase path)
+      if (geofence) {
+        const dist = calculateDistance(payload.lat, payload.lng, geofence.lat, geofence.lng);
+        const within = dist <= geofence.radius + GEOFENCE_DISTANCE_BUFFER_METERS;
+        if (!within && requireGeofence && !allowOutside) {
+          throw new Error("Check-in location is outside the allowed geofence area");
+        }
+      } else {
+        if (payload.geofenceId) {
+          // Intended geofence missing/inactive
+          if (requireGeofence && !allowOutside) {
+            throw new Error("Geofence not found or inactive");
+          }
+        } else if (requireGeofence && !allowOutside) {
+          // No geofence provided — block only if active geofences exist
+          const active = await getDocs(
+            query(collection(requireDb(), "geofences"), where("active", "==", true), limit(1))
+          );
+          if (!active.empty) {
+            throw new Error("Check-in requires a geofence and none was provided");
+          }
+        }
+      }
 
       const now = new Date();
       const date = now.toLocaleDateString("sv-SE"); // YYYY-MM-DD in local timezone
@@ -335,10 +375,54 @@ export const firebaseData = {
       );
       const { status, lateMinutes } = evaluateCheckIn(checkInTime, shift);
 
+      // Prevent duplicate check-in for the same day
+      const existing = await getDocs(
+        query(
+          collection(requireDb(), "attendance"),
+          where("employeeId", "==", payload.employeeId),
+          where("date", "==", date),
+          limit(1)
+        )
+      );
+      if (!existing.empty) {
+        const existingDoc = existing.docs[0];
+        const existingData = existingDoc.data();
+        if (existingData.checkOutTime) {
+          // Already checked out — allow re-check-in by updating the record
+          await updateDoc(existingDoc.ref, {
+            checkInTime,
+            checkInLat: payload.lat,
+            checkInLng: payload.lng,
+            geofenceId: payload.geofenceId ?? null,
+            geofenceName: geofence?.name ?? null,
+            status,
+            lateMinutes,
+            checkOutTime: null,
+            checkOutLat: null,
+            checkOutLng: null,
+            checkOutStatus: null,
+            workedHours: 0,
+          });
+          return mapAttendance(existingDoc.id, {
+            ...existingData,
+            checkInTime,
+            checkInLat: payload.lat,
+            checkInLng: payload.lng,
+            status,
+            lateMinutes,
+            checkOutTime: null,
+            workedHours: 0,
+          });
+        }
+        // Already checked in and not checked out — return existing record
+        return mapAttendance(existingDoc.id, existingData);
+      }
+
       const reference = doc(collection(requireDb(), "attendance"));
       const record = {
         id: reference.id,
         ownerUid: currentUser.uid,
+        companyId: getCompanyId(),
         employeeId: payload.employeeId,
         employeeName: payload.employeeName || currentUser.displayName || currentUser.email || "",
         date,
@@ -503,9 +587,13 @@ export const firebaseData = {
   tracking: {
     async live(): Promise<LiveTrackingEmployee[]> {
       await ensureAuth();
-      const snapshot = await getDocs(
-        query(collection(requireDb(), "locations"), orderBy("lastSeen", "desc"), limit(500))
-      );
+      const cid = getCompanyId();
+      const base = collection(requireDb(), "locations");
+      const q =
+        cid !== null
+          ? query(base, where("companyId", "==", cid), orderBy("lastSeen", "desc"), limit(500))
+          : query(base, orderBy("lastSeen", "desc"), limit(500));
+      const snapshot = await getDocs(q);
       return snapshot.docs.map((item) => ({
         id: (item.data().employeeId ?? item.id) as string | number,
         name: String(item.data().name ?? ""),
@@ -526,6 +614,7 @@ export const firebaseData = {
         doc(requireDb(), "locations", String(employeeId)),
         {
           ownerUid: currentUser.uid,
+          companyId: getCompanyId(),
           employeeId,
           ...data,
           lastSeen: new Date().toISOString(),
@@ -545,7 +634,7 @@ export const firebaseData = {
         industry: String(item.data().industry ?? ""),
       }));
     },
-    async register(data: {
+    async register(_data: {
       company_name: string;
       industry: string;
       admin_name: string;
@@ -557,14 +646,16 @@ export const firebaseData = {
       );
     },
     async getSettings(): Promise<Record<string, unknown> | null> {
-      const user = await ensureAuth();
-      const ref = doc(requireDb(), "company_settings", user.uid);
+      const cid = getCompanyId();
+      if (cid === null) return null;
+      const ref = doc(requireDb(), "company_settings", String(cid));
       const snapshot = await getDoc(ref);
       return snapshot.exists() ? snapshot.data() : null;
     },
     async saveSettings(settings: Record<string, unknown>): Promise<void> {
-      const user = await ensureAuth();
-      const ref = doc(requireDb(), "company_settings", user.uid);
+      const cid = getCompanyId();
+      if (cid === null) throw new Error("Company ID not found in auth state");
+      const ref = doc(requireDb(), "company_settings", String(cid));
       await setDoc(ref, { ...settings, updatedAt: serverTimestamp() }, { merge: true });
     },
   },

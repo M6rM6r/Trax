@@ -7,11 +7,14 @@ use App\Http\Requests\StoreGeofenceRequest;
 use App\Http\Requests\UpdateGeofenceRequest;
 use App\Http\Resources\GeofenceResource;
 use App\Models\Geofence;
+use App\Traits\GeoDistance;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class GeofenceController extends Controller
 {
+    use GeoDistance;
     private function companyId(): int
     {
         return (int) (auth()->user()?->company_id ?? 0);
@@ -73,7 +76,7 @@ class GeofenceController extends Controller
         $validated = $request->validate([
             'lat' => 'required|numeric|between:-90,90',
             'lng' => 'required|numeric|between:-180,180',
-            'geofence_id' => 'required|exists:geofences,id',
+            'geofence_id' => ['required', 'integer', Rule::exists('geofences', 'id')->where(fn ($q) => $q->where('company_id', $this->companyId()))],
         ]);
 
         $geofence = Geofence::where('company_id', $this->companyId())->find($validated['geofence_id']);
@@ -99,16 +102,4 @@ class GeofenceController extends Controller
         ]);
     }
 
-    private function haversineDistance(float $lat1, float $lng1, float $lat2, float $lng2): float
-    {
-        $earthRadius = 6371000;
-        $dLat = deg2rad($lat2 - $lat1);
-        $dLng = deg2rad($lng2 - $lng1);
-        $a = sin($dLat / 2) * sin($dLat / 2) +
-            cos(deg2rad($lat1)) * cos(deg2rad($lat2)) *
-            sin($dLng / 2) * sin($dLng / 2);
-        $c = 2 * atan2(sqrt($a), sqrt(1 - $a));
-
-        return $earthRadius * $c;
-    }
 }

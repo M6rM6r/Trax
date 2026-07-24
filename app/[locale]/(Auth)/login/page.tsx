@@ -1,9 +1,10 @@
 "use client";
 import CustomInput from "@/components/shared/form/CustomInput";
 import { Button } from "@/components/ui/button";
+import Image from "next/image";
 import loginBG from "@/public/images/loginBg.png";
 import { Form, Formik, FormikHelpers } from "formik";
-import { MapPin, CheckCircle2 } from "lucide-react";
+import { CheckCircle2 } from "lucide-react";
 import * as Yup from "yup";
 import { toastSuccess, toastError } from "@/hooks/use-toast";
 import { useSearchParams } from "next/navigation";
@@ -22,6 +23,8 @@ import { auth } from "@/lib/config/firebase";
 import { getFirebaseUserProfile } from "@/lib/services/firebaseData";
 import { useFirebaseAuth } from "@/lib/config/env";
 import { normalizeUserRole, resolveUserRole } from "@/lib/utils/auth";
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
 
 interface LoginValues {
   identifier: string;
@@ -129,6 +132,7 @@ const Page = () => {
       const idToken = await credential.user.getIdToken();
       setRememberMe(values.rememberMe);
 
+      // Firebase-first: Firestore profile is the primary source of truth.
       if (useFirebaseAuth) {
         let profile: Record<string, unknown> | null = null;
         try {
@@ -155,7 +159,29 @@ const Page = () => {
         );
         const isEmployee = role === "employee";
 
-        const companyId = Number(profileData.company_id ?? companyProfile?.id ?? 1);
+        let companyId = Number(profileData.company_id ?? companyProfile?.id ?? 1);
+        let companyName = String(profileData.company_name ?? companyProfile?.name ?? "Trax");
+
+        // Optional: enrich with Laravel API if Firestore profile is incomplete.
+        if (!profileData.company_id && !companyProfile?.id) {
+          try {
+            const rawResp = await fetch(`${API_URL}/auth/firebase`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json", Accept: "application/json" },
+              body: JSON.stringify({ id_token: idToken }),
+            });
+            if (rawResp.ok) {
+              const resp = await rawResp.json();
+              if (resp?.success && resp?.data) {
+                companyId = Number(resp.data.user?.company_id ?? companyId);
+                companyName = String(resp.data.company?.name ?? companyName);
+              }
+            }
+          } catch {
+            // Laravel API unreachable — continue with Firestore data.
+          }
+        }
+
         const hasEmployeeId =
           profileData.employee_id !== null && profileData.employee_id !== undefined;
 
@@ -183,15 +209,15 @@ const Page = () => {
             },
             company: {
               id: companyId,
-              name: String(profileData.company_name ?? companyProfile?.name ?? "Trax"),
+              name: companyName,
             },
           },
         });
         return;
       }
 
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
-      const rawResp = await fetch(`${apiUrl}/auth/firebase`, {
+      // Non-Firebase mode: use Laravel API directly.
+      const rawResp = await fetch(`${API_URL}/auth/firebase`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Accept: "application/json" },
         body: JSON.stringify({ id_token: idToken }),
@@ -236,9 +262,17 @@ const Page = () => {
         style={{ backgroundImage: `url(${loginBG.src})` }}
       />
 
-      <div className="absolute top-10 flex items-center gap-2 z-20">
-        <MapPin className="w-8 h-8 text-white" />
-        <span className="text-3xl font-black text-white tracking-tighter">Trax</span>
+      <div className="absolute left-1/2 -translate-x-1/2 top-10 z-20">
+        <div className="relative h-10 w-40">
+          <Image
+            src="/images/logo.png"
+            alt="Trax"
+            fill
+            className="object-contain"
+            unoptimized
+            priority
+          />
+        </div>
       </div>
 
       <Formik

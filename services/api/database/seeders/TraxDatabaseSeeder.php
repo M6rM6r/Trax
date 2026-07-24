@@ -30,6 +30,10 @@ class UserSeeder extends Seeder
                 'plan' => 'pro',
                 'max_employees' => 100,
                 'active' => true,
+                'settings' => json_encode([
+                    'requireGeofenceForCheckIn' => true,
+                    'allowCheckInOutsideGeofence' => false,
+                ]),
                 'created_at' => now(),
                 'updated_at' => now(),
             ]));
@@ -68,6 +72,10 @@ class GeofenceSeeder extends Seeder
                 'plan' => 'pro',
                 'max_employees' => 100,
                 'active' => true,
+                'settings' => json_encode([
+                    'requireGeofenceForCheckIn' => true,
+                    'allowCheckInOutsideGeofence' => false,
+                ]),
                 'created_at' => now(),
                 'updated_at' => now(),
             ]));
@@ -100,6 +108,10 @@ class EmployeeSeeder extends Seeder
                 'plan' => 'pro',
                 'max_employees' => 100,
                 'active' => true,
+                'settings' => json_encode([
+                    'requireGeofenceForCheckIn' => true,
+                    'allowCheckInOutsideGeofence' => false,
+                ]),
                 'created_at' => now(),
                 'updated_at' => now(),
             ]));

@@ -14,7 +14,7 @@ import {
 import { NavMain } from "./nav-main";
 import { useMainNavItems } from "./nav-main-items";
 import { usePathname, useRouter } from "@/i18n/navigation";
-import { MapPin, LogOut, Search } from "lucide-react";
+import { LogOut, Search } from "lucide-react";
 import { useAuthStore } from "@/stores/useAuthStore";
 import Image from "next/image";
 import { signOut } from "firebase/auth";
@@ -67,24 +67,19 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               className=" hover:bg-transparent focus:bg-transparent "
             >
               <div className="flex items-center gap-3 px-1">
-                <div className="w-8 h-8 rounded-xl bg-primaryColor/20 flex items-center justify-center shrink-0">
-                  <MapPin className="w-4 h-4 text-primaryColor" />
-                </div>
+                <Image
+                  src="/images/logo.png"
+                  alt="Trax"
+                  width={32}
+                  height={32}
+                  className="h-8 w-8 object-contain"
+                  unoptimized
+                  onError={(e) => {
+                    (e.currentTarget as HTMLImageElement).style.display = "none";
+                  }}
+                />
                 {sidebar.state !== "collapsed" && (
-                  <>
-                    <Image
-                      src="/images/trax-logo.svg"
-                      alt="Trax"
-                      width={32}
-                      height={32}
-                      className="h-8 w-auto hidden md:inline-block"
-                      unoptimized
-                      onError={(e) => {
-                        (e.currentTarget as HTMLImageElement).style.display = "none";
-                      }}
-                    />
-                    <span className="text-xl font-bold text-white tracking-wide">Trax</span>
-                  </>
+                  <span className="text-xl font-bold text-white tracking-wide">Trax</span>
                 )}
               </div>
             </SidebarMenuButton>

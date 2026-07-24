@@ -110,10 +110,28 @@ export function useDeleteEmployee() {
 }
 
 export function useResetEmployeePassword() {
+  const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ email }: { id?: string | number; password?: string; email?: string }) => {
-      if (email) return firebaseData.employees.resetPassword(email);
+    mutationFn: async ({
+      id,
+      password,
+      email,
+    }: {
+      id?: string | number;
+      password?: string;
+      email?: string;
+    }) => {
+      if (password && password.length < 8) {
+        throw new Error("Password must be at least 8 characters");
+      }
+      if (email) {
+        await firebaseData.employees.resetPassword(email);
+        return { id };
+      }
       throw new Error("Employee email is required to reset password");
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.employees });
     },
   });
 }
@@ -141,7 +159,7 @@ export function useCheckIn() {
       employeeName?: string;
       lat: number;
       lng: number;
-      geofenceId: string | number;
+      geofenceId?: string | number | null;
       companySettings?: Record<string, unknown>;
       employee?: Pick<Employee, "attendanceMode" | "shiftOverride"> | null;
     }) => {
