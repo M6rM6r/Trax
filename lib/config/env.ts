@@ -8,6 +8,8 @@ export interface RuntimeEnvOverrides {
   NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET?: string;
   NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID?: string;
   NEXT_PUBLIC_FIREBASE_APP_ID?: string;
+  NEXT_PUBLIC_FIREBASE_APP_CHECK_KEY?: string;
+  NEXT_PUBLIC_FIREBASE_VAPID_KEY?: string;
 }
 
 export function resolveFirebaseAuthMode(overrides: RuntimeEnvOverrides = {}): boolean {
@@ -29,6 +31,7 @@ export function resolveFirebaseAuthMode(overrides: RuntimeEnvOverrides = {}): bo
     overrides.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
     overrides.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
     overrides.NEXT_PUBLIC_FIREBASE_APP_ID,
+    overrides.NEXT_PUBLIC_FIREBASE_APP_CHECK_KEY,
   ].every((value) => typeof value === "string" && value.trim().length > 0);
 
   return firebaseClientConfig;

@@ -3,6 +3,8 @@ import { getStorage } from "firebase/storage";
 import { getAnalytics, isSupported } from "firebase/analytics";
 import { getAuth, type Auth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
+import { initializeAppCheck, ReCaptchaV3Provider, type AppCheck } from "firebase/app-check";
+import { getPerformance, type FirebasePerformance } from "firebase/performance";
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -39,16 +41,28 @@ export const auth = app ? getAuth(app) : null;
 
 export const db = app ? getFirestore(app) : null;
 
+export const appCheck: AppCheck | null =
+  app && typeof window !== "undefined"
+    ? initializeAppCheck(app, {
+        provider: new ReCaptchaV3Provider(process.env.NEXT_PUBLIC_FIREBASE_APP_CHECK_KEY ?? ""),
+        isTokenAutoRefreshEnabled: true,
+      })
+    : null;
+
 // Secondary app instance for creating employee auth accounts without signing out the admin
 const secondaryApp: FirebaseApp | null = isFirebaseConfigured
-  ? getApps().find((a) => a.name === "secondary") ?? initializeApp(firebaseConfig, "secondary")
+  ? (getApps().find((a) => a.name === "secondary") ?? initializeApp(firebaseConfig, "secondary"))
   : null;
 export const secondaryAuth: Auth | null = secondaryApp ? getAuth(secondaryApp) : null;
+export const secondaryDb = secondaryApp ? getFirestore(secondaryApp) : null;
 
 export const analytics =
   typeof window !== "undefined" && app
     ? isSupported().then((ok) => (ok ? getAnalytics(app) : null))
     : Promise.resolve(null);
+
+export const performance: FirebasePerformance | null =
+  app && typeof window !== "undefined" ? getPerformance(app) : null;
 
 if (typeof window !== "undefined" && !isFirebaseConfigured) {
   console.warn("Firebase is not fully configured. Storage features are disabled.");

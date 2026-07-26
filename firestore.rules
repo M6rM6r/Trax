@@ -6,12 +6,34 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    function hasProfileRole(roles) {
+      return signedIn()
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in roles;
+    }
+
     function manager() {
-      return signedIn() && request.auth.token.role in ['boss', 'manager', 'supervisor'];
+      return signedIn() && (
+        request.auth.token.role in ['boss', 'manager', 'supervisor']
+        || hasProfileRole(['boss', 'manager', 'supervisor'])
+      );
     }
 
     function boss() {
-      return signedIn() && request.auth.token.role == 'boss';
+      return signedIn() && (
+        request.auth.token.role == 'boss'
+        || hasProfileRole(['boss'])
+      );
+    }
+
+    function userCompanyId() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.company_id;
+    }
+
+    function sameCompany(resource) {
+      return signedIn()
+        && 'company_id' in resource.data
+        && resource.data.company_id == userCompanyId();
     }
 
     function owns(resource) {
@@ -19,7 +41,11 @@ service cloud.firestore {
     }
 
     match /users/{uid} {
-      allow read: if signedIn();
+      allow read: if signedIn() && (
+        uid == request.auth.uid
+        || resource.data.company_id == userCompanyId()
+        || manager()
+      );
       allow create: if signedIn() && uid == request.auth.uid;
       allow update: if signedIn() && (uid == request.auth.uid || manager());
       allow delete: if signedIn() && boss();
@@ -37,26 +63,95 @@ service cloud.firestore {
     }
 
     match /employees/{employeeId} {
-      allow read: if signedIn();
-      allow create: if manager();
-      allow update, delete: if signedIn() && (owns(resource) || manager());
+      allow read: if signedIn() && (
+        resource.data.company_id == userCompanyId()
+        || manager()
+      );
+      allow create: if manager()
+        && request.resource.data.company_id == userCompanyId();
+      allow update, delete: if signedIn() && (owns(resource) || manager())
+        && resource.data.company_id == userCompanyId();
     }
 
     match /geofences/{geofenceId} {
-      allow read: if signedIn();
-      allow create, update, delete: if manager();
+      allow read: if signedIn() && (
+        resource.data.company_id == userCompanyId()
+        || manager()
+      );
+      allow create: if manager()
+        && request.resource.data.company_id == userCompanyId();
+      allow update, delete: if manager()
+        && resource.data.company_id == userCompanyId();
     }
 
     match /attendance/{attendanceId} {
-      allow read: if signedIn();
-      allow create: if signedIn() && request.resource.data.ownerUid == request.auth.uid;
-      allow update, delete: if signedIn() && (owns(resource) || manager());
+      allow read: if signedIn() && (
+        resource.data.company_id == userCompanyId()
+        || manager()
+      );
+      allow create: if signedIn()
+        && request.resource.data.ownerUid == request.auth.uid
+        && request.resource.data.company_id == userCompanyId();
+      allow update, delete: if signedIn() && (owns(resource) || manager())
+        && resource.data.company_id == userCompanyId();
     }
 
     match /locations/{employeeId} {
+      allow read: if signedIn() && (
+        resource.data.company_id == userCompanyId()
+        || manager()
+      );
+      allow create, update: if signedIn()
+        && request.resource.data.ownerUid == request.auth.uid
+        && request.resource.data.company_id == userCompanyId();
+      allow delete: if signedIn() && (owns(resource) || manager())
+        && resource.data.company_id == userCompanyId();
+    }
+
+    match /fcm_tokens/{token} {
+      allow read: if signedIn() && manager()
+        && resource.data.company_id == userCompanyId();
+      allow create, update: if signedIn()
+        && request.resource.data.company_id == userCompanyId();
+      allow delete: if signedIn()
+        && (request.auth.uid == resource.data.ownerUid || manager());
+    }
+
+    match /notification_settings/{userId} {
+      allow read, write: if signedIn() && userId == request.auth.uid;
+    }
+
+    match /attendance_summaries/{summaryId} {
+      allow read: if signedIn() && (
+        resource.data.company_id == userCompanyId()
+        || manager()
+      );
+      allow write: if false;
+    }
+
+    match /deleted_users/{uid} {
+      allow read: if signedIn() && boss();
+      allow write: if false;
+    }
+
+    match /cache/{cacheKey} {
       allow read: if signedIn();
-      allow create, update: if signedIn() && request.resource.data.ownerUid == request.auth.uid;
-      allow delete: if signedIn() && (owns(resource) || manager());
+      allow write: if signedIn();
+    }
+
+    match /company_cache/{companyId} {
+      allow read: if signedIn() && companyId == userCompanyId();
+      allow write: if signedIn() && manager();
+    }
+
+    match /function_metrics/{metricId} {
+      allow read: if false;
+      allow write: if false;
+    }
+
+    match /function_metrics_hourly/{metricId} {
+      allow read: if false;
+      allow write: if false;
     }
   }
 }
