@@ -4,7 +4,8 @@ import { useAuthStore } from "@/stores/useAuthStore";
 import type { AttendanceRecord, Employee, Geofence } from "@/lib/types/trackingTypes";
 
 export function getCompanyId(): string | null {
-  return useAuthStore.getState().companyId;
+  const companyId = useAuthStore.getState().companyId;
+  return companyId === null ? null : String(companyId);
 }
 
 export function cleanPayload<T extends Record<string, unknown>>(payload: T): T {
