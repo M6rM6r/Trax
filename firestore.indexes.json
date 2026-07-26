@@ -85,11 +85,6 @@
       ]
     },
     {
-      "collectionGroup": "users",
-      "queryScope": "COLLECTION",
-      "fields": [{ "fieldPath": "email", "order": "ASCENDING" }]
-    },
-    {
       "collectionGroup": "fcm_tokens",
       "queryScope": "COLLECTION",
       "fields": [
