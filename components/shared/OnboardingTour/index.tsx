@@ -148,7 +148,7 @@ export function OnboardingTour() {
           {/* Highlight box */}
           {highlightRect && (
             <div
-              className="absolute border-2 border-blue-500 rounded-xl shadow-[0_0_0_9999px_rgba(0,0,0,0.6)] transition-all duration-300 pointer-events-none"
+              className="absolute border-2 border-primary rounded-xl shadow-[0_0_0_9999px_rgba(0,0,0,0.6)] transition-all duration-300 pointer-events-none"
               style={{
                 top: highlightRect.top - 4,
                 left: highlightRect.left - 4,
@@ -165,24 +165,24 @@ export function OnboardingTour() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -20, scale: 0.95 }}
             transition={{ duration: 0.3 }}
-            className="relative z-[101] bg-white dark:bg-slate-800 rounded-2xl shadow-2xl p-8 max-w-md w-full mx-4"
+            className="relative z-[101] bg-card rounded-2xl shadow-lg p-8 max-w-md w-full mx-4"
           >
             <button
               onClick={handleSkip}
-              className="absolute top-4 left-4 p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors"
+              className="absolute top-4 left-4 p-1.5 rounded-lg hover:bg-muted hover:bg-muted transition-colors"
               aria-label="تخطي"
             >
-              <X className="w-5 h-5 text-gray-400 dark:text-slate-500" />
+              <X className="w-5 h-5 text-muted-foreground/70" />
             </button>
 
             <div className="flex flex-col items-center text-center mb-6">
-              <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center mb-4 shadow-lg">
+              <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center mb-4 shadow-lg">
                 {step.icon}
               </div>
-              <h2 className="text-xl font-bold text-gray-900 dark:text-slate-100 mb-2">
+              <h2 className="text-xl font-bold text-foreground mb-2">
                 {step.title}
               </h2>
-              <p className="text-sm text-gray-600 dark:text-slate-400 leading-relaxed">
+              <p className="text-sm text-muted-foreground text-muted-foreground leading-relaxed">
                 {step.description}
               </p>
             </div>
@@ -194,10 +194,10 @@ export function OnboardingTour() {
                   key={i}
                   className={`h-2 rounded-full transition-all duration-300 ${
                     i === currentStep
-                      ? "w-8 bg-blue-500"
+                      ? "w-8 bg-primary/50"
                       : i < currentStep
-                        ? "w-2 bg-blue-300 dark:bg-blue-700"
-                        : "w-2 bg-gray-300 dark:bg-slate-600"
+                        ? "w-2 bg-primary/30"
+                        : "w-2 bg-muted-foreground/30 bg-muted"
                   }`}
                 />
               ))}
@@ -207,7 +207,7 @@ export function OnboardingTour() {
             <div className="flex items-center justify-between gap-3">
               <button
                 onClick={handleSkip}
-                className="text-sm text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200 transition-colors"
+                className="text-sm text-muted-foreground hover:text-muted-foreground dark:hover:text-foreground transition-colors"
               >
                 تخطي
               </button>

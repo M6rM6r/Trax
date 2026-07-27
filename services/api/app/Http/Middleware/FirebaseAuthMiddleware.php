@@ -50,6 +50,13 @@ class FirebaseAuthMiddleware
             ], 404);
         }
 
+        if ($user->firebase_uid && $firebaseUid && ! hash_equals($user->firebase_uid, $firebaseUid)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Firebase account linkage mismatch.',
+            ], 401);
+        }
+
         // Update firebase_uid if not set yet
         if (! $user->firebase_uid && $firebaseUid) {
             $user->firebase_uid = $firebaseUid;

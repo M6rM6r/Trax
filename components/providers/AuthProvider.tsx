@@ -19,25 +19,10 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
 
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (!firebaseUser) {
-        // Trust persisted local auth-storage over transient Firebase Auth state
-        // to avoid immediate redirect loops in environments with flaky/strict
-        // Firebase session handling. Protected data fetches still validate the
-        // ID token server-side.
-        let persistedUser = false;
-        try {
-          const raw =
-            sessionStorage.getItem("auth-storage") ?? localStorage.getItem("auth-storage");
-          persistedUser = !!raw && !!JSON.parse(raw).state?.user;
-        } catch {
-          persistedUser = false;
-        }
-
-        if (!persistedUser && userRef.current && !hasRedirected.current) {
+        if (userRef.current && !hasRedirected.current) {
           hasRedirected.current = true;
           clearUser();
-          console.warn(
-            "[auth] Firebase session expired and no local auth found, redirecting to login"
-          );
+          console.warn("[auth] Firebase session expired, redirecting to login");
           if (typeof window !== "undefined") {
             const pathParts = window.location.pathname.split("/");
             const detectedLocale = pathParts[1] === "en" ? "en" : "ar";
@@ -83,28 +68,26 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
               (total, character) => (total * 31 + character.charCodeAt(0)) % 2147483647,
               0
             );
-            const resolvedCompanyId = Number(profileData.company_id ?? companyProfile?.id ?? 1);
+            const companyIdValue = profileData.company_id ?? companyProfile?.id ?? null;
+            const resolvedCompanyId: string | undefined =
+              typeof companyIdValue === "string" || typeof companyIdValue === "number"
+                ? String(companyIdValue)
+                : undefined;
             const resolvedCompanyName = String(
-              profileData.company_name ?? companyProfile?.name ?? "Trax"
+              profileData.company_name ?? companyProfile?.name ?? ""
             );
             const isEmployee = role === "employee";
             const resolvedEmployeeId =
               profileData.employee_id === null || profileData.employee_id === undefined
                 ? isEmployee
-                  ? numericId
+                  ? String(numericId)
                   : null
-                : typeof profileData.employee_id === "string" ||
-                    typeof profileData.employee_id === "number"
-                  ? profileData.employee_id
-                  : null;
+                : String(profileData.employee_id);
             const resolvedAssignedGeofenceId =
               profileData.assigned_geofence_id === null ||
               profileData.assigned_geofence_id === undefined
                 ? null
-                : typeof profileData.assigned_geofence_id === "string" ||
-                    typeof profileData.assigned_geofence_id === "number"
-                  ? profileData.assigned_geofence_id
-                  : null;
+                : String(profileData.assigned_geofence_id);
             const appUser = {
               id: Number(profileData.id ?? numericId),
               name: String(
@@ -144,8 +127,8 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
               user,
               newToken,
               (user.role as UserRole) ?? "employee",
-              companyId ?? 0,
-              companyName ?? ""
+              companyId ?? undefined,
+              companyName ?? undefined
             );
           }
         })

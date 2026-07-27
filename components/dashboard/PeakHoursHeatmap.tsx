@@ -12,27 +12,27 @@ const PeakHoursHeatmap = memo(({ data }: PeakHoursHeatmapProps) => {
 
   const getHeatColor = (count: number) => {
     const ratio = count / maxCount;
-    if (ratio === 0) return "bg-gray-100 dark:bg-slate-700/50";
-    if (ratio < 0.25) return "bg-blue-100 dark:bg-blue-900/30";
-    if (ratio < 0.5) return "bg-blue-300 dark:bg-blue-700/50";
-    if (ratio < 0.75) return "bg-blue-500 dark:bg-blue-600/70";
-    return "bg-blue-700 dark:bg-blue-500";
+    if (ratio === 0) return "bg-muted/50";
+    if (ratio < 0.25) return "bg-primary/10 bg-primary/10";
+    if (ratio < 0.5) return "bg-primary/30";
+    if (ratio < 0.75) return "bg-primary/50 dark:bg-primary/70";
+    return "bg-primary/70";
   };
 
   const getTextColor = (count: number) => {
     const ratio = count / maxCount;
-    return ratio >= 0.5 ? "text-white" : "text-gray-700 dark:text-slate-300";
+    return ratio >= 0.5 ? "text-primary-foreground" : "text-muted-foreground";
   };
 
   return (
-    <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-gray-200 dark:border-slate-700 shadow-sm">
+    <div className="bg-card rounded-2xl p-6 border border-border shadow-sm">
       <div className="flex items-center gap-3 mb-6">
-        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center">
-          <Clock className="w-5 h-5 text-white" />
+        <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center">
+          <Clock className="w-5 h-5 text-primary-foreground" />
         </div>
         <div>
-          <h3 className="text-lg font-bold text-gray-900 dark:text-slate-100">ساعات الذروة</h3>
-          <p className="text-sm text-gray-600 dark:text-slate-400">توزيع أوقات الحضور والانصراف</p>
+          <h3 className="text-lg font-bold text-foreground">ساعات الذروة</h3>
+          <p className="text-sm text-muted-foreground text-muted-foreground">توزيع أوقات الحضور والانصراف</p>
         </div>
       </div>
       <div
@@ -51,14 +51,14 @@ const PeakHoursHeatmap = memo(({ data }: PeakHoursHeatmapProps) => {
           </div>
         ))}
       </div>
-      <div className="flex items-center justify-end gap-2 mt-4 text-xs text-gray-500 dark:text-slate-400">
+      <div className="flex items-center justify-end gap-2 mt-4 text-xs text-muted-foreground">
         <span>أقل</span>
         <div className="flex gap-1">
-          <div className="w-4 h-4 rounded bg-gray-100 dark:bg-slate-700/50" />
-          <div className="w-4 h-4 rounded bg-blue-100 dark:bg-blue-900/30" />
-          <div className="w-4 h-4 rounded bg-blue-300 dark:bg-blue-700/50" />
-          <div className="w-4 h-4 rounded bg-blue-500 dark:bg-blue-600/70" />
-          <div className="w-4 h-4 rounded bg-blue-700 dark:bg-blue-500" />
+          <div className="w-4 h-4 rounded bg-muted/50" />
+          <div className="w-4 h-4 rounded bg-primary/10 bg-primary/10" />
+          <div className="w-4 h-4 rounded bg-primary/30" />
+          <div className="w-4 h-4 rounded bg-primary/50 dark:bg-primary/70" />
+          <div className="w-4 h-4 rounded bg-primary/70" />
         </div>
         <span>أكثر</span>
       </div>

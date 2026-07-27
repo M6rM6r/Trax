@@ -46,11 +46,11 @@ export function FormDrawer({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side={side} className="w-full sm:max-w-lg md:max-w-xl overflow-y-auto">
         <SheetHeader>
-          <SheetTitle className="text-lg font-bold text-gray-900 dark:text-slate-100">
+          <SheetTitle className="text-lg font-bold text-foreground">
             {title}
           </SheetTitle>
           {description && (
-            <SheetDescription className="text-gray-500 dark:text-slate-400">
+            <SheetDescription className="text-muted-foreground">
               {description}
             </SheetDescription>
           )}
@@ -68,7 +68,7 @@ export function FormDrawer({
             >
               {isSubmitting ? (
                 <>
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  <div className="w-4 h-4 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin" />
                   جاري الحفظ...
                 </>
               ) : (
@@ -78,7 +78,7 @@ export function FormDrawer({
             <Button
               variant="outline"
               onClick={() => onOpenChange(false)}
-              className="dark:text-slate-300 dark:border-slate-600"
+              className="text-muted-foreground border-border"
             >
               {cancelLabel}
             </Button>

@@ -10,15 +10,16 @@ use Mockery;
 
 trait MockFirebaseAuth
 {
-    protected function mockFirebaseAuth(User $user): void
+    protected function mockFirebaseAuth(User $user, ?string $firebaseUid = null): void
     {
         $mock = Mockery::mock(FirebaseAuth::class);
+        $firebaseUid ??= $user->firebase_uid ?? 'test-uid';
 
         $mock->shouldReceive('verifyIdToken')
-            ->andReturnUsing(function () use ($user) {
+            ->andReturnUsing(function () use ($user, $firebaseUid) {
                 $claims = new DataSet([
                     'email' => $user->email,
-                    'sub' => $user->firebase_uid ?? 'test-uid',
+                    'sub' => $firebaseUid,
                 ], '');
 
                 $token = Mockery::mock(UnencryptedToken::class);
@@ -28,9 +29,9 @@ trait MockFirebaseAuth
             });
 
         $mock->shouldReceive('getUserByEmail')
-            ->andReturnUsing(function () use ($user) {
+            ->andReturnUsing(function () use ($user, $firebaseUid) {
                 $fbUser = Mockery::mock();
-                $fbUser->uid = $user->firebase_uid ?? 'test-uid';
+                $fbUser->uid = $firebaseUid;
                 $fbUser->email = $user->email;
 
                 return $fbUser;

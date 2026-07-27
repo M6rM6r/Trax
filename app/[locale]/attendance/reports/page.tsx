@@ -58,9 +58,9 @@ interface CustomTooltipProps {
 const CustomTooltip = ({ active, payload, label }: CustomTooltipProps) => {
   if (active && payload && payload.length) {
     return (
-      <div className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl p-3 shadow-xl">
-        <p className="font-bold text-gray-900 dark:text-slate-100 text-sm">{label}</p>
-        <p className="text-sm text-gray-600 dark:text-slate-400">
+      <div className="bg-card border border-border rounded-xl p-3 shadow-xl">
+        <p className="font-bold text-foreground text-sm">{label}</p>
+        <p className="text-sm text-muted-foreground text-muted-foreground">
           العدد: <span className="font-semibold">{payload[0].value}</span>
         </p>
       </div>
@@ -91,9 +91,9 @@ export default function AttendanceReportsPage() {
 
   const chartData = useMemo(
     () => [
-      { name: "حاضر", value: presentCount, color: "#16A34A" },
-      { name: "متأخر", value: lateCount, color: "#F59E0B" },
-      { name: "غائب", value: absentCount, color: "#DC2626" },
+      { name: "حاضر", value: presentCount, color: "hsl(var(--chart-1))" },
+      { name: "متأخر", value: lateCount, color: "hsl(var(--chart-3))" },
+      { name: "غائب", value: absentCount, color: "hsl(var(--chart-5))" },
     ],
     [presentCount, lateCount, absentCount]
   );
@@ -213,103 +213,103 @@ export default function AttendanceReportsPage() {
         {!isLoading && !isError && (
           <>
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              <Card className="border-0 shadow-md dark:bg-slate-800 animate-stagger-1">
+              <Card className="border-0 shadow-md bg-card animate-stagger-1">
                 <CardContent className="pt-6">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm text-gray-600 dark:text-slate-400">
+                      <p className="text-sm text-muted-foreground text-muted-foreground">
                         نسبة الحضور في الوقت
                       </p>
-                      <p className="text-3xl font-black text-green-600 dark:text-green-400 mt-1">
+                      <p className="text-3xl font-black text-primary mt-1">
                         {onTimeRate}%
                       </p>
                     </div>
-                    <TrendingUp className="w-8 h-8 text-green-400" />
+                    <TrendingUp className="w-8 h-8 text-primary" />
                   </div>
                 </CardContent>
               </Card>
-              <Card className="border-0 shadow-md dark:bg-slate-800 animate-stagger-2">
+              <Card className="border-0 shadow-md bg-card animate-stagger-2">
                 <CardContent className="pt-6">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm text-gray-600 dark:text-slate-400">متوسط التأخير</p>
-                      <p className="text-3xl font-black text-amber-600 dark:text-amber-400 mt-1">
+                      <p className="text-sm text-muted-foreground text-muted-foreground">متوسط التأخير</p>
+                      <p className="text-3xl font-black text-[hsl(48_96%_53%)] mt-1">
                         {avgLateMinutes} د
                       </p>
                     </div>
-                    <BarChart3 className="w-8 h-8 text-amber-400" />
+                    <BarChart3 className="w-8 h-8 text-[hsl(48_96%_53%)]" />
                   </div>
                 </CardContent>
               </Card>
-              <Card className="border-0 shadow-md dark:bg-slate-800 animate-stagger-3">
+              <Card className="border-0 shadow-md bg-card animate-stagger-3">
                 <CardContent className="pt-6">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm text-gray-600 dark:text-slate-400">إجمالي السجلات</p>
-                      <p className="text-3xl font-black text-blue-600 dark:text-blue-400 mt-1">
+                      <p className="text-sm text-muted-foreground text-muted-foreground">إجمالي السجلات</p>
+                      <p className="text-3xl font-black text-primary mt-1">
                         {attendance.length}
                       </p>
                     </div>
-                    <BarChart3 className="w-8 h-8 text-blue-400" />
+                    <BarChart3 className="w-8 h-8 text-primary" />
                   </div>
                 </CardContent>
               </Card>
-              <Card className="border-0 shadow-md dark:bg-slate-800 animate-stagger-4">
+              <Card className="border-0 shadow-md bg-card animate-stagger-4">
                 <CardContent className="pt-6">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm text-gray-600 dark:text-slate-400">أيام التأخير</p>
-                      <p className="text-3xl font-black text-red-600 dark:text-red-400 mt-1">
+                      <p className="text-sm text-muted-foreground text-muted-foreground">أيام التأخير</p>
+                      <p className="text-3xl font-black text-destructive mt-1">
                         {lateCount}
                       </p>
                     </div>
-                    <BarChart3 className="w-8 h-8 text-red-400" />
+                    <BarChart3 className="w-8 h-8 text-destructive" />
                   </div>
                 </CardContent>
               </Card>
             </div>
 
             {isRetentionLoading && (
-              <Card className="border-0 shadow-lg dark:bg-slate-800">
-                <CardContent className="p-5 text-sm text-gray-500 dark:text-slate-400">
+              <Card className="border-0 shadow-lg bg-card">
+                <CardContent className="p-5 text-sm text-muted-foreground">
                   جاري تحليل مؤشرات الاحتفاظ بالموظفين...
                 </CardContent>
               </Card>
             )}
 
             {isRetentionError && (
-              <Card className="border-0 shadow-lg dark:bg-slate-800">
-                <CardContent className="p-5 text-sm text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-900/20 rounded-xl">
+              <Card className="border-0 shadow-lg bg-card">
+                <CardContent className="p-5 text-sm text-[hsl(48_96%_53%)] bg-[hsl(48_96%_53%/0.1)] rounded-xl">
                   خدمة الذكاء التحليلي غير متاحة حالياً. التقارير الأساسية ما زالت تعمل بشكل طبيعي.
                 </CardContent>
               </Card>
             )}
 
             {retentionInsights && (
-              <Card className="border-0 shadow-lg dark:bg-slate-800">
+              <Card className="border-0 shadow-lg bg-card">
                 <CardHeader>
-                  <CardTitle className="text-lg font-bold text-gray-900 dark:text-slate-100">
+                  <CardTitle className="text-lg font-bold text-foreground">
                     ذكاء الاحتفاظ بالموظفين
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <p className="text-sm text-gray-600 dark:text-slate-400">
+                    <p className="text-sm text-muted-foreground text-muted-foreground">
                       درجة الاحتفاظ المتوقعة
                     </p>
-                    <span className="text-2xl font-black text-blue-600 dark:text-blue-400">
+                    <span className="text-2xl font-black text-primary">
                       {retentionInsights.retentionScore}%
                     </span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <p className="text-sm text-gray-600 dark:text-slate-400">مستوى المخاطر</p>
+                    <p className="text-sm text-muted-foreground text-muted-foreground">مستوى المخاطر</p>
                     <span
                       className={`px-2.5 py-1 rounded-full text-xs font-bold ${
                         retentionInsights.riskLevel === "low"
-                          ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                          ? "bg-primary/10 text-primary bg-primary/10 text-primary"
                           : retentionInsights.riskLevel === "medium"
-                            ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
-                            : "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
+                            ? "bg-[hsl(48_96%_53%/0.15)] text-[hsl(48_96%_53%)] "
+                            : "bg-destructive/10 text-destructive bg-destructive/10 text-destructive"
                       }`}
                     >
                       {retentionInsights.riskLevel === "low"
@@ -319,11 +319,11 @@ export default function AttendanceReportsPage() {
                           : "مرتفع"}
                     </span>
                   </div>
-                  <p className="text-sm text-gray-700 dark:text-slate-300">
+                  <p className="text-sm text-muted-foreground">
                     {retentionInsights.summary}
                   </p>
                   {retentionInsights.recommendedActions.length > 0 && (
-                    <ul className="list-disc pr-5 text-sm text-gray-600 dark:text-slate-300 space-y-1">
+                    <ul className="list-disc pr-5 text-sm text-muted-foreground space-y-1">
                       {retentionInsights.recommendedActions.map((action) => (
                         <li key={action}>{action}</li>
                       ))}
@@ -333,9 +333,9 @@ export default function AttendanceReportsPage() {
               </Card>
             )}
 
-            <Card className="border-0 shadow-lg dark:bg-slate-800 animate-slide-up">
+            <Card className="border-0 shadow-lg bg-card animate-slide-up">
               <CardHeader>
-                <CardTitle className="text-lg font-bold text-gray-900 dark:text-slate-100">
+                <CardTitle className="text-lg font-bold text-foreground">
                   رسم بياني للحضور
                 </CardTitle>
               </CardHeader>
@@ -344,11 +344,11 @@ export default function AttendanceReportsPage() {
                   <BarChart data={chartData}>
                     <XAxis
                       dataKey="name"
-                      tick={{ fill: "#6B7280", fontSize: 12 }}
+                      tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }}
                       className="dark:[&_.recharts-cartesian-axis-tick_text]:fill-slate-400"
                     />
                     <YAxis
-                      tick={{ fill: "#6B7280", fontSize: 12 }}
+                      tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }}
                       className="dark:[&_.recharts-cartesian-axis-tick_text]:fill-slate-400"
                     />
                     <Tooltip content={<CustomTooltip />} cursor={{ fill: "rgba(0,0,0,0.05)" }} />
@@ -363,15 +363,15 @@ export default function AttendanceReportsPage() {
             </Card>
 
             <div className="grid gap-4 lg:grid-cols-2">
-              <Card className="border-0 shadow-lg dark:bg-slate-800">
+              <Card className="border-0 shadow-lg bg-card">
                 <CardHeader>
-                  <CardTitle className="text-base font-bold text-gray-900 dark:text-slate-100">
+                  <CardTitle className="text-base font-bold text-foreground">
                     أعلى الموظفين تأخراً
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
                   {topLateEmployees.length === 0 ? (
-                    <p className="text-sm text-gray-500 dark:text-slate-400">
+                    <p className="text-sm text-muted-foreground">
                       لا توجد حالات تأخير حالياً — أداء ممتاز ✅
                     </p>
                   ) : (
@@ -379,21 +379,21 @@ export default function AttendanceReportsPage() {
                       {topLateEmployees.map((emp, idx) => (
                         <div
                           key={`${emp.name}-${idx}`}
-                          className="flex items-center justify-between rounded-xl bg-gray-50 dark:bg-slate-700/50 px-3 py-2"
+                          className="flex items-center justify-between rounded-xl bg-muted/50 px-3 py-2"
                         >
                           <div>
-                            <p className="text-sm font-semibold text-gray-900 dark:text-slate-100">
+                            <p className="text-sm font-semibold text-foreground">
                               {emp.name}
                             </p>
-                            <p className="text-xs text-gray-500 dark:text-slate-400">
+                            <p className="text-xs text-muted-foreground">
                               {emp.lateCount} مرات تأخير
                             </p>
                           </div>
                           <div className="text-left">
-                            <p className="text-sm font-bold text-amber-600 dark:text-amber-400">
+                            <p className="text-sm font-bold text-[hsl(48_96%_53%)]">
                               {emp.totalLateMinutes} د
                             </p>
-                            <p className="text-xs text-gray-500 dark:text-slate-400">
+                            <p className="text-xs text-muted-foreground">
                               متوسط {emp.avgLateMinutes} د
                             </p>
                           </div>
@@ -404,15 +404,15 @@ export default function AttendanceReportsPage() {
                 </CardContent>
               </Card>
 
-              <Card className="border-0 shadow-lg dark:bg-slate-800">
+              <Card className="border-0 shadow-lg bg-card">
                 <CardHeader>
-                  <CardTitle className="text-base font-bold text-gray-900 dark:text-slate-100">
+                  <CardTitle className="text-base font-bold text-foreground">
                     أداء الأقسام
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
                   {departmentPerformance.length === 0 ? (
-                    <p className="text-sm text-gray-500 dark:text-slate-400">
+                    <p className="text-sm text-muted-foreground">
                       لا توجد بيانات كافية للأقسام.
                     </p>
                   ) : (
@@ -420,21 +420,21 @@ export default function AttendanceReportsPage() {
                       {departmentPerformance.map((dept) => (
                         <div key={dept.department}>
                           <div className="flex items-center justify-between text-sm mb-1">
-                            <span className="font-medium text-gray-900 dark:text-slate-100">
+                            <span className="font-medium text-foreground">
                               {dept.department}
                             </span>
-                            <span className="font-bold text-blue-600 dark:text-blue-400">
+                            <span className="font-bold text-primary">
                               {dept.rate}%
                             </span>
                           </div>
-                          <div className="h-2 rounded-full bg-gray-200 dark:bg-slate-700 overflow-hidden">
+                          <div className="h-2 rounded-full bg-muted overflow-hidden">
                             <div
                               className={`h-full rounded-full transition-all duration-500 ${
                                 dept.rate >= 90
-                                  ? "bg-green-500"
+                                  ? "bg-primary"
                                   : dept.rate >= 70
-                                    ? "bg-amber-500"
-                                    : "bg-red-500"
+                                    ? "bg-[hsl(48_96%_53%/0.1)]0"
+                                    : "bg-destructive"
                               }`}
                               style={{ width: `${dept.rate}%` }}
                             />

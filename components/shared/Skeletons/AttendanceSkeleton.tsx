@@ -7,7 +7,7 @@ export default function AttendanceSkeleton() {
       {/* Stats cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {Array.from({ length: 4 }).map((_, i) => (
-          <Card key={i} className="border-0 shadow-lg dark:bg-slate-800">
+          <Card key={i} className="border-0 shadow-sm bg-card">
             <CardContent className="pt-6">
               <div className="flex items-center gap-3 mb-3">
                 <Skeleton className="w-10 h-10 rounded-xl" />
@@ -20,7 +20,7 @@ export default function AttendanceSkeleton() {
       </div>
 
       {/* Calendar skeleton */}
-      <Card className="border-0 shadow-lg dark:bg-slate-800">
+      <Card className="border-0 shadow-sm bg-card">
         <CardHeader>
           <div className="flex items-center justify-between">
             <Skeleton className="h-6 w-32" />
@@ -40,12 +40,12 @@ export default function AttendanceSkeleton() {
       </Card>
 
       {/* Table skeleton */}
-      <Card className="border-0 shadow-lg dark:bg-slate-800">
+      <Card className="border-0 shadow-sm bg-card">
         <CardContent className="p-0">
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="border-b border-gray-200 dark:border-slate-700">
+                <tr className="border-b border-border">
                   {Array.from({ length: 5 }).map((_, i) => (
                     <th key={i} className="py-3 px-4">
                       <Skeleton className="h-4 w-20" />
@@ -55,7 +55,7 @@ export default function AttendanceSkeleton() {
               </thead>
               <tbody>
                 {Array.from({ length: 6 }).map((_, rowIdx) => (
-                  <tr key={rowIdx} className="border-b border-gray-100 dark:border-slate-800">
+                  <tr key={rowIdx} className="border-b border-border">
                     {Array.from({ length: 5 }).map((_, colIdx) => (
                       <td key={colIdx} className="py-3 px-4">
                         <Skeleton className="h-4 w-full max-w-[120px]" />

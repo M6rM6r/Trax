@@ -41,7 +41,7 @@ export default function UserAvatar({
   user = null,
   size = "md",
   showName = false,
-  fallbackBg = "bg-primaryColor/10",
+  fallbackBg = "bg-primary/10",
   className = "",
   onClick,
   status = null,
@@ -78,7 +78,7 @@ export default function UserAvatar({
           />
         ) : (
           <div
-            className={`flex items-center justify-center rounded-full ${fallbackBg} dark:bg-primaryColor/20 text-gray-800 dark:text-slate-100 font-semibold ${s.text}`}
+            className={`flex items-center justify-center rounded-full ${fallbackBg} dark:bg-primary/20 text-foreground font-semibold ${s.text}`}
             style={{ width: s.px, height: s.px }}
             aria-hidden
           >
@@ -89,12 +89,12 @@ export default function UserAvatar({
         {/* status dot */}
         {status && (
           <span
-            className={`absolute bottom-0 right-0 block rounded-full ring-2 ring-white dark:ring-slate-800 ${
+            className={`absolute bottom-0 right-0 block rounded-full ring-2 ring-background ring-card ${
               status === "online"
-                ? "bg-green-500"
+                ? "bg-primary"
                 : status === "away"
-                  ? "bg-yellow-400"
-                  : "bg-gray-400"
+                  ? "bg-[hsl(48_96%_53%)]"
+                  : "bg-muted-foreground/50"
             }`}
             style={{
               width: Math.round(s.px / 4),
@@ -106,7 +106,7 @@ export default function UserAvatar({
 
       {showName && (
         <div className="flex flex-col leading-none">
-          <span className="text-sm font-medium text-gray-900 dark:text-slate-100">
+          <span className="text-sm font-medium text-foreground">
             {user?.name ?? "User"}
           </span>
           {user?.email && (

@@ -47,7 +47,7 @@ export default function RichTextEditor({
     immediatelyRender: false,
     editorProps: {
       attributes: {
-        class: "min-h-[156px] border rounded-md bg-slate-50 py-2 px-3 focus:outline-none",
+        class: "min-h-[156px] border border-border rounded-md bg-muted py-2 px-3 focus:outline-none",
       },
     },
     onUpdate: ({ editor }) => {
@@ -64,10 +64,10 @@ export default function RichTextEditor({
 
   return (
     <div className={className}>
-      <p className={`text-16 text-primarySlate700 font-[600] mb-2 `}>{label}</p>
+      <p className={`text-16 text-muted-foreground font-[600] mb-2 `}>{label}</p>
       <MenuBar editor={editor} />
       <EditorContent editor={editor} />
-      <ErrorMessage component={"div"} name={name} className="text-14 text-red-500 mt-2" />
+      <ErrorMessage component={"div"} name={name} className="text-14 text-destructive mt-2" />
     </div>
   );
 }

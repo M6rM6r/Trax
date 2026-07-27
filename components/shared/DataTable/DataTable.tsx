@@ -136,33 +136,33 @@ export function DataTable<T extends { id: number | string }>({
   const hasFilterable = filterableKeys.length > 0;
 
   return (
-    <Card className="border-0 shadow-lg dark:bg-slate-800">
+    <Card className="border border-border bg-card">
       {hasFilterable && (
-        <div className="p-4 border-b border-gray-200 dark:border-slate-700" role="search">
+        <div className="p-4 border-b border-border" role="search">
           <div className="flex items-center justify-between gap-4 mb-3">
-            <p className="text-sm text-gray-500 dark:text-slate-400">
+            <p className="text-sm text-muted-foreground">
               عرض{" "}
-              <span className="font-medium text-gray-700 dark:text-slate-200">
+              <span className="font-medium text-foreground">
                 {filteredData.length}
               </span>{" "}
               من{" "}
-              <span className="font-medium text-gray-700 dark:text-slate-200">{data.length}</span>{" "}
+              <span className="font-medium text-foreground">{data.length}</span>{" "}
               سجل
             </p>
           </div>
           <div className="relative max-w-sm">
-            <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder={searchPlaceholder}
-              className="pr-9 pl-9 dark:bg-slate-900 dark:text-slate-100 dark:placeholder-slate-500"
+              className="pr-9 pl-9"
               aria-label="البحث"
             />
             {search && (
               <button
                 onClick={() => setSearch("")}
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-slate-300 transition-colors"
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
                 aria-label="مسح البحث"
               >
                 <X className="w-4 h-4" />
@@ -173,12 +173,12 @@ export function DataTable<T extends { id: number | string }>({
       )}
       {!hasFilterable && data.length > 0 && (
         <div className="px-4 pt-3 pb-1">
-          <p className="text-sm text-gray-500 dark:text-slate-400">
+          <p className="text-sm text-muted-foreground">
             عرض{" "}
-            <span className="font-medium text-gray-700 dark:text-slate-200">
+            <span className="font-medium text-foreground">
               {filteredData.length}
             </span>{" "}
-            من <span className="font-medium text-gray-700 dark:text-slate-200">{data.length}</span>{" "}
+            من <span className="font-medium text-foreground">{data.length}</span>{" "}
             سجل
           </p>
         </div>
@@ -187,14 +187,14 @@ export function DataTable<T extends { id: number | string }>({
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
-              <TableRow className="border-b border-gray-200 bg-gray-50 dark:bg-slate-800 dark:border-slate-700">
+              <TableRow className="border-b border-border bg-muted">
                 {selectable && (
                   <TableHead className="w-12 py-3 px-4">
                     <input
                       type="checkbox"
                       checked={allOnPageSelected}
                       onChange={(e) => handleSelectAll(e.target.checked)}
-                      className="w-4 h-4 rounded border-gray-300 dark:border-slate-600 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                      className="w-4 h-4 rounded border-input text-primary focus:ring-ring cursor-pointer"
                       aria-label="تحديد الكل"
                     />
                   </TableHead>
@@ -212,9 +212,9 @@ export function DataTable<T extends { id: number | string }>({
                           ? "none"
                           : undefined
                     }
-                    className={`text-right py-3 px-4 text-sm font-semibold text-gray-600 dark:text-slate-300 ${
+                    className={`text-right py-3 px-4 text-sm font-semibold text-muted-foreground ${
                       col.sortable
-                        ? "cursor-pointer select-none hover:bg-gray-100 dark:hover:bg-slate-700"
+                        ? "cursor-pointer select-none hover:bg-muted"
                         : ""
                     }`}
                     onClick={() => col.sortable && handleSort(col.key)}
@@ -245,10 +245,10 @@ export function DataTable<T extends { id: number | string }>({
                 <TableRow>
                   <TableCell
                     colSpan={columns.length + (selectable ? 1 : 0)}
-                    className="py-12 text-center text-gray-500 dark:text-slate-400"
+                    className="py-12 text-center text-muted-foreground"
                   >
                     <div className="flex flex-col items-center gap-2">
-                      <Inbox className="w-8 h-8 text-gray-300 dark:text-slate-600" />
+                      <Inbox className="w-8 h-8 text-muted-foreground/50" />
                       <span>لا توجد نتائج مطابقة</span>
                     </div>
                   </TableCell>
@@ -257,8 +257,8 @@ export function DataTable<T extends { id: number | string }>({
                 paginatedData.map((row) => (
                   <TableRow
                     key={row.id}
-                    className={`group border-b border-gray-100 hover:bg-blue-50/50 dark:hover:bg-slate-700/50 dark:border-slate-700 transition-all duration-150 ${
-                      selectedIds.includes(row.id) ? "bg-blue-50 dark:bg-blue-900/10" : ""
+                    className={`group border-b border-border hover:bg-muted/50 transition-all duration-150 ${
+                      selectedIds.includes(row.id) ? "bg-primary/5" : ""
                     }`}
                   >
                     {selectable && (
@@ -267,7 +267,7 @@ export function DataTable<T extends { id: number | string }>({
                           type="checkbox"
                           checked={selectedIds.includes(row.id)}
                           onChange={(e) => handleSelectRow(row.id, e.target.checked)}
-                          className="w-4 h-4 rounded border-gray-300 dark:border-slate-600 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                          className="w-4 h-4 rounded border-input text-primary focus:ring-ring cursor-pointer"
                           aria-label={`تحديد ${row.id}`}
                         />
                       </TableCell>
@@ -275,7 +275,7 @@ export function DataTable<T extends { id: number | string }>({
                     {columns.map((col) => (
                       <TableCell
                         key={col.key}
-                        className="py-3 px-4 text-sm text-gray-600 dark:text-slate-300"
+                        className="py-3 px-4 text-sm text-muted-foreground"
                       >
                         {col.cell(row)}
                       </TableCell>
@@ -288,8 +288,8 @@ export function DataTable<T extends { id: number | string }>({
         </div>
 
         {sortedData.length > 0 && (
-          <div className="flex items-center justify-between p-4 border-t border-gray-200 dark:border-slate-700">
-            <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-slate-400">
+          <div className="flex items-center justify-between p-4 border-t border-border">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <span>عرض</span>
               <select
                 value={rowsPerPage}
@@ -297,7 +297,7 @@ export function DataTable<T extends { id: number | string }>({
                   setRowsPerPage(Number(e.target.value));
                   setCurrentPage(1);
                 }}
-                className="border border-gray-300 dark:border-slate-600 rounded-lg px-2 py-1 bg-transparent dark:bg-slate-800 dark:text-slate-300"
+                className="border border-input rounded-lg px-2 py-1 bg-transparent text-foreground"
                 aria-label="عدد الصفوف في الصفحة"
               >
                 <option value={10}>10</option>
@@ -313,11 +313,11 @@ export function DataTable<T extends { id: number | string }>({
                 disabled={currentPage === 1}
                 onClick={() => setCurrentPage(currentPage - 1)}
                 aria-label="الصفحة السابقة"
-                className="dark:text-slate-400 dark:hover:bg-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primaryColor"
+                className="text-muted-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 <ChevronRight className="w-4 h-4" />
               </Button>
-              <span className="text-sm text-gray-500 dark:text-slate-400" aria-current="page">
+              <span className="text-sm text-muted-foreground" aria-current="page">
                 {currentPage} / {totalPages || 1}
               </span>
               <Button
@@ -326,7 +326,7 @@ export function DataTable<T extends { id: number | string }>({
                 disabled={currentPage >= totalPages}
                 onClick={() => setCurrentPage(currentPage + 1)}
                 aria-label="الصفحة التالية"
-                className="dark:text-slate-400 dark:hover:bg-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primaryColor"
+                className="text-muted-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 <ChevronLeft className="w-4 h-4" />
               </Button>

@@ -38,6 +38,7 @@ import { hapticTap } from "@/lib/utils/haptics";
 import type { LiveTrackingEmployee, Geofence } from "@/lib/types/trackingTypes";
 import { useAuthStore } from "@/stores/useAuthStore";
 import AccessDeniedCard from "@/components/shared/AccessDeniedCard";
+import { MAP_THEME } from "@/lib/utils/mapTheme";
 
 export default function LiveMapPage() {
   const mapRef = useRef<HTMLDivElement>(null);
@@ -117,9 +118,9 @@ export default function LiveMapPage() {
   };
 
   const statusColors: Record<string, string> = {
-    inside_geofence: "text-green-600 bg-green-100 dark:text-green-400 dark:bg-green-900/30",
-    outside_geofence: "text-amber-600 bg-amber-100 dark:text-amber-400 dark:bg-amber-900/30",
-    offline: "text-gray-600 bg-gray-100 dark:text-slate-400 dark:bg-slate-700",
+    inside_geofence: "text-primary bg-primary/10 text-primary bg-primary/10",
+    outside_geofence: "text-[hsl(48_96%_53%)] bg-[hsl(48_96%_53%/0.15)] dark:text-[hsl(48_96%_53%)] dark:bg-[hsl(48_96%_53%/0.15)]",
+    offline: "text-muted-foreground bg-muted",
   };
 
   const filteredTracking = useMemo(() => {
@@ -214,14 +215,14 @@ export default function LiveMapPage() {
           image: new CircleStyle({
             radius: 5,
             fill: new Fill({ color: geo.color }),
-            stroke: new Stroke({ color: "#fff", width: 2 }),
+            stroke: new Stroke({ color: MAP_THEME.contrastStroke, width: 2 }),
           }),
           text: new Text({
             text: geo.name,
             offsetY: -15,
             font: "bold 12px sans-serif",
-            fill: new Fill({ color: "#1e293b" }),
-            stroke: new Stroke({ color: "#fff", width: 3 }),
+            fill: new Fill({ color: MAP_THEME.surface }),
+            stroke: new Stroke({ color: MAP_THEME.contrastStroke, width: 3 }),
           }),
         })
       );
@@ -240,24 +241,24 @@ export default function LiveMapPage() {
 
       const color =
         emp.status === "inside_geofence"
-          ? "#16A34A"
+          ? MAP_THEME.employeeMarker
           : emp.status === "outside_geofence"
-            ? "#F59E0B"
-            : "#9CA3AF";
+            ? MAP_THEME.secondary
+            : MAP_THEME.surfaceLight;
 
       feature.setStyle(
         new Style({
           image: new CircleStyle({
             radius: 8,
             fill: new Fill({ color }),
-            stroke: new Stroke({ color: "#fff", width: 2 }),
+            stroke: new Stroke({ color: MAP_THEME.contrastStroke, width: 2 }),
           }),
           text: new Text({
             text: emp.name,
             offsetY: -15,
             font: "bold 11px sans-serif",
-            fill: new Fill({ color: "#1e293b" }),
-            stroke: new Stroke({ color: "#fff", width: 3 }),
+            fill: new Fill({ color: MAP_THEME.surface }),
+            stroke: new Stroke({ color: MAP_THEME.contrastStroke, width: 3 }),
           }),
         })
       );
@@ -293,7 +294,7 @@ export default function LiveMapPage() {
       });
       routeFeature.setStyle(
         new Style({
-          stroke: new Stroke({ color: "#3B82F6", width: 3, lineDash: [8, 4] }),
+          stroke: new Stroke({ color: MAP_THEME.secondary, width: 3, lineDash: [8, 4] }),
         })
       );
       routeSourceRef.current.addFeature(routeFeature);
@@ -307,8 +308,8 @@ export default function LiveMapPage() {
         new Style({
           image: new CircleStyle({
             radius: 6,
-            fill: new Fill({ color: "#22C55E" }),
-            stroke: new Stroke({ color: "#fff", width: 2 }),
+            fill: new Fill({ color: MAP_THEME.employeeMarker }),
+            stroke: new Stroke({ color: MAP_THEME.contrastStroke, width: 2 }),
           }),
         })
       );
@@ -322,8 +323,8 @@ export default function LiveMapPage() {
         new Style({
           image: new CircleStyle({
             radius: 6,
-            fill: new Fill({ color: "#EF4444" }),
-            stroke: new Stroke({ color: "#fff", width: 2 }),
+            fill: new Fill({ color: MAP_THEME.primary }),
+            stroke: new Stroke({ color: MAP_THEME.contrastStroke, width: 2 }),
           }),
         })
       );
@@ -355,13 +356,13 @@ export default function LiveMapPage() {
           LeftSection={
             <div className="flex items-center gap-3 text-sm">
               <span
-                className={`flex items-center gap-1.5 px-2 py-1 rounded-lg ${socketConnected ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" : "bg-gray-100 text-gray-500 dark:bg-slate-700 dark:text-slate-400"}`}
+                className={`flex items-center gap-1.5 px-2 py-1 rounded-lg ${socketConnected ? "bg-primary/10 text-primary bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`}
               >
                 {socketConnected ? <Wifi className="w-3 h-3" /> : <WifiOff className="w-3 h-3" />}
                 {socketConnected ? "مباشر" : "غير متصل"}
               </span>
               {lastUpdate && (
-                <span className="text-xs text-gray-400 dark:text-slate-500">
+                <span className="text-xs text-muted-foreground/70">
                   آخر تحديث:{" "}
                   {lastUpdate.toLocaleTimeString("ar-SA", {
                     hour: "2-digit",
@@ -371,16 +372,16 @@ export default function LiveMapPage() {
                 </span>
               )}
               <span className="flex items-center gap-1.5">
-                <span className="w-3 h-3 rounded-full bg-green-500" />
-                <span className="text-gray-700 dark:text-slate-300">داخل النطاق</span>
+                <span className="w-3 h-3 rounded-full bg-primary" />
+                <span className="text-muted-foreground">داخل النطاق</span>
               </span>
               <span className="flex items-center gap-1.5">
-                <span className="w-3 h-3 rounded-full bg-amber-500" />
-                <span className="text-gray-700 dark:text-slate-300">خارج النطاق</span>
+                <span className="w-3 h-3 rounded-full bg-[hsl(48_96%_53%/0.1)]0" />
+                <span className="text-muted-foreground">خارج النطاق</span>
               </span>
               <span className="flex items-center gap-1.5">
-                <span className="w-3 h-3 rounded-full bg-gray-400" />
-                <span className="text-gray-700 dark:text-slate-300">غير متصل</span>
+                <span className="w-3 h-3 rounded-full bg-muted-foreground/50" />
+                <span className="text-muted-foreground">غير متصل</span>
               </span>
             </div>
           }
@@ -399,20 +400,20 @@ export default function LiveMapPage() {
         {!isLoading && !isError && liveTracking.length > 0 && (
           <div className="space-y-4">
             {/* Search & Filter Bar */}
-            <Card className="border-0 shadow-md dark:bg-slate-800">
+            <Card className="border-0 shadow-md bg-card">
               <CardContent className="py-3">
                 <div className="flex items-center gap-3 flex-wrap">
                   <div className="relative flex-1 min-w-[200px]">
-                    <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                    <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/70" />
                     <Input
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                       placeholder="بحث عن موظف..."
-                      className="pr-9 dark:bg-slate-900 dark:text-slate-100"
+                      className="pr-9 bg-background text-foreground"
                       aria-label="بحث عن موظف"
                     />
                   </div>
-                  <div className="flex items-center gap-1 bg-gray-100 dark:bg-slate-700 rounded-lg p-1">
+                  <div className="flex items-center gap-1 bg-muted rounded-lg p-1">
                     {[
                       { value: "all", label: "الكل" },
                       { value: "inside_geofence", label: "داخل" },
@@ -428,8 +429,8 @@ export default function LiveMapPage() {
                         aria-pressed={statusFilter === opt.value}
                         className={`px-3 py-1.5 rounded-md text-xs transition-all ${
                           statusFilter === opt.value
-                            ? "bg-white dark:bg-slate-800 shadow-sm font-medium"
-                            : "text-gray-500 dark:text-slate-400"
+                            ? "bg-card shadow-sm font-medium"
+                            : "text-muted-foreground"
                         }`}
                       >
                         {opt.label}
@@ -445,8 +446,8 @@ export default function LiveMapPage() {
                       }}
                       className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm transition-colors ${
                         showRoute
-                          ? "bg-blue-500 text-white"
-                          : "bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-slate-300"
+                          ? "bg-primary/50 text-primary-foreground"
+                          : "bg-muted text-muted-foreground"
                       }`}
                     >
                       <Route className="w-4 h-4" />
@@ -459,7 +460,7 @@ export default function LiveMapPage() {
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               <div className="lg:col-span-2">
-                <Card className="border-0 shadow-lg overflow-hidden dark:bg-slate-800">
+                <Card className="border-0 shadow-lg overflow-hidden bg-card">
                   <div ref={mapContainerRef} className="relative group">
                     <div
                       ref={mapRef}
@@ -469,28 +470,28 @@ export default function LiveMapPage() {
                     <div className="absolute top-3 left-3 flex flex-col gap-2 z-10">
                       <button
                         onClick={toggleFullscreen}
-                        className="p-2 rounded-lg bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm shadow-md hover:bg-white dark:hover:bg-slate-700 transition-colors"
+                        className="p-2 rounded-lg bg-background/90 bg-card/90 backdrop-blur-sm shadow-md hover:bg-background hover:bg-muted transition-colors"
                         title={isFullscreen ? "خروج من الشاشة الكاملة" : "شاشة كاملة"}
                         aria-label={isFullscreen ? "خروج من الشاشة الكاملة" : "دخول الشاشة الكاملة"}
                       >
                         {isFullscreen ? (
-                          <Minimize2 className="w-4 h-4 text-gray-700 dark:text-slate-200" />
+                          <Minimize2 className="w-4 h-4 text-foreground" />
                         ) : (
-                          <Maximize2 className="w-4 h-4 text-gray-700 dark:text-slate-200" />
+                          <Maximize2 className="w-4 h-4 text-foreground" />
                         )}
                       </button>
                       <div className="relative">
                         <button
                           onClick={() => setShowTilePicker(!showTilePicker)}
-                          className="p-2 rounded-lg bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm shadow-md hover:bg-white dark:hover:bg-slate-700 transition-colors"
+                          className="p-2 rounded-lg bg-background/90 bg-card/90 backdrop-blur-sm shadow-md hover:bg-background hover:bg-muted transition-colors"
                           title="طبقة الخريطة"
                           aria-label="اختيار طبقة الخريطة"
                           aria-expanded={showTilePicker}
                         >
-                          <Layers className="w-4 h-4 text-gray-700 dark:text-slate-200" />
+                          <Layers className="w-4 h-4 text-foreground" />
                         </button>
                         {showTilePicker && (
-                          <div className="absolute left-full top-0 ml-2 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-gray-200 dark:border-slate-700 overflow-hidden">
+                          <div className="absolute left-full top-0 ml-2 bg-card rounded-xl shadow-xl border border-border overflow-hidden">
                             {(
                               [
                                 { key: "osm", label: "عادي" },
@@ -504,10 +505,10 @@ export default function LiveMapPage() {
                                   setTileLayer(key);
                                   setShowTilePicker(false);
                                 }}
-                                className={`block w-full px-4 py-2.5 text-sm text-right hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors ${
+                                className={`block w-full px-4 py-2.5 text-sm text-right hover:bg-muted hover:bg-muted transition-colors ${
                                   tileLayer === key
-                                    ? "font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20"
-                                    : "text-gray-700 dark:text-slate-200"
+                                    ? "font-bold text-primary bg-primary/5"
+                                    : "text-foreground"
                                 }`}
                               >
                                 {label}
@@ -523,15 +524,15 @@ export default function LiveMapPage() {
 
               <div className="space-y-4">
                 {selectedEmployee ? (
-                  <Card className="border-0 shadow-lg dark:bg-slate-800 animate-slide-up">
+                  <Card className="border-0 shadow-lg bg-card animate-slide-up">
                     <CardContent className="pt-6 space-y-4">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
-                          <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold">
+                          <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center text-primary-foreground font-bold">
                             {selectedEmployee.name.charAt(0)}
                           </div>
                           <div>
-                            <h3 className="font-bold text-gray-900 dark:text-slate-100">
+                            <h3 className="font-bold text-foreground">
                               {selectedEmployee.name}
                             </h3>
                             <span
@@ -543,7 +544,7 @@ export default function LiveMapPage() {
                         </div>
                         <button
                           onClick={() => setSelectedEmployee(null)}
-                          className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors text-gray-400 dark:text-slate-500"
+                          className="p-1.5 rounded-lg hover:bg-muted hover:bg-muted transition-colors text-muted-foreground/70"
                           aria-label="إغلاق"
                         >
                           <X className="w-4 h-4" />
@@ -551,14 +552,14 @@ export default function LiveMapPage() {
                       </div>
                       <div className="space-y-2 text-sm">
                         <div className="flex justify-between">
-                          <span className="text-gray-500 dark:text-slate-400">الموقع:</span>
-                          <span className="font-medium text-gray-900 dark:text-slate-100">
+                          <span className="text-muted-foreground">الموقع:</span>
+                          <span className="font-medium text-foreground">
                             {selectedEmployee.geofenceName || "خارج النطاق"}
                           </span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-gray-500 dark:text-slate-400">آخر ظهور:</span>
-                          <span className="font-medium text-gray-900 dark:text-slate-100">
+                          <span className="text-muted-foreground">آخر ظهور:</span>
+                          <span className="font-medium text-foreground">
                             {new Date(selectedEmployee.lastSeen).toLocaleTimeString("ar-SA", {
                               hour: "2-digit",
                               minute: "2-digit",
@@ -566,33 +567,33 @@ export default function LiveMapPage() {
                           </span>
                         </div>
                         <div className="flex justify-between items-center">
-                          <span className="text-gray-500 dark:text-slate-400">البطارية:</span>
+                          <span className="text-muted-foreground">البطارية:</span>
                           <div className="flex items-center gap-1.5">
                             {selectedEmployee.batteryLevel !== null ? (
                               <>
                                 <BatteryIcon
-                                  className={`w-4 h-4 ${selectedEmployee.batteryLevel < 20 ? "text-red-500" : selectedEmployee.batteryLevel < 50 ? "text-amber-500" : "text-green-500"}`}
+                                  className={`w-4 h-4 ${selectedEmployee.batteryLevel < 20 ? "text-destructive" : selectedEmployee.batteryLevel < 50 ? "text-[hsl(48_96%_53%)]" : "text-primary"}`}
                                 />
                                 <span
-                                  className={`font-medium ${selectedEmployee.batteryLevel < 20 ? "text-red-600 dark:text-red-400" : "text-gray-900 dark:text-slate-100"}`}
+                                  className={`font-medium ${selectedEmployee.batteryLevel < 20 ? "text-destructive" : "text-foreground"}`}
                                 >
                                   {selectedEmployee.batteryLevel}%
                                 </span>
                               </>
                             ) : (
-                              <span className="text-gray-400 text-sm">غير متاح</span>
+                              <span className="text-muted-foreground/70 text-sm">غير متاح</span>
                             )}
                           </div>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-gray-500 dark:text-slate-400">خط العرض:</span>
-                          <span className="font-medium text-gray-900 dark:text-slate-100">
+                          <span className="text-muted-foreground">خط العرض:</span>
+                          <span className="font-medium text-foreground">
                             {selectedEmployee.lat.toFixed(4)}
                           </span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-gray-500 dark:text-slate-400">خط الطول:</span>
-                          <span className="font-medium text-gray-900 dark:text-slate-100">
+                          <span className="text-muted-foreground">خط الطول:</span>
+                          <span className="font-medium text-foreground">
                             {selectedEmployee.lng.toFixed(4)}
                           </span>
                         </div>
@@ -600,9 +601,9 @@ export default function LiveMapPage() {
 
                       {/* Route History */}
                       {showRoute && routeHistory.length > 0 && (
-                        <div className="mt-4 pt-4 border-t border-gray-200 dark:border-slate-700">
-                          <h4 className="text-sm font-bold text-gray-900 dark:text-slate-100 mb-2 flex items-center gap-2">
-                            <Route className="w-4 h-4 text-blue-500" />
+                        <div className="mt-4 pt-4 border-t border-border">
+                          <h4 className="text-sm font-bold text-foreground mb-2 flex items-center gap-2">
+                            <Route className="w-4 h-4 text-primary" />
                             سجل المسار ({routeHistory.length} نقطة)
                           </h4>
                           <div className="max-h-32 overflow-y-auto space-y-1">
@@ -612,7 +613,7 @@ export default function LiveMapPage() {
                               .map((point, i) => (
                                 <div
                                   key={i}
-                                  className="flex items-center gap-2 text-xs text-gray-500 dark:text-slate-400"
+                                  className="flex items-center gap-2 text-xs text-muted-foreground"
                                 >
                                   <Clock className="w-3 h-3" />
                                   <span>{point.time}</span>
@@ -627,22 +628,22 @@ export default function LiveMapPage() {
                     </CardContent>
                   </Card>
                 ) : (
-                  <Card className="border-0 shadow-lg dark:bg-slate-800">
-                    <CardContent className="pt-6 text-center text-gray-500 dark:text-slate-400">
-                      <MapPin className="w-10 h-10 mx-auto mb-2 text-gray-300 dark:text-slate-600" />
+                  <Card className="border-0 shadow-lg bg-card">
+                    <CardContent className="pt-6 text-center text-muted-foreground">
+                      <MapPin className="w-10 h-10 mx-auto mb-2 text-muted-foreground/50" />
                       <p className="text-sm">انقر على موظف على الخريطة لعرض تفاصيله</p>
                     </CardContent>
                   </Card>
                 )}
 
-                <Card className="border-0 shadow-lg dark:bg-slate-800">
+                <Card className="border-0 shadow-lg bg-card">
                   <CardContent className="pt-6">
-                    <h3 className="font-bold text-gray-900 dark:text-slate-100 mb-4">
+                    <h3 className="font-bold text-foreground mb-4">
                       الموظفون المتصلون ({filteredTracking.length})
                     </h3>
                     <div className="space-y-2 max-h-[300px] overflow-y-auto">
                       {filteredTracking.length === 0 ? (
-                        <p className="text-sm text-gray-400 dark:text-slate-500 text-center py-4">
+                        <p className="text-sm text-muted-foreground/70 text-center py-4">
                           لا نتائج مطابقة
                         </p>
                       ) : (
@@ -650,37 +651,37 @@ export default function LiveMapPage() {
                           <div
                             key={emp.id}
                             onClick={() => setSelectedEmployee(emp)}
-                            className="flex items-center justify-between p-3 rounded-xl border border-gray-100 hover:bg-gray-50 dark:border-slate-700 dark:hover:bg-slate-700/50 cursor-pointer transition-all"
+                            className="flex items-center justify-between p-3 rounded-xl border border-border hover:bg-muted border-border hover:bg-muted/50 cursor-pointer transition-all"
                           >
                             <div className="flex items-center gap-2">
-                              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-xs font-bold">
+                              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center text-primary-foreground text-xs font-bold">
                                 {emp.name.charAt(0)}
                               </div>
-                              <span className="text-sm font-medium text-gray-900 dark:text-slate-100">
+                              <span className="text-sm font-medium text-foreground">
                                 {emp.name}
                               </span>
                             </div>
                             <div className="flex items-center gap-2">
                               {emp.status === "offline" ? (
-                                <WifiOff className="w-4 h-4 text-gray-400" />
+                                <WifiOff className="w-4 h-4 text-muted-foreground/70" />
                               ) : (
-                                <Wifi className="w-4 h-4 text-green-500" />
+                                <Wifi className="w-4 h-4 text-primary" />
                               )}
-                              <span className="text-xs text-gray-500 dark:text-slate-400 flex items-center gap-1">
+                              <span className="text-xs text-muted-foreground flex items-center gap-1">
                                 <BatteryIcon className="w-3 h-3" />
                                 {emp.batteryLevel !== null ? `${emp.batteryLevel}%` : "—"}
                               </span>
                               {emp.status === "inside_geofence" ? (
                                 <span className="relative flex w-2 h-2">
-                                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
-                                  <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500" />
+                                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
+                                  <span className="relative inline-flex rounded-full h-2 w-2 bg-primary" />
                                 </span>
                               ) : (
                                 <span
                                   className={`w-2 h-2 rounded-full ${
                                     emp.status === "outside_geofence"
-                                      ? "bg-amber-500"
-                                      : "bg-gray-400"
+                                      ? "bg-[hsl(48_96%_53%/0.1)]0"
+                                      : "bg-muted-foreground/50"
                                   }`}
                                 />
                               )}

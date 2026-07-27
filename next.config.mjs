@@ -1,6 +1,5 @@
 import createNextIntlPlugin from "next-intl/plugin";
 import bundleAnalyzer from "@next/bundle-analyzer";
-const hasSentry = !!process.env.NEXT_PUBLIC_SENTRY_DSN;
 
 const withBundleAnalyzer = bundleAnalyzer({
   enabled: process.env.ANALYZE === "true",
@@ -70,22 +69,4 @@ const nextConfig = {
 
 const withNextIntl = createNextIntlPlugin();
 
-const baseConfig = withBundleAnalyzer(withNextIntl(nextConfig));
-
-let finalConfig = baseConfig;
-if (hasSentry) {
-  const { withSentryConfig } = await import("@sentry/nextjs");
-  finalConfig = withSentryConfig(baseConfig, {
-    org: process.env.SENTRY_ORG,
-    project: process.env.SENTRY_PROJECT,
-    silent: !process.env.NEXT_PUBLIC_SENTRY_DSN,
-    hideSourceMaps: true,
-    webpack: {
-      treeshake: {
-        removeDebugLogging: true,
-      },
-    },
-  });
-}
-
-export default finalConfig;
+export default withBundleAnalyzer(withNextIntl(nextConfig));

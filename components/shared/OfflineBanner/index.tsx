@@ -43,8 +43,8 @@ export default function OfflineBanner() {
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: -56, opacity: 0 }}
           transition={{ type: "spring", stiffness: 400, damping: 30 }}
-          className={`fixed top-0 left-0 right-0 z-[9999] flex items-center justify-center gap-2 py-2.5 text-sm font-medium text-white shadow-lg ${
-            isOnline ? "bg-emerald-500" : "bg-red-500"
+          className={`fixed top-0 left-0 right-0 z-[9999] flex items-center justify-center gap-2 py-2.5 text-sm font-medium text-primary-foreground shadow-lg ${
+            isOnline ? "bg-primary" : "bg-destructive"
           }`}
           role="alert"
           aria-live="assertive"

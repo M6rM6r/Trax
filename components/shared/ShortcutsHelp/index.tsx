@@ -48,18 +48,18 @@ export function ShortcutsHelp() {
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.9, opacity: 0 }}
             onClick={(e) => e.stopPropagation()}
-            className="bg-white dark:bg-slate-800 rounded-2xl p-6 max-w-md w-full shadow-2xl"
+            className="bg-card rounded-2xl p-6 max-w-md w-full shadow-lg"
           >
             <div className="flex items-center justify-between mb-5">
               <div className="flex items-center gap-2">
-                <Keyboard className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-                <h2 className="text-lg font-bold text-gray-900 dark:text-slate-100">
+                <Keyboard className="w-5 h-5 text-primary" />
+                <h2 className="text-lg font-bold text-foreground">
                   اختصارات لوحة المفاتيح
                 </h2>
               </div>
               <button
                 onClick={() => setOpen(false)}
-                className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-700 text-gray-500 dark:text-slate-400"
+                className="p-2 rounded-lg hover:bg-muted hover:bg-muted text-muted-foreground"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -68,14 +68,14 @@ export function ShortcutsHelp() {
               {shortcuts.map((s, i) => (
                 <div
                   key={i}
-                  className="flex items-center justify-between p-3 rounded-xl bg-gray-50 dark:bg-slate-700/50"
+                  className="flex items-center justify-between p-3 rounded-xl bg-muted/50"
                 >
-                  <span className="text-sm text-gray-700 dark:text-slate-300">{s.description}</span>
+                  <span className="text-sm text-muted-foreground">{s.description}</span>
                   <div className="flex items-center gap-1">
                     {s.keys.map((key, j) => (
                       <kbd
                         key={j}
-                        className="px-2 py-1 text-xs font-mono font-semibold bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-600 rounded-md text-gray-700 dark:text-slate-200 shadow-sm"
+                        className="px-2 py-1 text-xs font-mono font-semibold bg-background border border-border border-input rounded-md text-foreground shadow-sm"
                       >
                         {key}
                       </kbd>

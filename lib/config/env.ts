@@ -31,7 +31,6 @@ export function resolveFirebaseAuthMode(overrides: RuntimeEnvOverrides = {}): bo
     overrides.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
     overrides.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
     overrides.NEXT_PUBLIC_FIREBASE_APP_ID,
-    overrides.NEXT_PUBLIC_FIREBASE_APP_CHECK_KEY,
   ].every((value) => typeof value === "string" && value.trim().length > 0);
 
   return firebaseClientConfig;

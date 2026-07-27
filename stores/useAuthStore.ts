@@ -61,14 +61,14 @@ interface AuthState {
   user: AdminUser | null;
   token: string | null;
   role: UserRole | null;
-  companyId: number | null;
+  companyId: string | null;
   companyName: string | null;
   rememberMe: boolean;
   setUser: (
     user: AdminUser,
     token: string,
     role?: UserRole,
-    companyId?: number,
+    companyId?: string,
     companyName?: string
   ) => void;
   setRole: (role: UserRole) => void;

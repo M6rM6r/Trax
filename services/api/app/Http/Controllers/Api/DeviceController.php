@@ -15,6 +15,22 @@ class DeviceController extends Controller
         return (int) (auth()->user()?->company_id ?? 0);
     }
 
+    private function canActOnEmployee(Employee $employee): bool
+    {
+        $user = auth()->user();
+
+        if (($user->role ?? null) !== 'employee') {
+            return true;
+        }
+
+        if ($user->firebase_uid && $employee->firebase_uid) {
+            return hash_equals($employee->firebase_uid, $user->firebase_uid);
+        }
+
+        return $user->company_id === $employee->company_id
+            && strcasecmp((string) $user->email, (string) $employee->email) === 0;
+    }
+
     public function registerFcmToken(Request $request): JsonResponse
     {
         $request->validate([
@@ -28,6 +44,10 @@ class DeviceController extends Controller
 
         if (! $employee) {
             return response()->json(['success' => false, 'message' => 'Employee not found in your company'], 404);
+        }
+
+        if (! $this->canActOnEmployee($employee)) {
+            return response()->json(['success' => false, 'message' => 'You can only manage your own device token.'], 403);
         }
 
         $employee->update([
@@ -57,6 +77,10 @@ class DeviceController extends Controller
 
         if (! $employee) {
             return response()->json(['success' => false, 'message' => 'Employee not found in your company'], 404);
+        }
+
+        if (! $this->canActOnEmployee($employee)) {
+            return response()->json(['success' => false, 'message' => 'You can only manage your own device token.'], 403);
         }
 
         $employee->update([

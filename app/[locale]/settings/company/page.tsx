@@ -39,7 +39,7 @@ export default function CompanySettingsPage() {
     return (
       <MainLayout>
         <div className="p-6 text-center">
-          <p className="text-gray-500 dark:text-slate-400">هذه الصفحة متاحة للمشرفين فقط</p>
+          <p className="text-muted-foreground">هذه الصفحة متاحة للمشرفين فقط</p>
         </div>
       </MainLayout>
     );
@@ -49,7 +49,7 @@ export default function CompanySettingsPage() {
     return (
       <MainLayout>
         <div className="p-6 text-center">
-          <p className="text-gray-500 dark:text-slate-400">جاري تحميل الإعدادات...</p>
+          <p className="text-muted-foreground">جاري تحميل الإعدادات...</p>
         </div>
       </MainLayout>
     );
@@ -96,7 +96,7 @@ export default function CompanySettingsPage() {
         />
 
         {/* Tab Bar */}
-        <div className="flex items-center gap-1 bg-gray-100 dark:bg-slate-800 rounded-xl p-1 overflow-x-auto">
+        <div className="flex items-center gap-1 bg-muted rounded-xl p-1 overflow-x-auto">
           {tabs.map((tab) => {
             const Icon = tab.icon;
             return (
@@ -108,8 +108,8 @@ export default function CompanySettingsPage() {
                 }}
                 className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all whitespace-nowrap ${
                   activeTab === tab.id
-                    ? "bg-white dark:bg-slate-700 shadow-sm text-gray-900 dark:text-slate-100"
-                    : "text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200"
+                    ? "bg-muted shadow-sm text-foreground"
+                    : "text-muted-foreground hover:text-muted-foreground dark:hover:text-foreground"
                 }`}
               >
                 <Icon className="w-4 h-4" />
@@ -128,13 +128,13 @@ export default function CompanySettingsPage() {
           {/* Work Hours Tab */}
           {activeTab === "work" && (
             <>
-              <Card className="border-0 shadow-lg dark:bg-slate-800">
+              <Card className="border-0 shadow-lg bg-card">
                 <CardHeader>
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-blue-500 flex items-center justify-center">
-                      <Clock className="w-5 h-5 text-white" />
+                    <div className="w-10 h-10 rounded-xl bg-primary/50 flex items-center justify-center">
+                      <Clock className="w-5 h-5 text-primary-foreground" />
                     </div>
-                    <CardTitle className="text-lg font-bold text-gray-900 dark:text-slate-100">
+                    <CardTitle className="text-lg font-bold text-foreground">
                       ساعات العمل
                     </CardTitle>
                   </div>
@@ -142,30 +142,30 @@ export default function CompanySettingsPage() {
                 <CardContent className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="text-sm font-medium text-gray-700 dark:text-slate-300 mb-2 block">
+                      <label className="text-sm font-medium text-muted-foreground mb-2 block">
                         وقت بدء العمل
                       </label>
                       <input
                         type="time"
                         value={local.workStartTime}
                         onChange={(e) => update("workStartTime", e.target.value)}
-                        className="w-full px-3 py-2.5 rounded-xl border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100"
+                        className="w-full px-3 py-2.5 rounded-xl border border-border border-input bg-background text-foreground"
                       />
                     </div>
                     <div>
-                      <label className="text-sm font-medium text-gray-700 dark:text-slate-300 mb-2 block">
+                      <label className="text-sm font-medium text-muted-foreground mb-2 block">
                         وقت انتهاء العمل
                       </label>
                       <input
                         type="time"
                         value={local.workEndTime}
                         onChange={(e) => update("workEndTime", e.target.value)}
-                        className="w-full px-3 py-2.5 rounded-xl border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100"
+                        className="w-full px-3 py-2.5 rounded-xl border border-border border-input bg-background text-foreground"
                       />
                     </div>
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-gray-700 dark:text-slate-300 mb-2 block">
+                    <label className="text-sm font-medium text-muted-foreground mb-2 block">
                       فترة السماح (دقائق)
                     </label>
                     <input
@@ -174,14 +174,14 @@ export default function CompanySettingsPage() {
                       max={60}
                       value={local.gracePeriodMinutes}
                       onChange={(e) => update("gracePeriodMinutes", Number(e.target.value))}
-                      className="w-full px-3 py-2.5 rounded-xl border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100"
+                      className="w-full px-3 py-2.5 rounded-xl border border-border border-input bg-background text-foreground"
                     />
-                    <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">
+                    <p className="text-xs text-muted-foreground mt-1">
                       عدد الدقائق بعد وقت بدء العمل قبل تسجيل التأخير
                     </p>
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-gray-700 dark:text-slate-300 mb-2 block">
+                    <label className="text-sm font-medium text-muted-foreground mb-2 block">
                       حد التأخير (دقائق)
                     </label>
                     <input
@@ -190,14 +190,14 @@ export default function CompanySettingsPage() {
                       max={120}
                       value={local.lateThresholdMinutes}
                       onChange={(e) => update("lateThresholdMinutes", Number(e.target.value))}
-                      className="w-full px-3 py-2.5 rounded-xl border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100"
+                      className="w-full px-3 py-2.5 rounded-xl border border-border border-input bg-background text-foreground"
                     />
-                    <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">
+                    <p className="text-xs text-muted-foreground mt-1">
                       بعد هذا الحد يُعتبر الموظف متأخراً بشكل كبير
                     </p>
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-gray-700 dark:text-slate-300 mb-2 block">
+                    <label className="text-sm font-medium text-muted-foreground mb-2 block">
                       أيام العطلة
                     </label>
                     <div className="flex gap-2 flex-wrap">
@@ -221,8 +221,8 @@ export default function CompanySettingsPage() {
                           }}
                           className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
                             local.weekendDays.includes(d.day)
-                              ? "bg-blue-600 text-white"
-                              : "bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-slate-300"
+                              ? "bg-primary text-primary-foreground"
+                              : "bg-muted text-muted-foreground"
                           }`}
                         >
                           {d.label}
@@ -237,24 +237,24 @@ export default function CompanySettingsPage() {
 
           {/* Auto Check-in Tab */}
           {activeTab === "auto" && (
-            <Card className="border-0 shadow-lg dark:bg-slate-800">
+            <Card className="border-0 shadow-lg bg-card">
               <CardHeader>
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-emerald-500 flex items-center justify-center">
-                    <Navigation className="w-5 h-5 text-white" />
+                  <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center">
+                    <Navigation className="w-5 h-5 text-primary-foreground" />
                   </div>
-                  <CardTitle className="text-lg font-bold text-gray-900 dark:text-slate-100">
+                  <CardTitle className="text-lg font-bold text-foreground">
                     الحضور التلقائي
                   </CardTitle>
                 </div>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="flex items-center justify-between p-4 rounded-xl bg-gray-50 dark:bg-slate-700/50">
+                <div className="flex items-center justify-between p-4 rounded-xl bg-muted/50">
                   <div>
-                    <p className="text-sm font-medium text-gray-900 dark:text-slate-100">
+                    <p className="text-sm font-medium text-foreground">
                       تفعيل الحضور التلقائي
                     </p>
-                    <p className="text-xs text-gray-500 dark:text-slate-400 mt-0.5">
+                    <p className="text-xs text-muted-foreground mt-0.5">
                       تسجيل الحضور تلقائياً عند دخول الموظف للنطاق الجغرافي
                     </p>
                   </div>
@@ -267,9 +267,9 @@ export default function CompanySettingsPage() {
                   />
                 </div>
                 {local.autoCheckInEnabled && (
-                  <div className="p-4 rounded-xl bg-emerald-50 dark:bg-emerald-900/10 space-y-4">
+                  <div className="p-4 rounded-xl bg-primary/10 space-y-4">
                     <div>
-                      <label className="text-sm font-medium text-gray-700 dark:text-slate-300 mb-2 block">
+                      <label className="text-sm font-medium text-muted-foreground mb-2 block">
                         مسافة التشغيل الإضافية (متر)
                       </label>
                       <input
@@ -278,15 +278,15 @@ export default function CompanySettingsPage() {
                         max={500}
                         value={local.autoCheckInRadiusOffset}
                         onChange={(e) => update("autoCheckInRadiusOffset", Number(e.target.value))}
-                        className="w-full px-3 py-2.5 rounded-xl border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100"
+                        className="w-full px-3 py-2.5 rounded-xl border border-border border-input bg-background text-foreground"
                       />
-                      <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">
+                      <p className="text-xs text-muted-foreground mt-1">
                         مسافة إضافية بالأمتار خارج حدود النطاق لتفعيل الحضور التلقائي
                       </p>
                     </div>
-                    <div className="flex items-start gap-2 p-3 rounded-lg bg-blue-50 dark:bg-blue-900/20">
-                      <Zap className="w-4 h-4 text-blue-600 dark:text-blue-400 mt-0.5 shrink-0" />
-                      <p className="text-xs text-blue-700 dark:text-blue-300">
+                    <div className="flex items-start gap-2 p-3 rounded-lg bg-primary/5">
+                      <Zap className="w-4 h-4 text-primary mt-0.5 shrink-0" />
+                      <p className="text-xs text-primary text-primary/70">
                         عند تفعيل هذه الميزة، سيتم تسجيل الحضور تلقائياً للموظف عند اقترابه من
                         النطاق الجغرافي المحدد له
                       </p>
@@ -299,24 +299,24 @@ export default function CompanySettingsPage() {
 
           {/* Notifications Tab */}
           {activeTab === "notifications" && (
-            <Card className="border-0 shadow-lg dark:bg-slate-800">
+            <Card className="border-0 shadow-lg bg-card">
               <CardHeader>
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-amber-500 flex items-center justify-center">
-                    <Bell className="w-5 h-5 text-white" />
+                  <div className="w-10 h-10 rounded-xl bg-[hsl(48_96%_53%/0.1)]0 flex items-center justify-center">
+                    <Bell className="w-5 h-5 text-primary-foreground" />
                   </div>
-                  <CardTitle className="text-lg font-bold text-gray-900 dark:text-slate-100">
+                  <CardTitle className="text-lg font-bold text-foreground">
                     إعدادات الإشعارات
                   </CardTitle>
                 </div>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="flex items-center justify-between p-4 rounded-xl bg-gray-50 dark:bg-slate-700/50">
+                <div className="flex items-center justify-between p-4 rounded-xl bg-muted/50">
                   <div>
-                    <p className="text-sm font-medium text-gray-900 dark:text-slate-100">
+                    <p className="text-sm font-medium text-foreground">
                       تفعيل الإشعارات
                     </p>
-                    <p className="text-xs text-gray-500 dark:text-slate-400 mt-0.5">
+                    <p className="text-xs text-muted-foreground mt-0.5">
                       مفتاح رئيسي لجميع الإشعارات
                     </p>
                   </div>
@@ -347,21 +347,6 @@ export default function CompanySettingsPage() {
                         desc: "تنبيه عند خروج الموظف من النطاق الجغرافي",
                       },
                       {
-                        key: "anomalyAlertsEnabled" as const,
-                        title: "إشعارات الشذوذ",
-                        desc: "تنبيه عند اكتشاف سلوك غير طبيعي",
-                      },
-                      {
-                        key: "emailNotificationsEnabled" as const,
-                        title: "إشعارات البريد الإلكتروني",
-                        desc: "استلام الإشعارات عبر البريد",
-                      },
-                      {
-                        key: "pushNotificationsEnabled" as const,
-                        title: "إشعارات الدفع",
-                        desc: "استلام إشعارات الدفع على الجوال",
-                      },
-                      {
                         key: "checkInReminderEnabled" as const,
                         title: "تذكير الحضور",
                         desc: "إرسال تذكير للموظفين قبل وقت الحضور",
@@ -369,13 +354,13 @@ export default function CompanySettingsPage() {
                     ].map((item) => (
                       <div
                         key={item.key}
-                        className="flex items-center justify-between p-4 rounded-xl bg-gray-50 dark:bg-slate-700/50"
+                        className="flex items-center justify-between p-4 rounded-xl bg-muted/50"
                       >
                         <div>
-                          <p className="text-sm font-medium text-gray-900 dark:text-slate-100">
+                          <p className="text-sm font-medium text-foreground">
                             {item.title}
                           </p>
-                          <p className="text-xs text-gray-500 dark:text-slate-400 mt-0.5">
+                          <p className="text-xs text-muted-foreground mt-0.5">
                             {item.desc}
                           </p>
                         </div>
@@ -389,15 +374,15 @@ export default function CompanySettingsPage() {
                       </div>
                     ))}
                     {local.checkInReminderEnabled && (
-                      <div className="p-4 rounded-xl bg-gray-50 dark:bg-slate-700/50">
-                        <label className="text-sm font-medium text-gray-700 dark:text-slate-300 mb-2 block">
+                      <div className="p-4 rounded-xl bg-muted/50">
+                        <label className="text-sm font-medium text-muted-foreground mb-2 block">
                           وقت تذكير الحضور
                         </label>
                         <input
                           type="time"
                           value={local.checkInReminderTime}
                           onChange={(e) => update("checkInReminderTime", e.target.value)}
-                          className="w-full px-3 py-2.5 rounded-xl border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100"
+                          className="w-full px-3 py-2.5 rounded-xl border border-border border-input bg-background text-foreground"
                         />
                       </div>
                     )}
@@ -409,20 +394,20 @@ export default function CompanySettingsPage() {
 
           {/* Session Tab */}
           {activeTab === "session" && (
-            <Card className="border-0 shadow-lg dark:bg-slate-800">
+            <Card className="border-0 shadow-lg bg-card">
               <CardHeader>
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-purple-500 flex items-center justify-center">
-                    <Timer className="w-5 h-5 text-white" />
+                  <div className="w-10 h-10 rounded-xl bg-accent flex items-center justify-center">
+                    <Timer className="w-5 h-5 text-primary-foreground" />
                   </div>
-                  <CardTitle className="text-lg font-bold text-gray-900 dark:text-slate-100">
+                  <CardTitle className="text-lg font-bold text-foreground">
                     إعدادات الجلسة
                   </CardTitle>
                 </div>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div>
-                  <label className="text-sm font-medium text-gray-700 dark:text-slate-300 mb-2 block">
+                  <label className="text-sm font-medium text-muted-foreground mb-2 block">
                     مدة انتهاء الجلسة (دقائق)
                   </label>
                   <input
@@ -431,18 +416,18 @@ export default function CompanySettingsPage() {
                     max={480}
                     value={local.sessionTimeoutMinutes}
                     onChange={(e) => update("sessionTimeoutMinutes", Number(e.target.value))}
-                    className="w-full px-3 py-2.5 rounded-xl border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100"
+                    className="w-full px-3 py-2.5 rounded-xl border border-border border-input bg-background text-foreground"
                   />
-                  <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">
+                  <p className="text-xs text-muted-foreground mt-1">
                     يتم تسجيل الخروج تلقائياً بعد هذه المدة من عدم النشاط
                   </p>
                 </div>
-                <div className="flex items-center justify-between p-4 rounded-xl bg-gray-50 dark:bg-slate-700/50">
+                <div className="flex items-center justify-between p-4 rounded-xl bg-muted/50">
                   <div>
-                    <p className="text-sm font-medium text-gray-900 dark:text-slate-100">
+                    <p className="text-sm font-medium text-foreground">
                       تسجيل الانصراف التلقائي
                     </p>
-                    <p className="text-xs text-gray-500 dark:text-slate-400 mt-0.5">
+                    <p className="text-xs text-muted-foreground mt-0.5">
                       تسجيل انصراف تلقائي للموظفين بعد وقت محدد
                     </p>
                   </div>
@@ -455,15 +440,15 @@ export default function CompanySettingsPage() {
                   />
                 </div>
                 {local.autoSignOutEnabled && (
-                  <div className="p-4 rounded-xl bg-gray-50 dark:bg-slate-700/50">
-                    <label className="text-sm font-medium text-gray-700 dark:text-slate-300 mb-2 block">
+                  <div className="p-4 rounded-xl bg-muted/50">
+                    <label className="text-sm font-medium text-muted-foreground mb-2 block">
                       وقت تسجيل الانصراف التلقائي
                     </label>
                     <input
                       type="time"
                       value={local.autoSignOutTime}
                       onChange={(e) => update("autoSignOutTime", e.target.value)}
-                      className="w-full px-3 py-2.5 rounded-xl border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100"
+                      className="w-full px-3 py-2.5 rounded-xl border border-border border-input bg-background text-foreground"
                     />
                   </div>
                 )}
@@ -473,24 +458,24 @@ export default function CompanySettingsPage() {
 
           {/* Geofence Tab */}
           {activeTab === "geofence" && (
-            <Card className="border-0 shadow-lg dark:bg-slate-800">
+            <Card className="border-0 shadow-lg bg-card">
               <CardHeader>
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-cyan-500 flex items-center justify-center">
-                    <MapPin className="w-5 h-5 text-white" />
+                  <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center">
+                    <MapPin className="w-5 h-5 text-primary-foreground" />
                   </div>
-                  <CardTitle className="text-lg font-bold text-gray-900 dark:text-slate-100">
+                  <CardTitle className="text-lg font-bold text-foreground">
                     إعدادات النطاق الجغرافي
                   </CardTitle>
                 </div>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="flex items-center justify-between p-4 rounded-xl bg-gray-50 dark:bg-slate-700/50">
+                <div className="flex items-center justify-between p-4 rounded-xl bg-muted/50">
                   <div>
-                    <p className="text-sm font-medium text-gray-900 dark:text-slate-100">
+                    <p className="text-sm font-medium text-foreground">
                       اشتراط النطاق للحضور
                     </p>
-                    <p className="text-xs text-gray-500 dark:text-slate-400 mt-0.5">
+                    <p className="text-xs text-muted-foreground mt-0.5">
                       منع تسجيل الحضور خارج النطاق الجغرافي
                     </p>
                   </div>
@@ -502,12 +487,12 @@ export default function CompanySettingsPage() {
                     }}
                   />
                 </div>
-                <div className="flex items-center justify-between p-4 rounded-xl bg-gray-50 dark:bg-slate-700/50">
+                <div className="flex items-center justify-between p-4 rounded-xl bg-muted/50">
                   <div>
-                    <p className="text-sm font-medium text-gray-900 dark:text-slate-100">
+                    <p className="text-sm font-medium text-foreground">
                       السماح بالحضور خارج النطاق
                     </p>
-                    <p className="text-xs text-gray-500 dark:text-slate-400 mt-0.5">
+                    <p className="text-xs text-muted-foreground mt-0.5">
                       السماح للموظف بتسجيل الحضور حتى لو كان خارج النطاق
                     </p>
                   </div>

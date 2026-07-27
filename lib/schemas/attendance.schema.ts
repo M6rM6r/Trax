@@ -8,8 +8,8 @@ export const workShiftSchema = z.object({
 });
 
 export const attendanceRecordSchema = z.object({
-  id: z.coerce.number().int().positive(),
-  employeeId: z.coerce.number().int().positive(),
+  id: z.coerce.string(),
+  employeeId: z.coerce.string(),
   employeeName: z.string().trim().min(1),
   date: z.string(),
   checkInTime: z.string().nullable().optional(),
@@ -19,7 +19,7 @@ export const attendanceRecordSchema = z.object({
   checkInLng: z.coerce.number().min(-180).max(180).nullable().optional(),
   checkOutLat: z.coerce.number().min(-90).max(90).nullable().optional(),
   checkOutLng: z.coerce.number().min(-180).max(180).nullable().optional(),
-  geofenceId: z.coerce.number().int().positive().nullable().optional(),
+  geofenceId: z.coerce.string().nullable().optional(),
   geofenceName: z.string().nullable().optional(),
   lateMinutes: z.coerce.number().default(0),
   workedHours: z.coerce.number().min(0).max(24).default(0),
@@ -32,15 +32,15 @@ export const attendanceRecordSchema = z.object({
 export const attendanceListSchema = z.array(attendanceRecordSchema);
 
 export const checkInSchema = z.object({
-  employeeId: z.coerce.number().int().positive(),
+  employeeId: z.coerce.string(),
   lat: z.coerce.number().min(-90).max(90),
   lng: z.coerce.number().min(-180).max(180),
-  geofenceId: z.coerce.number().int().positive(),
+  geofenceId: z.coerce.string().nullable().optional(),
   timestamp: z.string().optional(),
 });
 
 export const checkOutSchema = z.object({
-  employeeId: z.coerce.number().int().positive(),
+  employeeId: z.coerce.string(),
 });
 
 export type AttendanceRecordSchema = z.infer<typeof attendanceRecordSchema>;

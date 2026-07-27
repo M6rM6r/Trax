@@ -16,7 +16,7 @@ import {
   Cell,
 } from "recharts";
 
-const COLORS = ["#10b981", "#10b981", "#f59e0b", "#ef4444", "#3b82f6"];
+const COLORS = ["hsl(var(--chart-1))", "hsl(var(--chart-1))", "hsl(var(--chart-3))", "hsl(var(--chart-5))", "hsl(var(--chart-2))"];
 
 export default function MastermindReportsPage() {
   const [data, setData] = useState<ReportsData | null>(null);
@@ -43,11 +43,11 @@ export default function MastermindReportsPage() {
   if (loading) {
     return (
       <div className="space-y-6">
-        <Skeleton className="h-10 w-48 bg-slate-800" />
-        <Skeleton className="h-80 bg-slate-800" />
+        <Skeleton className="h-10 w-48 bg-card" />
+        <Skeleton className="h-80 bg-card" />
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <Skeleton className="h-80 bg-slate-800" />
-          <Skeleton className="h-80 bg-slate-800" />
+          <Skeleton className="h-80 bg-card" />
+          <Skeleton className="h-80 bg-card" />
         </div>
       </div>
     );
@@ -56,10 +56,10 @@ export default function MastermindReportsPage() {
   if (error || !data) {
     return (
       <div className="text-center py-20">
-        <p className="text-rose-400 mb-4">{error ?? "No data"}</p>
+        <p className="text-destructive mb-4">{error ?? "No data"}</p>
         <button
           onClick={fetchReports}
-          className="px-4 py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700"
+          className="px-4 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90"
         >
           Retry
         </button>
@@ -80,23 +80,23 @@ export default function MastermindReportsPage() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-2xl font-bold text-slate-100">Reports</h1>
-        <p className="text-slate-500">Platform-wide data and trends.</p>
+        <h1 className="text-2xl font-bold text-foreground">Reports</h1>
+        <p className="text-muted-foreground/70">Platform-wide data and trends.</p>
       </div>
 
-      <Card className="bg-slate-900 border-slate-800">
+      <Card className="bg-background border-border">
         <CardHeader>
-          <CardTitle className="text-lg text-slate-100">Daily Attendance (Last 30 Days)</CardTitle>
+          <CardTitle className="text-lg text-foreground">Daily Attendance (Last 30 Days)</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="h-80 w-full">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={attendanceChartData}>
-                <XAxis dataKey="date" stroke="#64748b" fontSize={12} />
-                <YAxis stroke="#64748b" fontSize={12} />
+                <XAxis dataKey="date" stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} />
                 <Tooltip
                   contentStyle={{
-                    backgroundColor: "#0f172a",
+                    backgroundColor: "hsl(var(--background))",
                     borderColor: "#1e293b",
                     color: "#f1f5f9",
                   }}
@@ -112,9 +112,9 @@ export default function MastermindReportsPage() {
       </Card>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card className="bg-slate-900 border-slate-800">
+        <Card className="bg-background border-border">
           <CardHeader>
-            <CardTitle className="text-lg text-slate-100">Plans Distribution</CardTitle>
+            <CardTitle className="text-lg text-foreground">Plans Distribution</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="h-72 w-full">
@@ -135,7 +135,7 @@ export default function MastermindReportsPage() {
                   </Pie>
                   <Tooltip
                     contentStyle={{
-                      backgroundColor: "#0f172a",
+                      backgroundColor: "hsl(var(--background))",
                       borderColor: "#1e293b",
                       color: "#f1f5f9",
                     }}
@@ -145,27 +145,27 @@ export default function MastermindReportsPage() {
             </div>
             <div className="flex flex-wrap justify-center gap-4 mt-4">
               {planChartData.map((entry, index) => (
-                <div key={entry.name} className="flex items-center gap-2 text-xs text-slate-400">
+                <div key={entry.name} className="flex items-center gap-2 text-xs text-muted-foreground">
                   <span
                     className="w-2.5 h-2.5 rounded-full"
                     style={{ backgroundColor: COLORS[index % COLORS.length] }}
                   />
                   <span className="capitalize">{entry.name}</span>
-                  <span className="text-slate-500">({entry.value})</span>
+                  <span className="text-muted-foreground/70">({entry.value})</span>
                 </div>
               ))}
             </div>
           </CardContent>
         </Card>
 
-        <Card className="bg-slate-900 border-slate-800">
+        <Card className="bg-background border-border">
           <CardHeader>
-            <CardTitle className="text-lg text-slate-100">Top Companies by Employees</CardTitle>
+            <CardTitle className="text-lg text-foreground">Top Companies by Employees</CardTitle>
           </CardHeader>
           <CardContent className="p-0">
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
-                <thead className="bg-slate-800/50 text-slate-400">
+                <thead className="bg-card/50 text-muted-foreground">
                   <tr>
                     <th className="text-left px-4 py-3 font-medium">Company</th>
                     <th className="text-right px-4 py-3 font-medium">Employees</th>
@@ -174,15 +174,15 @@ export default function MastermindReportsPage() {
                 <tbody className="divide-y divide-slate-800">
                   {data.topCompanies.map((company) => (
                     <tr key={company.id}>
-                      <td className="px-4 py-3 text-slate-200 font-medium">{company.name}</td>
-                      <td className="px-4 py-3 text-right text-slate-400">
+                      <td className="px-4 py-3 text-foreground font-medium">{company.name}</td>
+                      <td className="px-4 py-3 text-right text-muted-foreground">
                         {company.employees_count ?? 0}
                       </td>
                     </tr>
                   ))}
                   {data.topCompanies.length === 0 && (
                     <tr>
-                      <td colSpan={2} className="px-4 py-8 text-center text-slate-500">
+                      <td colSpan={2} className="px-4 py-8 text-center text-muted-foreground/70">
                         No companies yet.
                       </td>
                     </tr>

@@ -5,7 +5,18 @@ import MainLayout from "@/components/shared/MainLayout";
 import FullPageHead from "@/components/shared/FullPageHead";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { MapPin, Plus, Trash2, Edit, X, Pencil, Check, Eye } from "lucide-react";
+import {
+  MapPin,
+  Plus,
+  Trash2,
+  Edit,
+  X,
+  Pencil,
+  Check,
+  Eye,
+  Crosshair,
+  Copy,
+} from "lucide-react";
 import {
   useGeofences,
   useCreateGeofence,
@@ -39,6 +50,27 @@ import CircleStyle from "ol/style/Circle";
 import Text from "ol/style/Text";
 import { Draw } from "ol/interaction";
 import "ol/ol.css";
+import { MAP_THEME } from "@/lib/utils/mapTheme";
+
+const DEFAULT_GEOFENCE = {
+  name: "",
+  address: "",
+  lat: 24.7136,
+  lng: 46.6753,
+  radius: 100,
+  color: "#14b8a6",
+};
+const RADIUS_PRESETS = [50, 100, 250, 500, 1000];
+const MIN_RADIUS_METERS = 25;
+const MAX_RADIUS_METERS = 10000;
+
+function formatRadius(radius: number): string {
+  return radius >= 1000 ? `${(radius / 1000).toFixed(radius % 1000 === 0 ? 0 : 1)} كم` : `${radius} م`;
+}
+
+function normalizeColor(color: string | null | undefined): string {
+  return /^#[0-9A-Fa-f]{6}$/.test(color ?? "") ? color! : DEFAULT_GEOFENCE.color;
+}
 
 export default function GeofencesPage() {
   const { data: geofences = [], isLoading, isError, refetch } = useGeofences();
@@ -52,22 +84,8 @@ export default function GeofencesPage() {
   const [previewGeofence, setPreviewGeofence] = useState<Geofence | null>(null);
   const [drawMode, setDrawMode] = useState(false);
   const [editDrawMode, setEditDrawMode] = useState(false);
-  const [newGeofence, setNewGeofence] = useState({
-    name: "",
-    address: "",
-    lat: 24.7136,
-    lng: 46.6753,
-    radius: 100,
-    color: "#2563EB",
-  });
-  const [editGeofence, setEditGeofence] = useState({
-    name: "",
-    address: "",
-    lat: 24.7136,
-    lng: 46.6753,
-    radius: 100,
-    color: "#2563EB",
-  });
+  const [newGeofence, setNewGeofence] = useState(DEFAULT_GEOFENCE);
+  const [editGeofence, setEditGeofence] = useState(DEFAULT_GEOFENCE);
 
   const previewMapRef = useRef<HTMLDivElement>(null);
   const previewMapInstance = useRef<Map | null>(null);
@@ -85,6 +103,10 @@ export default function GeofencesPage() {
   const editDrawInteractionRef = useRef<Draw | null>(null);
 
   const extractApiErrorMessage = (error: unknown, fallback: string): string => {
+    const message = error instanceof Error ? error.message : String(error);
+    if (message === "AUTH_EXPIRED") {
+      return "انتهت جلسة تسجيل الدخول. يرجى تسجيل الدخول مرة أخرى.";
+    }
     if (error instanceof ApiError) {
       const context = error.context as
         | {
@@ -115,6 +137,42 @@ export default function GeofencesPage() {
     return fallback;
   };
 
+  const validateGeofence = (geofence: typeof DEFAULT_GEOFENCE): boolean => {
+    if (geofence.name.trim().length < 2) {
+      toast({ description: "أدخل اسمًا واضحًا للنطاق الجغرافي", variant: "destructive" });
+      return false;
+    }
+    if (!Number.isFinite(geofence.lat) || geofence.lat < -90 || geofence.lat > 90) {
+      toast({ description: "خط العرض غير صالح", variant: "destructive" });
+      return false;
+    }
+    if (!Number.isFinite(geofence.lng) || geofence.lng < -180 || geofence.lng > 180) {
+      toast({ description: "خط الطول غير صالح", variant: "destructive" });
+      return false;
+    }
+    if (
+      !Number.isFinite(geofence.radius) ||
+      geofence.radius < MIN_RADIUS_METERS ||
+      geofence.radius > MAX_RADIUS_METERS
+    ) {
+      toast({
+        description: `يجب أن يكون نصف القطر بين ${MIN_RADIUS_METERS} و${MAX_RADIUS_METERS} متر`,
+        variant: "destructive",
+      });
+      return false;
+    }
+    return true;
+  };
+
+  const copyCoordinates = async (lat: number, lng: number) => {
+    try {
+      await navigator.clipboard.writeText(`${lat.toFixed(6)}, ${lng.toFixed(6)}`);
+      toast({ description: "تم نسخ إحداثيات الموقع" });
+    } catch {
+      toast({ description: "تعذر نسخ الإحداثيات", variant: "destructive" });
+    }
+  };
+
   useEffect(() => {
     if (!previewMapRef.current || !previewGeofence) return;
 
@@ -138,13 +196,13 @@ export default function GeofencesPage() {
         image: new CircleStyle({
           radius: 6,
           fill: new Fill({ color: previewGeofence.color }),
-          stroke: new Stroke({ color: "#fff", width: 2 }),
+          stroke: new Stroke({ color: MAP_THEME.contrastStroke, width: 2 }),
         }),
         text: new Text({
           text: previewGeofence.name,
           offsetY: -15,
           font: "bold 12px sans-serif",
-          fill: new Fill({ color: "#1e293b" }),
+          fill: new Fill({ color: MAP_THEME.surface }),
         }),
       })
     );
@@ -188,7 +246,7 @@ export default function GeofencesPage() {
         image: new CircleStyle({
           radius: 6,
           fill: new Fill({ color }),
-          stroke: new Stroke({ color: "#fff", width: 2 }),
+          stroke: new Stroke({ color: MAP_THEME.contrastStroke, width: 2 }),
         }),
       })
     );
@@ -224,7 +282,7 @@ export default function GeofencesPage() {
         image: new CircleStyle({
           radius: 6,
           fill: new Fill({ color }),
-          stroke: new Stroke({ color: "#fff", width: 2 }),
+          stroke: new Stroke({ color: MAP_THEME.contrastStroke, width: 2 }),
         }),
       })
     );
@@ -276,7 +334,12 @@ export default function GeofencesPage() {
         newGeofence.color
       );
 
-      sizeTimer = setTimeout(() => map!.updateSize(), 400);
+      const refreshMapSize = () => {
+        map?.updateSize();
+        map?.renderSync();
+      };
+      requestAnimationFrame(refreshMapSize);
+      sizeTimer = setTimeout(refreshMapSize, 500);
 
       map.on("click", (e) => {
         const [lng, lat] = toLonLat(e.coordinate);
@@ -351,7 +414,12 @@ export default function GeofencesPage() {
         editGeofence.color
       );
 
-      sizeTimer = setTimeout(() => map!.updateSize(), 400);
+      const refreshMapSize = () => {
+        map?.updateSize();
+        map?.renderSync();
+      };
+      requestAnimationFrame(refreshMapSize);
+      sizeTimer = setTimeout(refreshMapSize, 500);
 
       map.on("click", (e) => {
         const [lng, lat] = toLonLat(e.coordinate);
@@ -513,25 +581,21 @@ export default function GeofencesPage() {
   };
 
   const handleAdd = () => {
-    if (!Number.isFinite(newGeofence.radius) || newGeofence.radius <= 0) {
-      toast({ description: "نصف القطر يجب أن يكون أكبر من صفر", variant: "destructive" });
-      return;
-    }
+    if (!validateGeofence(newGeofence)) return;
 
     createGeofence.mutate(
-      { ...newGeofence, active: true },
+      {
+        ...newGeofence,
+        address:
+          newGeofence.address.trim() ||
+          `موقع على الخريطة (${newGeofence.lat.toFixed(6)}, ${newGeofence.lng.toFixed(6)})`,
+        active: true,
+      },
       {
         onSuccess: () => {
           toast({ description: "تم إضافة النطاق الجغرافي بنجاح" });
           setShowAddForm(false);
-          setNewGeofence({
-            name: "",
-            address: "",
-            lat: 24.7136,
-            lng: 46.6753,
-            radius: 100,
-            color: "#2563EB",
-          });
+          setNewGeofence(DEFAULT_GEOFENCE);
         },
         onError: (error) => {
           toast({
@@ -552,16 +616,12 @@ export default function GeofencesPage() {
       lat: geo.lat,
       lng: geo.lng,
       radius: geo.radius,
-      color: geo.color,
+      color: normalizeColor(geo.color),
     });
   };
 
   const handleUpdateGeofence = () => {
-    if (!editTarget) return;
-    if (!Number.isFinite(editGeofence.radius) || editGeofence.radius <= 0) {
-      toast({ description: "نصف القطر يجب أن يكون أكبر من صفر", variant: "destructive" });
-      return;
-    }
+    if (!editTarget || !validateGeofence(editGeofence)) return;
     updateGeofence.mutate(
       { id: editTarget.id, data: editGeofence },
       {
@@ -624,105 +684,120 @@ export default function GeofencesPage() {
           {/* Interactive Map */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <label className="text-sm font-medium text-gray-700 dark:text-slate-300">
+              <label className="text-sm font-medium text-muted-foreground">
                 حدد الموقع على الخريطة
               </label>
-              <button
-                onClick={toggleDrawMode}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-                  drawMode
-                    ? "bg-primaryColor text-white"
-                    : "bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-slate-300"
-                }`}
-              >
-                {drawMode ? <Check className="w-3 h-3" /> : <Pencil className="w-3 h-3" />}
-                {drawMode ? "تم الرسم" : "رسم دائرة"}
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={toggleDrawMode}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                    drawMode
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-muted text-muted-foreground"
+                  }`}
+                >
+                  {drawMode ? <Check className="w-3 h-3" /> : <Pencil className="w-3 h-3" />}
+                  {drawMode ? "تم الرسم" : "رسم دائرة"}
+                </button>
+              </div>
             </div>
             <div
               ref={drawerMapRef}
-              className="w-full h-64 rounded-xl border border-gray-200 dark:border-slate-600 overflow-hidden"
+              className="w-full h-64 rounded-xl border border-border overflow-hidden"
             />
-            <p className="text-xs text-gray-500 dark:text-slate-400">
-              {drawMode
-                ? "ارسم دائرة على الخريطة لتحديد الموقع والنطاق"
-                : "انقر على الخريطة لتحديد المركز"}
-            </p>
+            <div className="flex items-center justify-between rounded-lg border border-border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+              <span className="flex items-center gap-1.5"><Crosshair className="w-3.5 h-3.5 text-primary" />{drawMode ? "اسحب لرسم دائرة حول موقع العمل" : "انقر لتحديد مركز النطاق"}</span>
+              <span className="font-medium text-foreground">{formatRadius(newGeofence.radius)}</span>
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-border bg-muted/20 p-3">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-sm font-medium text-foreground">إحداثيات الموقع</p>
+                <p className="mt-0.5 text-xs text-muted-foreground">تتغير عند اختيار الموقع من الخريطة أو استخدام موقعك الحالي.</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => copyCoordinates(newGeofence.lat, newGeofence.lng)}
+                className="shrink-0 rounded-lg border border-border p-2 text-muted-foreground transition-colors hover:border-primary/60 hover:bg-primary/10 hover:text-primary"
+                aria-label="نسخ الإحداثيات"
+              >
+                <Copy className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="mt-3 grid grid-cols-2 gap-2">
+              <div className="rounded-lg bg-background px-3 py-2">
+                <p className="text-[11px] text-muted-foreground">خط العرض</p>
+                <p className="mt-0.5 font-mono text-sm font-semibold text-foreground" dir="ltr">{newGeofence.lat.toFixed(6)}</p>
+              </div>
+              <div className="rounded-lg bg-background px-3 py-2">
+                <p className="text-[11px] text-muted-foreground">خط الطول</p>
+                <p className="mt-0.5 font-mono text-sm font-semibold text-foreground" dir="ltr">{newGeofence.lng.toFixed(6)}</p>
+              </div>
+            </div>
           </div>
 
           <div>
-            <label className="text-sm font-medium text-gray-700 dark:text-slate-300 mb-1 block">
+            <label className="text-sm font-medium text-muted-foreground mb-1 block">
               الاسم
             </label>
             <input
               type="text"
               value={newGeofence.name}
               onChange={(e) => setNewGeofence({ ...newGeofence, name: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg outline-none focus:ring-2 focus:ring-primaryColor bg-transparent dark:bg-slate-900 text-gray-900 dark:text-slate-100"
+              className="w-full px-3 py-2 border border-input rounded-lg outline-none focus:ring-2 focus:ring-ring bg-transparent text-foreground"
               placeholder="اسم الموقع"
             />
           </div>
-          <div>
-            <label className="text-sm font-medium text-gray-700 dark:text-slate-300 mb-1 block">
-              العنوان
-            </label>
+          <div className="rounded-xl border border-border bg-muted/20 p-3 space-y-3">
+            <div className="flex items-center justify-between">
+              <label className="text-sm font-medium text-foreground">نصف قطر منطقة السماح</label>
+              <span className="text-sm font-bold text-primary">{formatRadius(newGeofence.radius)}</span>
+            </div>
             <input
-              type="text"
-              value={newGeofence.address}
-              onChange={(e) => setNewGeofence({ ...newGeofence, address: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg outline-none focus:ring-2 focus:ring-primaryColor bg-transparent dark:bg-slate-900 text-gray-900 dark:text-slate-100"
-              placeholder="العنوان"
+              type="range"
+              min={MIN_RADIUS_METERS}
+              max={MAX_RADIUS_METERS}
+              step="25"
+              value={Math.min(MAX_RADIUS_METERS, Math.max(MIN_RADIUS_METERS, newGeofence.radius))}
+              onChange={(e) => setNewGeofence({ ...newGeofence, radius: Number(e.target.value) })}
+              className="w-full accent-primary"
             />
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="text-sm font-medium text-gray-700 dark:text-slate-300 mb-1 block">
-                خط العرض
-              </label>
-              <input
-                type="number"
-                step="0.0001"
-                value={newGeofence.lat}
-                onChange={(e) => setNewGeofence({ ...newGeofence, lat: Number(e.target.value) })}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg outline-none focus:ring-2 focus:ring-primaryColor bg-transparent dark:bg-slate-900 text-gray-900 dark:text-slate-100"
-              />
-            </div>
-            <div>
-              <label className="text-sm font-medium text-gray-700 dark:text-slate-300 mb-1 block">
-                خط الطول
-              </label>
-              <input
-                type="number"
-                step="0.0001"
-                value={newGeofence.lng}
-                onChange={(e) => setNewGeofence({ ...newGeofence, lng: Number(e.target.value) })}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg outline-none focus:ring-2 focus:ring-primaryColor bg-transparent dark:bg-slate-900 text-gray-900 dark:text-slate-100"
-              />
+            <div className="flex flex-wrap gap-2">
+              {RADIUS_PRESETS.map((radius) => (
+                <button
+                  key={radius}
+                  type="button"
+                  onClick={() => setNewGeofence({ ...newGeofence, radius })}
+                  className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${newGeofence.radius === radius ? "bg-primary text-primary-foreground" : "bg-background border border-border text-muted-foreground hover:border-primary/60"}`}
+                >
+                  {formatRadius(radius)}
+                </button>
+              ))}
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-[1fr_auto] gap-3 items-end">
             <div>
-              <label className="text-sm font-medium text-gray-700 dark:text-slate-300 mb-1 block">
-                نصف القطر (متر)
-              </label>
+              <label className="text-sm font-medium text-muted-foreground mb-1 block">تخصيص دقيق (متر)</label>
               <input
                 type="number"
+                min={MIN_RADIUS_METERS}
+                max={MAX_RADIUS_METERS}
+                step="1"
                 value={newGeofence.radius}
                 onChange={(e) => setNewGeofence({ ...newGeofence, radius: Number(e.target.value) })}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg outline-none focus:ring-2 focus:ring-primaryColor bg-transparent dark:bg-slate-900 text-gray-900 dark:text-slate-100"
+                className="w-full px-3 py-2 border border-input rounded-lg outline-none focus:ring-2 focus:ring-ring bg-transparent text-foreground"
               />
             </div>
-            <div>
-              <label className="text-sm font-medium text-gray-700 dark:text-slate-300 mb-1 block">
-                اللون
-              </label>
-              <input
-                type="color"
-                value={newGeofence.color}
-                onChange={(e) => setNewGeofence({ ...newGeofence, color: e.target.value })}
-                className="w-full h-10 border border-gray-300 dark:border-slate-600 rounded-lg cursor-pointer bg-transparent dark:bg-slate-900"
-              />
-            </div>
+            <input
+              aria-label="لون النطاق"
+              type="color"
+              value={newGeofence.color}
+              onChange={(e) => setNewGeofence({ ...newGeofence, color: e.target.value })}
+              className="h-10 w-12 border border-input rounded-lg cursor-pointer bg-transparent"
+            />
           </div>
         </FormDrawer>
 
@@ -746,7 +821,7 @@ export default function GeofencesPage() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: idx * 0.06, duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
               >
-                <Card className="border-0 shadow-lg overflow-hidden group hover:shadow-xl transition-all duration-300 dark:bg-slate-800 cursor-default">
+                <Card className="border-0 shadow-lg overflow-hidden group hover:shadow-xl transition-all duration-300 bg-card cursor-default">
                   {/* Color accent bar */}
                   <div className="h-1.5" style={{ backgroundColor: geo.color }} />
 
@@ -761,71 +836,57 @@ export default function GeofencesPage() {
                           <MapPin className="w-5 h-5" style={{ color: geo.color }} />
                         </div>
                         <div className="min-w-0">
-                          <h3 className="text-sm font-bold text-gray-900 dark:text-slate-100 truncate">
+                          <h3 className="text-sm font-bold text-foreground truncate">
                             {geo.name}
                           </h3>
-                          <p className="text-xs text-gray-500 dark:text-slate-400 mt-0.5 truncate max-w-[140px]">
+                          <p className="text-xs text-muted-foreground mt-0.5 truncate max-w-[140px]">
                             {geo.address}
                           </p>
                         </div>
                       </div>
-                      <span
-                        className={`shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${
-                          geo.active
-                            ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
-                            : "bg-gray-100 text-gray-500 dark:bg-slate-700 dark:text-slate-400"
-                        }`}
-                      >
-                        <span
-                          className={`w-1.5 h-1.5 rounded-full ${
-                            geo.active ? "bg-green-500 animate-pulse" : "bg-gray-400"
-                          }`}
-                        />
-                        {geo.active ? "نشط" : "متوقف"}
-                      </span>
                     </div>
 
                     {/* Stats chips */}
                     <div className="flex items-center gap-2 mb-4">
-                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-gray-50 dark:bg-slate-700/60 text-xs font-medium text-gray-600 dark:text-slate-300">
-                        <span className="text-gray-400">نصف القطر</span>
-                        <span className="font-bold text-gray-900 dark:text-slate-100">
+                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-muted text-muted-foreground">
+                        <span className="text-muted-foreground">نصف القطر</span>
+                        <span className="font-bold text-foreground">
                           {geo.radius}م
                         </span>
                       </span>
-                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-gray-50 dark:bg-slate-700/60 text-xs font-medium text-gray-600 dark:text-slate-300">
-                        <span className="text-gray-400">
+                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-muted text-muted-foreground">
+                        <span className="text-muted-foreground">
                           {geo.lat.toFixed(3)}°, {geo.lng.toFixed(3)}°
                         </span>
                       </span>
                     </div>
 
                     {/* Action buttons */}
-                    <div className="flex items-center gap-1 pt-3 border-t border-gray-100 dark:border-slate-700">
+                    <div className="flex items-center gap-1 pt-3 border-t border-border">
                       <button
                         onClick={() => {
                           hapticTap();
                           setPreviewGeofence(geo);
                         }}
-                        className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-medium text-gray-600 dark:text-slate-400 hover:bg-primaryColor/10 hover:text-primaryColor dark:hover:bg-primaryColor/10 dark:hover:text-primaryColor transition-colors"
+                        className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-medium text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors"
                         aria-label="عرض على الخريطة"
                       >
                         <Eye className="w-3.5 h-3.5" />
                         عرض
                       </button>
-                      <div className="w-px h-5 bg-gray-100 dark:bg-slate-700" />
+                      <div className="w-px h-5 bg-border" />
                       <button
                         onClick={() => handleEditGeofence(geo)}
-                        className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-medium text-gray-600 dark:text-slate-400 hover:bg-indigo-50 hover:text-indigo-600 dark:hover:bg-indigo-900/20 dark:hover:text-indigo-400 transition-colors"
+                        className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-medium text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors"
                         aria-label="تعديل"
                       >
                         <Edit className="w-3.5 h-3.5" />
                         تعديل
                       </button>
-                      <div className="w-px h-5 bg-gray-100 dark:bg-slate-700" />
+                      <div className="w-px h-5 bg-border" />
                       <button
                         onClick={() => handleDelete(geo)}
-                        className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-medium text-gray-600 dark:text-slate-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20 dark:hover:text-red-400 transition-colors"
+                        className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-medium text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
                         aria-label="حذف"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
@@ -852,111 +913,121 @@ export default function GeofencesPage() {
           <div className="space-y-4">
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <label className="text-sm font-medium text-gray-700 dark:text-slate-300">
+                <label className="text-sm font-medium text-muted-foreground">
                   تعديل الموقع على الخريطة
                 </label>
-                <button
-                  onClick={toggleEditDrawMode}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-                    editDrawMode
-                      ? "bg-primaryColor text-white"
-                      : "bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-slate-300"
-                  }`}
-                >
-                  {editDrawMode ? <Check className="w-3 h-3" /> : <Pencil className="w-3 h-3" />}
-                  {editDrawMode ? "تم الرسم" : "رسم دائرة"}
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={toggleEditDrawMode}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                      editDrawMode
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-muted text-muted-foreground"
+                    }`}
+                  >
+                    {editDrawMode ? <Check className="w-3 h-3" /> : <Pencil className="w-3 h-3" />}
+                    {editDrawMode ? "تم الرسم" : "رسم دائرة"}
+                  </button>
+                </div>
               </div>
               <div
                 ref={editDrawerMapRef}
-                className="w-full h-64 rounded-xl border border-gray-200 dark:border-slate-600 overflow-hidden"
+                className="w-full h-64 rounded-xl border border-border overflow-hidden"
               />
-              <p className="text-xs text-gray-500 dark:text-slate-400">
+              <p className="text-xs text-muted-foreground">
                 {editDrawMode
                   ? "ارسم دائرة جديدة لتحديث الموقع ونصف القطر"
                   : "انقر على الخريطة لتحديث مركز النطاق"}
               </p>
             </div>
 
+            <div className="rounded-xl border border-border bg-muted/20 p-3">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-medium text-foreground">إحداثيات الموقع</p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">حرّك المركز من الخريطة أو استخدم موقعك الحالي لتحديثها.</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => copyCoordinates(editGeofence.lat, editGeofence.lng)}
+                  className="shrink-0 rounded-lg border border-border p-2 text-muted-foreground transition-colors hover:border-primary/60 hover:bg-primary/10 hover:text-primary"
+                  aria-label="نسخ الإحداثيات"
+                >
+                  <Copy className="h-4 w-4" />
+                </button>
+              </div>
+              <div className="mt-3 grid grid-cols-2 gap-2">
+                <div className="rounded-lg bg-background px-3 py-2">
+                  <p className="text-[11px] text-muted-foreground">خط العرض</p>
+                  <p className="mt-0.5 font-mono text-sm font-semibold text-foreground" dir="ltr">{editGeofence.lat.toFixed(6)}</p>
+                </div>
+                <div className="rounded-lg bg-background px-3 py-2">
+                  <p className="text-[11px] text-muted-foreground">خط الطول</p>
+                  <p className="mt-0.5 font-mono text-sm font-semibold text-foreground" dir="ltr">{editGeofence.lng.toFixed(6)}</p>
+                </div>
+              </div>
+            </div>
+
             <div>
-              <label className="text-sm font-medium text-gray-700 dark:text-slate-300 mb-1 block">
+              <label className="text-sm font-medium text-muted-foreground mb-1 block">
                 الاسم
               </label>
               <input
                 type="text"
                 value={editGeofence.name}
                 onChange={(e) => setEditGeofence({ ...editGeofence, name: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg outline-none focus:ring-2 focus:ring-primaryColor bg-transparent dark:bg-slate-900 text-gray-900 dark:text-slate-100"
+                className="w-full px-3 py-2 border border-input rounded-lg outline-none focus:ring-2 focus:ring-ring bg-transparent text-foreground"
                 placeholder="اسم الموقع"
               />
             </div>
-            <div>
-              <label className="text-sm font-medium text-gray-700 dark:text-slate-300 mb-1 block">
-                العنوان
-              </label>
+            <div className="rounded-xl border border-border bg-muted/20 p-3 space-y-3">
+              <div className="flex items-center justify-between">
+                <label className="text-sm font-medium text-foreground">نصف قطر منطقة السماح</label>
+                <span className="text-sm font-bold text-primary">{formatRadius(editGeofence.radius)}</span>
+              </div>
               <input
-                type="text"
-                value={editGeofence.address}
-                onChange={(e) => setEditGeofence({ ...editGeofence, address: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg outline-none focus:ring-2 focus:ring-primaryColor bg-transparent dark:bg-slate-900 text-gray-900 dark:text-slate-100"
-                placeholder="العنوان"
+                type="range"
+                min={MIN_RADIUS_METERS}
+                max={MAX_RADIUS_METERS}
+                step="25"
+                value={Math.min(MAX_RADIUS_METERS, Math.max(MIN_RADIUS_METERS, editGeofence.radius))}
+                onChange={(e) => setEditGeofence({ ...editGeofence, radius: Number(e.target.value) })}
+                className="w-full accent-primary"
               />
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="text-sm font-medium text-gray-700 dark:text-slate-300 mb-1 block">
-                  خط العرض
-                </label>
-                <input
-                  type="number"
-                  step="0.0001"
-                  value={editGeofence.lat}
-                  onChange={(e) =>
-                    setEditGeofence({ ...editGeofence, lat: Number(e.target.value) })
-                  }
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg outline-none focus:ring-2 focus:ring-primaryColor bg-transparent dark:bg-slate-900 text-gray-900 dark:text-slate-100"
-                />
-              </div>
-              <div>
-                <label className="text-sm font-medium text-gray-700 dark:text-slate-300 mb-1 block">
-                  خط الطول
-                </label>
-                <input
-                  type="number"
-                  step="0.0001"
-                  value={editGeofence.lng}
-                  onChange={(e) =>
-                    setEditGeofence({ ...editGeofence, lng: Number(e.target.value) })
-                  }
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg outline-none focus:ring-2 focus:ring-primaryColor bg-transparent dark:bg-slate-900 text-gray-900 dark:text-slate-100"
-                />
+              <div className="flex flex-wrap gap-2">
+                {RADIUS_PRESETS.map((radius) => (
+                  <button
+                    key={radius}
+                    type="button"
+                    onClick={() => setEditGeofence({ ...editGeofence, radius })}
+                    className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${editGeofence.radius === radius ? "bg-primary text-primary-foreground" : "bg-background border border-border text-muted-foreground hover:border-primary/60"}`}
+                  >
+                    {formatRadius(radius)}
+                  </button>
+                ))}
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-[1fr_auto] gap-3 items-end">
               <div>
-                <label className="text-sm font-medium text-gray-700 dark:text-slate-300 mb-1 block">
-                  نصف القطر (متر)
-                </label>
+                <label className="text-sm font-medium text-muted-foreground mb-1 block">تخصيص دقيق (متر)</label>
                 <input
                   type="number"
+                  min={MIN_RADIUS_METERS}
+                  max={MAX_RADIUS_METERS}
+                  step="1"
                   value={editGeofence.radius}
-                  onChange={(e) =>
-                    setEditGeofence({ ...editGeofence, radius: Number(e.target.value) })
-                  }
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg outline-none focus:ring-2 focus:ring-primaryColor bg-transparent dark:bg-slate-900 text-gray-900 dark:text-slate-100"
+                  onChange={(e) => setEditGeofence({ ...editGeofence, radius: Number(e.target.value) })}
+                  className="w-full px-3 py-2 border border-input rounded-lg outline-none focus:ring-2 focus:ring-ring bg-transparent text-foreground"
                 />
               </div>
-              <div>
-                <label className="text-sm font-medium text-gray-700 dark:text-slate-300 mb-1 block">
-                  اللون
-                </label>
-                <input
-                  type="color"
-                  value={editGeofence.color}
-                  onChange={(e) => setEditGeofence({ ...editGeofence, color: e.target.value })}
-                  className="w-full h-10 border border-gray-300 dark:border-slate-600 rounded-lg cursor-pointer bg-transparent"
-                />
-              </div>
+              <input
+                aria-label="لون النطاق"
+                type="color"
+                value={editGeofence.color}
+                onChange={(e) => setEditGeofence({ ...editGeofence, color: e.target.value })}
+                className="h-10 w-12 border border-input rounded-lg cursor-pointer bg-transparent"
+              />
             </div>
           </div>
         </FormDrawer>
@@ -976,7 +1047,7 @@ export default function GeofencesPage() {
                 animate={{ scale: 1 }}
                 exit={{ scale: 0.9 }}
                 onClick={(e) => e.stopPropagation()}
-                className="bg-white dark:bg-slate-800 rounded-2xl p-6 max-w-lg w-full shadow-2xl"
+                className="bg-card rounded-2xl p-6 max-w-lg w-full shadow-2xl"
               >
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-3">
@@ -987,41 +1058,41 @@ export default function GeofencesPage() {
                       <MapPin className="w-5 h-5" style={{ color: previewGeofence.color }} />
                     </div>
                     <div>
-                      <h3 className="text-lg font-bold text-gray-900 dark:text-slate-100">
+                      <h3 className="text-lg font-bold text-foreground">
                         {previewGeofence.name}
                       </h3>
-                      <p className="text-xs text-gray-500 dark:text-slate-400">
+                      <p className="text-xs text-muted-foreground">
                         {previewGeofence.address}
                       </p>
                     </div>
                   </div>
                   <button
                     onClick={() => setPreviewGeofence(null)}
-                    className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-700 text-gray-500 dark:text-slate-400"
+                    className="p-2 rounded-lg hover:bg-muted text-muted-foreground"
                   >
                     <X className="w-5 h-5" />
                   </button>
                 </div>
                 <div
                   ref={previewMapRef}
-                  className="w-full h-72 rounded-xl border border-gray-200 dark:border-slate-600 overflow-hidden"
+                  className="w-full h-72 rounded-xl border border-border overflow-hidden"
                 />
                 <div className="grid grid-cols-3 gap-3 mt-4 text-sm">
-                  <div className="text-center p-2 rounded-lg bg-gray-50 dark:bg-slate-700/50">
-                    <p className="text-xs text-gray-500 dark:text-slate-400">نصف القطر</p>
-                    <p className="font-bold text-gray-900 dark:text-slate-100">
+                  <div className="text-center p-2 rounded-lg bg-muted text-muted-foreground">
+                    <p className="text-xs text-muted-foreground">نصف القطر</p>
+                    <p className="font-bold text-foreground">
                       {previewGeofence.radius}م
                     </p>
                   </div>
-                  <div className="text-center p-2 rounded-lg bg-gray-50 dark:bg-slate-700/50">
-                    <p className="text-xs text-gray-500 dark:text-slate-400">خط العرض</p>
-                    <p className="font-bold text-gray-900 dark:text-slate-100">
+                  <div className="text-center p-2 rounded-lg bg-muted text-muted-foreground">
+                    <p className="text-xs text-muted-foreground">خط العرض</p>
+                    <p className="font-bold text-foreground">
                       {previewGeofence.lat}
                     </p>
                   </div>
-                  <div className="text-center p-2 rounded-lg bg-gray-50 dark:bg-slate-700/50">
-                    <p className="text-xs text-gray-500 dark:text-slate-400">خط الطول</p>
-                    <p className="font-bold text-gray-900 dark:text-slate-100">
+                  <div className="text-center p-2 rounded-lg bg-muted text-muted-foreground">
+                    <p className="text-xs text-muted-foreground">خط الطول</p>
+                    <p className="font-bold text-foreground">
                       {previewGeofence.lng}
                     </p>
                   </div>

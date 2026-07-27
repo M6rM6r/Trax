@@ -46,10 +46,10 @@ export default function InactiveEmployeesPage() {
                 sortValue: (emp) => emp.name,
                 cell: (emp) => (
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-gray-300 dark:bg-slate-600 flex items-center justify-center text-white font-bold text-sm">
+                    <div className="w-10 h-10 rounded-full bg-muted-foreground/30 bg-muted flex items-center justify-center text-primary-foreground font-bold text-sm">
                       {emp.name.charAt(0)}
                     </div>
-                    <span className="text-sm font-medium text-gray-700 dark:text-slate-200">
+                    <span className="text-sm font-medium text-foreground">
                       {emp.name}
                     </span>
                   </div>
@@ -62,7 +62,7 @@ export default function InactiveEmployeesPage() {
                 filterable: true,
                 sortValue: (emp) => emp.department,
                 cell: (emp) => (
-                  <span className="text-gray-500 dark:text-slate-400">{emp.department}</span>
+                  <span className="text-muted-foreground">{emp.department}</span>
                 ),
               },
               {
@@ -71,7 +71,7 @@ export default function InactiveEmployeesPage() {
                 sortable: true,
                 sortValue: (emp) => emp.role,
                 cell: (emp) => (
-                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600 dark:bg-slate-700 dark:text-slate-300">
+                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-muted text-muted-foreground">
                     {roleLabels[emp.role]}
                   </span>
                 ),
@@ -80,7 +80,7 @@ export default function InactiveEmployeesPage() {
                 key: "contact",
                 header: "التواصل",
                 cell: (emp) => (
-                  <div className="flex flex-col gap-1 text-xs text-gray-400 dark:text-slate-500">
+                  <div className="flex flex-col gap-1 text-xs text-muted-foreground/70">
                     <span className="flex items-center gap-1">
                       <Mail className="w-3 h-3" />
                       <span dir="ltr" lang="en" style={{ unicodeBidi: "plaintext" }}>

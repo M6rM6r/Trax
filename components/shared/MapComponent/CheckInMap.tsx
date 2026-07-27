@@ -14,6 +14,7 @@ import Feature from "ol/Feature";
 import { Style, Stroke, Fill, Circle as CircleStyle, Text } from "ol/style";
 import "ol/ol.css";
 import type { Geofence } from "@/lib/types/trackingTypes";
+import { MAP_THEME } from "@/lib/utils/mapTheme";
 
 interface CheckInMapProps {
   geofences: Geofence[];
@@ -102,7 +103,7 @@ export default function CheckInMap({
     geofences.forEach((geo) => {
       const center = fromLonLat([geo.lng, geo.lat]);
       const isNearest = nearestGeofence?.geofence.id === geo.id;
-      const color = geo.color || (isNearest ? "#10b981" : "#6366f1");
+      const color = geo.color || (isNearest ? MAP_THEME.primary : MAP_THEME.secondary);
 
       const circleFeature = new Feature({
         geometry: new CircleGeom(center, geo.radius),
@@ -130,14 +131,14 @@ export default function CheckInMap({
           image: new CircleStyle({
             radius: isNearest ? 7 : 5,
             fill: new Fill({ color }),
-            stroke: new Stroke({ color: "#fff", width: 2 }),
+            stroke: new Stroke({ color: MAP_THEME.contrastStroke, width: 2 }),
           }),
           text: new Text({
             text: geo.name,
             offsetY: -18,
             font: "bold 12px sans-serif",
-            fill: new Fill({ color: "#e2e8f0" }),
-            stroke: new Stroke({ color: "#0f172a", width: 3 }),
+            fill: new Fill({ color: MAP_THEME.surfaceLight }),
+            stroke: new Stroke({ color: MAP_THEME.border, width: 3 }),
           }),
         })
       );
@@ -164,15 +165,15 @@ export default function CheckInMap({
         new Style({
           image: new CircleStyle({
             radius: 8,
-            fill: new Fill({ color: "#22c55e" }),
-            stroke: new Stroke({ color: "#fff", width: 3 }),
+            fill: new Fill({ color: MAP_THEME.employeeMarker }),
+            stroke: new Stroke({ color: MAP_THEME.contrastStroke, width: 3 }),
           }),
           text: new Text({
             text: "أنت هنا",
             offsetY: -22,
             font: "bold 12px sans-serif",
-            fill: new Fill({ color: "#22c55e" }),
-            stroke: new Stroke({ color: "#0f172a", width: 3 }),
+            fill: new Fill({ color: MAP_THEME.employeeMarker }),
+            stroke: new Stroke({ color: MAP_THEME.border, width: 3 }),
           }),
         })
       );
@@ -199,7 +200,7 @@ export default function CheckInMap({
   }, [geofences, currentLocation, nearestGeofence]);
 
   const statusText = isWithinRange ? "داخل النطاق" : "خارج النطاق";
-  const statusColor = isWithinRange ? "bg-emerald-500" : "bg-amber-500";
+  const statusColor = isWithinRange ? "bg-primary" : "bg-[hsl(48_96%_53%/0.1)]0";
 
   return (
     <div className={`relative w-full overflow-hidden rounded-xl ${className}`}>
@@ -211,7 +212,7 @@ export default function CheckInMap({
           type="button"
           onClick={recenterOnUser}
           disabled={!currentLocation}
-          className="p-2 rounded-lg bg-slate-800/80 text-white shadow-md backdrop-blur-sm hover:bg-slate-700/90 disabled:opacity-40 transition-colors"
+          className="p-2 rounded-lg bg-card/80 text-primary-foreground shadow-md backdrop-blur-sm hover:bg-muted/90 disabled:opacity-40 transition-colors"
           title="توسيط على موقعي"
           aria-label="توسيط على موقعي"
         >
@@ -220,7 +221,7 @@ export default function CheckInMap({
         <button
           type="button"
           onClick={fitToAll}
-          className="p-2 rounded-lg bg-slate-800/80 text-white shadow-md backdrop-blur-sm hover:bg-slate-700/90 transition-colors"
+          className="p-2 rounded-lg bg-card/80 text-primary-foreground shadow-md backdrop-blur-sm hover:bg-muted/90 transition-colors"
           title="عرض الكل"
           aria-label="عرض الكل"
         >
@@ -229,7 +230,7 @@ export default function CheckInMap({
       </div>
 
       {/* Location / geofence info */}
-      <div className="absolute bottom-3 left-3 z-10 max-w-[85%] rounded-xl bg-slate-900/80 p-3 text-white shadow-lg backdrop-blur-sm">
+      <div className="absolute bottom-3 left-3 z-10 max-w-[85%] rounded-xl bg-background/80 p-3 text-primary-foreground shadow-lg backdrop-blur-sm">
         {loading ? (
           <p className="text-[11px]">جاري تحميل النطاقات الجغرافية...</p>
         ) : geofences.length === 0 ? (
@@ -243,12 +244,12 @@ export default function CheckInMap({
                 className="w-2.5 h-2.5 rounded-full"
                 style={{
                   backgroundColor:
-                    nearestGeofence.geofence.color || (isWithinRange ? "#10b981" : "#6366f1"),
+                    nearestGeofence.geofence.color || (isWithinRange ? MAP_THEME.primary : MAP_THEME.secondary),
                 }}
               />
               <span className="text-xs font-bold truncate">{nearestGeofence.geofence.name}</span>
             </div>
-            <div className="text-[11px] text-slate-300">
+            <div className="text-[11px] text-muted-foreground">
               المسافة: {Math.round(nearestGeofence.distance)}م · نصف القطر:{" "}
               {Math.round(nearestGeofence.geofence.radius)}م
             </div>

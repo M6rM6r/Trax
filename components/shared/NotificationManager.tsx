@@ -121,7 +121,7 @@ export default function NotificationManager() {
             type: "late_arrival",
             title: "تأخر عن الحضور",
             message: `${emp.name} لم يسجل الحضور اليوم`,
-            employeeId: emp.id as number,
+            employeeId: emp.id as unknown as number,
             employeeName: emp.name,
           });
         });

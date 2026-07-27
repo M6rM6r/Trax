@@ -21,14 +21,14 @@ export interface ShiftSchedule {
 }
 
 export interface Employee {
-  id: string | number;
+  id: string;
   name: string;
   email: string;
   phone: string;
   role: EmployeeRole;
   department: string;
   avatar?: string | null;
-  geofenceId?: string | number | null;
+  geofenceId?: string | null;
   status: "active" | "inactive";
   currentLat?: number | null;
   currentLng?: number | null;
@@ -42,7 +42,7 @@ export interface Employee {
 }
 
 export interface Geofence {
-  id: string | number;
+  id: string;
   name: string;
   address: string;
   lat: number;
@@ -54,8 +54,8 @@ export interface Geofence {
 }
 
 export interface AttendanceRecord {
-  id: string | number;
-  employeeId: string | number;
+  id: string;
+  employeeId: string;
   employeeName: string;
   date: string;
   checkInTime?: string | null;
@@ -65,7 +65,7 @@ export interface AttendanceRecord {
   checkInLng?: number | null;
   checkOutLat?: number | null;
   checkOutLng?: number | null;
-  geofenceId?: string | number | null;
+  geofenceId?: string | null;
   geofenceName?: string | null;
   lateMinutes: number;
   workedHours: number;
@@ -97,7 +97,7 @@ export interface DashboardStats {
 }
 
 export interface LiveTrackingEmployee {
-  id: string | number;
+  id: string;
   name: string;
   lat: number;
   lng: number;

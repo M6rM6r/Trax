@@ -18,7 +18,7 @@ export const dashboardStatsSchema = z.object({
 });
 
 export const liveTrackingEmployeeSchema = z.object({
-  id: z.coerce.number().int().positive(),
+  id: z.coerce.string(),
   name: z.string().trim().min(1),
   lat: z.coerce.number().min(-90).max(90),
   lng: z.coerce.number().min(-180).max(180),

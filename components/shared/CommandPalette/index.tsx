@@ -190,30 +190,30 @@ export function CommandPalette() {
     >
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm animate-fade-in" />
       <div
-        className="relative w-full max-w-xl bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-gray-200 dark:border-slate-700 overflow-hidden animate-slide-up"
+        className="relative w-full max-w-xl bg-card rounded-2xl shadow-lg border border-border overflow-hidden animate-slide-up"
         onClick={(e) => e.stopPropagation()}
       >
         <Command className="flex flex-col" role="dialog" aria-label="لوحة الأوامر">
-          <div className="flex items-center gap-3 px-4 border-b border-gray-200 dark:border-slate-700">
-            <Search className="w-4 h-4 text-gray-400 dark:text-slate-500 shrink-0" />
+          <div className="flex items-center gap-3 px-4 border-b border-border">
+            <Search className="w-4 h-4 text-muted-foreground/70 shrink-0" />
             <Command.Input
               placeholder="ابحث عن صفحة أو إجراء..."
-              className="w-full bg-transparent py-4 outline-none text-sm text-gray-900 dark:text-slate-100 placeholder:text-gray-400 dark:placeholder:text-slate-500"
+              className="w-full bg-transparent py-4 outline-none text-sm text-foreground placeholder:text-muted-foreground/70 dark:placeholder:text-muted-foreground/70"
               autoFocus
             />
-            <kbd className="px-1.5 py-0.5 text-[10px] font-mono bg-gray-100 dark:bg-slate-700 text-gray-500 dark:text-slate-400 rounded shrink-0">
+            <kbd className="px-1.5 py-0.5 text-[10px] font-mono bg-muted text-muted-foreground rounded shrink-0">
               ESC
             </kbd>
           </div>
           <Command.List className="max-h-[50vh] overflow-y-auto p-2">
-            <Command.Empty className="py-6 text-center text-sm text-gray-400 dark:text-slate-500">
+            <Command.Empty className="py-6 text-center text-sm text-muted-foreground/70">
               لا توجد نتائج
             </Command.Empty>
             {groups.map((group) => (
               <Command.Group
                 key={group}
                 heading={group}
-                className="[&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1.5 [&_[cmdk-group-heading]]:text-xs [&_[cmdk-group-heading]]:font-semibold [&_[cmdk-group-heading]]:text-gray-400 [&_[cmdk-group-heading]]:dark:text-slate-500"
+                className="[&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1.5 [&_[cmdk-group-heading]]:text-xs [&_[cmdk-group-heading]]:font-semibold [&_[cmdk-group-heading]]:text-muted-foreground/70 [&_[cmdk-group-heading]]:text-muted-foreground/70"
               >
                 {commands
                   .filter((c) => c.group === group)
@@ -224,9 +224,9 @@ export function CommandPalette() {
                         key={cmd.id}
                         value={cmd.label}
                         onSelect={() => cmd.action()}
-                        className="flex items-center gap-3 px-2 py-2.5 rounded-lg cursor-pointer text-sm text-gray-700 dark:text-slate-300 data-[selected=true]:bg-gray-100 dark:data-[selected=true]:bg-slate-700 data-[selected=true]:text-gray-900 dark:data-[selected=true]:text-slate-100 transition-colors"
+                        className="flex items-center gap-3 px-2 py-2.5 rounded-lg cursor-pointer text-sm text-muted-foreground data-[selected=true]:bg-muted dark:data-[selected=true]:bg-muted data-[selected=true]:text-foreground dark:data-[selected=true]:text-foreground transition-colors"
                       >
-                        <Icon className="w-4 h-4 text-gray-400 dark:text-slate-500 shrink-0" />
+                        <Icon className="w-4 h-4 text-muted-foreground/70 shrink-0" />
                         <span className="flex-1">{cmd.label}</span>
                       </Command.Item>
                     );

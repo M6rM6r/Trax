@@ -7,7 +7,7 @@ describe("buildRetentionFeatures", () => {
       [],
       [
         {
-          id: 1,
+          id: "1",
           name: "A",
           email: "a@x.com",
           phone: "1",
@@ -28,8 +28,8 @@ describe("buildRetentionFeatures", () => {
     const features = buildRetentionFeatures(
       [
         {
-          id: 1,
-          employeeId: 1,
+          id: "1",
+          employeeId: "1",
           employeeName: "A",
           date: "2026-01-01",
           status: "present",
@@ -38,8 +38,8 @@ describe("buildRetentionFeatures", () => {
           checkOutTime: "17:00",
         },
         {
-          id: 2,
-          employeeId: 2,
+          id: "2",
+          employeeId: "2",
           employeeName: "B",
           date: "2026-01-01",
           status: "late",
@@ -48,8 +48,8 @@ describe("buildRetentionFeatures", () => {
           checkOutTime: "17:10",
         },
         {
-          id: 3,
-          employeeId: 3,
+          id: "3",
+          employeeId: "3",
           employeeName: "C",
           date: "2026-01-01",
           status: "absent",
@@ -59,7 +59,7 @@ describe("buildRetentionFeatures", () => {
       ],
       [
         {
-          id: 1,
+          id: "1",
           name: "A",
           email: "a@x.com",
           phone: "1",
@@ -68,7 +68,7 @@ describe("buildRetentionFeatures", () => {
           status: "active",
         },
         {
-          id: 2,
+          id: "2",
           name: "B",
           email: "b@x.com",
           phone: "2",
@@ -77,7 +77,7 @@ describe("buildRetentionFeatures", () => {
           status: "active",
         },
         {
-          id: 3,
+          id: "3",
           name: "C",
           email: "c@x.com",
           phone: "3",

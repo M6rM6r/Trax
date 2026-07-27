@@ -307,3 +307,23 @@ Require stack:
  Γ¿» Module not found: Error: Can't resolve './sentry.client.config.ts' in 'C:\Desktop44\Trax'
  Γ¿» Module not found: Error: Can't resolve './sentry.client.config.ts' in 'C:\Desktop44\Trax'
  Γ¿» Module not found: Error: Can't resolve './sentry.client.config.ts' in 'C:\Desktop44\Trax'
+[@sentry/nextjs] WARNING: You are using the Sentry SDK with Turbopack. The Sentry SDK is compatible with Turbopack on Next.js version 15.4.1 or later. You are currently on 14.2.18. Please upgrade to a newer Next.js version to use the Sentry SDK with Turbopack.
+ Γ¿» Failed to start server
+Error: listen EADDRINUSE: address already in use :::3000
+    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+    at listenInCluster (node:net:1997:12)
+    at Server.listen (node:net:2102:7)
+    at C:\Desktop44\Trax\node_modules\next\dist\server\lib\start-server.js:280:16
+    at new Promise (<anonymous>)
+    at startServer (C:\Desktop44\Trax\node_modules\next\dist\server\lib\start-server.js:191:11)
+    at C:\Desktop44\Trax\node_modules\next\dist\server\lib\start-server.js:310:52
+    at Span.traceAsyncFn (C:\Desktop44\Trax\node_modules\next\dist\trace\trace.js:154:26)
+    at process.<anonymous> (C:\Desktop44\Trax\node_modules\next\dist\server\lib\start-server.js:310:35)
+    at process.emit (node:events:508:28) {
+  code: 'EADDRINUSE',
+  errno: -4091,
+  syscall: 'listen',
+  address: '::',
+  port: 3000
+}
+[?25h

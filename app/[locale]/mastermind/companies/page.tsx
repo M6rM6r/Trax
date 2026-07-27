@@ -64,7 +64,7 @@ export default function MastermindCompaniesPage() {
     admin_role: "manager",
   });
   const [saving, setSaving] = useState(false);
-  const [deleteId, setDeleteId] = useState<number | null>(null);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [createdAdmin, setCreatedAdmin] = useState<{
     name: string;
@@ -191,26 +191,26 @@ export default function MastermindCompaniesPage() {
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-100">Companies</h1>
-          <p className="text-slate-500">Manage all Trax tenants.</p>
+          <h1 className="text-2xl font-bold text-foreground">Companies</h1>
+          <p className="text-muted-foreground/70">Manage all Trax tenants.</p>
         </div>
-        <Button onClick={openCreate} className="bg-emerald-600 hover:bg-emerald-700">
+        <Button onClick={openCreate} className="bg-primary hover:bg-primary/90">
           <Plus className="h-4 w-4 mr-2" /> Add Company
         </Button>
       </div>
 
       <div className="flex flex-col md:flex-row gap-3">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/70" />
           <Input
             placeholder="Search companies..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="pl-9 bg-slate-900 border-slate-800"
+            className="pl-9 bg-background border-border"
           />
         </div>
         <Select value={planFilter} onValueChange={setPlanFilter}>
-          <SelectTrigger className="w-40 bg-slate-900 border-slate-800">
+          <SelectTrigger className="w-40 bg-background border-border">
             <SelectValue placeholder="Plan" />
           </SelectTrigger>
           <SelectContent>
@@ -222,7 +222,7 @@ export default function MastermindCompaniesPage() {
           </SelectContent>
         </Select>
         <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-40 bg-slate-900 border-slate-800">
+          <SelectTrigger className="w-40 bg-background border-border">
             <SelectValue placeholder="Status" />
           </SelectTrigger>
           <SelectContent>
@@ -235,18 +235,18 @@ export default function MastermindCompaniesPage() {
         </Select>
       </div>
 
-      <Card className="bg-slate-900 border-slate-800">
+      <Card className="bg-background border-border">
         <CardContent className="p-0">
           {loading ? (
             <div className="p-6 space-y-4">
               {Array.from({ length: 5 }).map((_, i) => (
-                <Skeleton key={i} className="h-12 bg-slate-800" />
+                <Skeleton key={i} className="h-12 bg-card" />
               ))}
             </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
-                <thead className="bg-slate-800/50 text-slate-400">
+                <thead className="bg-card/50 text-muted-foreground">
                   <tr>
                     <th className="text-left px-4 py-3 font-medium">Company</th>
                     <th className="text-left px-4 py-3 font-medium">Plan</th>
@@ -261,39 +261,39 @@ export default function MastermindCompaniesPage() {
                   {filtered.map((company) => (
                     <tr
                       key={company.id}
-                      className="hover:bg-slate-800/30 cursor-pointer"
+                      className="hover:bg-card/30 cursor-pointer"
                       onClick={() => router.push(`/ar/mastermind/companies/${company.id}`)}
                     >
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-lg bg-slate-800 flex items-center justify-center">
-                            <Building2 className="h-4 w-4 text-slate-400" />
+                          <div className="w-8 h-8 rounded-lg bg-card flex items-center justify-center">
+                            <Building2 className="h-4 w-4 text-muted-foreground" />
                           </div>
                           <div>
-                            <p className="font-medium text-slate-200">{company.name}</p>
-                            <p className="text-xs text-slate-500">/{company.slug}</p>
+                            <p className="font-medium text-foreground">{company.name}</p>
+                            <p className="text-xs text-muted-foreground/70">/{company.slug}</p>
                           </div>
                         </div>
                       </td>
                       <td className="px-4 py-3">
                         <Badge
                           variant="secondary"
-                          className="capitalize bg-slate-800 text-slate-300"
+                          className="capitalize bg-card text-muted-foreground"
                         >
                           {company.plan}
                         </Badge>
                       </td>
-                      <td className="px-4 py-3 text-slate-400">{company.users_count ?? 0}</td>
-                      <td className="px-4 py-3 text-slate-400">{company.employees_count ?? 0}</td>
-                      <td className="px-4 py-3 text-slate-400">{company.geofences_count ?? 0}</td>
+                      <td className="px-4 py-3 text-muted-foreground">{company.users_count ?? 0}</td>
+                      <td className="px-4 py-3 text-muted-foreground">{company.employees_count ?? 0}</td>
+                      <td className="px-4 py-3 text-muted-foreground">{company.geofences_count ?? 0}</td>
                       <td className="px-4 py-3">
                         {company.active ? (
-                          <span className="inline-flex items-center gap-1.5 text-emerald-400 text-xs">
-                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" /> Active
+                          <span className="inline-flex items-center gap-1.5 text-primary text-xs">
+                            <span className="w-1.5 h-1.5 rounded-full bg-primary" /> Active
                           </span>
                         ) : (
-                          <span className="inline-flex items-center gap-1.5 text-slate-500 text-xs">
-                            <span className="w-1.5 h-1.5 rounded-full bg-slate-500" /> Inactive
+                          <span className="inline-flex items-center gap-1.5 text-muted-foreground/70 text-xs">
+                            <span className="w-1.5 h-1.5 rounded-full bg-muted0" /> Inactive
                           </span>
                         )}
                       </td>
@@ -304,13 +304,13 @@ export default function MastermindCompaniesPage() {
                         >
                           <button
                             onClick={() => openEdit(company)}
-                            className="p-2 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-slate-200"
+                            className="p-2 rounded-lg hover:bg-card text-muted-foreground hover:text-foreground"
                           >
                             <Pencil className="h-4 w-4" />
                           </button>
                           <button
                             onClick={() => setDeleteId(company.id)}
-                            className="p-2 rounded-lg hover:bg-rose-500/10 text-slate-400 hover:text-rose-400"
+                            className="p-2 rounded-lg hover:bg-destructive/50/10 text-muted-foreground hover:text-destructive"
                           >
                             <Trash2 className="h-4 w-4" />
                           </button>
@@ -320,7 +320,7 @@ export default function MastermindCompaniesPage() {
                   ))}
                   {filtered.length === 0 && (
                     <tr>
-                      <td colSpan={7} className="px-4 py-12 text-center text-slate-500">
+                      <td colSpan={7} className="px-4 py-12 text-center text-muted-foreground/70">
                         No companies found.
                       </td>
                     </tr>
@@ -333,12 +333,12 @@ export default function MastermindCompaniesPage() {
       </Card>
 
       <Dialog open={modalOpen} onOpenChange={setModalOpen}>
-        <DialogContent className="bg-slate-900 border-slate-800 text-slate-100 max-w-lg">
+        <DialogContent className="bg-background border-border text-foreground max-w-lg">
           <DialogHeader>
             <DialogTitle>
               {editCompany ? "Edit Company" : createdAdmin ? "Company Ready" : "Add Company"}
             </DialogTitle>
-            <DialogDescription className="text-slate-500">
+            <DialogDescription className="text-muted-foreground/70">
               {editCompany
                 ? "Update company details."
                 : createdAdmin
@@ -348,27 +348,27 @@ export default function MastermindCompaniesPage() {
           </DialogHeader>
 
           {createdAdmin && (
-            <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-4 space-y-2">
-              <p className="text-sm font-medium text-emerald-400">Admin account created</p>
-              <div className="text-sm space-y-1 text-slate-200">
+            <div className="rounded-lg border border-primary/30 bg-primary/10 p-4 space-y-2">
+              <p className="text-sm font-medium text-primary">Admin account created</p>
+              <div className="text-sm space-y-1 text-foreground">
                 <p>
-                  <span className="text-slate-500">Name:</span> {createdAdmin.name}
+                  <span className="text-muted-foreground/70">Name:</span> {createdAdmin.name}
                 </p>
                 <p>
-                  <span className="text-slate-500">Email:</span> {createdAdmin.email}
+                  <span className="text-muted-foreground/70">Email:</span> {createdAdmin.email}
                 </p>
                 <p>
-                  <span className="text-slate-500">Role:</span>{" "}
+                  <span className="text-muted-foreground/70">Role:</span>{" "}
                   <span className="capitalize">{createdAdmin.role}</span>
                 </p>
                 <p>
-                  <span className="text-slate-500">Password:</span>{" "}
-                  <code className="bg-slate-950 px-1.5 py-0.5 rounded text-emerald-400">
+                  <span className="text-muted-foreground/70">Password:</span>{" "}
+                  <code className="bg-background px-1.5 py-0.5 rounded text-primary">
                     {createdAdmin.password}
                   </code>
                 </p>
               </div>
-              <p className="text-xs text-slate-500 pt-1">
+              <p className="text-xs text-muted-foreground/70 pt-1">
                 They can log in at the main Trax login page with their email and this password.
               </p>
             </div>
@@ -383,7 +383,7 @@ export default function MastermindCompaniesPage() {
                     value={form.name ?? ""}
                     onChange={(e) => setForm({ ...form, name: e.target.value })}
                     placeholder="Optional"
-                    className="bg-slate-950 border-slate-800"
+                    className="bg-background border-border"
                   />
                 </div>
                 <div className="space-y-2">
@@ -393,7 +393,7 @@ export default function MastermindCompaniesPage() {
                     value={form.email ?? ""}
                     onChange={(e) => setForm({ ...form, email: e.target.value })}
                     required
-                    className="bg-slate-950 border-slate-800"
+                    className="bg-background border-border"
                   />
                 </div>
               </div>
@@ -403,7 +403,7 @@ export default function MastermindCompaniesPage() {
                   <Input
                     value={form.industry ?? ""}
                     onChange={(e) => setForm({ ...form, industry: e.target.value })}
-                    className="bg-slate-950 border-slate-800"
+                    className="bg-background border-border"
                   />
                 </div>
                 <div className="space-y-2">
@@ -411,18 +411,18 @@ export default function MastermindCompaniesPage() {
                   <Input
                     value={form.phone ?? ""}
                     onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                    className="bg-slate-950 border-slate-800"
+                    className="bg-background border-border"
                   />
                 </div>
               </div>
 
               {!editCompany && (
                 <>
-                  <div className="pt-2 border-t border-slate-800">
-                    <p className="text-sm font-medium text-emerald-400 mb-2">
+                  <div className="pt-2 border-t border-border">
+                    <p className="text-sm font-medium text-primary mb-2">
                       Initial Admin Account
                     </p>
-                    <p className="text-xs text-slate-500 mb-3">
+                    <p className="text-xs text-muted-foreground/70 mb-3">
                       The admin can log in and start adding staff right away.
                     </p>
                   </div>
@@ -433,7 +433,7 @@ export default function MastermindCompaniesPage() {
                         value={form.admin_name ?? ""}
                         onChange={(e) => setForm({ ...form, admin_name: e.target.value })}
                         placeholder="Optional"
-                        className="bg-slate-950 border-slate-800"
+                        className="bg-background border-border"
                       />
                     </div>
                     <div className="space-y-2">
@@ -443,7 +443,7 @@ export default function MastermindCompaniesPage() {
                         value={form.admin_email ?? ""}
                         onChange={(e) => setForm({ ...form, admin_email: e.target.value })}
                         required={!editCompany}
-                        className="bg-slate-950 border-slate-800"
+                        className="bg-background border-border"
                       />
                     </div>
                   </div>
@@ -456,7 +456,7 @@ export default function MastermindCompaniesPage() {
                         onChange={(e) => setForm({ ...form, admin_password: e.target.value })}
                         required={!editCompany}
                         minLength={6}
-                        className="bg-slate-950 border-slate-800"
+                        className="bg-background border-border"
                       />
                     </div>
                     <div className="space-y-2">
@@ -465,7 +465,7 @@ export default function MastermindCompaniesPage() {
                         value={form.admin_role}
                         onValueChange={(v) => setForm({ ...form, admin_role: v })}
                       >
-                        <SelectTrigger className="bg-slate-950 border-slate-800">
+                        <SelectTrigger className="bg-background border-border">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -482,14 +482,14 @@ export default function MastermindCompaniesPage() {
                 <Input
                   value={form.address ?? ""}
                   onChange={(e) => setForm({ ...form, address: e.target.value })}
-                  className="bg-slate-950 border-slate-800"
+                  className="bg-background border-border"
                 />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Plan</Label>
                   <Select value={form.plan} onValueChange={(v) => setForm({ ...form, plan: v })}>
-                    <SelectTrigger className="bg-slate-950 border-slate-800">
+                    <SelectTrigger className="bg-background border-border">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -508,7 +508,7 @@ export default function MastermindCompaniesPage() {
                     min={1}
                     value={form.max_employees ?? 10}
                     onChange={(e) => setForm({ ...form, max_employees: Number(e.target.value) })}
-                    className="bg-slate-950 border-slate-800"
+                    className="bg-background border-border"
                   />
                 </div>
               </div>
@@ -518,9 +518,9 @@ export default function MastermindCompaniesPage() {
                   id="active"
                   checked={!!form.active}
                   onChange={(e) => setForm({ ...form, active: e.target.checked })}
-                  className="rounded border-slate-700 bg-slate-950 text-emerald-600"
+                  className="rounded border-border bg-background text-primary"
                 />
-                <Label htmlFor="active" className="text-sm text-slate-400">
+                <Label htmlFor="active" className="text-sm text-muted-foreground">
                   Active
                 </Label>
               </div>
@@ -529,14 +529,14 @@ export default function MastermindCompaniesPage() {
                   type="button"
                   variant="outline"
                   onClick={() => setModalOpen(false)}
-                  className="border-slate-700"
+                  className="border-border"
                 >
                   Cancel
                 </Button>
                 <Button
                   type="submit"
                   disabled={saving}
-                  className="bg-emerald-600 hover:bg-emerald-700"
+                  className="bg-primary hover:bg-primary/90"
                 >
                   {saving ? "Saving..." : "Save"}
                 </Button>
@@ -552,7 +552,7 @@ export default function MastermindCompaniesPage() {
                   setModalOpen(false);
                   setCreatedAdmin(null);
                 }}
-                className="bg-emerald-600 hover:bg-emerald-700"
+                className="bg-primary hover:bg-primary/90"
               >
                 Done
               </Button>
@@ -562,10 +562,10 @@ export default function MastermindCompaniesPage() {
       </Dialog>
 
       <Dialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
-        <DialogContent className="bg-slate-900 border-slate-800 text-slate-100">
+        <DialogContent className="bg-background border-border text-foreground">
           <DialogHeader>
             <DialogTitle>Delete Company</DialogTitle>
-            <DialogDescription className="text-slate-500">
+            <DialogDescription className="text-muted-foreground/70">
               This will permanently delete the company and all associated data.
             </DialogDescription>
           </DialogHeader>
@@ -573,7 +573,7 @@ export default function MastermindCompaniesPage() {
             <Button
               variant="outline"
               onClick={() => setDeleteId(null)}
-              className="border-slate-700"
+              className="border-border"
             >
               Cancel
             </Button>

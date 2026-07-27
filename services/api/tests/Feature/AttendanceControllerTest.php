@@ -141,6 +141,68 @@ class AttendanceControllerTest extends TestCase
             ->assertJsonPath('data.status', 'checked_out');
     }
 
+    public function test_employee_cannot_check_in_for_another_employee(): void
+    {
+        $this->seed(TraxDatabaseSeeder::class);
+
+        $employee = Employee::create([
+            'company_id' => 1,
+            'name' => 'Restricted Employee',
+            'email' => 'restricted.employee@trax.com',
+            'firebase_uid' => 'restricted-employee-uid',
+            'phone' => '+966500000003',
+            'role' => 'employee',
+            'department' => 'Testing',
+            'status' => 'active',
+        ]);
+        $user = User::create([
+            'company_id' => 1,
+            'name' => $employee->name,
+            'email' => $employee->email,
+            'firebase_uid' => $employee->firebase_uid,
+            'password' => 'password',
+            'role' => 'employee',
+        ]);
+
+        $response = $this->withHeaders($this->firebaseHeaders($user))->postJson('/api/attendance/check-in', [
+            'employee_id' => 2,
+            'lat' => 24.7136,
+            'lng' => 46.6753,
+        ]);
+
+        $response->assertStatus(403);
+    }
+
+    public function test_employee_cannot_check_out_for_another_employee(): void
+    {
+        $this->seed(TraxDatabaseSeeder::class);
+
+        $employee = Employee::create([
+            'company_id' => 1,
+            'name' => 'Restricted Employee',
+            'email' => 'restricted.checkout@trax.com',
+            'firebase_uid' => 'restricted-checkout-uid',
+            'phone' => '+966500000004',
+            'role' => 'employee',
+            'department' => 'Testing',
+            'status' => 'active',
+        ]);
+        $user = User::create([
+            'company_id' => 1,
+            'name' => $employee->name,
+            'email' => $employee->email,
+            'firebase_uid' => $employee->firebase_uid,
+            'password' => 'password',
+            'role' => 'employee',
+        ]);
+
+        $response = $this->withHeaders($this->firebaseHeaders($user))->postJson('/api/attendance/check-out', [
+            'employee_id' => 2,
+        ]);
+
+        $response->assertStatus(403);
+    }
+
     public function test_check_out_fails_without_check_in(): void
     {
         $headers = $this->authHeaders();

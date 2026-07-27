@@ -18,14 +18,14 @@ export default function AccessDeniedCard({
   ctaHref,
 }: AccessDeniedCardProps) {
   return (
-    <Card className="border-0 shadow-lg dark:bg-slate-800 max-w-2xl mx-auto mt-10">
+    <Card className="border-0 shadow-lg bg-card max-w-2xl mx-auto mt-10">
       <CardContent className="p-8 text-center space-y-3">
-        <Icon className="w-10 h-10 mx-auto text-gray-400" />
-        <h2 className="text-xl font-bold text-gray-900 dark:text-slate-100">{title}</h2>
-        <p className="text-sm text-gray-600 dark:text-slate-400">{message}</p>
+        <Icon className="w-10 h-10 mx-auto text-muted-foreground/70" />
+        <h2 className="text-xl font-bold text-foreground">{title}</h2>
+        <p className="text-sm text-muted-foreground text-muted-foreground">{message}</p>
         <Link
           href={ctaHref}
-          className="inline-flex items-center justify-center px-4 py-2 rounded-xl bg-primaryColor text-white hover:bg-primaryColor/90 transition-colors"
+          className="inline-flex items-center justify-center px-4 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
         >
           {ctaLabel}
         </Link>

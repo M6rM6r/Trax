@@ -10,14 +10,14 @@ export default function LiveMapSkeleton() {
     >
       {/* Map skeleton */}
       <div className="lg:col-span-2">
-        <Card className="border-0 shadow-lg overflow-hidden dark:bg-slate-800">
+        <Card className="border-0 shadow-lg overflow-hidden bg-card">
           <Skeleton className="h-[600px] w-full rounded-none" />
         </Card>
       </div>
 
       {/* Sidebar skeleton */}
       <div className="space-y-4">
-        <Card className="border-0 shadow-lg dark:bg-slate-800">
+        <Card className="border-0 shadow-lg bg-card">
           <CardContent className="pt-6 space-y-4">
             <Skeleton className="h-10 w-full rounded-lg" />
             <div className="flex items-center gap-3">
@@ -30,14 +30,14 @@ export default function LiveMapSkeleton() {
           </CardContent>
         </Card>
 
-        <Card className="border-0 shadow-lg dark:bg-slate-800">
+        <Card className="border-0 shadow-lg bg-card">
           <CardContent className="pt-6">
             <Skeleton className="h-5 w-32 mb-4" />
             <div className="space-y-3">
               {Array.from({ length: 5 }).map((_, i) => (
                 <div
                   key={i}
-                  className="flex items-center gap-3 p-3 rounded-xl border border-gray-100 dark:border-slate-700"
+                  className="flex items-center gap-3 p-3 rounded-xl border border-border border-border"
                 >
                   <Skeleton className="h-9 w-9 rounded-full" />
                   <div className="flex-1 space-y-1">

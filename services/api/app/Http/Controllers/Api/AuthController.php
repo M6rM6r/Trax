@@ -82,6 +82,15 @@ class AuthController extends Controller
             return response()->json(['success' => false, 'message' => 'No account found for this Firebase user.'], 404);
         }
 
+        if ($user->firebase_uid && $firebaseUid && ! hash_equals($user->firebase_uid, $firebaseUid)) {
+            Log::warning('Firebase account linkage mismatch during login', [
+                'user_id' => $user->id,
+                'firebase_uid' => $firebaseUid,
+            ]);
+
+            return response()->json(['success' => false, 'message' => 'Firebase account linkage mismatch.'], 401);
+        }
+
         // Store Firebase UID if not yet linked
         if (! $user->firebase_uid && $firebaseUid) {
             $user->firebase_uid = $firebaseUid;
@@ -158,37 +167,4 @@ class AuthController extends Controller
         }
     }
 
-    public function resetPassword(Request $request): JsonResponse
-    {
-        $validator = Validator::make($request->all(), [
-            'email' => 'required|email',
-            'password' => 'required|string|min:8|confirmed',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json(['success' => false, 'message' => 'Validation error', 'errors' => $validator->errors()], 422);
-        }
-
-        $user = User::where('email', $request->input('email'))->first();
-        if (! $user) {
-            return response()->json(['success' => false, 'message' => 'No account found for this email.'], 404);
-        }
-
-        $user->password = \Illuminate\Support\Facades\Hash::make($request->input('password'));
-        $user->save();
-
-        if ($user->firebase_uid) {
-            try {
-                $firebaseService = app(\App\Services\FirebaseUserService::class);
-                $firebaseService->updatePassword($user->firebase_uid, $request->input('password'));
-            } catch (\Throwable $e) {
-                Log::error('Failed to update Firebase password: '.$e->getMessage());
-            }
-        }
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Password reset successfully.',
-        ]);
-    }
 }

@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 export const geofenceSchema = z.object({
-  id: z.coerce.number().int().positive(),
+  id: z.coerce.string(),
   name: z.string().trim().min(2, "Name must be at least 2 characters"),
   address: z.string().trim().min(1, "Address is required"),
   lat: z.coerce.number().min(-90, "Latitude must be >= -90").max(90, "Latitude must be <= 90"),

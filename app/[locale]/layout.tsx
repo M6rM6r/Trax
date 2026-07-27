@@ -45,8 +45,14 @@ export default async function LocaleLayout({
       className="relative"
       suppressHydrationWarning
     >
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-[9999] focus:px-4 focus:py-2 focus:bg-primary focus:text-primary-foreground focus:rounded-md"
+      >
+        {locale === "ar" ? "تخطي إلى المحتوى" : "Skip to content"}
+      </a>
       <NextIntlClientProvider messages={messages}>
-        <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>
+        <ThemeProvider attribute="class" forcedTheme="dark" enableSystem={false}>
           <QueryProvider>
             <AuthProvider>
               <CompanySettingsLoader />

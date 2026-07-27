@@ -2,8 +2,9 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { NavMain } from "@/components/Sidebar/nav-main";
 import { usePathname, useRouter, Link } from "@/i18n/navigation";
-import { Category, CheckCircle, Logout, Profile, ShieldTick, Location } from "@/public/SVG";
-import { Settings, User as UserIcon } from "lucide-react";
+import { Category, CheckCircle, Logout, Profile, ShieldTick, Location, Setting2 } from "@/public/SVG";
+import { Building2 } from "lucide-react";
+
 import { signOut } from "firebase/auth";
 import { auth } from "@/lib/config/firebase";
 import { cn } from "@/lib/utils";
@@ -20,10 +21,8 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuthStore } from "@/stores/useAuthStore";
 import Image from "next/image";
 import UserAvatar from "../Avatar";
-import ThemeToggle from "../ThemeToggle";
 import Breadcrumb from "../Breadcrumb";
 import MobileBottomNav from "../MobileBottomNav";
-import PageTransition from "../PageTransition";
 import { CommandPalette } from "../CommandPalette";
 import { ShortcutsHelp } from "../ShortcutsHelp";
 import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
@@ -31,7 +30,6 @@ import { useScrollPreservation } from "@/hooks/useScrollPreservation";
 import { useResourcePreload } from "@/hooks/useResourcePreload";
 import type { AdminUser } from "@/lib/types/responseTypes";
 import { TopLoadingBar } from "../TopLoadingBar";
-import { ScrollProgress } from "../ScrollProgress";
 import OfflineBanner from "../OfflineBanner";
 import NotificationCenter from "../NotificationCenter";
 
@@ -142,9 +140,20 @@ const Index = ({
     router.push("/login");
   }, [router, toast, clearUser]);
 
+  // Show a minimal spinner until auth state is resolved to avoid flashing the
+  // dashboard skeleton/layout to unauthenticated users.
+  const effectiveUser = user ?? storedUser.current;
+  if (!authReady || (!effectiveUser && !pathname.includes("/login") && !pathname.includes("/register") && !pathname.includes("/forgot-password") && !pathname.includes("/reset-password") && !pathname.includes("/mastermind"))) {
+    return (
+      <div className="w-screen min-h-screen flex items-center justify-center bg-background">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+      </div>
+    );
+  }
+
   return (
     <section
-      className="min-h-screen bg-gray-50 dark:bg-slate-950"
+      className="min-h-screen bg-background"
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
     >
@@ -152,23 +161,22 @@ const Index = ({
         تخطي إلى المحتوى
       </a>
       <TopLoadingBar />
-      <ScrollProgress />
       <OfflineBanner />
 
       <nav
-        className="fixed top-0 z-[49] w-full bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-gray-200 dark:border-slate-800"
+        className="fixed top-0 z-[49] w-full bg-card border-b border-border"
         style={{ paddingTop: "env(safe-area-inset-top)" }}
         aria-label="الرأس"
       >
-        <header className="flex items-center justify-between gap-4 p-3 md:px-6 h-16 md:h-20">
+        <header className="flex items-center justify-between gap-4 px-4 md:px-6 h-14">
           <div className="flex items-center gap-3">
             <Link href="/" className="flex items-center gap-2">
               <Image
                 src="/images/logo.png"
                 alt="Trax"
-                width={32}
-                height={32}
-                className="h-8 w-auto object-contain"
+                width={28}
+                height={28}
+                className="h-7 w-auto object-contain"
                 unoptimized
                 onError={(e) => {
                   (e.currentTarget as HTMLImageElement).style.display = "none";
@@ -178,63 +186,33 @@ const Index = ({
           </div>
 
           <div className="flex items-center gap-2 md:gap-4">
-            <div className="flex items-center gap-2 md:gap-3 md:border-l dark:border-slate-700 md:ps-4">
-              <div className="hidden md:flex items-center gap-2">
-                <span
-                  className={cn(
-                    "text-[10px] px-2 py-0.5 rounded-full border font-medium uppercase",
-                    role === "employee"
-                      ? "border-slate-300 text-slate-500 dark:border-slate-600 dark:text-slate-400"
-                      : "border-primaryColor text-primaryColor dark:border-blue-400 dark:text-blue-400"
-                  )}
-                >
-                  {role === "employee" ? "Staff" : "Company"}
-                </span>
-                <ThemeToggle />
-              </div>
+            <div className="flex items-center gap-2 md:gap-3 md:border-l md:border-border md:ps-4">
               <NotificationCenter />
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <button
-                    className="flex items-center gap-2 rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-primaryColor"
+                    className="flex items-center gap-2 rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     aria-label="قائمة المستخدم"
                   >
                     <UserAvatar user={user} className="w-8 h-8" />
-                    <span className="hidden md:inline text-sm font-medium text-gray-700 dark:text-slate-200">
+                    <span className="hidden md:inline text-sm font-medium text-foreground">
                       {user?.name || "المستخدم"}
                     </span>
                   </button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-56" sideOffset={8}>
                   <div className="px-3 py-2">
-                    <p className="text-sm font-medium text-gray-900 dark:text-slate-100 truncate">
+                    <p className="text-sm font-medium text-foreground truncate">
                       {user?.name || "المستخدم"}
                     </p>
-                    <p className="text-xs text-gray-500 dark:text-slate-400 truncate">
+                    <p className="text-xs text-muted-foreground truncate">
                       {user?.email || ""}
                     </p>
                   </div>
                   <DropdownMenuSeparator />
-                  {role !== "employee" && (
-                    <>
-                      <DropdownMenuItem asChild>
-                        <Link href="/settings" className="cursor-pointer flex items-center gap-2">
-                          <Settings className="w-4 h-4" />
-                          الإعدادات
-                        </Link>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem asChild>
-                        <Link href="/employees" className="cursor-pointer flex items-center gap-2">
-                          <UserIcon className="w-4 h-4" />
-                          الموظفون
-                        </Link>
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                    </>
-                  )}
                   <DropdownMenuItem
                     onClick={logOut}
-                    className="text-red-600 dark:text-red-400 focus:bg-red-50 dark:focus:bg-red-950/20 cursor-pointer"
+                    className="text-destructive focus:bg-destructive/10 cursor-pointer"
                   >
                     <Logout className="w-4 h-4 me-2" />
                     تسجيل الخروج
@@ -248,7 +226,7 @@ const Index = ({
 
       {showSidebar && isSidebarOpen && (
         <div
-          className="fixed inset-0 z-30 bg-black/40 backdrop-blur-sm lg:hidden"
+          className="fixed inset-0 z-30 bg-black/60 lg:hidden"
           onClick={() => setIsSidebarOpen(false)}
         />
       )}
@@ -257,7 +235,7 @@ const Index = ({
         <aside
           id="logo-sidebar"
           className={cn(
-            "fixed top-0 z-40 w-64 h-screen pt-20 transition-transform bg-white dark:bg-slate-900 border-e border-gray-200 dark:border-slate-800 lg:translate-x-0",
+            "fixed top-0 z-40 w-60 h-screen pt-14 transition-transform bg-sidebar border-e border-sidebar-border lg:translate-x-0",
             locale === "ar"
               ? isSidebarOpen
                 ? "translate-x-0"
@@ -293,12 +271,6 @@ const Index = ({
                         isActive: pathname.includes("/employees"),
                       },
                       {
-                        title: "تتبع مباشر",
-                        url: "/live-map",
-                        icon: Location,
-                        isActive: pathname.includes("/live-map"),
-                      },
-                      {
                         title: "الحضور والانصراف",
                         url: "/attendance",
                         icon: ShieldTick,
@@ -310,18 +282,29 @@ const Index = ({
                         icon: Location,
                         isActive: pathname.includes("/geofences"),
                       },
+                      ...(role === "boss" || role === "manager"
+                        ? [
+                            {
+                              title: "إعدادات الشركة",
+                              url: "/settings/company",
+                              icon: Building2,
+                              isActive: pathname.includes("/settings/company"),
+                            },
+                          ]
+                        : []),
                       {
-                        title: "تسجيل الحضور",
-                        url: "/check-in",
-                        icon: CheckCircle,
-                        isActive: pathname.includes("/check-in"),
+                        title: "الإعدادات",
+                        url: "/settings",
+                        icon: Setting2,
+                        isActive:
+                          pathname.includes("/settings") && !pathname.includes("/settings/company"),
                       },
                     ]
               }
             />
             <Button
               variant="ghost"
-              className="w-full justify-start text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20"
+              className="w-full justify-start text-destructive hover:bg-destructive/10"
               onClick={logOut}
             >
               <Logout className="me-2" /> تسجيل الخروج
@@ -334,14 +317,14 @@ const Index = ({
         id="main-content"
         tabIndex={-1}
         className={cn(
-          "flex flex-col min-h-screen pt-16 md:pt-20 pb-24 lg:pb-6 px-4 md:px-8 max-w-7xl mx-auto transition-all scroll-mt-20 focus:outline-none",
-          showSidebar && "lg:ms-64"
+          "flex flex-col min-h-screen pt-14 pb-24 lg:pb-6 px-4 md:px-8 max-w-7xl mx-auto transition-all scroll-mt-14 focus:outline-none",
+          showSidebar && "lg:ms-60"
         )}
       >
         <div className="py-4">
           <Breadcrumb />
         </div>
-        <PageTransition>{children}</PageTransition>
+        {children}
         <MobileBottomNav />
       </main>
       <CommandPalette />

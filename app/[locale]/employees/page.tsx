@@ -33,6 +33,7 @@ import EmployeeListSkeleton from "@/components/shared/Skeletons/EmployeeListSkel
 import { DataTable } from "@/components/shared/DataTable/DataTable";
 import ConfirmDialog from "@/components/shared/ConfirmDialog";
 import { FormDrawer } from "@/components/shared/FormDrawer";
+import { FormField, FormSelect } from "@/components/shared/form/FormField";
 import { toastSuccess, toastError, toastWithUndo } from "@/hooks/use-toast";
 import { hapticTap, hapticSuccess } from "@/lib/utils/haptics";
 import { Link } from "@/i18n/navigation";
@@ -93,7 +94,7 @@ export default function EmployeesPage() {
     phone: string;
     department: string;
     role: EmployeeRole;
-    geofenceId: string | number;
+    geofenceId: string;
     attendanceMode: Employee["attendanceMode"];
     password: string;
   }>({
@@ -103,7 +104,7 @@ export default function EmployeesPage() {
     phone: "",
     department: "",
     role: "employee",
-    geofenceId: 1,
+    geofenceId: "",
     attendanceMode: null,
     password: "",
   });
@@ -114,7 +115,7 @@ export default function EmployeesPage() {
     phone: string;
     department: string;
     role: EmployeeRole;
-    geofenceId: string | number;
+    geofenceId: string;
     attendanceMode: Employee["attendanceMode"];
   }>({
     name: "",
@@ -123,7 +124,7 @@ export default function EmployeesPage() {
     phone: "",
     department: "",
     role: "employee",
-    geofenceId: 1,
+    geofenceId: "",
     attendanceMode: null,
   });
 
@@ -135,7 +136,7 @@ export default function EmployeesPage() {
       phone: "",
       department: "",
       role: "employee",
-      geofenceId: 1,
+      geofenceId: "",
       attendanceMode: null,
       password: "",
     });
@@ -196,7 +197,7 @@ export default function EmployeesPage() {
       phone: emp.phone,
       department: emp.department,
       role: emp.role,
-      geofenceId: emp.geofenceId ?? 1,
+      geofenceId: emp.geofenceId ?? "",
       attendanceMode: emp.attendanceMode ?? null,
     });
   };
@@ -300,7 +301,7 @@ export default function EmployeesPage() {
     });
   };
 
-  const getGeofenceName = (id: string | number | null) => {
+  const getGeofenceName = (id: string | null) => {
     if (!id) return "-";
     return geofences.find((g) => String(g.id) === String(id))?.name || "-";
   };
@@ -381,13 +382,13 @@ export default function EmployeesPage() {
           Icon={<Users className="w-7 h-7" />}
           LeftSection={
             <div className="flex items-center gap-2">
-              <div className="flex items-center bg-gray-100 dark:bg-slate-700 rounded-lg p-1">
+              <div className="flex items-center bg-muted rounded-lg p-1">
                 <button
                   onClick={() => handleViewMode("table")}
                   className={`p-1.5 rounded-md transition-all ${
                     viewMode === "table"
-                      ? "bg-white dark:bg-slate-800 shadow-sm text-blue-600"
-                      : "text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200"
+                      ? "bg-card shadow-sm text-primary"
+                      : "text-muted-foreground hover:text-muted-foreground dark:hover:text-foreground"
                   }`}
                   aria-label="عرض جدول"
                 >
@@ -397,8 +398,8 @@ export default function EmployeesPage() {
                   onClick={() => handleViewMode("grid")}
                   className={`p-1.5 rounded-md transition-all ${
                     viewMode === "grid"
-                      ? "bg-white dark:bg-slate-800 shadow-sm text-blue-600"
-                      : "text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200"
+                      ? "bg-card shadow-sm text-primary"
+                      : "text-muted-foreground hover:text-muted-foreground dark:hover:text-foreground"
                   }`}
                   aria-label="عرض بطاقات"
                 >
@@ -417,10 +418,6 @@ export default function EmployeesPage() {
           }
         />
 
-        <div className="rounded-xl border border-emerald-800/50 bg-emerald-950/30 p-4 text-sm text-emerald-200">
-          يتم إنشاء حسابات الموظفين من هذا القسم بعد أن ينشئ MasterMind الشركة والحساب الإداري
-          الأول.
-        </div>
 
         {showAddForm && (
           <FormDrawer
@@ -433,80 +430,51 @@ export default function EmployeesPage() {
             submitLabel="حفظ"
           >
             <div className="grid grid-cols-1 gap-4">
-              <div>
-                <label className="text-sm font-medium text-gray-700 dark:text-slate-300 mb-1 block">
-                  الاسم
-                </label>
-                <input
-                  type="text"
-                  value={newEmployee.name}
-                  onChange={(e) => setNewEmployee({ ...newEmployee, name: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-transparent dark:bg-slate-900 text-gray-900 dark:text-slate-100"
-                  placeholder="اسم الموظف"
-                />
-              </div>
-              <div>
-                <label className="text-sm font-medium text-gray-700 dark:text-slate-300 mb-1 block">
-                  البريد الإلكتروني
-                </label>
-                <input
-                  type="email"
-                  value={newEmployee.email}
-                  onChange={(e) => setNewEmployee({ ...newEmployee, email: e.target.value })}
-                  dir="ltr"
-                  lang="en"
-                  style={{ unicodeBidi: "plaintext" }}
-                  className="w-full text-left px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-transparent dark:bg-slate-900 text-gray-900 dark:text-slate-100"
-                  placeholder="email@trax.com"
-                />
-              </div>
-              <div>
-                <label className="text-sm font-medium text-gray-700 dark:text-slate-300 mb-1 block">
-                  الدور
-                </label>
-                <select
-                  value={newEmployee.role}
-                  onChange={(e) =>
-                    setNewEmployee({ ...newEmployee, role: e.target.value as EmployeeRole })
-                  }
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-transparent dark:bg-slate-900 text-gray-900 dark:text-slate-100"
-                >
-                  <option value="employee">موظف</option>
-                  <option value="supervisor">مشرف</option>
-                  <option value="manager">مدير</option>
-                </select>
-              </div>
-              <div>
-                <label className="text-sm font-medium text-gray-700 dark:text-slate-300 mb-1 block">
-                  النطاق الجغرافي
-                </label>
-                <select
-                  value={newEmployee.geofenceId}
-                  onChange={(e) => setNewEmployee({ ...newEmployee, geofenceId: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-transparent dark:bg-slate-900 text-gray-900 dark:text-slate-100"
-                >
-                  {geofences.map((g) => (
-                    <option key={g.id} value={g.id}>
-                      {g.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="text-sm font-medium text-gray-700 dark:text-slate-300 mb-1 block">
-                  كلمة المرور <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="password"
-                  value={newEmployee.password}
-                  onChange={(e) => setNewEmployee({ ...newEmployee, password: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-transparent dark:bg-slate-900 text-gray-900 dark:text-slate-100"
-                  placeholder="8 أحرف على الأقل"
-                />
-                <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">
-                  سيستخدم الموظف هذه البيانات لتسجيل الدخول
-                </p>
-              </div>
+              <FormField
+                label="الاسم"
+                value={newEmployee.name}
+                onChange={(v) => setNewEmployee({ ...newEmployee, name: v })}
+                placeholder="اسم الموظف"
+              />
+              <FormField
+                label="البريد الإلكتروني"
+                type="email"
+                value={newEmployee.email}
+                onChange={(v) => setNewEmployee({ ...newEmployee, email: v })}
+                placeholder="email@trax.com"
+                ltr
+              />
+              <FormSelect
+                label="الدور"
+                value={newEmployee.role}
+                onChange={(v) => setNewEmployee({ ...newEmployee, role: v as EmployeeRole })}
+              >
+                <option value="employee">موظف</option>
+                <option value="supervisor">مشرف</option>
+                <option value="manager">مدير</option>
+              </FormSelect>
+              <FormSelect
+                label="النطاق الجغرافي"
+                value={newEmployee.geofenceId}
+                onChange={(v) => setNewEmployee({ ...newEmployee, geofenceId: v })}
+              >
+                {geofences.map((g) => (
+                  <option key={g.id} value={g.id}>
+                    {g.name}
+                  </option>
+                ))}
+              </FormSelect>
+              <FormField
+                label="كلمة المرور"
+                type="password"
+                value={newEmployee.password}
+                onChange={(v) => setNewEmployee({ ...newEmployee, password: v })}
+                placeholder="8 أحرف على الأقل"
+                required
+              />
+              <p className="text-xs text-muted-foreground -mt-2">
+                سيستخدم الموظف هذه البيانات لتسجيل الدخول
+              </p>
             </div>
           </FormDrawer>
         )}
@@ -514,34 +482,34 @@ export default function EmployeesPage() {
         {/* Credentials success dialog */}
         {createdCredentials && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 max-w-sm w-full shadow-2xl">
+            <div className="bg-card border border-border rounded-2xl p-6 max-w-sm w-full shadow-2xl">
               <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
-                  <Check className="w-5 h-5 text-green-600" />
+                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                  <Check className="w-5 h-5 text-primary" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-gray-900 dark:text-slate-100">
+                  <h3 className="font-bold text-foreground">
                     تم إنشاء حساب الموظف
                   </h3>
-                  <p className="text-xs text-gray-500 dark:text-slate-400">
+                  <p className="text-xs text-muted-foreground">
                     احتفظ بهذه البيانات وشاركها مع الموظف
                   </p>
                 </div>
               </div>
-              <div className="bg-gray-50 dark:bg-slate-900 rounded-xl p-4 space-y-3 mb-4">
+              <div className="bg-muted rounded-xl p-4 space-y-3 mb-4">
                 <div>
-                  <p className="text-xs text-gray-500 dark:text-slate-400 mb-1">
+                  <p className="text-xs text-muted-foreground mb-1">
                     البريد الإلكتروني
                   </p>
-                  <p className="font-mono text-sm font-semibold text-gray-900 dark:text-slate-100 select-all">
+                  <p className="font-mono text-sm font-semibold text-foreground select-all">
                     <span dir="ltr" lang="en" style={{ unicodeBidi: "plaintext" }}>
                       {createdCredentials.email}
                     </span>
                   </p>
                 </div>
                 <div>
-                  <p className="text-xs text-gray-500 dark:text-slate-400 mb-1">كلمة المرور</p>
-                  <p className="font-mono text-sm font-semibold text-gray-900 dark:text-slate-100 select-all">
+                  <p className="text-xs text-muted-foreground mb-1">كلمة المرور</p>
+                  <p className="font-mono text-sm font-semibold text-foreground select-all">
                     {createdCredentials.password}
                   </p>
                 </div>
@@ -563,7 +531,7 @@ export default function EmployeesPage() {
                     }
                   }}
                   aria-label="نسخ بيانات الدخول"
-                  className="py-2 px-3 rounded-xl border border-gray-200 dark:border-slate-600 text-sm font-medium text-gray-700 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors"
+                  className="py-2 px-3 rounded-xl border border-border text-sm font-medium text-foreground hover:bg-muted transition-colors"
                 >
                   نسخ البيانات
                 </button>
@@ -581,14 +549,14 @@ export default function EmployeesPage() {
                       loginUrl: staffLoginUrl,
                     }).body
                   )}`}
-                  className="py-2 px-3 rounded-xl border border-blue-200 dark:border-blue-700 text-sm font-medium text-blue-700 dark:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors text-center"
+                  className="py-2 px-3 rounded-xl border border-primary/20 border-primary/30 text-sm font-medium text-primary text-primary/70 hover:bg-primary/5 hover:bg-primary/10 transition-colors text-center"
                 >
                   مشاركة عبر البريد
                 </a>
               </div>
               <button
                 onClick={() => setCreatedCredentials(null)}
-                className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-medium transition-colors"
+                className="w-full py-2.5 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl font-medium transition-colors"
               >
                 فهمت
               </button>
@@ -599,22 +567,22 @@ export default function EmployeesPage() {
         {/* Stats strip */}
         {!isLoading && !isError && employees.length > 0 && (
           <div className="flex items-center gap-4 flex-wrap">
-            <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800">
-              <Users className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-              <span className="text-sm font-semibold text-blue-700 dark:text-blue-300">
+            <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-primary/5 border border-primary/20 border-primary/30">
+              <Users className="w-4 h-4 text-primary" />
+              <span className="text-sm font-semibold text-primary text-primary/70">
                 {employees.length} موظف
               </span>
             </div>
-            <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-green-50 dark:bg-green-900/20 border border-green-100 dark:border-green-800">
-              <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-              <span className="text-sm font-semibold text-green-700 dark:text-green-300">
+            <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-primary/5 border border-primary/20 border-primary/30">
+              <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+              <span className="text-sm font-semibold text-primary text-primary/70">
                 {activeCount} نشط
               </span>
             </div>
             {inactiveCount > 0 && (
-              <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-gray-50 dark:bg-slate-700 border border-gray-100 dark:border-slate-600">
-                <span className="w-2 h-2 rounded-full bg-gray-400" />
-                <span className="text-sm font-semibold text-gray-600 dark:text-slate-300">
+              <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-muted border border-border border-input">
+                <span className="w-2 h-2 rounded-full bg-muted-foreground/50" />
+                <span className="text-sm font-semibold text-muted-foreground">
                   {inactiveCount} غير نشط
                 </span>
               </div>
@@ -626,20 +594,20 @@ export default function EmployeesPage() {
         {!isLoading && !isError && employees.length > 0 && (
           <div className="flex flex-col sm:flex-row gap-3">
             <div className="relative flex-1">
-              <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/70" />
               <input
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="بحث بالاسم أو البريد أو القسم..."
-                className="w-full pr-9 pl-3 py-2 rounded-xl border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm text-gray-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm"
+                className="w-full pr-9 pl-3 py-2 rounded-xl border border-border border-input bg-card text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring shadow-sm"
               />
               {search && (
                 <button
                   onClick={() => setSearch("")}
                   className="absolute left-3 top-1/2 -translate-y-1/2"
                 >
-                  <X className="w-3.5 h-3.5 text-gray-400 hover:text-gray-600" />
+                  <X className="w-3.5 h-3.5 text-muted-foreground/70 hover:text-muted-foreground" />
                 </button>
               )}
             </div>
@@ -647,7 +615,7 @@ export default function EmployeesPage() {
               <select
                 value={filterDept}
                 onChange={(e) => setFilterDept(e.target.value)}
-                className="px-3 py-2 rounded-xl border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm text-gray-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm"
+                className="px-3 py-2 rounded-xl border border-border border-input bg-card text-sm text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring shadow-sm"
               >
                 <option value="">جميع الأقسام</option>
                 {departments.map((d) => (
@@ -659,7 +627,7 @@ export default function EmployeesPage() {
               <select
                 value={filterStatus}
                 onChange={(e) => setFilterStatus(e.target.value)}
-                className="px-3 py-2 rounded-xl border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm text-gray-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm"
+                className="px-3 py-2 rounded-xl border border-border border-input bg-card text-sm text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring shadow-sm"
               >
                 <option value="">جميع الحالات</option>
                 <option value="active">نشط</option>
@@ -672,7 +640,7 @@ export default function EmployeesPage() {
                     setFilterDept("");
                     setFilterStatus("");
                   }}
-                  className="px-3 py-2 rounded-xl text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 border border-red-200 dark:border-red-800 transition-colors"
+                  className="px-3 py-2 rounded-xl text-sm text-destructive hover:bg-destructive/5 dark:hover:bg-destructive/10 border border-destructive/20 border-destructive/30 transition-colors"
                 >
                   مسح
                 </button>
@@ -685,9 +653,9 @@ export default function EmployeesPage() {
         {isError && (
           <div className="space-y-3">
             <ErrorState onRetry={() => refetch()} />
-            <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-4 text-left">
-              <p className="text-xs font-bold text-red-700 dark:text-red-300 mb-1">تفاصيل الخطأ:</p>
-              <p className="text-xs text-red-600 dark:text-red-400 font-mono break-all">
+            <div className="bg-destructive/5 border border-destructive/20 border-destructive/30 rounded-xl p-4 text-left">
+              <p className="text-xs font-bold text-destructive text-destructive/70 mb-1">تفاصيل الخطأ:</p>
+              <p className="text-xs text-destructive font-mono break-all">
                 {error instanceof Error ? error.message : JSON.stringify(error)}
               </p>
             </div>
@@ -717,39 +685,39 @@ export default function EmployeesPage() {
                   exit={{ opacity: 0, scale: 0.95 }}
                   transition={{ delay: Math.min(index * 0.05, 0.3), duration: 0.3 }}
                 >
-                  <Card className="border-0 shadow-md dark:bg-slate-800 hover:shadow-xl group transition-all duration-300 hover:-translate-y-1 cursor-pointer">
+                  <Card className="border-0 shadow-md bg-card hover:shadow-xl group transition-all duration-300 hover:-translate-y-1 cursor-pointer">
                     <CardContent className="p-4">
                       {/* Avatar + name row */}
                       <div className="flex items-center gap-3 mb-3">
                         <motion.div
-                          whileHover={{ scale: 1.1 }}
+                          
                           transition={{ type: "spring", stiffness: 300 }}
-                          className={`relative w-14 h-14 shrink-0 rounded-2xl bg-gradient-to-br from-emerald-500 to-emerald-700 flex items-center justify-center text-white font-bold text-lg overflow-hidden shadow-md ring-2 ${
+                          className={`relative w-14 h-14 shrink-0 rounded-2xl bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center text-primary-foreground font-bold text-lg overflow-hidden shadow-md ring-2 ${
                             emp.status === "active"
-                              ? "ring-green-400"
-                              : "ring-gray-200 dark:ring-slate-600"
+                              ? "ring-primary/40"
+                              : "ring-border"
                           }`}
                         >
                           {emp.name.charAt(0)}
                           {emp.status === "active" && (
-                            <span className="absolute bottom-0.5 right-0.5 w-3 h-3 rounded-full bg-green-400 ring-2 ring-white dark:ring-slate-800">
-                              <span className="animate-ping absolute inset-0 rounded-full bg-green-400 opacity-75" />
+                            <span className="absolute bottom-0.5 right-0.5 w-3 h-3 rounded-full bg-primary ring-2 ring-background ring-card">
+                              <span className="animate-ping absolute inset-0 rounded-full bg-primary opacity-75" />
                             </span>
                           )}
                         </motion.div>
                         <div className="min-w-0 flex-1">
-                          <p className="font-bold text-gray-900 dark:text-slate-100 truncate">
+                          <p className="font-bold text-foreground truncate">
                             {emp.name}
                           </p>
-                          <p className="text-xs text-gray-500 dark:text-slate-400 truncate">
+                          <p className="text-xs text-muted-foreground truncate">
                             {emp.department}
                           </p>
                           <div className="flex items-center gap-1.5 mt-1">
-                            <span className="inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400">
+                            <span className="inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary bg-primary/10 text-primary">
                               {roleLabels[emp.role] || emp.role}
                             </span>
                             {emp.geofenceId && (
-                              <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-50 text-indigo-700 dark:bg-indigo-900/20 dark:text-indigo-400">
+                              <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-xs font-medium bg-primary/5 text-primary bg-primary/10 text-primary">
                                 <MapPin className="w-2.5 h-2.5" />
                                 {getGeofenceName(emp.geofenceId)}
                               </span>
@@ -759,7 +727,7 @@ export default function EmployeesPage() {
                       </div>
 
                       {/* Contact info */}
-                      <div className="text-xs text-gray-500 dark:text-slate-400 space-y-1 mb-3 px-1">
+                      <div className="text-xs text-muted-foreground space-y-1 mb-3 px-1">
                         <div className="flex items-center gap-1.5">
                           <Mail className="w-3 h-3 shrink-0" />
                           <span
@@ -773,28 +741,28 @@ export default function EmployeesPage() {
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-1 pt-3 border-t border-gray-100 dark:border-slate-700">
+                      <div className="flex items-center gap-1 pt-3 border-t border-border border-border">
                         <Link
                           href={`/employees/${emp.id}`}
-                          className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg text-xs font-medium text-gray-600 dark:text-slate-400 hover:bg-cyan-50 hover:text-cyan-600 dark:hover:bg-cyan-900/20 dark:hover:text-cyan-400 transition-colors"
+                          className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg text-xs font-medium text-muted-foreground text-muted-foreground hover:bg-primary/5 hover:text-primary hover:bg-primary/10 hover:text-primary transition-colors"
                           title="عرض الملف"
                         >
                           <Eye className="w-3.5 h-3.5" />
                           عرض
                         </Link>
-                        <div className="w-px h-5 bg-gray-100 dark:bg-slate-700" />
+                        <div className="w-px h-5 bg-muted" />
                         <button
                           onClick={() => handleEdit(emp)}
-                          className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg text-xs font-medium text-gray-600 dark:text-slate-400 hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-blue-900/20 dark:hover:text-blue-400 transition-colors"
+                          className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg text-xs font-medium text-muted-foreground text-muted-foreground hover:bg-primary/5 hover:text-primary hover:bg-primary/10 hover:text-primary transition-colors"
                           title="تعديل"
                         >
                           <Edit className="w-3.5 h-3.5" />
                           تعديل
                         </button>
-                        <div className="w-px h-5 bg-gray-100 dark:bg-slate-700" />
+                        <div className="w-px h-5 bg-muted" />
                         <button
                           onClick={() => handleDelete(emp)}
-                          className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg text-xs font-medium text-gray-600 dark:text-slate-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20 dark:hover:text-red-400 transition-colors"
+                          className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg text-xs font-medium text-muted-foreground text-muted-foreground hover:bg-destructive/5 hover:text-destructive dark:hover:bg-destructive/10 dark:hover:text-destructive transition-colors"
                           title="حذف"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
@@ -823,10 +791,10 @@ export default function EmployeesPage() {
                       href={`/employees/${emp.id}`}
                       className="flex items-center gap-3 hover:underline"
                     >
-                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-emerald-500 to-emerald-700 flex items-center justify-center text-white font-bold text-sm overflow-hidden">
+                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center text-primary-foreground font-bold text-sm overflow-hidden">
                         {emp.name.charAt(0)}
                       </div>
-                      <span className="text-sm font-medium text-gray-900 dark:text-slate-100">
+                      <span className="text-sm font-medium text-foreground">
                         {emp.name}
                       </span>
                     </Link>
@@ -843,7 +811,7 @@ export default function EmployeesPage() {
                       dir="ltr"
                       lang="en"
                       style={{ unicodeBidi: "plaintext" }}
-                      className="inline-block text-left text-sm text-gray-600 dark:text-slate-400 font-mono"
+                      className="inline-block text-left text-sm text-muted-foreground text-muted-foreground font-mono"
                     >
                       {emp.employeeNumber || "-"}
                     </span>
@@ -863,7 +831,7 @@ export default function EmployeesPage() {
                   sortable: true,
                   sortValue: (emp) => emp.role,
                   cell: (emp) => (
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400">
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary bg-primary/10 text-primary">
                       {roleLabels[emp.role]}
                     </span>
                   ),
@@ -872,7 +840,7 @@ export default function EmployeesPage() {
                   key: "contact",
                   header: "التواصل",
                   cell: (emp) => (
-                    <div className="flex flex-col gap-1 text-xs text-gray-500 dark:text-slate-400">
+                    <div className="flex flex-col gap-1 text-xs text-muted-foreground">
                       <span className="flex items-center gap-1">
                         <Mail className="w-3 h-3" />
                         <span dir="ltr" lang="en" style={{ unicodeBidi: "plaintext" }}>
@@ -889,7 +857,7 @@ export default function EmployeesPage() {
                   sortValue: (emp) => getGeofenceName(emp.geofenceId ?? null),
                   cell: (emp) => (
                     <span className="flex items-center gap-1">
-                      <MapPin className="w-3 h-3 text-gray-400" />
+                      <MapPin className="w-3 h-3 text-muted-foreground/70" />
                       {getGeofenceName(emp.geofenceId ?? null)}
                     </span>
                   ),
@@ -903,14 +871,14 @@ export default function EmployeesPage() {
                     <span
                       className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium ${
                         emp.status === "active"
-                          ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400"
-                          : "bg-gray-100 text-gray-600 dark:bg-slate-700 dark:text-slate-400"
+                          ? "bg-primary/10 text-primary bg-primary/10 text-primary"
+                          : "bg-muted text-muted-foreground"
                       }`}
                     >
                       {emp.status === "active" && (
                         <span className="relative flex h-2 w-2">
-                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
-                          <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500" />
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
+                          <span className="relative inline-flex rounded-full h-2 w-2 bg-primary" />
                         </span>
                       )}
                       {emp.status === "active" ? "نشط" : "غير نشط"}
@@ -924,7 +892,7 @@ export default function EmployeesPage() {
                     <div className="flex items-center gap-2">
                       <Link
                         href={`/employees/${emp.id}`}
-                        className="p-1.5 rounded-lg hover:bg-cyan-50 text-cyan-600 dark:hover:bg-cyan-900/20"
+                        className="p-1.5 rounded-lg hover:bg-primary/5 text-primary hover:bg-primary/10"
                         title="عرض الملف"
                         aria-label="عرض ملف الموظف"
                       >
@@ -932,7 +900,7 @@ export default function EmployeesPage() {
                       </Link>
                       <button
                         onClick={() => handleEdit(emp)}
-                        className="p-1.5 rounded-lg hover:bg-blue-50 text-blue-600 dark:hover:bg-blue-900/20"
+                        className="p-1.5 rounded-lg hover:bg-primary/5 text-primary hover:bg-primary/10"
                         title="تعديل"
                         aria-label="تعديل الموظف"
                       >
@@ -940,7 +908,7 @@ export default function EmployeesPage() {
                       </button>
                       <button
                         onClick={() => handleDelete(emp)}
-                        className="p-1.5 rounded-lg hover:bg-red-50 text-red-600 dark:hover:bg-red-900/20"
+                        className="p-1.5 rounded-lg hover:bg-destructive/5 text-destructive dark:hover:bg-destructive/10"
                         title="حذف"
                         aria-label="حذف الموظف"
                       >
@@ -966,29 +934,29 @@ export default function EmployeesPage() {
               initial={{ opacity: 0, y: 50 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 50 }}
-              className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-gray-200 dark:border-slate-700 px-6 py-3 flex items-center gap-4"
+              className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-card rounded-2xl shadow-2xl border border-border px-6 py-3 flex items-center gap-4"
             >
-              <span className="text-sm font-medium text-gray-700 dark:text-slate-200">
+              <span className="text-sm font-medium text-foreground">
                 {selectedIds.length} محدد
               </span>
-              <div className="h-6 w-px bg-gray-200 dark:bg-slate-600" />
+              <div className="h-6 w-px bg-muted" />
               <button
                 onClick={handleBulkExport}
-                className="flex items-center gap-1.5 text-sm text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 px-3 py-1.5 rounded-lg transition-colors"
+                className="flex items-center gap-1.5 text-sm text-primary hover:bg-primary/5 hover:bg-primary/10 px-3 py-1.5 rounded-lg transition-colors"
               >
                 <Download className="w-4 h-4" />
                 تصدير المحدد
               </button>
               <button
                 onClick={handleBulkDelete}
-                className="flex items-center gap-1.5 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 px-3 py-1.5 rounded-lg transition-colors"
+                className="flex items-center gap-1.5 text-sm text-destructive hover:bg-destructive/5 dark:hover:bg-destructive/10 px-3 py-1.5 rounded-lg transition-colors"
               >
                 <Trash2 className="w-4 h-4" />
                 حذف المحدد
               </button>
               <button
                 onClick={() => setSelectedIds([])}
-                className="text-sm text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200 px-2"
+                className="text-sm text-muted-foreground hover:text-muted-foreground dark:hover:text-foreground px-2"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -1017,80 +985,53 @@ export default function EmployeesPage() {
           submitLabel="حفظ التعديلات"
         >
           <div className="grid grid-cols-1 gap-4">
-            {[
-              { label: "الاسم", key: "name", type: "text", placeholder: "اسم الموظف" },
-              {
-                label: "البريد الإلكتروني",
-                key: "email",
-                type: "email",
-                placeholder: "email@trax.com",
-              },
-            ].map(({ label, key, type, placeholder }) => {
-              const isLtrField = key === "email";
-
-              return (
-                <div key={key}>
-                  <label className="text-sm font-medium text-gray-700 dark:text-slate-300 mb-1 block">
-                    {label}
-                  </label>
-                  <input
-                    type={type}
-                    value={editEmployee[key as keyof typeof editEmployee] as string}
-                    onChange={(e) => setEditEmployee({ ...editEmployee, [key]: e.target.value })}
-                    dir={isLtrField ? "ltr" : "rtl"}
-                    lang={isLtrField ? "en" : "ar"}
-                    style={isLtrField ? { unicodeBidi: "plaintext" } : undefined}
-                    className={`w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-transparent dark:bg-slate-900 text-gray-900 dark:text-slate-100 ${isLtrField ? "text-left" : "text-right"}`}
-                    placeholder={placeholder}
-                  />
-                </div>
-              );
-            })}
-            <div>
-              <label className="text-sm font-medium text-gray-700 dark:text-slate-300 mb-1 block">
-                الدور
-              </label>
-              <select
-                value={editEmployee.role}
-                onChange={(e) =>
-                  setEditEmployee({ ...editEmployee, role: e.target.value as EmployeeRole })
-                }
-                className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-transparent dark:bg-slate-900 text-gray-900 dark:text-slate-100"
-              >
-                <option value="employee">موظف</option>
-                <option value="supervisor">مشرف</option>
-                <option value="manager">مدير</option>
-              </select>
-            </div>
-            <div>
-              <label className="text-sm font-medium text-gray-700 dark:text-slate-300 mb-1 block">
-                النطاق الجغرافي
-              </label>
-              <select
-                value={editEmployee.geofenceId}
-                onChange={(e) => setEditEmployee({ ...editEmployee, geofenceId: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-transparent dark:bg-slate-900 text-gray-900 dark:text-slate-100"
-              >
-                {geofences.map((g) => (
-                  <option key={g.id} value={g.id}>
-                    {g.name}
-                  </option>
-                ))}
-              </select>
-            </div>
+            <FormField
+              label="الاسم"
+              value={editEmployee.name}
+              onChange={(v) => setEditEmployee({ ...editEmployee, name: v })}
+              placeholder="اسم الموظف"
+            />
+            <FormField
+              label="البريد الإلكتروني"
+              type="email"
+              value={editEmployee.email}
+              onChange={(v) => setEditEmployee({ ...editEmployee, email: v })}
+              placeholder="email@trax.com"
+              ltr
+            />
+            <FormSelect
+              label="الدور"
+              value={editEmployee.role}
+              onChange={(v) => setEditEmployee({ ...editEmployee, role: v as EmployeeRole })}
+            >
+              <option value="employee">موظف</option>
+              <option value="supervisor">مشرف</option>
+              <option value="manager">مدير</option>
+            </FormSelect>
+            <FormSelect
+              label="النطاق الجغرافي"
+              value={editEmployee.geofenceId}
+              onChange={(v) => setEditEmployee({ ...editEmployee, geofenceId: v })}
+            >
+              {geofences.map((g) => (
+                <option key={g.id} value={g.id}>
+                  {g.name}
+                </option>
+              ))}
+            </FormSelect>
             {/* Reset password section */}
-            <div className="pt-3 border-t border-gray-200 dark:border-slate-700">
+            <div className="pt-3 border-t border-border">
               {!showResetPassword ? (
                 <button
                   type="button"
                   onClick={() => setShowResetPassword(true)}
-                  className="text-xs text-blue-600 dark:text-blue-400 hover:underline"
+                  className="text-xs text-primary hover:underline"
                 >
                   تعيين كلمة مرور جديدة للموظف
                 </button>
               ) : (
                 <div className="space-y-2">
-                  <label className="block text-xs font-medium text-gray-700 dark:text-slate-300">
+                  <label className="block text-xs font-medium text-muted-foreground">
                     كلمة المرور الجديدة
                   </label>
                   <div className="flex gap-2">
@@ -1100,7 +1041,7 @@ export default function EmployeesPage() {
                       onChange={(e) => setResetPasswordValue(e.target.value)}
                       placeholder="8 أحرف على الأقل"
                       dir="ltr"
-                      className="flex-1 px-3 py-2 text-sm border border-gray-300 dark:border-slate-600 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-transparent dark:bg-slate-900 text-gray-900 dark:text-slate-100"
+                      className="flex-1 px-3 py-2 text-sm border border-input rounded-lg outline-none focus:ring-2 focus:ring-ring bg-transparent text-foreground"
                     />
                     <button
                       type="button"
@@ -1123,7 +1064,7 @@ export default function EmployeesPage() {
                           }
                         );
                       }}
-                      className="px-3 py-2 text-sm bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white rounded-lg transition-colors"
+                      className="px-3 py-2 text-sm bg-primary hover:bg-primary/90 disabled:opacity-40 text-primary-foreground rounded-lg transition-colors"
                     >
                       {resetEmployeePassword.isPending ? "…" : "حفظ"}
                     </button>
@@ -1133,7 +1074,7 @@ export default function EmployeesPage() {
                         setShowResetPassword(false);
                         setResetPasswordValue("");
                       }}
-                      className="px-3 py-2 text-sm text-gray-500 hover:text-gray-700 dark:text-slate-400"
+                      className="px-3 py-2 text-sm text-muted-foreground hover:text-foreground"
                     >
                       إلغاء
                     </button>

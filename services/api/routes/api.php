@@ -30,8 +30,6 @@ Route::post('companies/register', [CompanyController::class, 'register'])
 // Password reset — public
 Route::post('auth/forgot-password', [AuthController::class, 'forgotPassword'])
     ->middleware(['throttle:5,1']);
-Route::post('auth/reset-password', [AuthController::class, 'resetPassword'])
-    ->middleware(['throttle:5,1']);
 
 // Protected — Firebase token verification
 Route::middleware('firebase')->group(function () {

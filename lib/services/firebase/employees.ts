@@ -14,12 +14,13 @@ import {
 import { createUserWithEmailAndPassword, sendPasswordResetEmail } from "firebase/auth";
 import { auth, secondaryAuth } from "@/lib/config/firebase";
 import type { Employee } from "@/lib/types/trackingTypes";
-import { ensureAuth, requireCompanyId, requireDb, cleanPayload, mapEmployee } from "./helpers";
+import { ensureAuth, getCompanyId, requireCompanyId, requireDb, cleanPayload, mapEmployee } from "./helpers";
 
 export const employeesApi = {
   async list(): Promise<Employee[]> {
-    await ensureAuth();
-    const companyId = requireCompanyId();
+    try { await ensureAuth(); } catch { return []; }
+    const companyId = getCompanyId();
+    if (!companyId) return [];
     const base = collection(requireDb(), "employees");
     const snapshot = await getDocs(query(base, where("company_id", "==", companyId)));
     const employees = snapshot.docs.map((item) => mapEmployee(item.id, item.data()));

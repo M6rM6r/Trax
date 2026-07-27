@@ -31,6 +31,23 @@ class AuthControllerTest extends TestCase
             ]);
     }
 
+    public function test_firebase_login_rejects_mismatched_firebase_uid(): void
+    {
+        $this->seed(TraxDatabaseSeeder::class);
+        $user = User::where('email', 'boss@trax.com')->first();
+        $user->firebase_uid = 'linked-firebase-uid';
+        $user->save();
+
+        $this->mockFirebaseAuth($user, 'different-firebase-uid');
+
+        $response = $this->postJson('/api/auth/firebase', [
+            'id_token' => 'mock-firebase-token',
+        ]);
+
+        $response->assertStatus(401)
+            ->assertJsonPath('message', 'Firebase account linkage mismatch.');
+    }
+
     public function test_firebase_login_without_token_returns_422(): void
     {
         $response = $this->postJson('/api/auth/firebase', []);

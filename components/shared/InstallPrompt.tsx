@@ -59,13 +59,13 @@ export default function InstallPrompt() {
           exit={{ opacity: 0, y: 100 }}
           className="fixed bottom-4 left-4 right-4 z-50 mx-auto max-w-sm"
         >
-          <div className="flex items-center gap-3 p-4 rounded-2xl bg-white dark:bg-slate-900 shadow-xl border border-gray-200 dark:border-slate-700">
-            <div className="flex-shrink-0 w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
-              <Download className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+          <div className="flex items-center gap-3 p-4 rounded-2xl bg-background shadow-xl border border-border">
+            <div className="flex-shrink-0 w-10 h-10 rounded-xl bg-primary/10 bg-primary/10 flex items-center justify-center">
+              <Download className="w-5 h-5 text-primary" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-bold text-gray-900 dark:text-slate-100">تثبيت Trax</p>
-              <p className="text-xs text-gray-500 dark:text-slate-400 mt-0.5">
+              <p className="text-sm font-bold text-foreground">تثبيت Trax</p>
+              <p className="text-xs text-muted-foreground mt-0.5">
                 أضف التطبيق إلى شاشتك الرئيسية للوصول السريع
               </p>
             </div>
@@ -75,7 +75,7 @@ export default function InstallPrompt() {
               </Button>
               <button
                 onClick={handleDismiss}
-                className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-800 text-gray-400"
+                className="p-1.5 rounded-lg hover:bg-muted dark:hover:bg-card text-muted-foreground/70"
                 aria-label="إغلاق"
               >
                 <X className="w-4 h-4" />

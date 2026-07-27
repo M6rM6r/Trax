@@ -2,11 +2,11 @@ const QUEUE_KEY = "trax_offline_queue";
 
 export interface QueuedCheckIn {
   id: string;
-  employeeId: string | number;
+  employeeId: string;
   employeeName?: string;
   lat: number;
   lng: number;
-  geofenceId?: string | number | null;
+  geofenceId?: string | null;
   timestamp: number;
   // Policy snapshot captured at queue time for authoritative replay
   requireGeofenceForCheckIn?: boolean;
@@ -15,7 +15,7 @@ export interface QueuedCheckIn {
 
 export interface QueuedCheckOut {
   id: string;
-  employeeId: string | number;
+  employeeId: string;
   timestamp: number;
 }
 

@@ -15,6 +15,7 @@ import "ol/ol.css";
 import { Modify, Snap } from "ol/interaction";
 import { Button } from "@/components/ui/button";
 import { FormikProps } from "formik";
+import { MAP_THEME } from "@/lib/utils/mapTheme";
 
 interface MapPoint {
   id: string;
@@ -52,10 +53,10 @@ export default function OLMap({
       image: new Circle({
         radius: 6,
         fill: new Fill({
-          color: index === 0 ? "#ff0000" : "#3399CC",
+          color: index === 0 ? MAP_THEME.primary : MAP_THEME.secondary,
         }),
         stroke: new Stroke({
-          color: "#fff",
+          color: MAP_THEME.contrastStroke,
           width: 2,
         }),
       }),
@@ -104,7 +105,7 @@ export default function OLMap({
             color: "rgba(255, 255, 255, 0.4)",
           }),
           stroke: new Stroke({
-            color: "#3399CC",
+            color: MAP_THEME.secondary,
             width: 2,
           }),
         }),
@@ -310,7 +311,7 @@ export default function OLMap({
 
       <div className=" flex gap-5 mt-5">
         {currentShape && (
-          <Button variant={"primaryLight"} onClick={clearCurrentShape} type="button">
+          <Button variant={"primary"} onClick={clearCurrentShape} type="button">
             حذف الشكل
           </Button>
         )}

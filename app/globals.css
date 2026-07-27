@@ -10,75 +10,92 @@
 
 @layer base {
   :root {
-    --accent-rgb: 16 185 129;
+    --accent-rgb: 56 189 168;
     --base-font-size: 16px;
-    --background: 0 0% 100%;
-    --foreground: 0 0% 3.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 0 0% 3.9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 3.9%;
-    --primary: 0 0% 9%;
-    --primary-foreground: 0 0% 98%;
-    --secondary: 0 0% 96.1%;
-    --secondary-foreground: 0 0% 9%;
-    --muted: 0 0% 96.1%;
-    --muted-foreground: 0 0% 45.1%;
-    --accent: 0 0% 96.1%;
-    --accent-foreground: 0 0% 9%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 89.8%;
-    --input: 0 0% 89.8%;
-    --ring: 0 0% 3.9%;
-    --chart-1: 12 76% 61%;
-    --chart-2: 173 58% 39%;
-    --chart-3: 197 37% 24%;
-    --chart-4: 43 74% 66%;
-    --chart-5: 27 87% 67%;
+    /*
+     * BIOLOGICAL PALETTE — Dark Mode (Primary)
+     * Inspired by deep-ocean bioluminescence, cellular structures,
+     * chlorophyll, and the chromatic systems of living organisms.
+     *
+     * Background: Abyssal depth — the substrate where life emerges
+     * Primary: Bioluminescent teal — signaling, navigation, life
+     * Accent: ATP amber — metabolic energy, neural firing
+     * Destructive: Arterial red — oxygenated hemoglobin, danger
+     * Charts: Biological chromatic spectrum
+     */
+    --background: 220 20% 6%;
+    --foreground: 200 20% 95%;
+    --card: 220 18% 10%;
+    --card-foreground: 200 20% 95%;
+    --popover: 220 18% 10%;
+    --popover-foreground: 200 20% 95%;
+    --primary: 168 72% 40%;
+    --primary-foreground: 220 20% 6%;
+    --secondary: 220 14% 14%;
+    --secondary-foreground: 200 20% 92%;
+    --muted: 220 14% 14%;
+    --muted-foreground: 210 12% 52%;
+    --accent: 38 88% 55%;
+    --accent-foreground: 220 20% 6%;
+    --destructive: 4 74% 52%;
+    --destructive-foreground: 200 20% 95%;
+    --border: 220 12% 16%;
+    --input: 220 12% 16%;
+    --ring: 168 72% 40%;
+    /* Biological spectrum: chlorophyll → bioluminescence → carotenoid → anthocyanin → rhodopsin */
+    --chart-1: 168 72% 40%;
+    --chart-2: 142 58% 42%;
+    --chart-3: 38 88% 55%;
+    --chart-4: 278 52% 56%;
+    --chart-5: 350 65% 52%;
     --radius: 0.5rem;
-    --sidebar-background: 0 0% 98%;
-    --sidebar-foreground: 240 5.3% 26.1%;
-    --sidebar-primary: 240 5.9% 10%;
-    --sidebar-primary-foreground: 0 0% 98%;
-    --sidebar-accent: 240 4.8% 95.9%;
-    --sidebar-accent-foreground: 240 5.9% 10%;
-    --sidebar-border: 220 13% 91%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
-  }
-  .dark {
-    --background: 222 47% 11%;
-    --foreground: 210 40% 98%;
-    --card: 222 32% 18%;
-    --card-foreground: 210 40% 98%;
-    --popover: 222 32% 18%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 160 84% 39%;
-    --primary-foreground: 222 47% 11%;
-    --secondary: 217 33% 17%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217 33% 17%;
-    --muted-foreground: 215 20% 65%;
-    --accent: 217 33% 17%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 63% 31%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 217 33% 20%;
-    --input: 217 33% 20%;
-    --ring: 160 84% 39%;
-    --chart-1: 220 70% 50%;
-    --chart-2: 160 60% 45%;
-    --chart-3: 30 80% 55%;
-    --chart-4: 280 65% 60%;
-    --chart-5: 340 75% 55%;
-    --sidebar-background: 222 47% 11%;
-    --sidebar-foreground: 210 40% 98%;
-    --sidebar-primary: 160 84% 39%;
+    --sidebar-background: 220 20% 6%;
+    --sidebar-foreground: 200 20% 95%;
+    --sidebar-primary: 168 72% 40%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 217 33% 17%;
-    --sidebar-accent-foreground: 210 40% 98%;
-    --sidebar-border: 217 33% 20%;
-    --sidebar-ring: 160 84% 39%;
+    --sidebar-accent: 220 14% 14%;
+    --sidebar-accent-foreground: 200 20% 92%;
+    --sidebar-border: 220 12% 16%;
+    --sidebar-ring: 168 72% 40%;
+  }
+  .light {
+    /*
+     * BIOLOGICAL PALETTE — Light Mode
+     * Clean laboratory environment with organic warmth.
+     * Like studying specimens under natural light.
+     */
+    --background: 180 8% 98%;
+    --foreground: 220 20% 10%;
+    --card: 0 0% 100%;
+    --card-foreground: 220 20% 10%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 220 20% 10%;
+    --primary: 168 72% 36%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 180 8% 94%;
+    --secondary-foreground: 220 20% 10%;
+    --muted: 180 8% 94%;
+    --muted-foreground: 215 12% 44%;
+    --accent: 38 88% 50%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 4 74% 48%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 200 12% 89%;
+    --input: 200 12% 89%;
+    --ring: 168 72% 36%;
+    --chart-1: 168 72% 36%;
+    --chart-2: 142 58% 38%;
+    --chart-3: 38 88% 50%;
+    --chart-4: 278 52% 50%;
+    --chart-5: 350 65% 48%;
+    --sidebar-background: 180 8% 97%;
+    --sidebar-foreground: 220 20% 10%;
+    --sidebar-primary: 168 72% 36%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 180 8% 94%;
+    --sidebar-accent-foreground: 220 20% 10%;
+    --sidebar-border: 200 12% 89%;
+    --sidebar-ring: 168 72% 36%;
   }
 }
 
@@ -87,46 +104,26 @@
     @apply border-border;
   }
   :root {
+    color-scheme: dark;
+  }
+  .light {
     color-scheme: light;
   }
   body {
     @apply bg-background text-foreground;
     transition:
-      background-color 0.3s ease,
-      color 0.3s ease;
-  }
-  @media (prefers-color-scheme: dark) {
-    :root:not(.light) {
-      --background: 222 47% 11%;
-      --foreground: 210 40% 98%;
-      --card: 222 32% 18%;
-      --card-foreground: 210 40% 98%;
-      --popover: 222 32% 18%;
-      --popover-foreground: 210 40% 98%;
-      --primary: 160 84% 39%;
-      --primary-foreground: 222 47% 11%;
-      --secondary: 217 33% 17%;
-      --secondary-foreground: 210 40% 98%;
-      --muted: 217 33% 17%;
-      --muted-foreground: 215 20% 65%;
-      --accent: 217 33% 17%;
-      --accent-foreground: 210 40% 98%;
-      --destructive: 0 63% 31%;
-      --destructive-foreground: 210 40% 98%;
-      --border: 217 33% 20%;
-      --input: 217 33% 20%;
-      --ring: 160 84% 39%;
-    }
+      background-color 0.2s ease,
+      color 0.2s ease;
   }
   *:focus-visible {
-    @apply outline-none ring-2 ring-primaryColor ring-offset-2 ring-offset-background rounded-sm;
+    @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background rounded-sm;
   }
   .skip-to-content {
     position: absolute;
     top: -100px;
     right: 0;
     z-index: 9999;
-    @apply bg-primaryColor text-white px-4 py-2 rounded-md text-sm font-medium transition-all;
+    @apply bg-primary text-primary-foreground px-4 py-2 rounded-md text-sm font-medium transition-all;
   }
   .skip-to-content:focus {
     top: 0;
@@ -145,22 +142,17 @@
   .shimmer {
     background: linear-gradient(
       90deg,
-      hsl(var(--muted, 0 0% 96%)) 25%,
-      hsl(var(--muted-foreground, 0 0% 45%)) 50%,
-      hsl(var(--muted, 0 0% 96%)) 75%
+      hsl(var(--muted)) 25%,
+      hsl(var(--muted-foreground)) 50%,
+      hsl(var(--muted)) 75%
     );
-    background-size: 200% 100%;
-    animation: shimmer 1.5s ease-in-out infinite;
-  }
-  .dark .shimmer {
-    background: linear-gradient(90deg, #1e293b 25%, #334155 50%, #1e293b 75%);
     background-size: 200% 100%;
     animation: shimmer 1.5s ease-in-out infinite;
   }
   @keyframes slide-up {
     from {
       opacity: 0;
-      transform: translateY(16px);
+      transform: translateY(12px);
     }
     to {
       opacity: 1;
@@ -176,28 +168,10 @@
     }
   }
   .animate-fade-in {
-    animation: fade-in 0.4s ease-out both;
+    animation: fade-in 0.3s ease-out both;
   }
   .animate-slide-up {
-    animation: slide-up 0.4s ease-out both;
-  }
-  .animate-stagger-1 {
-    animation: slide-up 0.4s ease-out 0.05s both;
-  }
-  .animate-stagger-2 {
-    animation: slide-up 0.4s ease-out 0.1s both;
-  }
-  .animate-stagger-3 {
-    animation: slide-up 0.4s ease-out 0.15s both;
-  }
-  .animate-stagger-4 {
-    animation: slide-up 0.4s ease-out 0.2s both;
-  }
-  .animate-stagger-5 {
-    animation: slide-up 0.4s ease-out 0.25s both;
-  }
-  .animate-stagger-6 {
-    animation: slide-up 0.4s ease-out 0.3s both;
+    animation: slide-up 0.3s ease-out both;
   }
 }
 
@@ -228,12 +202,6 @@ input {
   outline: none;
   text-align: start;
 }
-.dark input {
-  color: #f1f5f9;
-}
-.dark input::placeholder {
-  color: #64748b;
-}
 .hideScrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;
@@ -247,19 +215,8 @@ input {
   border: 1px solid hsl(var(--border)) !important;
   height: 48px !important;
 }
-.dark .css-13cymwt-control {
-  background-color: hsl(var(--card)) !important;
-  border-color: hsl(var(--border)) !important;
-}
-.dark .css-1jqq78o-placeholder {
-  color: #64748b !important;
-}
-.dark .css-t3ipsp-control {
-  background-color: hsl(var(--card)) !important;
-  border-color: hsl(var(--primary)) !important;
-}
 .css-1jqq78o-placeholder {
-  color: #999eb2 !important;
+  color: hsl(var(--muted-foreground)) !important;
 }
 .css-1u9des2-indicatorSeparator {
   display: none !important;
@@ -305,10 +262,6 @@ input {
   --sb-thumb-color: hsl(var(--primary));
   --sb-size: 7px;
 }
-.dark .custom-scrollbar {
-  --sb-track-color: hsl(var(--card));
-  --sb-thumb-color: hsl(var(--primary));
-}
 
 .custom-scrollbar::-webkit-scrollbar {
   width: var(--sb-size);
@@ -330,20 +283,6 @@ input {
   }
 }
 
-input[type="number"]::-webkit-inner-spin-button,
-input[type="number"]::-webkit-outer-spin-button {
-  -webkit-appearance: inner-spin-button; /* Keep default behavior */
-  opacity: 1; /* Make visible */
-  background: #c1c2c3; /* Background color */
-  padding: 4px; /* Add padding */
-  /* border-radius: 3px; Rounded corners */
-  cursor: pointer; /* Change cursor on hover */
-}
-
-/* Change arrow color (WebKit only) */
-input[type="number"]::-webkit-inner-spin-button {
-  color: #c1c2c3;
-}
 
 /* .prevent-arrows::-webkit-inner-spin-button,
 .prevent-arrows::-webkit-outer-spin-button {
@@ -361,18 +300,9 @@ input[type="number"]::-webkit-inner-spin-button {
   display: inline-block;
   position: relative;
   border: 3px solid;
-  border-color: #e7edf5 #e7edf5 transparent transparent;
+  border-color: hsl(var(--muted)) hsl(var(--muted)) transparent transparent;
   box-sizing: border-box;
   animation: rotation 1s linear infinite;
-}
-.dark .loader {
-  border-color: #334155 #334155 transparent transparent;
-}
-.dark .loader::after {
-  border-color: transparent transparent #3b82f6 #3b82f6;
-}
-.dark .loader::before {
-  border-color: #334155 #334155 transparent transparent;
 }
 .loader::after,
 .loader::before {
@@ -385,7 +315,7 @@ input[type="number"]::-webkit-inner-spin-button {
   bottom: 0;
   margin: auto;
   border: 3px solid;
-  border-color: transparent transparent #11489b #11489b;
+  border-color: transparent transparent hsl(var(--primary)) hsl(var(--primary));
   width: 40px;
   height: 40px;
   border-radius: 50%;
@@ -396,7 +326,7 @@ input[type="number"]::-webkit-inner-spin-button {
 .loader::before {
   width: 32px;
   height: 32px;
-  border-color: #e7edf5 #e7edf5 transparent transparent;
+  border-color: hsl(var(--muted)) hsl(var(--muted)) transparent transparent;
   animation: rotation 1.5s linear infinite;
 }
 
@@ -436,34 +366,6 @@ html {
   outline-offset: 2px;
 }
 
-.dark {
-  color-scheme: dark;
-}
-
-.dark select {
-  background-color: #1e293b;
-  color: #f1f5f9;
-}
-
-.dark select option {
-  background-color: #1e293b;
-  color: #f1f5f9;
-}
-
-.dark textarea {
-  background-color: #0f172a;
-  color: #f1f5f9;
-  border-color: #334155;
-}
-
-.dark input[type="number"]::-webkit-inner-spin-button {
-  filter: invert(1);
-}
-
-.dark input[type="color"] {
-  background-color: #1e293b;
-  border-color: #334155;
-}
 
 button,
 a,
@@ -478,9 +380,9 @@ a,
   right: 0;
   z-index: 9999;
   padding: 8px 16px;
-  background: hsl(var(--primary, 217 89% 33%));
-  color: white;
-  border-radius: 0 0 0 8px;
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+  border-radius: 0 0 0 6px;
   text-decoration: none;
   transition: top 0.2s;
 }
@@ -533,18 +435,6 @@ a,
   }
 }
 
-@keyframes theme-spin {
-  from {
-    transform: rotate(0deg) scale(1);
-  }
-  50% {
-    transform: rotate(180deg) scale(1.2);
-  }
-  to {
-    transform: rotate(360deg) scale(1);
-  }
-}
-
 .animate-slide-in-start {
   animation: slide-in-start 0.3s ease-out;
 }
@@ -555,14 +445,6 @@ a,
 
 .animate-slide-in-right {
   animation: slide-in-end 0.3s ease-out;
-}
-
-.animate-scale-in {
-  animation: scale-in 0.3s ease-out;
-}
-
-.animate-theme-toggle {
-  animation: theme-spin 0.5s ease-in-out;
 }
 
 .hideScrollbar {

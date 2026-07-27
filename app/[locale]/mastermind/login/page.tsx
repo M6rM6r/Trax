@@ -40,6 +40,7 @@ export default function MastermindLoginPage() {
       }
 
       sessionStorage.setItem("mastermind_token", idToken);
+      sessionStorage.setItem("mastermind_uid", credential.user.uid);
       router.push("/ar/mastermind/dashboard");
     } catch (err) {
       toastError(err instanceof Error ? err.message : "Login failed");
@@ -49,14 +50,14 @@ export default function MastermindLoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 bg-slate-950">
-      <Card className="w-full max-w-md bg-slate-900 border-slate-800">
+    <div className="min-h-screen flex items-center justify-center px-4 bg-background">
+      <Card className="w-full max-w-md bg-background border-border">
         <CardHeader className="text-center">
-          <div className="mx-auto w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center mb-4">
-            <Brain className="h-6 w-6 text-emerald-400" />
+          <div className="mx-auto w-12 h-12 rounded-xl bg-primary/10 border border-primary/30 flex items-center justify-center mb-4">
+            <Brain className="h-6 w-6 text-primary" />
           </div>
-          <CardTitle className="text-2xl text-slate-100">MasterMind</CardTitle>
-          <CardDescription className="text-slate-500">Super admin access required</CardDescription>
+          <CardTitle className="text-2xl text-foreground">MasterMind</CardTitle>
+          <CardDescription className="text-muted-foreground/70">Super admin access required</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -69,7 +70,7 @@ export default function MastermindLoginPage() {
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="mastermind@trax.com"
                 required
-                className="bg-slate-950 border-slate-700"
+                className="bg-background border-border"
               />
             </div>
             <div className="space-y-2">
@@ -81,13 +82,13 @@ export default function MastermindLoginPage() {
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="********"
                 required
-                className="bg-slate-950 border-slate-700"
+                className="bg-background border-border"
               />
             </div>
             <Button
               type="submit"
               disabled={loading}
-              className="w-full bg-emerald-600 hover:bg-emerald-700 text-white"
+              className="w-full bg-primary hover:bg-primary/90 text-primary-foreground"
             >
               {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
               Authenticate

@@ -19,16 +19,16 @@ export function LoadingState({
   icon: _Icon = RefreshCw,
 }: LoadingStateProps) {
   return (
-    <Card className="border-0 shadow-lg dark:bg-slate-800" role="status" aria-label={message}>
+    <Card className="border-0 shadow-lg bg-card" role="status" aria-label={message}>
       <CardContent className="py-16 flex flex-col items-center justify-center text-center">
         <motion.div
           animate={{ rotate: 360 }}
           transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-          className="w-16 h-16 rounded-full bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center mb-4"
+          className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-4"
         >
-          <_Icon className="w-8 h-8 text-blue-500 dark:text-blue-400" aria-hidden />
+          <_Icon className="w-8 h-8 text-primary" aria-hidden />
         </motion.div>
-        <h3 className="text-lg font-bold text-gray-700 dark:text-slate-200 mb-2">{message}</h3>
+        <h3 className="text-lg font-bold text-foreground mb-2">{message}</h3>
       </CardContent>
     </Card>
   );
@@ -43,7 +43,7 @@ export function LoadingSkeleton({ variant }: { variant: SkeletonVariant }) {
         className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3"
       >
         {Array.from({ length: 6 }).map((_, i) => (
-          <Card key={i} className="border-0 shadow-lg dark:bg-slate-800">
+          <Card key={i} className="border-0 shadow-lg bg-card">
             <CardHeader>
               <div className="flex items-center gap-3">
                 <Skeleton className="w-12 h-12 rounded-xl" />
@@ -67,7 +67,7 @@ export function LoadingSkeleton({ variant }: { variant: SkeletonVariant }) {
   if (variant === "table") {
     return (
       <Card
-        className="border-0 shadow-lg dark:bg-slate-800"
+        className="border-0 shadow-lg bg-card"
         role="status"
         aria-label="جاري التحميل"
       >
@@ -75,7 +75,7 @@ export function LoadingSkeleton({ variant }: { variant: SkeletonVariant }) {
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="border-b border-gray-200 bg-gray-50 dark:bg-slate-700 dark:border-slate-600">
+                <tr className="border-b border-border bg-muted border-input">
                   {Array.from({ length: 6 }).map((_, i) => (
                     <th key={i} className="py-3 px-4">
                       <Skeleton className="h-4 w-20" />
@@ -85,7 +85,7 @@ export function LoadingSkeleton({ variant }: { variant: SkeletonVariant }) {
               </thead>
               <tbody>
                 {Array.from({ length: 6 }).map((_, rowIdx) => (
-                  <tr key={rowIdx} className="border-b border-gray-100">
+                  <tr key={rowIdx} className="border-b border-border">
                     {Array.from({ length: 6 }).map((_, colIdx) => (
                       <td key={colIdx} className="py-3 px-4">
                         <Skeleton className="h-4 w-full max-w-[120px]" />
@@ -107,7 +107,7 @@ export function LoadingSkeleton({ variant }: { variant: SkeletonVariant }) {
         {Array.from({ length: 5 }).map((_, i) => (
           <div
             key={i}
-            className="flex items-center gap-3 p-3 rounded-xl border border-gray-200 dark:border-slate-700"
+            className="flex items-center gap-3 p-3 rounded-xl border border-border"
           >
             <Skeleton className="w-10 h-10 rounded-full" />
             <div className="flex-1 space-y-2">
@@ -129,12 +129,12 @@ export function LoadingSkeleton({ variant }: { variant: SkeletonVariant }) {
         aria-label="جاري التحميل"
       >
         <div className="lg:col-span-2">
-          <Card className="border-0 shadow-lg overflow-hidden dark:bg-slate-800">
+          <Card className="border-0 shadow-lg overflow-hidden bg-card">
             <Skeleton className="h-[600px] w-full rounded-none" />
           </Card>
         </div>
         <div className="space-y-4">
-          <Card className="border-0 shadow-lg dark:bg-slate-800">
+          <Card className="border-0 shadow-lg bg-card">
             <CardContent className="pt-6 space-y-4">
               <Skeleton className="h-12 w-12 rounded-full" />
               <Skeleton className="h-4 w-full" />
@@ -142,14 +142,14 @@ export function LoadingSkeleton({ variant }: { variant: SkeletonVariant }) {
               <Skeleton className="h-4 w-1/2" />
             </CardContent>
           </Card>
-          <Card className="border-0 shadow-lg dark:bg-slate-800">
+          <Card className="border-0 shadow-lg bg-card">
             <CardContent className="pt-6">
               <Skeleton className="h-5 w-32 mb-4" />
               <div className="space-y-2">
                 {Array.from({ length: 4 }).map((_, i) => (
                   <div
                     key={i}
-                    className="flex items-center justify-between p-3 rounded-xl border border-gray-100 dark:border-slate-700"
+                    className="flex items-center justify-between p-3 rounded-xl border border-border border-border"
                   >
                     <Skeleton className="h-8 w-8 rounded-full" />
                     <Skeleton className="h-4 w-20" />
@@ -167,7 +167,7 @@ export function LoadingSkeleton({ variant }: { variant: SkeletonVariant }) {
   if (variant === "chart") {
     return (
       <div className="space-y-6" role="status" aria-label="جاري التحميل">
-        <Card className="border-0 shadow-lg dark:bg-slate-800">
+        <Card className="border-0 shadow-lg bg-card">
           <CardHeader>
             <div className="flex items-center gap-3">
               <Skeleton className="w-10 h-10 rounded-xl" />
@@ -213,23 +213,23 @@ interface EmptyStateProps {
 
 const illustrationConfig: Record<string, { gradient: string; emoji: string }> = {
   employees: {
-    gradient: "from-indigo-100 to-purple-100 dark:from-indigo-900/20 dark:to-purple-900/20",
+    gradient: "from-primary/10 to-accent/10",
     emoji: "👥",
   },
   attendance: {
-    gradient: "from-green-100 to-teal-100 dark:from-green-900/20 dark:to-teal-900/20",
+    gradient: "from-primary/10 to-primary/5",
     emoji: "📅",
   },
   geofences: {
-    gradient: "from-cyan-100 to-blue-100 dark:from-cyan-900/20 dark:to-blue-900/20",
+    gradient: "from-primary/10 to-primary/5",
     emoji: "📍",
   },
   ai: {
-    gradient: "from-purple-100 to-fuchsia-100 dark:from-purple-900/20 dark:to-fuchsia-900/20",
+    gradient: "from-accent/10 to-primary/10",
     emoji: "🧠",
   },
   default: {
-    gradient: "from-gray-100 to-slate-100 dark:from-slate-700 dark:to-slate-800",
+    gradient: "from-muted to-muted/50",
     emoji: "📭",
   },
 };
@@ -269,7 +269,7 @@ export function EmptyState({
           initial={{ y: 10, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ delay: 0.1 }}
-          className="text-lg font-bold text-gray-700 dark:text-slate-200 mb-2"
+          className="text-lg font-bold text-foreground mb-2"
         >
           {title}
         </motion.h3>
@@ -277,7 +277,7 @@ export function EmptyState({
           initial={{ y: 10, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ delay: 0.2 }}
-          className="text-sm text-gray-500 dark:text-slate-400 mb-6 max-w-sm"
+          className="text-sm text-muted-foreground mb-6 max-w-sm"
         >
           {description}
         </motion.p>
@@ -316,7 +316,7 @@ export function EmptyState({
                 initial={{ opacity: 0, x: -10 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: 0.4 + i * 0.1 }}
-                className="text-xs text-gray-400 dark:text-slate-500 flex items-start gap-1.5 text-right"
+                className="text-xs text-muted-foreground/70 flex items-start gap-1.5 text-right"
               >
                 <span className="shrink-0">💡</span>
                 <span>{t}</span>
@@ -347,16 +347,16 @@ export function ErrorState({
           initial={{ x: 0 }}
           animate={{ x: [0, -10, 10, -10, 10, 0] }}
           transition={{ duration: 0.5, delay: 0.2 }}
-          className="w-16 h-16 rounded-full bg-red-50 dark:bg-red-900/20 flex items-center justify-center mb-4"
+          className="w-16 h-16 rounded-full bg-destructive/10 flex items-center justify-center mb-4"
         >
-          <AlertCircle className="w-8 h-8 text-red-500 dark:text-red-400" aria-hidden />
+          <AlertCircle className="w-8 h-8 text-destructive" aria-hidden />
         </motion.div>
-        <h3 className="text-lg font-bold text-gray-700 dark:text-slate-200 mb-2">
+        <h3 className="text-lg font-bold text-foreground mb-2">
           {message || "حدث خطأ أثناء تحميل البيانات"}
         </h3>
-        <p className="text-sm text-gray-500 dark:text-slate-400 mb-6">يرجى المحاولة مرة أخرى</p>
+        <p className="text-sm text-muted-foreground mb-6">يرجى المحاولة مرة أخرى</p>
         {retryCount && retryCount > 0 && (
-          <p className="text-xs text-amber-500 dark:text-amber-400 mb-3">
+          <p className="text-xs text-[hsl(48_96%_53%)] mb-3">
             المحاولة {retryCount} من 3
           </p>
         )}

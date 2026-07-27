@@ -65,13 +65,13 @@ export default function NotificationSettingsPage() {
           Icon={<Bell className="w-7 h-7" />}
         />
 
-        <Card className="border-0 shadow-lg dark:bg-slate-800 animate-slide-up">
+        <Card className="border-0 shadow-lg bg-card animate-slide-up">
           <CardHeader>
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-amber-500 flex items-center justify-center">
-                <Bell className="w-5 h-5 text-white" />
+              <div className="w-10 h-10 rounded-xl bg-[hsl(48_96%_53%/0.1)]0 flex items-center justify-center">
+                <Bell className="w-5 h-5 text-primary-foreground" />
               </div>
-              <CardTitle className="text-lg font-bold text-gray-900 dark:text-slate-100">
+              <CardTitle className="text-lg font-bold text-foreground">
                 أنواع الإشعارات
               </CardTitle>
             </div>
@@ -82,17 +82,17 @@ export default function NotificationSettingsPage() {
               return (
                 <div
                   key={item.title}
-                  className="flex items-center justify-between p-4 rounded-xl bg-gray-50 dark:bg-slate-700/50"
+                  className="flex items-center justify-between p-4 rounded-xl bg-muted/50"
                 >
                   <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-lg bg-white dark:bg-slate-800 flex items-center justify-center shadow-sm">
-                      <Icon className="w-4 h-4 text-gray-500 dark:text-slate-400" />
+                    <div className="w-9 h-9 rounded-lg bg-card flex items-center justify-center shadow-sm">
+                      <Icon className="w-4 h-4 text-muted-foreground" />
                     </div>
                     <div>
-                      <p className="text-sm font-medium text-gray-900 dark:text-slate-100">
+                      <p className="text-sm font-medium text-foreground">
                         {item.title}
                       </p>
-                      <p className="text-xs text-gray-500 dark:text-slate-400 mt-0.5">
+                      <p className="text-xs text-muted-foreground mt-0.5">
                         {item.description}
                       </p>
                     </div>

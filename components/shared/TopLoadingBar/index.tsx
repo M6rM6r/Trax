@@ -37,7 +37,7 @@ export function TopLoadingBar() {
       aria-label="جاري التحميل"
     >
       <div
-        className="h-full bg-gradient-to-r from-blue-500 via-purple-500 to-blue-500 transition-all duration-300 ease-out"
+        className="h-full bg-gradient-to-r from-primary via-primary/80 to-primary transition-all duration-300 ease-out"
         style={{ width: `${progress}%` }}
       />
     </div>

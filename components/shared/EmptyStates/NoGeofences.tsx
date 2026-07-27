@@ -13,7 +13,6 @@ export default function NoGeofences() {
       description="أنشئ نطاقك الجغرافي الأول لتحديد مناطق العمل وتتبع حضور الموظفين"
       actionLabel="إنشاء نطاق"
       onAction={() => router.push("/geofences?openAdd=true")}
-      gradient="from-cyan-100 to-blue-100 dark:from-cyan-900/20 dark:to-blue-900/20"
     />
   );
 }

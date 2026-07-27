@@ -69,9 +69,9 @@ export function NavMain({
             {item.items?.length ? (
               <div
                 className={cn(
-                  "flex items-center justify-between hover:bg-primaryColor dark:hover:bg-primaryColor p-2 rounded-md group",
+                  "flex items-center justify-between hover:bg-sidebar-accent p-2 rounded-md group",
                   (item.isActive || openSections[item.title]) &&
-                    "bg-primaryColor text-white dark:bg-primaryColor"
+                    "bg-primary text-primary-foreground"
                 )}
               >
                 <Link
@@ -82,14 +82,14 @@ export function NavMain({
                   <item.icon
                     width={24}
                     className={cn(
-                      "text-black dark:text-slate-100 group-hover:text-white",
-                      (item.isActive || openSections[item.title]) && "text-white"
+                      "text-sidebar-foreground group-hover:text-primary-foreground",
+                      (item.isActive || openSections[item.title]) && "text-primary-foreground"
                     )}
                   />
                   <span
                     className={cn(
-                      "text-16 text-black dark:text-slate-100 group-hover:text-white",
-                      (item.isActive || openSections[item.title]) && "text-white"
+                      "text-16 text-sidebar-foreground group-hover:text-primary-foreground",
+                      (item.isActive || openSections[item.title]) && "text-primary-foreground"
                     )}
                   >
                     {item.title}
@@ -101,17 +101,17 @@ export function NavMain({
                     toggleSection(item.title);
                   }}
                   className={cn(
-                    "p-1 rounded text-black dark:text-slate-100 group-hover:text-white group-hover:bg-primaryColor/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primaryColor",
+                    "p-1 rounded text-sidebar-foreground group-hover:text-primary-foreground group-hover:bg-primary/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                     (item.isActive || openSections[item.title]) &&
-                      "bg-primaryColor text-white dark:bg-primaryColor"
+                      "bg-primary text-primary-foreground"
                   )}
                   aria-label={openSections[item.title] ? `طي ${item.title}` : `توسيع ${item.title}`}
                   aria-expanded={openSections[item.title]}
                 >
                   <ArrowLeft
-                    className={`transition-transform w-6 text-black dark:text-slate-100 group-hover:text-white ${
+                    className={`transition-transform w-6 text-sidebar-foreground group-hover:text-primary-foreground ${
                       openSections[item.title] ? "-rotate-90" : ""
-                    } ${(item.isActive || openSections[item.title]) && "text-white"}`}
+                    } ${(item.isActive || openSections[item.title]) && "text-primary-foreground"}`}
                   />
                 </button>
               </div>
@@ -119,22 +119,22 @@ export function NavMain({
               <Link
                 href={item.url}
                 className={cn(
-                  "flex items-center gap-2 w-full hover:bg-primaryColor dark:hover:bg-primaryColor p-2 rounded-md group",
-                  item.isActive && "bg-primaryColor text-white dark:bg-primaryColor"
+                  "flex items-center gap-2 w-full hover:bg-sidebar-accent p-2 rounded-md group",
+                  item.isActive && "bg-primary text-primary-foreground"
                 )}
                 aria-current={item.isActive ? "page" : undefined}
               >
                 <item.icon
                   width={24}
                   className={cn(
-                    "text-black dark:text-slate-100 group-hover:text-white",
-                    item.isActive && "text-white"
+                    "text-sidebar-foreground group-hover:text-primary-foreground",
+                    item.isActive && "text-primary-foreground"
                   )}
                 />
                 <span
                   className={cn(
-                    "text-16 text-black dark:text-slate-100 group-hover:text-white",
-                    item.isActive && "text-white"
+                    "text-16 text-sidebar-foreground group-hover:text-primary-foreground",
+                    item.isActive && "text-primary-foreground"
                   )}
                 >
                   {item.title}
@@ -159,10 +159,10 @@ export function NavMain({
                         className={cn(
                           "flex items-center justify-between gap-2 text-14 px-2 py-1 rounded-md ms-3 group cursor-pointer",
                           isOpenActive
-                            ? "bg-primaryColor text-white dark:bg-primaryColor"
+                            ? "bg-primary text-primary-foreground"
                             : subItemHasActiveChild
-                              ? "bg-primaryColorLight text-primaryColor dark:bg-primaryColor/10 dark:text-primaryColor"
-                              : "text-black dark:text-slate-100 hover:bg-primaryColor dark:hover:bg-primaryColor hover:text-white"
+                              ? "bg-primary/10 text-primary"
+                              : "text-sidebar-foreground hover:bg-sidebar-accent"
                         )}
                         role="group"
                       >
@@ -174,10 +174,10 @@ export function NavMain({
                           <Flash
                             className={cn(
                               "w-5 h-5",
-                              isOpenActive && "text-white",
+                              isOpenActive && "text-primary-foreground",
                               !isOpenActive &&
                                 subItemHasActiveChild &&
-                                "text-primaryColor dark:text-primaryColor"
+                                "text-primary"
                             )}
                           />
                           {subItem.title}
@@ -189,7 +189,7 @@ export function NavMain({
                               e.preventDefault();
                               toggleSubSection(item.title, subItem.title);
                             }}
-                            className="p-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primaryColor rounded"
+                            className="p-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded"
                             aria-label={
                               isSubItemOpen ? `طي ${subItem.title}` : `توسيع ${subItem.title}`
                             }
@@ -199,10 +199,10 @@ export function NavMain({
                               className={cn(
                                 "transition-transform w-5",
                                 isOpenActive
-                                  ? "text-white"
+                                  ? "text-primary-foreground"
                                   : subItemHasActiveChild
-                                    ? "text-primaryColor dark:text-primaryColor"
-                                    : "text-black dark:text-slate-100 group-hover:text-white",
+                                    ? "text-primary"
+                                    : "text-sidebar-foreground group-hover:text-primary-foreground",
                                 isSubItemOpen && "-rotate-90"
                               )}
                             />
@@ -218,15 +218,15 @@ export function NavMain({
                               <Link
                                 href={subSubItem.url}
                                 aria-current={subSubItem.active ? "page" : undefined}
-                                className={`flex items-center gap-2 text-14 text-black dark:text-slate-100 px-2 py-1 hover:bg-primaryColor dark:hover:bg-primaryColor hover:text-white rounded-md ms-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primaryColor ${
+                                className={`flex items-center gap-2 text-14 text-sidebar-foreground px-2 py-1 hover:bg-sidebar-accent rounded-md ms-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
                                   subSubItem.active
-                                    ? " bg-primaryColorLight text-primaryColor dark:bg-primaryColor/10 dark:text-primaryColor"
+                                    ? " bg-primary/10 text-primary"
                                     : ""
                                 }`}
                               >
                                 <Flash
                                   className={`w-5 h-5 ${
-                                    subSubItem.active && "text-primaryColor dark:text-primaryColor"
+                                    subSubItem.active && "text-primary"
                                   }`}
                                 />
                                 {subSubItem.title}

@@ -20,9 +20,9 @@ export function useLiveTrackingSocket(initialData: LiveTrackingEmployee[]) {
     const unsubscribe = subscribeRealtimeEvents({
       onLocationUpdate: (data: LocationUpdatePayload) => {
         setEmployees((prev) => {
-          const idx = prev.findIndex((e) => e.id === data.employeeId);
+          const idx = prev.findIndex((e) => e.id === String(data.employeeId));
           const updated: LiveTrackingEmployee = {
-            id: data.employeeId,
+            id: String(data.employeeId),
             name: data.employeeName,
             lat: data.lat,
             lng: data.lng,

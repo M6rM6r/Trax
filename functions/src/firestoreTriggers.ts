@@ -54,7 +54,7 @@ export const onAttendanceWritten = functions.firestore
  */
 export const onEmployeeWritten = functions.firestore
   .document("employees/{employeeId}")
-  .onWrite(async (change) => {
+  .onWrite(async (change, context) => {
     const before = change.before.data();
     const after = change.after.data();
 
@@ -63,7 +63,7 @@ export const onEmployeeWritten = functions.firestore
     // Only act on role changes
     if (before && before.role === after.role) return;
 
-    const employeeId = change.params.employeeId;
+    const employeeId = context.params.employeeId;
 
     try {
       // Find the auth user associated with this employee

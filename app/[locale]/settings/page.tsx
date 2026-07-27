@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useTheme } from "next-themes";
 import MainLayout from "@/components/shared/MainLayout";
 import FullPageHead from "@/components/shared/FullPageHead";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,19 +9,11 @@ import {
   Bell,
   Settings as SettingsIcon,
   Palette,
-  Sun,
-  Moon,
-  Monitor,
   Type,
   Globe,
   Clock,
-  Calendar,
   UserCheck,
   MapPin,
-  Mail,
-  Smartphone,
-  Check,
-  Zap,
   User,
   Building2,
 } from "lucide-react";
@@ -49,12 +40,12 @@ function ToggleSwitch({ enabled, onChange }: { enabled: boolean; onChange: () =>
 }
 
 const themeColors = [
-  { name: "أزرق", value: "blue", color: "bg-blue-500" },
-  { name: "أخضر", value: "green", color: "bg-green-500" },
-  { name: "بنفسجي", value: "purple", color: "bg-purple-500" },
-  { name: "برتقالي", value: "orange", color: "bg-orange-500" },
-  { name: "وردي", value: "pink", color: "bg-pink-500" },
-  { name: "سماوي", value: "cyan", color: "bg-cyan-500" },
+  { name: "أزرق", value: "blue", color: "bg-[#3B82F6]" },
+  { name: "أخضر", value: "green", color: "bg-[#22C55E]" },
+  { name: "بنفسجي", value: "purple", color: "bg-[#8B5CF6]" },
+  { name: "برتقالي", value: "orange", color: "bg-[#F97316]" },
+  { name: "وردي", value: "pink", color: "bg-[#EC4899]" },
+  { name: "سماوي", value: "cyan", color: "bg-[#06B6D4]" },
 ];
 
 const fontSizes = [
@@ -72,6 +63,28 @@ const accentColorMap: Record<string, string> = {
   cyan: "6 182 212",
 };
 
+const accentHslMap: Record<string, { primary: string; accent: string; ring: string }> = {
+  blue:   { primary: "217 91% 60%",  accent: "217 91% 60%",  ring: "217 91% 60%" },
+  green:  { primary: "142 71% 45%",  accent: "142 71% 45%",  ring: "142 71% 45%" },
+  purple: { primary: "271 81% 56%",  accent: "271 81% 56%",  ring: "271 81% 56%" },
+  orange: { primary: "25 95% 53%",   accent: "25 95% 53%",   ring: "25 95% 53%" },
+  pink:   { primary: "330 81% 60%",  accent: "330 81% 60%",  ring: "330 81% 60%" },
+  cyan:   { primary: "168 72% 40%",  accent: "38 88% 55%",   ring: "168 72% 40%" },
+};
+
+function applyAccentColor(colorKey: string) {
+  const rgb = accentColorMap[colorKey];
+  const hsl = accentHslMap[colorKey];
+  if (!rgb || !hsl) return;
+  const root = document.documentElement;
+  root.style.setProperty("--accent-rgb", rgb);
+  root.style.setProperty("--primary", hsl.primary);
+  root.style.setProperty("--ring", hsl.ring);
+  root.style.setProperty("--sidebar-primary", hsl.primary);
+  root.style.setProperty("--sidebar-ring", hsl.ring);
+  root.style.setProperty("--chart-1", hsl.primary);
+}
+
 const fontSizeMap: Record<string, string> = {
   small: "14px",
   medium: "16px",
@@ -79,13 +92,10 @@ const fontSizeMap: Record<string, string> = {
 };
 
 export default function SettingsPage() {
-  const { setTheme } = useTheme();
   const { user, companyName, role } = useAuthStore();
   const [activeTab, setActiveTab] = useState<TabId>("profile");
-  const [themeMode, setThemeMode] = useState<string>("system");
   const [accentColor, setAccentColor] = useState<string>("blue");
   const [fontSize, setFontSize] = useState<string>("medium");
-  const [reduceMotion, setReduceMotion] = useState(false);
   const [language, setLanguage] = useState("ar");
   const [timezone, setTimezone] = useState("Asia/Riyadh");
   const [dateFormat, setDateFormat] = useState("gregorian");
@@ -93,30 +103,20 @@ export default function SettingsPage() {
   const [attendanceAlerts, setAttendanceAlerts] = useState(true);
   const [lateAlerts, setLateAlerts] = useState(true);
   const [geofenceExitAlerts, setGeofenceExitAlerts] = useState(false);
-  const [emailNotifications, setEmailNotifications] = useState(true);
-  const [pushNotifications, setPushNotifications] = useState(true);
-  const [anomalyAlerts, setAnomalyAlerts] = useState(true);
 
   useEffect(() => {
     const saved = localStorage.getItem("trax_settings");
     if (saved) {
       const parsed = JSON.parse(saved);
-      const tm = parsed.themeMode || "system";
       const ac = parsed.accentColor || "blue";
       const fs = parsed.fontSize || "medium";
-      const rm = parsed.reduceMotion || false;
-      setThemeMode(tm);
       setAccentColor(ac);
       setFontSize(fs);
-      setReduceMotion(rm);
       setLanguage(parsed.language || "ar");
       setTimezone(parsed.timezone || "Asia/Riyadh");
       setDateFormat(parsed.dateFormat || "gregorian");
-      setTheme(tm);
-      if (accentColorMap[ac])
-        document.documentElement.style.setProperty("--accent-rgb", accentColorMap[ac]);
+      applyAccentColor(ac);
       document.documentElement.style.setProperty("--base-font-size", fontSizeMap[fs] || "16px");
-      document.documentElement.classList.toggle("reduce-motion", rm);
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -125,18 +125,14 @@ export default function SettingsPage() {
     const current = saved ? JSON.parse(saved) : {};
     current[key] = value;
     localStorage.setItem("trax_settings", JSON.stringify(current));
-    if (key === "themeMode") setTheme(value as string);
-    if (key === "accentColor" && accentColorMap[value as string]) {
-      document.documentElement.style.setProperty("--accent-rgb", accentColorMap[value as string]);
+    if (key === "accentColor") {
+      applyAccentColor(value as string);
     }
     if (key === "fontSize") {
       document.documentElement.style.setProperty(
         "--base-font-size",
         fontSizeMap[value as string] || "16px"
       );
-    }
-    if (key === "reduceMotion") {
-      document.documentElement.classList.toggle("reduce-motion", value as boolean);
     }
     hapticSuccess();
     toastSuccess("تم حفظ الإعدادات");
@@ -184,36 +180,6 @@ export default function SettingsPage() {
         saveSettings("geofenceExitAlerts", !geofenceExitAlerts);
       },
     },
-    {
-      icon: Shield,
-      title: "إشعارات كشف الشذوذ",
-      description: "تنبيه عند اكتشاف سلوك غير طبيعي",
-      enabled: anomalyAlerts,
-      onToggle: () => {
-        setAnomalyAlerts(!anomalyAlerts);
-        saveSettings("anomalyAlerts", !anomalyAlerts);
-      },
-    },
-    {
-      icon: Mail,
-      title: "إشعارات البريد الإلكتروني",
-      description: "استلام الإشعارات عبر البريد الإلكتروني",
-      enabled: emailNotifications,
-      onToggle: () => {
-        setEmailNotifications(!emailNotifications);
-        saveSettings("emailNotifications", !emailNotifications);
-      },
-    },
-    {
-      icon: Smartphone,
-      title: "إشعارات الدفع",
-      description: "استلام إشعارات الدفع على الجوال",
-      enabled: pushNotifications,
-      onToggle: () => {
-        setPushNotifications(!pushNotifications);
-        saveSettings("pushNotifications", !pushNotifications);
-      },
-    },
   ];
 
   return (
@@ -226,7 +192,7 @@ export default function SettingsPage() {
         />
 
         {/* Tab Bar */}
-        <div className="flex items-center gap-1 bg-gray-100 dark:bg-slate-800 rounded-xl p-1 overflow-x-auto">
+        <div className="flex items-center gap-1 bg-muted rounded-xl p-1 overflow-x-auto">
           {tabs.map((tab) => {
             const Icon = tab.icon;
             return (
@@ -238,8 +204,8 @@ export default function SettingsPage() {
                 }}
                 className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all whitespace-nowrap ${
                   activeTab === tab.id
-                    ? "bg-white dark:bg-slate-700 shadow-sm text-gray-900 dark:text-slate-100"
-                    : "text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200"
+                    ? "bg-muted shadow-sm text-foreground"
+                    : "text-muted-foreground hover:text-muted-foreground dark:hover:text-foreground"
                 }`}
               >
                 <Icon className="w-4 h-4" />
@@ -259,9 +225,9 @@ export default function SettingsPage() {
               exit={{ opacity: 0, y: -10 }}
               className="space-y-6"
             >
-              <Card className="border-0 shadow-lg dark:bg-slate-800">
+              <Card className="border-0 shadow-lg bg-card">
                 <CardHeader>
-                  <CardTitle className="text-lg font-bold text-gray-900 dark:text-slate-100">
+                  <CardTitle className="text-lg font-bold text-foreground">
                     صورة الملف الشخصي
                   </CardTitle>
                 </CardHeader>
@@ -273,12 +239,12 @@ export default function SettingsPage() {
                     shape="circle"
                   />
                   <div className="text-center">
-                    <p className="font-semibold text-gray-900 dark:text-slate-100">
+                    <p className="font-semibold text-foreground">
                       {user?.name ?? "المستخدم"}
                     </p>
-                    <p className="text-sm text-gray-500 dark:text-slate-400">{user?.email}</p>
+                    <p className="text-sm text-muted-foreground">{user?.email}</p>
                     {companyName && (
-                      <span className="inline-block mt-2 text-xs px-3 py-1 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 font-medium">
+                      <span className="inline-block mt-2 text-xs px-3 py-1 rounded-full bg-primary/10 text-primary/70 font-medium">
                         {companyName}
                       </span>
                     )}
@@ -296,23 +262,23 @@ export default function SettingsPage() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
             >
-              <Card className="border-0 shadow-lg dark:bg-slate-800">
+              <Card className="border-0 shadow-lg bg-card">
                 <CardHeader>
-                  <CardTitle className="text-lg font-bold text-gray-900 dark:text-slate-100">
+                  <CardTitle className="text-lg font-bold text-foreground">
                     الإعدادات العامة
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="flex items-center justify-between p-4 rounded-xl bg-gray-50 dark:bg-slate-700/50">
+                  <div className="flex items-center justify-between p-4 rounded-xl bg-muted/50">
                     <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
-                        <Globe className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                      <div className="w-9 h-9 rounded-lg bg-primary/10 bg-primary/10 flex items-center justify-center">
+                        <Globe className="w-4 h-4 text-primary" />
                       </div>
                       <div>
-                        <p className="text-sm font-medium text-gray-900 dark:text-slate-100">
+                        <p className="text-sm font-medium text-foreground">
                           اللغة
                         </p>
-                        <p className="text-xs text-gray-500 dark:text-slate-400">لغة الواجهة</p>
+                        <p className="text-xs text-muted-foreground">لغة الواجهة</p>
                       </div>
                     </div>
                     <select
@@ -321,22 +287,22 @@ export default function SettingsPage() {
                         setLanguage(e.target.value);
                         saveSettings("language", e.target.value);
                       }}
-                      className="px-3 py-2 rounded-lg border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-900 text-sm text-gray-900 dark:text-slate-100"
+                      className="px-3 py-2 rounded-lg border border-border border-input bg-background text-sm text-foreground"
                     >
                       <option value="ar">العربية</option>
                       <option value="en">English</option>
                     </select>
                   </div>
-                  <div className="flex items-center justify-between p-4 rounded-xl bg-gray-50 dark:bg-slate-700/50">
+                  <div className="flex items-center justify-between p-4 rounded-xl bg-muted/50">
                     <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-lg bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
-                        <Clock className="w-4 h-4 text-green-600 dark:text-green-400" />
+                      <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center">
+                        <Clock className="w-4 h-4 text-primary" />
                       </div>
                       <div>
-                        <p className="text-sm font-medium text-gray-900 dark:text-slate-100">
+                        <p className="text-sm font-medium text-foreground">
                           المنطقة الزمنية
                         </p>
-                        <p className="text-xs text-gray-500 dark:text-slate-400">التوقيت المحلي</p>
+                        <p className="text-xs text-muted-foreground">التوقيت المحلي</p>
                       </div>
                     </div>
                     <select
@@ -345,7 +311,7 @@ export default function SettingsPage() {
                         setTimezone(e.target.value);
                         saveSettings("timezone", e.target.value);
                       }}
-                      className="px-3 py-2 rounded-lg border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-900 text-sm text-gray-900 dark:text-slate-100"
+                      className="px-3 py-2 rounded-lg border border-border border-input bg-background text-sm text-foreground"
                     >
                       <option value="Asia/Riyadh">الرياض</option>
                       <option value="Asia/Dubai">دبي</option>
@@ -353,16 +319,16 @@ export default function SettingsPage() {
                       <option value="Asia/Qatar">الدوحة</option>
                     </select>
                   </div>
-                  <div className="flex items-center justify-between p-4 rounded-xl bg-gray-50 dark:bg-slate-700/50">
+                  <div className="flex items-center justify-between p-4 rounded-xl bg-muted/50">
                     <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-lg bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
-                        <Calendar className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+                      <div className="w-9 h-9 rounded-lg bg-accent/15 flex items-center justify-center">
+                        <Calendar className="w-4 h-4 text-accent-foreground" />
                       </div>
                       <div>
-                        <p className="text-sm font-medium text-gray-900 dark:text-slate-100">
+                        <p className="text-sm font-medium text-foreground">
                           تنسيق التاريخ
                         </p>
-                        <p className="text-xs text-gray-500 dark:text-slate-400">ميلادي أو هجري</p>
+                        <p className="text-xs text-muted-foreground">ميلادي أو هجري</p>
                       </div>
                     </div>
                     <select
@@ -371,7 +337,7 @@ export default function SettingsPage() {
                         setDateFormat(e.target.value);
                         saveSettings("dateFormat", e.target.value);
                       }}
-                      className="px-3 py-2 rounded-lg border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-900 text-sm text-gray-900 dark:text-slate-100"
+                      className="px-3 py-2 rounded-lg border border-border border-input bg-background text-sm text-foreground"
                     >
                       <option value="gregorian">ميلادي</option>
                       <option value="hijri">هجري</option>
@@ -391,90 +357,26 @@ export default function SettingsPage() {
               exit={{ opacity: 0, y: -10 }}
               className="space-y-6"
             >
-              <Card className="border-0 shadow-lg dark:bg-slate-800">
-                <CardHeader>
-                  <CardTitle className="text-lg font-bold text-gray-900 dark:text-slate-100">
-                    وضع المظهر
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-3 gap-4">
-                    {[
-                      { value: "light", label: "فاتح", icon: Sun },
-                      { value: "dark", label: "داكن", icon: Moon },
-                      { value: "system", label: "النظام", icon: Monitor },
-                    ].map((mode) => {
-                      const Icon = mode.icon;
-                      return (
-                        <button
-                          key={mode.value}
-                          onClick={() => {
-                            hapticTap();
-                            setThemeMode(mode.value);
-                            saveSettings("themeMode", mode.value);
-                          }}
-                          className={`flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all ${
-                            themeMode === mode.value
-                              ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20"
-                              : "border-gray-200 dark:border-slate-600 hover:border-gray-300 dark:hover:border-slate-500"
-                          }`}
-                        >
-                          <Icon
-                            className={`w-6 h-6 ${themeMode === mode.value ? "text-blue-600 dark:text-blue-400" : "text-gray-400"}`}
-                          />
-                          <span
-                            className={`text-sm font-medium ${themeMode === mode.value ? "text-blue-600 dark:text-blue-400" : "text-gray-600 dark:text-slate-300"}`}
-                          >
-                            {mode.label}
-                          </span>
-                          {themeMode === mode.value && <Check className="w-4 h-4 text-blue-500" />}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </CardContent>
-              </Card>
-
               {/* Live Preview */}
-              <Card className="border-0 shadow-lg dark:bg-slate-800">
+              <Card className="border-0 shadow-lg bg-card">
                 <CardHeader>
-                  <CardTitle className="text-lg font-bold text-gray-900 dark:text-slate-100">
+                  <CardTitle className="text-lg font-bold text-foreground">
                     معاينة مباشرة
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div
-                    className={`relative w-full h-24 rounded-xl overflow-hidden border border-gray-200 dark:border-slate-700 ${
-                      themeMode === "dark"
-                        ? "bg-slate-900"
-                        : themeMode === "light"
-                          ? "bg-white"
-                          : "bg-gray-50 dark:bg-slate-900"
-                    }`}
-                  >
+                  <div className="relative w-full h-24 rounded-xl overflow-hidden border border-border bg-background">
                     {/* Fake sidebar strip */}
                     <div
                       className="absolute right-0 top-0 bottom-0 w-3"
                       style={{ backgroundColor: `rgb(${accentColorMap[accentColor]})` }}
                     />
                     {/* Fake header bar */}
-                    <div
-                      className={`absolute top-0 left-0 right-3 h-5 ${
-                        themeMode === "dark" ? "bg-slate-700" : "bg-gray-100"
-                      }`}
-                    />
+                    <div className="absolute top-0 left-0 right-3 h-5 bg-muted" />
                     {/* Fake content rows */}
                     <div className="absolute top-8 right-5 left-3 space-y-2">
-                      <div
-                        className={`h-3 w-4/5 rounded-md ${
-                          themeMode === "dark" ? "bg-slate-700" : "bg-gray-200"
-                        }`}
-                      />
-                      <div
-                        className={`h-3 w-3/5 rounded-md ${
-                          themeMode === "dark" ? "bg-slate-600" : "bg-gray-100"
-                        }`}
-                      />
+                      <div className="h-3 w-4/5 rounded-md bg-muted" />
+                      <div className="h-3 w-3/5 rounded-md bg-muted" />
                       <div
                         className="h-4 w-16 rounded-lg"
                         style={{
@@ -487,9 +389,9 @@ export default function SettingsPage() {
                 </CardContent>
               </Card>
 
-              <Card className="border-0 shadow-lg dark:bg-slate-800">
+              <Card className="border-0 shadow-lg bg-card">
                 <CardHeader>
-                  <CardTitle className="text-lg font-bold text-gray-900 dark:text-slate-100">
+                  <CardTitle className="text-lg font-bold text-foreground">
                     اللون المميز
                   </CardTitle>
                 </CardHeader>
@@ -511,17 +413,17 @@ export default function SettingsPage() {
                         <div
                           className={`relative w-8 h-8 rounded-full ${color.color} shadow-md ${
                             accentColor === color.value
-                              ? "ring-2 ring-offset-2 ring-gray-900 dark:ring-white"
+                              ? "ring-2 ring-offset-2 ring-gray-900 dark:ring-background"
                               : ""
                           }`}
                         >
                           <div className="absolute inset-0 rounded-full bg-gradient-to-br from-white/40 to-transparent" />
                         </div>
-                        <span className="text-xs text-gray-600 dark:text-slate-300">
+                        <span className="text-xs text-muted-foreground">
                           {color.name}
                         </span>
                         {accentColor === color.value && (
-                          <Check className="w-3 h-3 text-gray-900 dark:text-white" />
+                          <Check className="w-3 h-3 text-foreground text-primary-foreground" />
                         )}
                       </button>
                     ))}
@@ -529,9 +431,9 @@ export default function SettingsPage() {
                 </CardContent>
               </Card>
 
-              <Card className="border-0 shadow-lg dark:bg-slate-800">
+              <Card className="border-0 shadow-lg bg-card">
                 <CardHeader>
-                  <CardTitle className="text-lg font-bold text-gray-900 dark:text-slate-100">
+                  <CardTitle className="text-lg font-bold text-foreground">
                     حجم الخط
                   </CardTitle>
                 </CardHeader>
@@ -547,15 +449,15 @@ export default function SettingsPage() {
                         }}
                         className={`flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all ${
                           fontSize === font.value
-                            ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20"
-                            : "border-gray-200 dark:border-slate-600 hover:border-gray-300 dark:hover:border-slate-500"
+                            ? "border-primary bg-primary/5"
+                            : "border-border border-input hover:border-input hover:border-input"
                         }`}
                       >
                         <Type
-                          className={`w-5 h-5 ${fontSize === font.value ? "text-blue-600 dark:text-blue-400" : "text-gray-400"}`}
+                          className={`w-5 h-5 ${fontSize === font.value ? "text-primary" : "text-muted-foreground/70"}`}
                         />
                         <span
-                          className={`${font.size} ${fontSize === font.value ? "text-blue-600 dark:text-blue-400 font-medium" : "text-gray-600 dark:text-slate-300"}`}
+                          className={`${font.size} ${fontSize === font.value ? "text-primary font-medium" : "text-muted-foreground"}`}
                         >
                           {font.name}
                         </span>
@@ -565,32 +467,6 @@ export default function SettingsPage() {
                 </CardContent>
               </Card>
 
-              <Card className="border-0 shadow-lg dark:bg-slate-800">
-                <CardContent className="pt-6">
-                  <div className="flex items-center justify-between p-4 rounded-xl bg-gray-50 dark:bg-slate-700/50">
-                    <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-lg bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
-                        <Zap className="w-4 h-4 text-purple-600 dark:text-purple-400" />
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium text-gray-900 dark:text-slate-100">
-                          تقليل الحركة
-                        </p>
-                        <p className="text-xs text-gray-500 dark:text-slate-400">
-                          تقليل الرسوم المتحركة
-                        </p>
-                      </div>
-                    </div>
-                    <ToggleSwitch
-                      enabled={reduceMotion}
-                      onChange={() => {
-                        setReduceMotion(!reduceMotion);
-                        saveSettings("reduceMotion", !reduceMotion);
-                      }}
-                    />
-                  </div>
-                </CardContent>
-              </Card>
             </motion.div>
           )}
 
@@ -602,13 +478,13 @@ export default function SettingsPage() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
             >
-              <Card className="border-0 shadow-lg dark:bg-slate-800">
+              <Card className="border-0 shadow-lg bg-card">
                 <CardHeader>
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-amber-500 flex items-center justify-center">
-                      <Bell className="w-5 h-5 text-white" />
+                    <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                      <Bell className="w-5 h-5 text-primary" />
                     </div>
-                    <CardTitle className="text-lg font-bold text-gray-900 dark:text-slate-100">
+                    <CardTitle className="text-lg font-bold text-foreground">
                       أنواع الإشعارات
                     </CardTitle>
                   </div>
@@ -619,17 +495,17 @@ export default function SettingsPage() {
                     return (
                       <div
                         key={item.title}
-                        className="flex items-center justify-between p-4 rounded-xl bg-gray-50 dark:bg-slate-700/50"
+                        className="flex items-center justify-between p-4 rounded-xl bg-muted/50"
                       >
                         <div className="flex items-center gap-3">
-                          <div className="w-9 h-9 rounded-lg bg-white dark:bg-slate-800 flex items-center justify-center shadow-sm">
-                            <Icon className="w-4 h-4 text-gray-500 dark:text-slate-400" />
+                          <div className="w-9 h-9 rounded-lg bg-card flex items-center justify-center shadow-sm">
+                            <Icon className="w-4 h-4 text-muted-foreground" />
                           </div>
                           <div>
-                            <p className="text-sm font-medium text-gray-900 dark:text-slate-100">
+                            <p className="text-sm font-medium text-foreground">
                               {item.title}
                             </p>
-                            <p className="text-xs text-gray-500 dark:text-slate-400 mt-0.5">
+                            <p className="text-xs text-muted-foreground mt-0.5">
                               {item.description}
                             </p>
                           </div>
@@ -651,53 +527,37 @@ export default function SettingsPage() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
             >
-              <Card className="border-0 shadow-lg dark:bg-slate-800">
+              <Card className="border-0 shadow-lg bg-card">
                 <CardHeader>
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-red-500 flex items-center justify-center">
-                      <Shield className="w-5 h-5 text-white" />
+                    <div className="w-10 h-10 rounded-xl bg-destructive flex items-center justify-center">
+                      <Shield className="w-5 h-5 text-primary-foreground" />
                     </div>
-                    <CardTitle className="text-lg font-bold text-gray-900 dark:text-slate-100">
+                    <CardTitle className="text-lg font-bold text-foreground">
                       إعدادات الأمان
                     </CardTitle>
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <Link
-                    href="settings/securitySettings"
-                    className="block p-4 rounded-xl bg-gray-50 dark:bg-slate-700/50 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors"
-                  >
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm font-medium text-gray-900 dark:text-slate-100">
-                          المصادقة الثنائية
-                        </p>
-                        <p className="text-xs text-gray-500 dark:text-slate-400 mt-0.5">
-                          تعزيز أمان الحساب
-                        </p>
-                      </div>
-                      <span className="text-xs text-blue-600 dark:text-blue-400">إدارة →</span>
-                    </div>
-                  </Link>
-                  <div className="p-4 rounded-xl bg-gray-50 dark:bg-slate-700/50">
-                    <p className="text-sm font-medium text-gray-900 dark:text-slate-100">
+                  <div className="p-4 rounded-xl bg-muted/50">
+                    <p className="text-sm font-medium text-foreground">
                       كلمة المرور
                     </p>
-                    <p className="text-xs text-gray-500 dark:text-slate-400 mt-0.5 mb-3">
+                    <p className="text-xs text-muted-foreground mt-0.5 mb-3">
                       تغيير كلمة المرور
                     </p>
-                    <button className="px-3 py-1.5 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 transition-colors">
+                    <button className="px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors">
                       تغيير كلمة المرور
                     </button>
                   </div>
-                  <div className="p-4 rounded-xl bg-gray-50 dark:bg-slate-700/50">
-                    <p className="text-sm font-medium text-gray-900 dark:text-slate-100">
+                  <div className="p-4 rounded-xl bg-muted/50">
+                    <p className="text-sm font-medium text-foreground">
                       جلسات نشطة
                     </p>
-                    <p className="text-xs text-gray-500 dark:text-slate-400 mt-0.5 mb-3">
+                    <p className="text-xs text-muted-foreground mt-0.5 mb-3">
                       إدارة الأجهزة المتصلة
                     </p>
-                    <button className="px-3 py-1.5 rounded-lg bg-red-600 text-white text-sm font-medium hover:bg-red-700 transition-colors">
+                    <button className="px-3 py-1.5 rounded-lg bg-destructive text-destructive-foreground text-sm font-medium hover:bg-destructive/90 transition-colors">
                       تسجيل الخروج من جميع الأجهزة
                     </button>
                   </div>
@@ -714,13 +574,13 @@ export default function SettingsPage() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
             >
-              <Card className="border-0 shadow-lg dark:bg-slate-800">
+              <Card className="border-0 shadow-lg bg-card">
                 <CardHeader>
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-blue-500 flex items-center justify-center">
-                      <Building2 className="w-5 h-5 text-white" />
+                    <div className="w-10 h-10 rounded-xl bg-primary/50 flex items-center justify-center">
+                      <Building2 className="w-5 h-5 text-primary-foreground" />
                     </div>
-                    <CardTitle className="text-lg font-bold text-gray-900 dark:text-slate-100">
+                    <CardTitle className="text-lg font-bold text-foreground">
                       إعدادات الشركة
                     </CardTitle>
                   </div>
@@ -728,18 +588,18 @@ export default function SettingsPage() {
                 <CardContent className="space-y-4">
                   <Link
                     href="settings/company"
-                    className="block p-4 rounded-xl bg-gray-50 dark:bg-slate-700/50 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors"
+                    className="block p-4 rounded-xl bg-muted/50 hover:bg-muted hover:bg-muted transition-colors"
                   >
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-sm font-medium text-gray-900 dark:text-slate-100">
+                        <p className="text-sm font-medium text-foreground">
                           التحكم الكامل في الشركة
                         </p>
-                        <p className="text-xs text-gray-500 dark:text-slate-400 mt-0.5">
+                        <p className="text-xs text-muted-foreground mt-0.5">
                           ساعات العمل، الحضور التلقائي، الإشعارات، الجلسة، النطاق الجغرافي
                         </p>
                       </div>
-                      <span className="text-xs text-blue-600 dark:text-blue-400">إدارة →</span>
+                      <span className="text-xs text-primary">إدارة →</span>
                     </div>
                   </Link>
                 </CardContent>

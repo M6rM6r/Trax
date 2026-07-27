@@ -28,7 +28,7 @@ export default function AvatarUpload({
     <div className="flex flex-col items-center gap-3">
       <div className="relative select-none" style={{ width: size, height: size }}>
         <div
-          className="w-full h-full overflow-hidden border-2 border-gray-200 dark:border-slate-600 transition-all duration-200"
+          className="w-full h-full overflow-hidden border-2 border-border border-input transition-all duration-200"
           style={{ borderRadius }}
         >
           {currentUrl ? (
@@ -42,7 +42,7 @@ export default function AvatarUpload({
             />
           ) : (
             <div
-              className="w-full h-full flex items-center justify-center bg-gradient-to-br from-emerald-100 to-emerald-200 dark:from-emerald-900/40 dark:to-emerald-800/40 text-emerald-700 dark:text-emerald-300 font-bold"
+              className="w-full h-full flex items-center justify-center bg-primary/10 text-primary font-bold"
               style={{ fontSize: size * 0.35, borderRadius }}
             >
               {initials}

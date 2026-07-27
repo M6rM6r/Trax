@@ -2,7 +2,6 @@
 import CustomInput from "@/components/shared/form/CustomInput";
 import { Button } from "@/components/ui/button";
 import Image from "next/image";
-import loginBG from "@/public/images/loginBg.png";
 import { Form, Formik, FormikHelpers } from "formik";
 import { CheckCircle2 } from "lucide-react";
 import * as Yup from "yup";
@@ -12,7 +11,6 @@ import { Link } from "@/i18n/navigation";
 import { useMemo, useState } from "react";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { hapticSuccess, hapticError } from "@/lib/utils/haptics";
-import { motion, AnimatePresence } from "framer-motion";
 import {
   getIdTokenResult,
   signInWithEmailAndPassword,
@@ -59,11 +57,11 @@ const Page = () => {
           name: string;
           email: string;
           role: string;
-          company_id: number;
-          employee_id?: string | number | null;
-          assigned_geofence_id?: string | number | null;
+          company_id: string;
+          employee_id?: string | null;
+          assigned_geofence_id?: string | null;
         };
-        company?: { id: number; name: string };
+        company?: { id: string; name: string };
       };
     }
   ) => {
@@ -159,8 +157,12 @@ const Page = () => {
         );
         const isEmployee = role === "employee";
 
-        let companyId = Number(profileData.company_id ?? companyProfile?.id ?? 1);
-        let companyName = String(profileData.company_name ?? companyProfile?.name ?? "Trax");
+        let companyId = profileData.company_id ?? companyProfile?.id ?? null;
+        let companyName = String(profileData.company_name ?? companyProfile?.name ?? "");
+
+        if (typeof companyId !== "string" && typeof companyId !== "number") {
+          throw new Error("Your Firebase account is not assigned to a company");
+        }
 
         // Optional: enrich with Laravel API if Firestore profile is incomplete.
         if (!profileData.company_id && !companyProfile?.id) {
@@ -173,7 +175,7 @@ const Page = () => {
             if (rawResp.ok) {
               const resp = await rawResp.json();
               if (resp?.success && resp?.data) {
-                companyId = Number(resp.data.user?.company_id ?? companyId);
+                companyId = resp.data.user?.company_id ?? companyId;
                 companyName = String(resp.data.company?.name ?? companyName);
               }
             }
@@ -181,6 +183,11 @@ const Page = () => {
             // Laravel API unreachable — continue with Firestore data.
           }
         }
+
+        if (typeof companyId !== "string" && typeof companyId !== "number") {
+          throw new Error("Your Firebase account is not assigned to a company");
+        }
+        const resolvedCompanyId: string = String(companyId);
 
         const hasEmployeeId =
           profileData.employee_id !== null && profileData.employee_id !== undefined;
@@ -195,20 +202,20 @@ const Page = () => {
               ),
               email: String(profileData.email ?? credential.user.email ?? values.identifier),
               role,
-              company_id: companyId,
+              company_id: resolvedCompanyId,
               employee_id: hasEmployeeId
-                ? (profileData.employee_id as string | number)
+                ? String(profileData.employee_id)
                 : isEmployee
-                  ? numericId
+                  ? String(numericId)
                   : null,
               assigned_geofence_id:
                 profileData.assigned_geofence_id === null ||
                 profileData.assigned_geofence_id === undefined
                   ? null
-                  : (profileData.assigned_geofence_id as string | number),
+                  : String(profileData.assigned_geofence_id),
             },
             company: {
-              id: companyId,
+              id: resolvedCompanyId,
               name: companyName,
             },
           },
@@ -256,13 +263,8 @@ const Page = () => {
   };
 
   return (
-    <section className="w-screen h-screen flex items-center justify-center relative bg-primaryColor dark:bg-slate-950 overflow-hidden">
-      <div
-        className="absolute inset-0 z-0 bg-center bg-cover opacity-40 dark:opacity-20"
-        style={{ backgroundImage: `url(${loginBG.src})` }}
-      />
-
-      <div className="absolute left-1/2 -translate-x-1/2 top-10 z-20">
+    <section className="w-screen h-screen flex items-center justify-center bg-background">
+      <div className="w-full max-w-[400px] px-6 flex flex-col items-center gap-8">
         <div className="relative h-10 w-40">
           <Image
             src="/images/logo.png"
@@ -273,7 +275,6 @@ const Page = () => {
             priority
           />
         </div>
-      </div>
 
       <Formik
         initialValues={{ identifier: initialIdentifier, password: "", rememberMe: false }}
@@ -282,14 +283,10 @@ const Page = () => {
         onSubmit={handleSubmit}
       >
         {(props) => (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="relative z-10 w-full max-w-[420px] px-6"
-          >
-            <Form className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl border border-white/20 rounded-3xl p-8 flex flex-col gap-6 shadow-2xl">
+          <div className="w-full">
+            <Form className="bg-card border border-border rounded-lg p-8 flex flex-col gap-5">
               <div className="text-center mb-2">
-                <h1 className="text-2xl font-bold text-gray-900 dark:text-white">تسجيل الدخول</h1>
+                <h1 className="text-xl font-bold text-foreground">تسجيل الدخول</h1>
               </div>
 
               <CustomInput
@@ -307,11 +304,11 @@ const Page = () => {
               />
 
               <div className="flex items-center justify-between text-sm">
-                <label className="flex items-center gap-2 cursor-pointer text-gray-600 dark:text-slate-400">
+                <label className="flex items-center gap-2 cursor-pointer text-muted-foreground">
                   <input
                     type="checkbox"
                     name="rememberMe"
-                    className="w-4 h-4 rounded border-gray-300 dark:border-slate-600 text-primaryColor focus:ring-primaryColor"
+                    className="w-4 h-4 rounded border-input text-primary focus:ring-ring"
                     checked={props.values.rememberMe}
                     onChange={() => props.setFieldValue("rememberMe", !props.values.rememberMe)}
                   />
@@ -319,7 +316,7 @@ const Page = () => {
                 </label>
                 <Link
                   href="/forgot-password"
-                  className="text-blue-600 dark:text-blue-400 hover:underline text-sm"
+                  className="text-primary hover:underline text-sm"
                 >
                   نسيت كلمة المرور؟
                 </Link>
@@ -329,44 +326,27 @@ const Page = () => {
                 type="submit"
                 variant="primary"
                 disabled={props.isSubmitting}
-                className="h-12 text-lg font-bold flex items-center justify-center gap-2 transition-transform"
+                className="h-11 font-semibold flex items-center justify-center gap-2"
               >
                 {props.isSubmitting && (
-                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  <div className="w-4 h-4 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin" />
                 )}
                 {props.isSubmitting ? "جاري التحميل..." : "دخول"}
               </Button>
             </Form>
-          </motion.div>
+          </div>
         )}
       </Formik>
 
-      <AnimatePresence>
-        {showSuccess && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-white/90 dark:bg-slate-950/90 backdrop-blur-sm"
-          >
-            <motion.div
-              initial={{ scale: 0, rotate: -180 }}
-              animate={{ scale: 1, rotate: 0 }}
-              transition={{ type: "spring", stiffness: 260, damping: 20 }}
-            >
-              <CheckCircle2 className="w-20 h-20 text-green-500" />
-            </motion.div>
-            <motion.p
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
-              className="mt-4 text-xl font-bold text-gray-900 dark:text-white"
-            >
-              تم تسجيل الدخول
-            </motion.p>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {showSuccess && (
+        <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-background">
+          <CheckCircle2 className="w-16 h-16 text-primary" />
+          <p className="mt-4 text-lg font-bold text-foreground">
+            تم تسجيل الدخول
+          </p>
+        </div>
+      )}
+      </div>
     </section>
   );
 };

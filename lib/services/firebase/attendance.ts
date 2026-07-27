@@ -25,8 +25,9 @@ import {
 
 export const attendanceApi = {
   async list(employeeId?: string): Promise<AttendanceRecord[]> {
-    await ensureAuth();
-    const companyId = requireCompanyId();
+    try { await ensureAuth(); } catch { return []; }
+    const companyId = getCompanyId();
+    if (!companyId) return [];
     const base = collection(requireDb(), "attendance");
     const filters: ReturnType<typeof where>[] = [where("companyId", "==", companyId)];
     if (employeeId !== null && employeeId !== undefined)

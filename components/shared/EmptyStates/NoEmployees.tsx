@@ -13,7 +13,6 @@ export default function NoEmployees() {
       description="ابدأ بإضافة موظفيك لإدارة الحضور والانصراف وتتبع مواقعهم"
       actionLabel="إضافة موظف"
       onAction={() => router.push("/employees?openAdd=true")}
-      gradient="from-indigo-100 to-purple-100 dark:from-indigo-900/20 dark:to-purple-900/20"
     />
   );
 }

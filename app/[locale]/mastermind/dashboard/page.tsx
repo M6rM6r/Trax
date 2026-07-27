@@ -42,10 +42,10 @@ export default function MastermindDashboardPage() {
       <div className="space-y-6">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {Array.from({ length: 8 }).map((_, i) => (
-            <Skeleton key={i} className="h-28 bg-slate-800" />
+            <Skeleton key={i} className="h-28 bg-card" />
           ))}
         </div>
-        <Skeleton className="h-80 bg-slate-800" />
+        <Skeleton className="h-80 bg-card" />
       </div>
     );
   }
@@ -53,10 +53,10 @@ export default function MastermindDashboardPage() {
   if (error || !data) {
     return (
       <div className="text-center py-20">
-        <p className="text-rose-400 mb-4">{error ?? "No data"}</p>
+        <p className="text-destructive mb-4">{error ?? "No data"}</p>
         <button
           onClick={fetchDashboard}
-          className="px-4 py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700"
+          className="px-4 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90"
         >
           Retry
         </button>
@@ -65,51 +65,51 @@ export default function MastermindDashboardPage() {
   }
 
   const statCards = [
-    { label: "Companies", value: data.stats.companies, icon: Building2, color: "text-blue-400" },
+    { label: "Companies", value: data.stats.companies, icon: Building2, color: "text-primary" },
     {
       label: "Active Companies",
       value: data.stats.activeCompanies,
       icon: Activity,
-      color: "text-emerald-400",
+      color: "text-primary",
     },
     {
       label: "Trial Companies",
       value: data.stats.trialCompanies,
       icon: TrendingUp,
-      color: "text-amber-400",
+      color: "text-[hsl(48_96%_53%)]",
     },
-    { label: "Users", value: data.stats.users, icon: Users, color: "text-indigo-400" },
-    { label: "Employees", value: data.stats.employees, icon: Users, color: "text-cyan-400" },
-    { label: "Geofences", value: data.stats.geofences, icon: MapPin, color: "text-rose-400" },
+    { label: "Users", value: data.stats.users, icon: Users, color: "text-primary" },
+    { label: "Employees", value: data.stats.employees, icon: Users, color: "text-primary" },
+    { label: "Geofences", value: data.stats.geofences, icon: MapPin, color: "text-destructive" },
     {
       label: "Check-ins Today",
       value: data.stats.attendanceToday,
       icon: CalendarCheck,
-      color: "text-emerald-400",
+      color: "text-primary",
     },
     {
       label: "Check-outs Today",
       value: data.stats.checkedOutToday,
       icon: LogOut,
-      color: "text-orange-400",
+      color: "text-[hsl(25_95%_53%)]",
     },
   ];
 
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-2xl font-bold text-slate-100">Platform Overview</h1>
-        <p className="text-slate-500">Real-time SaaS metrics across all tenants.</p>
+        <h1 className="text-2xl font-bold text-foreground">Platform Overview</h1>
+        <p className="text-muted-foreground/70">Real-time SaaS metrics across all tenants.</p>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {statCards.map((stat) => (
-          <Card key={stat.label} className="bg-slate-900 border-slate-800">
+          <Card key={stat.label} className="bg-background border-border">
             <CardContent className="p-5">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-slate-500 text-xs uppercase tracking-wider">{stat.label}</p>
-                  <p className="text-2xl font-bold text-slate-100 mt-1">{stat.value}</p>
+                  <p className="text-muted-foreground/70 text-xs uppercase tracking-wider">{stat.label}</p>
+                  <p className="text-2xl font-bold text-foreground mt-1">{stat.value}</p>
                 </div>
                 <stat.icon className={`h-6 w-6 ${stat.color}`} />
               </div>
@@ -118,14 +118,14 @@ export default function MastermindDashboardPage() {
         ))}
       </div>
 
-      <Card className="bg-slate-900 border-slate-800">
+      <Card className="bg-background border-border">
         <CardHeader>
-          <CardTitle className="text-lg text-slate-100">Recently Added Companies</CardTitle>
+          <CardTitle className="text-lg text-foreground">Recently Added Companies</CardTitle>
         </CardHeader>
         <CardContent className="p-0">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead className="bg-slate-800/50 text-slate-400">
+              <thead className="bg-card/50 text-muted-foreground">
                 <tr>
                   <th className="text-left px-4 py-3 font-medium">Name</th>
                   <th className="text-left px-4 py-3 font-medium">Plan</th>
@@ -136,23 +136,23 @@ export default function MastermindDashboardPage() {
               </thead>
               <tbody className="divide-y divide-slate-800">
                 {data.recentCompanies.map((company) => (
-                  <tr key={company.id} className="hover:bg-slate-800/30">
-                    <td className="px-4 py-3 text-slate-200 font-medium">{company.name}</td>
+                  <tr key={company.id} className="hover:bg-card/30">
+                    <td className="px-4 py-3 text-foreground font-medium">{company.name}</td>
                     <td className="px-4 py-3">
-                      <Badge variant="secondary" className="capitalize bg-slate-800 text-slate-300">
+                      <Badge variant="secondary" className="capitalize bg-card text-muted-foreground">
                         {company.plan}
                       </Badge>
                     </td>
-                    <td className="px-4 py-3 text-slate-400">{company.users_count ?? 0}</td>
-                    <td className="px-4 py-3 text-slate-400">{company.employees_count ?? 0}</td>
+                    <td className="px-4 py-3 text-muted-foreground">{company.users_count ?? 0}</td>
+                    <td className="px-4 py-3 text-muted-foreground">{company.employees_count ?? 0}</td>
                     <td className="px-4 py-3">
                       {company.active ? (
-                        <span className="inline-flex items-center gap-1.5 text-emerald-400 text-xs">
-                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" /> Active
+                        <span className="inline-flex items-center gap-1.5 text-primary text-xs">
+                          <span className="w-1.5 h-1.5 rounded-full bg-primary" /> Active
                         </span>
                       ) : (
-                        <span className="inline-flex items-center gap-1.5 text-slate-500 text-xs">
-                          <span className="w-1.5 h-1.5 rounded-full bg-slate-500" /> Inactive
+                        <span className="inline-flex items-center gap-1.5 text-muted-foreground/70 text-xs">
+                          <span className="w-1.5 h-1.5 rounded-full bg-muted0" /> Inactive
                         </span>
                       )}
                     </td>
@@ -160,7 +160,7 @@ export default function MastermindDashboardPage() {
                 ))}
                 {data.recentCompanies.length === 0 && (
                   <tr>
-                    <td colSpan={5} className="px-4 py-8 text-center text-slate-500">
+                    <td colSpan={5} className="px-4 py-8 text-center text-muted-foreground/70">
                       No companies yet.
                     </td>
                   </tr>

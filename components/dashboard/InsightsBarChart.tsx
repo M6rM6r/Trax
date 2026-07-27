@@ -12,14 +12,14 @@ const InsightsBarChart = memo(({ data }: InsightsBarChartProps) => {
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
 
   return (
-    <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-gray-200 dark:border-slate-700 shadow-sm">
+    <div className="bg-card rounded-2xl p-6 border border-border shadow-sm">
       <div className="flex items-center gap-3 mb-6">
-        <div className="w-10 h-10 rounded-xl bg-blue-500 flex items-center justify-center">
-          <BarChart4 className="w-5 h-5 text-white" />
+        <div className="w-10 h-10 rounded-xl bg-primary/50 flex items-center justify-center">
+          <BarChart4 className="w-5 h-5 text-primary-foreground" />
         </div>
         <div>
-          <h3 className="text-lg font-bold text-gray-900 dark:text-slate-100">مقارنة الحضور</h3>
-          <p className="text-sm text-gray-600 dark:text-slate-400">
+          <h3 className="text-lg font-bold text-foreground">مقارنة الحضور</h3>
+          <p className="text-sm text-muted-foreground text-muted-foreground">
             مقارنة مرئية بين الحالات المختلفة
           </p>
         </div>
@@ -37,14 +37,14 @@ const InsightsBarChart = memo(({ data }: InsightsBarChartProps) => {
               onMouseLeave={() => setHoveredIndex(null)}
             >
               <div className="flex justify-between items-center">
-                <span className="font-medium text-gray-700 dark:text-slate-300 text-sm">
+                <span className="font-medium text-muted-foreground text-sm">
                   {item.name}
                 </span>
-                <span className="font-bold text-gray-900 dark:text-slate-100">
+                <span className="font-bold text-foreground">
                   {item.value.toLocaleString()}
                 </span>
               </div>
-              <div className="w-full bg-gray-200 dark:bg-slate-700 rounded-full h-3 overflow-hidden">
+              <div className="w-full bg-muted rounded-full h-3 overflow-hidden">
                 <div
                   className="h-3 rounded-full transition-all duration-1000 ease-out"
                   style={{
@@ -56,7 +56,7 @@ const InsightsBarChart = memo(({ data }: InsightsBarChartProps) => {
                 />
               </div>
               {isHovered && (
-                <div className="absolute right-0 -top-8 bg-gray-900 dark:bg-slate-700 text-white text-xs px-2 py-1 rounded-md shadow-lg pointer-events-none z-10">
+                <div className="absolute right-0 -top-8 bg-muted text-primary-foreground text-xs px-2 py-1 rounded-md shadow-lg pointer-events-none z-10">
                   {((item.value / data.reduce((s, d) => s + d.value, 0)) * 100).toFixed(1)}%
                 </div>
               )}

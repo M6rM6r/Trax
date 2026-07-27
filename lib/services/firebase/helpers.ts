@@ -20,7 +20,7 @@ export function cleanPayload<T extends Record<string, unknown>>(payload: T): T {
 
 export function requireCompanyId(): string {
   const companyId = getCompanyId();
-  if (companyId === null) throw new Error("Firebase user profile is not assigned to a company");
+  if (companyId === null) throw new Error("NO_COMPANY");
   return companyId;
 }
 

@@ -11,14 +11,14 @@ export default function GeofenceSkeleton() {
       </div>
 
       {/* Map placeholder */}
-      <Card className="border-0 shadow-lg overflow-hidden dark:bg-slate-800">
+      <Card className="border-0 shadow-lg overflow-hidden bg-card">
         <Skeleton className="h-80 w-full rounded-none" />
       </Card>
 
       {/* Geofence cards grid */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {Array.from({ length: 6 }).map((_, i) => (
-          <Card key={i} className="border-0 shadow-lg dark:bg-slate-800">
+          <Card key={i} className="border-0 shadow-lg bg-card">
             <CardContent className="pt-6">
               <div className="flex items-center gap-3 mb-4">
                 <Skeleton className="w-10 h-10 rounded-full" />

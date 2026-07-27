@@ -14,12 +14,12 @@ export default function EmployeeListSkeleton() {
       </div>
 
       {/* Table skeleton */}
-      <Card className="border-0 shadow-lg dark:bg-slate-800">
+      <Card className="border-0 shadow-lg bg-card">
         <CardContent className="p-0">
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="border-b border-gray-200 dark:border-slate-700">
+                <tr className="border-b border-border">
                   {Array.from({ length: 6 }).map((_, i) => (
                     <th key={i} className="py-3 px-4">
                       <Skeleton className="h-4 w-20" />
@@ -29,7 +29,7 @@ export default function EmployeeListSkeleton() {
               </thead>
               <tbody>
                 {Array.from({ length: 8 }).map((_, rowIdx) => (
-                  <tr key={rowIdx} className="border-b border-gray-100 dark:border-slate-800">
+                  <tr key={rowIdx} className="border-b border-border">
                     <td className="py-3 px-4">
                       <div className="flex items-center gap-3">
                         <Skeleton className="w-9 h-9 rounded-full" />

@@ -1,9 +1,92 @@
-import { httpClient } from "./httpClient";
+import { auth, db, secondaryAuth, secondaryDb } from "@/lib/config/firebase";
+import {
+  addDoc,
+  collection,
+  deleteDoc,
+  doc,
+  getDoc,
+  getDocs,
+  limit,
+  query,
+  serverTimestamp,
+  setDoc,
+  updateDoc,
+  where,
+} from "firebase/firestore";
+import {
+  createUserWithEmailAndPassword,
+  deleteUser,
+  signInWithEmailAndPassword,
+  signOut,
+  type UserCredential,
+} from "firebase/auth";
 
-function mastermindHeaders(): Record<string, string> {
-  if (typeof window === "undefined") return {};
-  const token = sessionStorage.getItem("mastermind_token");
-  return token ? { Authorization: `Bearer ${token}` } : {};
+function requireDb() {
+  if (!db) throw new Error("Firebase Firestore is not configured");
+  return db;
+}
+
+function requireMasterUid(): string {
+  const uid = auth?.currentUser?.uid;
+  const mastermindUid =
+    typeof window === "undefined" ? null : sessionStorage.getItem("mastermind_uid");
+  if (!uid || !mastermindUid || uid !== mastermindUid) {
+    throw new Error("MasterMind session has expired. Sign in again as MasterMind.");
+  }
+  return uid;
+}
+
+function toIso(value: unknown): string {
+  if (value && typeof value === "object" && "toDate" in value && typeof value.toDate === "function") {
+    return value.toDate().toISOString();
+  }
+  return typeof value === "string" ? value : new Date(0).toISOString();
+}
+
+function mapCompany(id: string, data: Record<string, unknown>): MastermindCompany {
+  return {
+    id,
+    name: String(data.name ?? ""),
+    slug: String(data.slug ?? id),
+    email: typeof data.email === "string" ? data.email : undefined,
+    industry: typeof data.industry === "string" ? data.industry : undefined,
+    phone: typeof data.phone === "string" ? data.phone : undefined,
+    address: typeof data.address === "string" ? data.address : undefined,
+    plan: String(data.plan ?? "trial"),
+    max_employees: Number(data.max_employees ?? 10),
+    active: data.active !== false,
+    trial_ends_at: data.trial_ends_at ? toIso(data.trial_ends_at) : undefined,
+    created_at: toIso(data.createdAt ?? data.created_at),
+    users_count: Number(data.users_count ?? 0),
+    employees_count: Number(data.employees_count ?? 0),
+    geofences_count: Number(data.geofences_count ?? 0),
+  };
+}
+
+async function companyCounts(companyId: string): Promise<Pick<MastermindCompany, "users_count" | "employees_count" | "geofences_count">> {
+  const database = requireDb();
+  const [users, employees, geofences] = await Promise.all([
+    getDocs(query(collection(database, "users"), where("company_id", "==", companyId))),
+    getDocs(query(collection(database, "employees"), where("company_id", "==", companyId))),
+    getDocs(query(collection(database, "geofences"), where("company_id", "==", companyId))),
+  ]);
+
+  return {
+    users_count: users.size,
+    employees_count: employees.size,
+    geofences_count: geofences.size,
+  };
+}
+
+async function listCompanies(): Promise<MastermindCompany[]> {
+  const snapshot = await getDocs(query(collection(requireDb(), "companies"), limit(500)));
+  const companies = await Promise.all(
+    snapshot.docs.map(async (item) => ({
+      ...mapCompany(item.id, item.data()),
+      ...(await companyCounts(item.id)),
+    }))
+  );
+  return companies.sort((a, b) => b.created_at.localeCompare(a.created_at));
 }
 
 export interface MastermindStats {
@@ -18,7 +101,7 @@ export interface MastermindStats {
 }
 
 export interface MastermindCompany {
-  id: number;
+  id: string;
   name: string;
   slug: string;
   email?: string;
@@ -41,14 +124,14 @@ export interface MastermindDashboard {
 }
 
 export interface CompanyDetailUser {
-  id: number;
+  id: string;
   name: string;
   email: string;
   role: string;
 }
 
 export interface CompanyDetailEmployee {
-  id: number;
+  id: string;
   name: string;
   email?: string;
   phone?: string;
@@ -79,67 +162,168 @@ export interface ReportsData {
 }
 
 export const mastermindClient = {
-  login: (idToken: string) =>
-    httpClient.post<{ success: boolean; message?: string; data?: { email: string; role: string } }>(
-      "/mastermind/login",
-      { id_token: idToken }
-    ),
-
-  dashboard: () =>
-    httpClient.get<{ success: boolean; data: MastermindDashboard }>("/mastermind/dashboard", {
-      headers: mastermindHeaders(),
-    }),
-
-  companies: (params?: {
-    search?: string;
-    plan?: string;
-    status?: string;
-    per_page?: number;
-    page?: number;
-  }) => {
-    const query = new URLSearchParams();
-    if (params?.search) query.set("search", params.search);
-    if (params?.plan) query.set("plan", params.plan);
-    if (params?.status) query.set("status", params.status);
-    if (params?.per_page) query.set("per_page", String(params.per_page));
-    if (params?.page) query.set("page", String(params.page));
-    const qs = query.toString();
-    return httpClient.get<{
-      success: boolean;
-      data: MastermindCompany[];
-      meta: Record<string, unknown>;
-    }>(`/mastermind/companies${qs ? `?${qs}` : ""}`, { headers: mastermindHeaders() });
+  async dashboard(): Promise<{ success: boolean; data: MastermindDashboard }> {
+    const companies = await listCompanies();
+    const stats: MastermindStats = {
+      companies: companies.length,
+      activeCompanies: companies.filter((company) => company.active).length,
+      trialCompanies: companies.filter((company) => company.plan === "trial").length,
+      users: companies.reduce((total, company) => total + (company.users_count ?? 0), 0),
+      employees: companies.reduce((total, company) => total + (company.employees_count ?? 0), 0),
+      geofences: companies.reduce((total, company) => total + (company.geofences_count ?? 0), 0),
+      attendanceToday: 0,
+      checkedOutToday: 0,
+    };
+    return { success: true, data: { stats, recentCompanies: companies.slice(0, 5) } };
   },
 
-  createCompany: (payload: Partial<MastermindCompany>) =>
-    httpClient.post<{
-      success: boolean;
-      message?: string;
+  async companies(_params?: { per_page?: number; page?: number; search?: string; plan?: string; status?: string }): Promise<{ success: boolean; data: MastermindCompany[]; meta: Record<string, unknown> }> {
+    const companies = await listCompanies();
+    return { success: true, data: companies, meta: { current_page: 1, last_page: 1, total: companies.length } };
+  },
+
+  async createCompany(payload: Partial<MastermindCompany> & { admin_name?: string; admin_email?: string; admin_password?: string; admin_role?: string }) {
+    const database = requireDb();
+    const ownerId = requireMasterUid();
+    if (!secondaryAuth || !secondaryDb || !payload.admin_email || !payload.admin_password) {
+      throw new Error("Firebase admin account provisioning is unavailable");
+    }
+
+    let credential: UserCredential;
+    let createdAuthUser = false;
+    try {
+      credential = await createUserWithEmailAndPassword(secondaryAuth, payload.admin_email, payload.admin_password);
+      createdAuthUser = true;
+    } catch (error) {
+      if ((error as { code?: string }).code !== "auth/email-already-in-use") throw error;
+      credential = await signInWithEmailAndPassword(secondaryAuth, payload.admin_email, payload.admin_password);
+      const profile = await getDoc(doc(secondaryDb, "users", credential.user.uid));
+      if (profile.exists()) {
+        throw new Error("This admin account is already assigned to a company");
+      }
+    }
+
+    let companyRef: ReturnType<typeof doc> | null = null;
+    try {
+      companyRef = await addDoc(collection(database, "companies"), {
+        name: payload.name ?? payload.email,
+        slug: String(payload.name ?? payload.email ?? "company").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, ""),
+        email: payload.email ?? null,
+        industry: payload.industry ?? null,
+        phone: payload.phone ?? null,
+        address: payload.address ?? null,
+        plan: payload.plan ?? "trial",
+        max_employees: payload.max_employees ?? 10,
+        active: payload.active !== false,
+        ownerId,
+        trial_ends_at: payload.plan === "trial" ? new Date(Date.now() + 14 * 86400000).toISOString() : null,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      });
+      await setDoc(doc(secondaryDb, "users", credential.user.uid), {
+        name: payload.admin_name ?? payload.admin_email,
+        email: payload.admin_email,
+        role: payload.admin_role ?? "manager",
+        company_id: companyRef.id,
+        company_name: payload.name ?? payload.email,
+        employee_id: null,
+        assigned_geofence_id: null,
+        createdAt: serverTimestamp(),
+      });
+    } catch (error) {
+      if (companyRef) await deleteDoc(companyRef).catch(() => undefined);
+      if (createdAuthUser) await deleteUser(credential.user).catch(() => undefined);
+      throw error;
+    } finally {
+      await signOut(secondaryAuth).catch(() => undefined);
+    }
+
+    const companySnapshot = await getDoc(companyRef);
+    return {
+      success: true,
       data: {
-        company: MastermindCompany;
-        admin: { name: string; email: string; role: string; password: string };
-      };
-    }>("/mastermind/companies", payload, { headers: mastermindHeaders() }),
+        company: { ...mapCompany(companyRef.id, companySnapshot.data() ?? {}), ...(await companyCounts(companyRef.id)) },
+        admin: {
+          name: payload.admin_name ?? payload.admin_email,
+          email: payload.admin_email,
+          role: payload.admin_role ?? "manager",
+          password: payload.admin_password,
+        },
+      },
+    };
+  },
 
-  company: (id: number) =>
-    httpClient.get<{ success: boolean; data: CompanyDetail }>(`/mastermind/companies/${id}`, {
-      headers: mastermindHeaders(),
-    }),
+  async company(id: string): Promise<{ success: boolean; data: CompanyDetail }> {
+    const companyId = String(id);
+    const database = requireDb();
+    const snapshot = await getDoc(doc(database, "companies", companyId));
+    if (!snapshot.exists()) throw new Error("Company not found");
+    const [employees, users, counts] = await Promise.all([
+      getDocs(query(collection(database, "employees"), where("company_id", "==", companyId), limit(10))),
+      getDocs(query(collection(database, "users"), where("company_id", "==", companyId))),
+      companyCounts(companyId),
+    ]);
+    return {
+      success: true,
+      data: {
+        company: {
+          ...mapCompany(snapshot.id, snapshot.data()),
+          users_count: counts.users_count ?? 0,
+          employees_count: counts.employees_count ?? 0,
+          geofences_count: counts.geofences_count ?? 0,
+        },
+        recentEmployees: employees.docs.map((item) => {
+          const data = item.data();
+          return {
+            id: item.id,
+            name: String(data.name ?? ""),
+            email: typeof data.email === "string" ? data.email : undefined,
+            phone: typeof data.phone === "string" ? data.phone : undefined,
+            role: typeof data.role === "string" ? data.role : undefined,
+          };
+        }),
+        users: users.docs.map((item) => {
+          const data = item.data();
+          return {
+            id: item.id,
+            name: String(data.name ?? ""),
+            email: String(data.email ?? ""),
+            role: String(data.role ?? "employee"),
+          };
+        }),
+      },
+    };
+  },
 
-  updateCompany: (id: number, payload: Partial<MastermindCompany>) =>
-    httpClient.patch<{ success: boolean; message?: string; data: MastermindCompany }>(
-      `/mastermind/companies/${id}`,
-      payload,
-      { headers: mastermindHeaders() }
-    ),
+  async updateCompany(id: string, payload: Partial<MastermindCompany>) {
+    const companyRef = doc(requireDb(), "companies", String(id));
+    await updateDoc(companyRef, { ...payload, updatedAt: serverTimestamp() });
+    const snapshot = await getDoc(companyRef);
+    return { success: true, data: { ...mapCompany(snapshot.id, snapshot.data() ?? {}), ...(await companyCounts(snapshot.id)) } };
+  },
 
-  deleteCompany: (id: number) =>
-    httpClient.delete<{ success: boolean; message?: string }>(`/mastermind/companies/${id}`, {
-      headers: mastermindHeaders(),
-    }),
+  async deleteCompany(id: string) {
+    await deleteDoc(doc(requireDb(), "companies", String(id)));
+    return { success: true };
+  },
 
-  reports: () =>
-    httpClient.get<{ success: boolean; data: ReportsData }>("/mastermind/reports", {
-      headers: mastermindHeaders(),
-    }),
+  async reports(): Promise<{ success: boolean; data: ReportsData }> {
+    const companies = await listCompanies();
+    const plans = companies.reduce<Record<string, number>>((totals, company) => {
+      totals[company.plan] = (totals[company.plan] ?? 0) + 1;
+      return totals;
+    }, {});
+    return {
+      success: true,
+      data: {
+        dailyAttendance: [],
+        plans,
+        topCompanies: [...companies].sort((a, b) => (b.employees_count ?? 0) - (a.employees_count ?? 0)).slice(0, 10),
+        dateRange: {
+          start: new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10),
+          end: new Date().toISOString().slice(0, 10),
+        },
+      },
+    };
+  },
 };

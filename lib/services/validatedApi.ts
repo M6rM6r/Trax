@@ -72,7 +72,7 @@ export const validatedApi = {
       const data = await httpClient.get<unknown>("/employees/inactive/list");
       return validate(data, employeeListSchema, "/employees/inactive/list");
     },
-    byId: async (id: number): Promise<EmployeeSchema> => {
+    byId: async (id: string): Promise<EmployeeSchema> => {
       const data = await httpClient.get<unknown>(`/employees/${id}`);
       return validate(data, employeeSchema, `/employees/${id}`);
     },
@@ -82,15 +82,15 @@ export const validatedApi = {
       return validate(data, employeeSchema, "/employees");
     },
     update: async (
-      id: number,
+      id: string,
       employee: Partial<CreateEmployeeSchema>
     ): Promise<EmployeeSchema> => {
       const data = await httpClient.put<unknown>(`/employees/${id}`, employee);
       return validate(data, employeeSchema, `/employees/${id}`);
     },
-    delete: async (id: number): Promise<{ id: number }> => {
+    delete: async (id: string): Promise<{ id: string }> => {
       const raw = await httpClient.delete<Record<string, unknown>>(`/employees/${id}`);
-      return (raw?.data ?? raw) as { id: number };
+      return (raw?.data ?? raw) as { id: string };
     },
   },
 
@@ -140,15 +140,15 @@ export const validatedApi = {
       return validate(data, geofenceSchema, "/geofences");
     },
     update: async (
-      id: number,
+      id: string,
       geofence: Partial<CreateGeofenceSchema>
     ): Promise<GeofenceSchema> => {
       const data = await httpClient.put<unknown>(`/geofences/${id}`, geofence);
       return validate(data, geofenceSchema, `/geofences/${id}`);
     },
-    delete: async (id: number): Promise<{ id: number }> => {
+    delete: async (id: string): Promise<{ id: string }> => {
       const raw = await httpClient.delete<Record<string, unknown>>(`/geofences/${id}`);
-      return (raw?.data ?? raw) as { id: number };
+      return (raw?.data ?? raw) as { id: string };
     },
   },
 

@@ -45,9 +45,9 @@ import { toastSuccess } from "@/hooks/use-toast";
 import { hapticTap } from "@/lib/utils/haptics";
 
 const COLORS = {
-  present: "#16A34A",
-  late: "#F59E0B",
-  absent: "#DC2626",
+  present: "#2BA88C",
+  late: "#D4952A",
+  absent: "#CC3D3D",
   checkedOut: "#6B7280",
 };
 
@@ -130,14 +130,19 @@ export default function DashboardPage() {
     return () => clearInterval(interval);
   }, []);
 
-  // Real-time WebSocket listener for attendance updates
+  // Real-time WebSocket listener for attendance updates (optional; only when WS server configured)
   useEffect(() => {
+    const wsUrl = process.env.NEXT_PUBLIC_WS_URL;
+    if (!wsUrl) {
+      // No WebSocket URL configured — realtime disabled (no connection attempts)
+      return;
+    }
+
     let socket: import("socket.io-client").Socket | null = null;
 
     async function initSocket() {
       try {
         const { io } = await import("socket.io-client");
-        const wsUrl = process.env.NEXT_PUBLIC_WS_URL || "http://localhost:8080";
         socket = io(wsUrl, { transports: ["websocket"], reconnection: true });
 
         socket.on("attendance:update", () => {
@@ -235,7 +240,7 @@ export default function DashboardPage() {
         value: safeStats.totalEmployees,
         detailsPageUrl: "/employees",
         icon: Users,
-        iconBg: "bg-emerald-500/10 text-emerald-400",
+        iconBg: "bg-primary/10 text-primary",
         trend: trends?.employeeGrowth ?? 0,
       },
       presentToday: {
@@ -244,7 +249,7 @@ export default function DashboardPage() {
         value: safeStats.presentToday,
         detailsPageUrl: "/attendance",
         icon: UserCheck,
-        iconBg: "bg-emerald-500/10 text-emerald-400",
+        iconBg: "bg-primary/10 text-primary",
         trend: trends?.presentChange ?? 0,
       },
       lateToday: {
@@ -253,7 +258,7 @@ export default function DashboardPage() {
         value: safeStats.lateToday,
         detailsPageUrl: "/attendance",
         icon: Clock,
-        iconBg: "bg-amber-500/10 text-amber-400",
+        iconBg: "bg-accent/10 text-accent",
         trend: trends?.lateChange ?? 0,
       },
       absentToday: {
@@ -262,7 +267,7 @@ export default function DashboardPage() {
         value: safeStats.absentToday,
         detailsPageUrl: "/attendance",
         icon: UserX,
-        iconBg: "bg-red-500/10 text-red-400",
+        iconBg: "bg-destructive/10 text-destructive",
         trend: trends?.absentChange ?? 0,
       },
       totalGeofences: {
@@ -271,7 +276,7 @@ export default function DashboardPage() {
         value: safeStats.totalGeofences,
         detailsPageUrl: "/geofences",
         icon: MapPin,
-        iconBg: "bg-indigo-500/10 text-indigo-400",
+        iconBg: "bg-chart-2/10 text-chart-2",
       },
       onTimeRate: {
         id: "onTimeRate",
@@ -279,7 +284,7 @@ export default function DashboardPage() {
         value: safeStats.onTimeRate,
         detailsPageUrl: "/attendance/reports",
         icon: Target,
-        iconBg: "bg-emerald-500/10 text-emerald-400",
+        iconBg: "bg-primary/10 text-primary",
         trend: trends?.onTimeRateChange ?? 0,
       },
     };
@@ -287,16 +292,16 @@ export default function DashboardPage() {
 
   const modeSummary = useMemo(
     () => [
-      { label: "ميداني", value: safeStats.fieldToday, color: "text-blue-600 dark:text-blue-400" },
+      { label: "ميداني", value: safeStats.fieldToday, color: "text-primary" },
       {
         label: "مكتبي",
         value: safeStats.officeToday,
-        color: "text-indigo-600 dark:text-indigo-400",
+        color: "text-primary text-primary",
       },
       {
         label: "بالساعة",
         value: safeStats.hourlyToday,
-        color: "text-amber-600 dark:text-amber-400",
+        color: "text-[hsl(48_96%_53%)]",
       },
     ],
     [safeStats]
@@ -355,6 +360,15 @@ export default function DashboardPage() {
       .slice(0, 5);
   }, [attendanceData, dateRange]);
 
+  // Don't render dashboard chrome while auth is not confirmed
+  if (!user) {
+    return (
+      <div className="w-screen min-h-screen flex items-center justify-center bg-background">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+      </div>
+    );
+  }
+
   return (
     <MainLayout>
       <div className="p-4 sm:p-6 space-y-4 sm:space-y-6 min-h-screen">
@@ -363,10 +377,10 @@ export default function DashboardPage() {
         {!isLoading && !isError && (
           <>
             {/* Hero greeting banner */}
-            <div className="rounded-2xl bg-slate-900 p-4 sm:p-6 shadow-lg">
+            <div className="rounded-2xl bg-background p-4 sm:p-6 shadow-lg">
               <div className="relative flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                  <p className="text-slate-400 text-sm font-medium">
+                  <p className="text-muted-foreground text-sm font-medium">
                     {new Date().toLocaleDateString("ar-SA", {
                       weekday: "long",
                       year: "numeric",
@@ -374,16 +388,16 @@ export default function DashboardPage() {
                       day: "numeric",
                     })}
                   </p>
-                  <h1 className="text-2xl sm:text-3xl font-black text-white mt-1">
+                  <h1 className="text-2xl sm:text-3xl font-black text-primary-foreground mt-1">
                     مرحباً، {user?.name?.split(" ")[0] ?? "مدير"}
                     {companyName && (
-                      <span className="text-emerald-400 text-xl font-semibold">
+                      <span className="text-primary text-xl font-semibold">
                         {" "}
                         — {companyName}
                       </span>
                     )}
                   </h1>
-                  <p className="text-slate-400/80 text-sm mt-1">
+                  <p className="text-muted-foreground/80 text-sm mt-1">
                     نظرة شاملة على الحضور والمتابعة في الوقت الحقيقي
                   </p>
                 </div>
@@ -419,30 +433,30 @@ export default function DashboardPage() {
                       </defs>
                     </svg>
                     <div className="absolute inset-0 flex items-center justify-center">
-                      <span className="text-white text-xs font-bold">
+                      <span className="text-primary-foreground text-xs font-bold">
                         {Math.round(safeStats.onTimeRate || 0)}%
                       </span>
                     </div>
                   </div>
-                  <div className="text-white">
-                    <p className="text-xs text-slate-400">نسبة الحضور</p>
+                  <div className="text-primary-foreground">
+                    <p className="text-xs text-muted-foreground">نسبة الحضور</p>
                     <p className="text-lg font-bold">
                       {safeStats.presentToday} / {safeStats.totalEmployees}
                     </p>
-                    <p className="text-xs text-slate-400">حاضر اليوم</p>
+                    <p className="text-xs text-muted-foreground">حاضر اليوم</p>
                   </div>
                   <div className="flex flex-col gap-2 mr-2">
                     <button
                       onClick={handleRefresh}
                       disabled={isRefreshing}
-                      className={`p-2 rounded-xl bg-slate-700/50 hover:bg-slate-700 text-slate-200 transition-colors ${isRefreshing ? "opacity-50 cursor-not-allowed" : ""}`}
+                      className={`p-2 rounded-xl bg-muted/50 hover:bg-muted text-foreground transition-colors ${isRefreshing ? "opacity-50 cursor-not-allowed" : ""}`}
                       aria-label="تحديث"
                     >
                       <RotateCw className={`w-4 h-4 ${isRefreshing ? "animate-spin" : ""}`} />
                     </button>
                     <button
                       onClick={handleResetLayout}
-                      className="p-2 rounded-xl bg-slate-700/50 hover:bg-slate-700 text-slate-200 transition-colors"
+                      className="p-2 rounded-xl bg-muted/50 hover:bg-muted text-foreground transition-colors"
                       aria-label="إعادة ترتيب"
                     >
                       <RotateCcw className="w-4 h-4" />
@@ -461,10 +475,10 @@ export default function DashboardPage() {
                 ].map((item) => (
                   <div
                     key={item.label}
-                    className="rounded-lg bg-slate-800 px-2 sm:px-3 py-2 text-center"
+                    className="rounded-lg bg-card px-2 sm:px-3 py-2 text-center"
                   >
-                    <p className="text-lg sm:text-xl font-black text-slate-100">{item.value}</p>
-                    <p className="text-[10px] sm:text-xs text-slate-400">{item.label}</p>
+                    <p className="text-lg sm:text-xl font-black text-foreground">{item.value}</p>
+                    <p className="text-[10px] sm:text-xs text-muted-foreground">{item.label}</p>
                   </div>
                 ))}
               </div>
@@ -476,10 +490,10 @@ export default function DashboardPage() {
                     m.value > 0 && (
                       <div
                         key={m.label}
-                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-800 text-xs font-medium"
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-card text-xs font-medium"
                       >
                         <span className={`${m.color}`}>{m.value}</span>
-                        <span className="text-slate-300">{m.label}</span>
+                        <span className="text-muted-foreground">{m.label}</span>
                       </div>
                     )
                 )}
@@ -487,7 +501,7 @@ export default function DashboardPage() {
 
               {/* Last updated + realtime LIVE badge */}
               {lastUpdated && (
-                <div className="mt-3 flex items-center gap-2 text-xs text-slate-400">
+                <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
                   <AnimatePresence>
                     {realtimePulse && (
                       <motion.span
@@ -495,11 +509,11 @@ export default function DashboardPage() {
                         animate={{ y: 0, opacity: 1 }}
                         exit={{ y: -20, opacity: 0 }}
                         transition={{ duration: 0.3 }}
-                        className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300"
+                        className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-primary/15 text-primary/70"
                       >
                         <span className="relative flex h-2 w-2">
-                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                          <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400" />
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
+                          <span className="relative inline-flex rounded-full h-2 w-2 bg-primary" />
                         </span>
                         <span className="font-bold">مباشر</span>
                       </motion.span>
@@ -535,15 +549,15 @@ export default function DashboardPage() {
                 </SortableContext>
               </DndContext>
 
-              <Card className="border border-slate-700/50 bg-slate-800">
+              <Card className="border border-border/50 bg-card">
                 <CardHeader className="pb-6">
                   <div className="flex items-center gap-3">
-                    <Target className="w-5 h-5 text-emerald-400" />
+                    <Target className="w-5 h-5 text-primary" />
                     <div>
-                      <CardTitle className="text-2xl font-bold text-gray-900 dark:text-slate-100">
+                      <CardTitle className="text-2xl font-bold text-foreground">
                         نظرة عامة على الحضور
                       </CardTitle>
-                      <p className="text-sm text-gray-600 dark:text-slate-400 mt-1">
+                      <p className="text-sm text-muted-foreground text-muted-foreground mt-1">
                         تحليل شامل لإحصائيات الحضور والانصراف
                       </p>
                     </div>
@@ -558,16 +572,16 @@ export default function DashboardPage() {
                 </CardContent>
               </Card>
 
-              <Card className="border border-slate-700/50 bg-slate-800">
+              <Card className="border border-border/50 bg-card">
                 <CardHeader className="pb-4">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      <UserCheck className="w-5 h-5 text-emerald-400" />
+                      <UserCheck className="w-5 h-5 text-primary" />
                       <div>
-                        <CardTitle className="text-base font-bold text-gray-900 dark:text-slate-100">
+                        <CardTitle className="text-base font-bold text-foreground">
                           أحدث سجلات الحضور
                         </CardTitle>
-                        <p className="text-xs text-gray-500 dark:text-slate-400">
+                        <p className="text-xs text-muted-foreground">
                           آخر عمليات تسجيل الحضور اليوم
                         </p>
                       </div>
@@ -584,7 +598,7 @@ export default function DashboardPage() {
                         filterable: true,
                         sortValue: (r) => r.employeeName,
                         cell: (r) => (
-                          <span className="text-sm font-medium text-gray-900 dark:text-slate-100">
+                          <span className="text-sm font-medium text-foreground">
                             {r.employeeName}
                           </span>
                         ),
@@ -619,10 +633,10 @@ export default function DashboardPage() {
                           <span
                             className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ring-1 ${
                               r.status === "present"
-                                ? "bg-emerald-500/10 text-emerald-400 ring-emerald-400/20"
+                                ? "bg-primary/10 text-primary ring-emerald-400/20"
                                 : r.status === "late"
-                                  ? "bg-amber-500/10 text-amber-400 ring-amber-400/20"
-                                  : "bg-red-500/10 text-red-400 ring-red-400/20"
+                                  ? "bg-[hsl(48_96%_53%/0.1)]0/10 text-[hsl(48_96%_53%)] ring-amber-400/20"
+                                  : "bg-destructive/10 text-destructive ring-red-400/20"
                             }`}
                           >
                             {statusLabels[r.status] || r.status}

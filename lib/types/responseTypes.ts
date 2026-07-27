@@ -3,8 +3,8 @@ export interface AdminUser {
   name: string;
   email: string;
   role: string;
-  employee_id?: string | number | null;
-  assigned_geofence_id?: string | number | null;
+  employee_id?: string | null;
+  assigned_geofence_id?: string | null;
   permissions: Permission[];
   created_at: string;
   profile_image: string;
