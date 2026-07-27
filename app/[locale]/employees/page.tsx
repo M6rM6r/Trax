@@ -20,10 +20,12 @@ import {
   LayoutGrid,
   LayoutList,
   Search,
+  Upload,
 } from "lucide-react";
 import {
   useEmployees,
   useGeofences,
+  useAttendance,
   useCreateEmployee,
   useDeleteEmployee,
   useUpdateEmployee,
@@ -43,11 +45,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import type { Employee, EmployeeRole } from "@/lib/types/trackingTypes";
 import { useAuthStore } from "@/stores/useAuthStore";
 import AccessDeniedCard from "@/components/shared/AccessDeniedCard";
-import {
-  buildStaffCredentialsEmail,
-  buildStaffCredentialsMessage,
-  generateStaffUsername,
-} from "@/lib/utils/staffOnboarding";
+import { BulkImportDrawer } from "@/components/employees/BulkImportDrawer";
+import { buildStaffCredentialsMessage, generateStaffUsername } from "@/lib/utils/staffOnboarding";
 
 const DEFAULT_PUBLIC_APP_URL = "https://naf--trax-ae.asia-southeast1.hosted.app";
 
@@ -72,6 +71,7 @@ function getEmployeeCreationErrorMessage(error: unknown): string {
 export default function EmployeesPage() {
   const { data: employees = [], isLoading, isError, error, refetch } = useEmployees();
   const { data: geofences = [] } = useGeofences();
+  const { data: attendanceData = [] } = useAttendance();
   const createEmployee = useCreateEmployee();
   const deleteEmployee = useDeleteEmployee();
   const updateEmployee = useUpdateEmployee();
@@ -82,6 +82,7 @@ export default function EmployeesPage() {
   const { role } = useAuthStore();
   const [viewMode, setViewMode] = useState<"table" | "grid">("table");
   const [showAddForm, setShowAddForm] = useState(false);
+  const [showBulkImport, setShowBulkImport] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<Employee | null>(null);
 
   useEffect(() => {
@@ -300,6 +301,36 @@ export default function EmployeesPage() {
     toastSuccess(`تم تصدير ${selected.length} موظف`);
   };
 
+  const handleTodayStatusExport = () => {
+    if (employees.length === 0) {
+      toastError("لا يوجد موظفون لتصدير التقرير");
+      return;
+    }
+    const today = new Date().toLocaleDateString("sv-SE");
+    const headers = ["الاسم", "البريد الإلكتروني", "الحالة", "وقت الحضور", "وقت الانصراف"];
+    const rows = employees.map((e) => {
+      const record = attendanceData.find(
+        (r) => String(r.employeeId) === String(e.id) && r.date === today
+      );
+      let status = "غائب";
+      if (record) {
+        if (record.status === "checked_out") status = "انصراف";
+        else if (record.status === "present") status = "حاضر";
+        else if (record.status === "late") status = "متأخر";
+      }
+      return [e.name, e.email, status, record?.checkInTime ?? "—", record?.checkOutTime ?? "—"];
+    });
+    const csv = [headers, ...rows].map((r) => r.map((c) => `"${c}"`).join(",")).join("\n");
+    const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `attendance_report_${today}_${Date.now()}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toastSuccess("تم تصدير تقرير الحضور اليوم");
+  };
+
   const handleDelete = (emp: Employee) => {
     setDeleteTarget(emp);
   };
@@ -427,6 +458,22 @@ export default function EmployeesPage() {
                 </button>
               </div>
               <Button
+                variant="outline"
+                onClick={() => setShowBulkImport(true)}
+                className="flex items-center gap-2"
+              >
+                <Upload className="w-4 h-4" />
+                استيراد CSV
+              </Button>
+              <Button
+                variant="outline"
+                onClick={handleTodayStatusExport}
+                className="flex items-center gap-2"
+              >
+                <Download className="w-4 h-4" />
+                تقرير الحضور اليوم
+              </Button>
+              <Button
                 variant="primary"
                 onClick={() => setShowAddForm(!showAddForm)}
                 className="flex items-center gap-2"
@@ -436,6 +483,12 @@ export default function EmployeesPage() {
               </Button>
             </div>
           }
+        />
+
+        <BulkImportDrawer
+          open={showBulkImport}
+          onOpenChange={setShowBulkImport}
+          existingEmployees={employees}
         />
 
         {showAddForm && (
@@ -520,7 +573,7 @@ export default function EmployeesPage() {
                   </p>
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-2 mb-4">
+              <div className="mb-4">
                 <button
                   type="button"
                   onClick={async () => {
@@ -537,28 +590,10 @@ export default function EmployeesPage() {
                     }
                   }}
                   aria-label="نسخ بيانات الدخول"
-                  className="py-2 px-3 rounded-xl border border-border text-sm font-medium text-foreground hover:bg-muted transition-colors"
+                  className="w-full py-2 px-3 rounded-xl border border-border text-sm font-medium text-foreground hover:bg-muted transition-colors"
                 >
                   نسخ البيانات
                 </button>
-                <a
-                  href={`mailto:${createdCredentials.email}?subject=${encodeURIComponent(
-                    buildStaffCredentialsEmail({
-                      email: createdCredentials.email,
-                      password: createdCredentials.password,
-                      loginUrl: staffLoginUrl,
-                    }).subject
-                  )}&body=${encodeURIComponent(
-                    buildStaffCredentialsEmail({
-                      email: createdCredentials.email,
-                      password: createdCredentials.password,
-                      loginUrl: staffLoginUrl,
-                    }).body
-                  )}`}
-                  className="py-2 px-3 rounded-xl border border-primary/30 text-sm font-medium text-primary/70 hover:bg-primary/10 transition-colors text-center"
-                >
-                  مشاركة عبر البريد
-                </a>
               </div>
               <button
                 onClick={() => setCreatedCredentials(null)}
@@ -670,7 +705,7 @@ export default function EmployeesPage() {
             actionLabel="إضافة موظف"
             onAction={() => setShowAddForm(true)}
             secondaryActionLabel="استيراد من CSV"
-            onSecondaryAction={() => toastSuccess("سيتم إضافة الاستيراد قريباً")}
+            onSecondaryAction={() => setShowBulkImport(true)}
             tip="يمكنك إضافة موظفين فرديين أو استيراد ملف CSV جماعي"
           />
         )}

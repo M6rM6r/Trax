@@ -24,7 +24,10 @@ import {
 } from "./helpers";
 
 export const attendanceApi = {
-  async list(employeeId?: string): Promise<AttendanceRecord[]> {
+  async list(
+    employeeId?: string,
+    dateRange?: { from?: string; to?: string }
+  ): Promise<AttendanceRecord[]> {
     try {
       await ensureAuth();
     } catch {
@@ -36,11 +39,27 @@ export const attendanceApi = {
     const filters: ReturnType<typeof where>[] = [where("companyId", "==", companyId)];
     if (employeeId !== null && employeeId !== undefined)
       filters.push(where("employeeId", "==", employeeId));
-    const attendanceQuery = query(base, ...filters, limit(500));
-    const snapshot = await getDocs(attendanceQuery);
-    const records = snapshot.docs.map((item) => mapAttendance(item.id, item.data()));
-    records.sort((a, b) => b.date.localeCompare(a.date));
-    return records;
+    if (dateRange?.from) filters.push(where("date", ">=", dateRange.from));
+    if (dateRange?.to) filters.push(where("date", "<=", dateRange.to));
+    try {
+      const attendanceQuery = query(base, ...filters, limit(500));
+      const snapshot = await getDocs(attendanceQuery);
+      const records = snapshot.docs.map((item) => mapAttendance(item.id, item.data()));
+      records.sort((a, b) => b.date.localeCompare(a.date));
+      return records;
+    } catch {
+      // Composite index might not be deployed yet — fall back to simpler query
+      const simpleFilters: ReturnType<typeof where>[] = [where("companyId", "==", companyId)];
+      if (employeeId !== null && employeeId !== undefined)
+        simpleFilters.push(where("employeeId", "==", employeeId));
+      const fallbackQuery = query(base, ...simpleFilters, limit(500));
+      const snapshot = await getDocs(fallbackQuery);
+      let records = snapshot.docs.map((item) => mapAttendance(item.id, item.data()));
+      if (dateRange?.from) records = records.filter((r) => r.date >= dateRange.from!);
+      if (dateRange?.to) records = records.filter((r) => r.date <= dateRange.to!);
+      records.sort((a, b) => b.date.localeCompare(a.date));
+      return records;
+    }
   },
 
   async checkIn(payload: {
@@ -111,10 +130,11 @@ export const attendanceApi = {
       query(
         collection(requireDb(), "attendance"),
         where("employeeId", "==", payload.employeeId),
-        limit(50)
+        where("date", "==", date),
+        limit(1)
       )
     );
-    const existingDoc = existing.docs.find((d) => d.data().date === date);
+    const existingDoc = existing.docs[0];
     if (existingDoc) {
       const existingData = existingDoc.data();
       if (existingData.checkOutTime) {
@@ -179,9 +199,14 @@ export const attendanceApi = {
     await ensureAuth();
     const today = new Date().toLocaleDateString("sv-SE");
     const snapshot = await getDocs(
-      query(collection(requireDb(), "attendance"), where("employeeId", "==", employeeId), limit(50))
+      query(
+        collection(requireDb(), "attendance"),
+        where("employeeId", "==", employeeId),
+        where("date", "==", today),
+        limit(1)
+      )
     );
-    const openDoc = snapshot.docs.find((d) => d.data().date === today && !d.data().checkOutTime);
+    const openDoc = snapshot.docs.find((d) => !d.data().checkOutTime);
     if (!openDoc) throw new Error("No open attendance record");
     const current = mapAttendance(openDoc.id, openDoc.data());
     const checkOutTime = new Date().toTimeString().slice(0, 5);

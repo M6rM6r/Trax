@@ -67,9 +67,17 @@ class LocationProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> startTracking({required int employeeId}) async {
+  Future<void> startTracking({
+    required int employeeId,
+    String? employeeName,
+    String? companyId,
+  }) async {
     final service = BackgroundTrackingService();
-    await service.start(employeeId: employeeId);
+    await service.start(
+      employeeId: employeeId,
+      employeeName: employeeName,
+      companyId: companyId,
+    );
     _isTracking = service.isRunning;
 
     if (_isTracking) {

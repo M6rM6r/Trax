@@ -6,6 +6,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { CheckCircle, LogOut, WifiOff, RefreshCw, MapPin, Clock, Briefcase } from "lucide-react";
 import { useCheckIn, useCheckOut, useGeofences, useEmployees, useAttendance } from "@/hooks/useApi";
+import { queryKeys } from "@/hooks/api/queryKeys";
+import { useQueryClient } from "@tanstack/react-query";
 import { hapticSuccess, hapticError, hapticTap } from "@/lib/utils/haptics";
 import { fireConfetti } from "@/lib/utils/confetti";
 import { toastSuccess, toastError } from "@/hooks/use-toast";
@@ -14,7 +16,13 @@ import type { Geofence } from "@/lib/types/trackingTypes";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useCompanySettingsStore } from "@/stores/useCompanySettingsStore";
 import { cn } from "@/lib/utils";
-import { addToOfflineQueue, addToOfflineCheckOutQueue } from "@/lib/utils/offlineQueue";
+import {
+  addToOfflineQueue,
+  addToOfflineCheckOutQueue,
+  processOfflineQueue,
+  hasOfflineQueue,
+  hasOfflineCheckOutQueue,
+} from "@/lib/utils/offlineQueue";
 import { calculateDistance, GEOFENCE_DISTANCE_BUFFER_METERS } from "@/lib/utils/geo";
 
 function LiveClock() {
@@ -58,6 +66,7 @@ export default function CheckInPage() {
   const { data: attendanceRecords = [] } = useAttendance();
   const checkInMutation = useCheckIn();
   const checkOutMutation = useCheckOut();
+  const qc = useQueryClient();
   const { user, companyName } = useAuthStore();
   const companySettings = useCompanySettingsStore();
   const todayStr = new Date().toLocaleDateString("sv-SE");
@@ -100,6 +109,22 @@ export default function CheckInPage() {
       window.removeEventListener("offline", handleOffline);
     };
   }, []);
+
+  // Sync any pending offline check-in/check-out records when back online
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (!isOnline || (!hasOfflineQueue() && !hasOfflineCheckOutQueue())) return;
+    let cancelled = false;
+    processOfflineQueue().then(({ processed, failed }) => {
+      if (cancelled) return;
+      qc.invalidateQueries({ queryKey: queryKeys.attendance });
+      if (processed > 0) toastSuccess(`تمت مزامنة ${processed} سجل حضور/انصراف`);
+      if (failed > 0) toastError(`فشل مزامنة ${failed} سجل`);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [isOnline, qc]);
 
   // Restore check-in state from today's attendance record (survives page refresh)
   useEffect(() => {

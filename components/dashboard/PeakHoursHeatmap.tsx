@@ -13,7 +13,7 @@ const PeakHoursHeatmap = memo(({ data }: PeakHoursHeatmapProps) => {
   const getHeatColor = (count: number) => {
     const ratio = count / maxCount;
     if (ratio === 0) return "bg-muted/50";
-    if (ratio < 0.25) return "bg-primary/10 bg-primary/10";
+    if (ratio < 0.25) return "bg-primary/10";
     if (ratio < 0.5) return "bg-primary/30";
     if (ratio < 0.75) return "bg-primary/50 dark:bg-primary/70";
     return "bg-primary/70";
@@ -55,7 +55,7 @@ const PeakHoursHeatmap = memo(({ data }: PeakHoursHeatmapProps) => {
         <span>أقل</span>
         <div className="flex gap-1">
           <div className="w-4 h-4 rounded bg-muted/50" />
-          <div className="w-4 h-4 rounded bg-primary/10 bg-primary/10" />
+          <div className="w-4 h-4 rounded bg-primary/10" />
           <div className="w-4 h-4 rounded bg-primary/30" />
           <div className="w-4 h-4 rounded bg-primary/50 dark:bg-primary/70" />
           <div className="w-4 h-4 rounded bg-primary/70" />

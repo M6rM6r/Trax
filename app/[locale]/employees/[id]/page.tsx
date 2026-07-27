@@ -285,6 +285,85 @@ export default function EmployeeProfilePage({ params }: { params: { id: string }
           </Card>
         </motion.div>
 
+        {/* 30-Day Attendance Heatmap */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3, delay: 0.15 }}
+        >
+          <Card className="border-0 shadow-lg bg-card">
+            <CardHeader>
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-primary/50 flex items-center justify-center">
+                  <Calendar className="w-5 h-5 text-primary-foreground" />
+                </div>
+                <div>
+                  <CardTitle className="text-lg font-bold text-foreground">
+                    خريطة الحضور (30 يوم)
+                  </CardTitle>
+                  <p className="text-sm text-muted-foreground">نمط الحضور اليومي خلال آخر 30 يوم</p>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-wrap gap-1.5">
+                {Array.from({ length: 30 }, (_, i) => {
+                  const d = new Date();
+                  d.setDate(d.getDate() - (29 - i));
+                  const dateStr = d.toLocaleDateString("sv-SE");
+                  const record = empAttendance.find((r) => r.date === dateStr);
+                  const status = record?.status;
+                  const bg =
+                    status === "present" || status === "checked_out"
+                      ? "bg-primary/70"
+                      : status === "late"
+                        ? "bg-[hsl(48_96%_53%/0.7)]"
+                        : status === "absent"
+                          ? "bg-destructive/60"
+                          : "bg-muted/40";
+                  const label = status ? statusLabels[status] : "لا يوجد";
+                  const dayLabel = d.toLocaleDateString("ar-SA-u-nu-latn", {
+                    weekday: "short",
+                    day: "numeric",
+                  });
+                  return (
+                    <div
+                      key={i}
+                      className={`w-9 h-9 rounded-lg ${bg} flex items-center justify-center transition-all duration-200 hover:scale-110 cursor-default`}
+                      title={`${dayLabel} — ${label}`}
+                    >
+                      <span className="text-[10px] font-bold text-primary-foreground opacity-0 hover:opacity-100">
+                        {d.getDate()}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="flex items-center gap-3 mt-4 text-xs text-muted-foreground">
+                <span>أقل</span>
+                <div className="flex gap-1">
+                  <div className="w-4 h-4 rounded bg-muted/40" />
+                  <div className="w-4 h-4 rounded bg-primary/70" />
+                  <div className="w-4 h-4 rounded bg-[hsl(48_96%_53%/0.7)]" />
+                  <div className="w-4 h-4 rounded bg-destructive/60" />
+                </div>
+                <span>أكثر</span>
+                <span className="mr-auto flex items-center gap-2">
+                  <span className="inline-flex items-center gap-1">
+                    <span className="w-3 h-3 rounded bg-primary/70" /> حاضر
+                  </span>
+                  <span className="inline-flex items-center gap-1">
+                    <span className="w-3 h-3 rounded bg-[hsl(48_96%_53%/0.7)]" /> متأخر
+                  </span>
+                  <span className="inline-flex items-center gap-1">
+                    <span className="w-3 h-3 rounded bg-destructive/60" /> غائب
+                  </span>
+                </span>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+
         {/* Attendance History Table */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}

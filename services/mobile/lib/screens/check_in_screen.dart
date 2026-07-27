@@ -217,7 +217,11 @@ class _CheckInScreenState extends State<CheckInScreen> {
                           batteryLevel: battery,
                         );
                         if (success && context.mounted) {
-                          await location.startTracking(employeeId: employeeId);
+                          await location.startTracking(
+                            employeeId: employeeId,
+                            employeeName: auth.userName,
+                            companyId: auth.companyId?.toString(),
+                          );
                           if (context.mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(content: Text("تم تسجيل الحضور بنجاح")),

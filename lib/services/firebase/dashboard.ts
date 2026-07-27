@@ -47,17 +47,17 @@ export const dashboardApi = {
       return { stats: EMPTY_STATS, trends: EMPTY_TRENDS };
     }
 
-    let employees: Awaited<ReturnType<typeof employeesApi.list>>;
-    let attendance: Awaited<ReturnType<typeof attendanceApi.list>>;
-    let geofences: Awaited<ReturnType<typeof geofencesApi.list>>;
+    let employees: Awaited<ReturnType<typeof employeesApi.list>> = [];
+    let attendance: Awaited<ReturnType<typeof attendanceApi.list>> = [];
+    let geofences: Awaited<ReturnType<typeof geofencesApi.list>> = [];
     try {
       [employees, attendance, geofences] = await Promise.all([
         employeesApi.list(),
-        attendanceApi.list(),
+        attendanceApi.list(undefined, { from, to }),
         geofencesApi.list(),
       ]);
-    } catch (error) {
-      throw error;
+    } catch {
+      return { stats: EMPTY_STATS, trends: EMPTY_TRENDS };
     }
     const referenceDate = to ? new Date(to + "T00:00:00") : new Date();
     const todayStr = to ?? referenceDate.toLocaleDateString("sv-SE");

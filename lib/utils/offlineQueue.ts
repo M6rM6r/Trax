@@ -21,6 +21,8 @@ export interface QueuedCheckOut {
 
 const CHECKOUT_QUEUE_KEY = "trax_offline_checkout_queue";
 
+import { firebaseData } from "@/lib/services/firebase";
+
 export function getOfflineQueue(): QueuedCheckIn[] {
   if (typeof window === "undefined") return [];
   try {
@@ -82,4 +84,47 @@ export function removeFromOfflineCheckOutQueue(id: string): void {
 
 export function hasOfflineCheckOutQueue(): boolean {
   return getOfflineCheckOutQueue().length > 0;
+}
+
+export async function processOfflineQueue(): Promise<{
+  processed: number;
+  failed: number;
+}> {
+  const checkIns = getOfflineQueue();
+  const checkOuts = getOfflineCheckOutQueue();
+  let processed = 0;
+  let failed = 0;
+
+  for (const item of checkIns) {
+    try {
+      await firebaseData.attendance.checkIn({
+        employeeId: item.employeeId,
+        employeeName: item.employeeName,
+        lat: item.lat,
+        lng: item.lng,
+        geofenceId: item.geofenceId,
+        companySettings: {
+          requireGeofenceForCheckIn: item.requireGeofenceForCheckIn,
+          allowCheckInOutsideGeofence: item.allowCheckInOutsideGeofence,
+        },
+        employee: null,
+      });
+      removeFromOfflineQueue(item.id);
+      processed++;
+    } catch {
+      failed++;
+    }
+  }
+
+  for (const item of checkOuts) {
+    try {
+      await firebaseData.attendance.checkOut(item.employeeId);
+      removeFromOfflineCheckOutQueue(item.id);
+      processed++;
+    } catch {
+      failed++;
+    }
+  }
+
+  return { processed, failed };
 }

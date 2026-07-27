@@ -4,6 +4,7 @@ import 'package:flutter_background_geolocation/flutter_background_geolocation.da
     as bg;
 import 'package:http/http.dart' as http;
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../config/env.dart';
@@ -18,6 +19,8 @@ class BackgroundTrackingService {
 
   bool _initialized = false;
   bool _isRunning = false;
+  String? _employeeName;
+  String? _companyId;
 
   bool get isRunning => _isRunning;
 
@@ -51,12 +54,24 @@ class BackgroundTrackingService {
     _initialized = true;
   }
 
-  Future<void> start({required int employeeId}) async {
+  Future<void> start({required int employeeId, String? employeeName, String? companyId}) async {
     await initialize();
 
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt('tracking_employee_id', employeeId);
     await prefs.setBool('tracking_enabled', true);
+    if (employeeName != null) {
+      await prefs.setString('tracking_employee_name', employeeName);
+      _employeeName = employeeName;
+    } else {
+      _employeeName = prefs.getString('tracking_employee_name');
+    }
+    if (companyId != null) {
+      await prefs.setString('tracking_company_id', companyId);
+      _companyId = companyId;
+    } else {
+      _companyId = prefs.getString('tracking_company_id');
+    }
 
     await bg.BackgroundGeolocation.start();
     _isRunning = true;
@@ -69,6 +84,18 @@ class BackgroundTrackingService {
     await prefs.setBool('tracking_enabled', false);
 
     _isRunning = false;
+
+    // Mark employee as offline in Firestore
+    final employeeId = prefs.getInt('tracking_employee_id');
+    if (employeeId != null) {
+      await _updateFirestoreLocation(
+        employeeId: employeeId,
+        lat: null,
+        lng: null,
+        accuracy: null,
+        status: 'offline',
+      );
+    }
   }
 
   Future<void> restoreStateIfNeeded() async {
@@ -113,6 +140,16 @@ class BackgroundTrackingService {
 
       if (employeeId == null) return;
 
+      // Write directly to Firestore for real-time dashboard updates
+      await _updateFirestoreLocation(
+        employeeId: employeeId,
+        lat: location.coords.latitude,
+        lng: location.coords.longitude,
+        accuracy: location.coords.accuracy,
+        status: 'online',
+      );
+
+      // Also send to Laravel API for server-side processing
       String? token = await _freshToken();
       if (token == null || token.isEmpty) {
         token = prefs.getString('auth_token');
@@ -138,7 +175,43 @@ class BackgroundTrackingService {
         body: body,
       );
     } catch (_) {
-      // Offline tolerance: the backend will reconcile when connectivity returns.
+      // Offline tolerance: Firestore will sync when connectivity returns.
+    }
+  }
+
+  Future<void> _updateFirestoreLocation({
+    required int employeeId,
+    double? lat,
+    double? lng,
+    double? accuracy,
+    String status = 'online',
+  }) async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) return;
+
+      final prefs = await SharedPreferences.getInstance();
+      final companyId = _companyId ?? prefs.getString('tracking_company_id');
+      final employeeName = _employeeName ?? prefs.getString('tracking_employee_name') ?? '';
+
+      final data = <String, dynamic>{
+        'employeeId': employeeId.toString(),
+        'name': employeeName,
+        'status': status,
+        'lastSeen': DateTime.now().toIso8601String(),
+        'ownerUid': user.uid,
+      };
+      if (companyId != null) data['companyId'] = companyId;
+      if (lat != null) data['lat'] = lat;
+      if (lng != null) data['lng'] = lng;
+      if (accuracy != null) data['accuracy'] = accuracy;
+
+      await FirebaseFirestore.instance
+          .collection('locations')
+          .doc(employeeId.toString())
+          .set(data, SetOptions(merge: true));
+    } catch (_) {
+      // Firestore write failed — non-critical, will retry on next location update
     }
   }
 

@@ -7,7 +7,7 @@ import { UserCheck, UserX, Clock } from "lucide-react";
 import { useRouter } from "@/i18n/navigation";
 import MainLayout from "@/components/shared/MainLayout";
 import {
-  useDashboardStats,
+  useDashboardData,
   useAttendance,
   useEmployees,
   useGeofences,
@@ -51,7 +51,8 @@ export default function DashboardPage() {
   const { user, companyName } = useAuthStore();
   const queryClient = useQueryClient();
   const [dateRange, setDateRange] = useState<DateRange>(getDefaultDateRange());
-  const { data: stats, isLoading, isError, refetch } = useDashboardStats(dateRange);
+  const { data: dashboardData, isLoading, isError, refetch } = useDashboardData(dateRange);
+  const stats = dashboardData?.stats;
   const { data: attendanceData } = useAttendance();
   const { data: employees = [] } = useEmployees();
   const { data: geofences = [] } = useGeofences();

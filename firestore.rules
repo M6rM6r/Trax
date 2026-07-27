@@ -27,13 +27,17 @@ service cloud.firestore {
     }
 
     function userCompanyId() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.company_id;
+      return signedIn()
+        ? (exists(/databases/$(database)/documents/users/$(request.auth.uid))
+           ? get(/databases/$(database)/documents/users/$(request.auth.uid)).data.company_id
+           : null)
+        : null;
     }
 
-    function sameCompany(resource) {
+    function sameCompany(doc) {
       return signedIn()
-        && 'company_id' in resource.data
-        && resource.data.company_id == userCompanyId();
+        && 'company_id' in doc.data
+        && doc.data.company_id == userCompanyId();
     }
 
     function owns(resource) {
@@ -43,12 +47,12 @@ service cloud.firestore {
     match /users/{uid} {
       allow read: if signedIn() && (
         uid == request.auth.uid
-        || resource.data.company_id == userCompanyId()
+        || sameCompany(resource)
         || manager()
       );
-      allow create: if signedIn() && uid == request.auth.uid;
-      allow update: if signedIn() && (uid == request.auth.uid || manager());
-      allow delete: if signedIn() && boss();
+      allow create: if signedIn() && (uid == request.auth.uid || sameCompany(request.resource) || manager());
+      allow update: if signedIn() && (uid == request.auth.uid || sameCompany(resource) || manager());
+      allow delete: if signedIn() && (uid == request.auth.uid || sameCompany(resource) || boss());
     }
 
     match /companies/{companyId} {
@@ -58,65 +62,58 @@ service cloud.firestore {
     }
 
     match /company_settings/{settingsId} {
-      allow read: if signedIn() && (settingsId == request.auth.uid || manager());
-      allow write: if signedIn() && (settingsId == request.auth.uid || manager());
+      allow read: if signedIn() && (settingsId == request.auth.uid || sameCompany(resource) || manager());
+      allow write: if signedIn() && (settingsId == request.auth.uid || sameCompany(resource) || manager());
     }
 
     match /employees/{employeeId} {
       allow read: if signedIn() && (
-        resource.data.company_id == userCompanyId()
+        sameCompany(resource)
         || manager()
         || resource.data.authUid == request.auth.uid
         || resource.data.email == request.auth.token.email
       );
-      allow create: if manager()
-        && request.resource.data.company_id == userCompanyId();
-      allow update, delete: if signedIn() && (owns(resource) || manager())
-        && resource.data.company_id == userCompanyId();
+      allow create: if sameCompany(request.resource);
+      allow update, delete: if sameCompany(resource);
     }
 
     match /geofences/{geofenceId} {
       allow read: if signedIn() && (
-        resource.data.company_id == userCompanyId()
+        sameCompany(resource)
         || manager()
       );
-      allow create: if manager()
-        && request.resource.data.company_id == userCompanyId();
-      allow update, delete: if manager()
-        && resource.data.company_id == userCompanyId();
+      allow create: if sameCompany(request.resource);
+      allow update, delete: if sameCompany(resource);
     }
 
     match /attendance/{attendanceId} {
       allow read: if signedIn() && (
-        resource.data.company_id == userCompanyId()
+        sameCompany(resource)
         || manager()
       );
       allow create: if signedIn()
         && request.resource.data.ownerUid == request.auth.uid
-        && request.resource.data.company_id == userCompanyId();
-      allow update, delete: if signedIn() && (owns(resource) || manager())
-        && resource.data.company_id == userCompanyId();
+        && sameCompany(request.resource);
+      allow update, delete: if sameCompany(resource);
     }
 
     match /locations/{employeeId} {
       allow read: if signedIn() && (
-        resource.data.company_id == userCompanyId()
+        sameCompany(resource)
         || manager()
       );
       allow create, update: if signedIn()
         && request.resource.data.ownerUid == request.auth.uid
-        && request.resource.data.company_id == userCompanyId();
+        && sameCompany(request.resource);
       allow delete: if signedIn() && (owns(resource) || manager())
-        && resource.data.company_id == userCompanyId();
+        && sameCompany(resource);
     }
 
     match /fcm_tokens/{token} {
-      allow read: if signedIn() && manager()
-        && resource.data.company_id == userCompanyId();
+      allow read: if sameCompany(resource);
       allow create, update: if signedIn()
-        && request.resource.data.company_id == userCompanyId();
-      allow delete: if signedIn()
-        && (request.auth.uid == resource.data.ownerUid || manager());
+        && sameCompany(request.resource);
+      allow delete: if signedIn() && (sameCompany(resource) || request.auth.uid == resource.data.ownerUid);
     }
 
     match /notification_settings/{userId} {
@@ -125,7 +122,7 @@ service cloud.firestore {
 
     match /attendance_summaries/{summaryId} {
       allow read: if signedIn() && (
-        resource.data.company_id == userCompanyId()
+        sameCompany(resource)
         || manager()
       );
       allow write: if false;
@@ -143,7 +140,7 @@ service cloud.firestore {
 
     match /company_cache/{companyId} {
       allow read: if signedIn() && companyId == userCompanyId();
-      allow write: if signedIn() && manager();
+      allow write: if signedIn() && (companyId == userCompanyId() || manager());
     }
 
     match /function_metrics/{metricId} {
