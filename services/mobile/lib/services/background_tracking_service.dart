@@ -201,7 +201,7 @@ class BackgroundTrackingService {
         'lastSeen': DateTime.now().toIso8601String(),
         'ownerUid': user.uid,
       };
-      if (companyId != null) data['companyId'] = companyId;
+      if (companyId != null) data['company_id'] = companyId;
       if (lat != null) data['lat'] = lat;
       if (lng != null) data['lng'] = lng;
       if (accuracy != null) data['accuracy'] = accuracy;

@@ -32,7 +32,7 @@ export const trackingApi = {
     await ensureAuth();
     const companyId = requireCompanyId();
     const base = collection(requireDb(), "locations");
-    const snapshot = await getDocs(query(base, where("companyId", "==", companyId), limit(500)));
+    const snapshot = await getDocs(query(base, where("company_id", "==", companyId), limit(500)));
     const items = snapshot.docs.map((item) =>
       mapLocationDoc(item.id, item.data() as Record<string, unknown>)
     );
@@ -51,7 +51,7 @@ export const trackingApi = {
         await ensureAuth();
         const companyId = requireCompanyId();
         const base = collection(requireDb(), "locations");
-        const q = query(base, where("companyId", "==", companyId), limit(500));
+        const q = query(base, where("company_id", "==", companyId), limit(500));
         unsub = onSnapshot(
           q,
           (snapshot) => {
@@ -79,7 +79,7 @@ export const trackingApi = {
       doc(requireDb(), "locations", String(employeeId)),
       {
         ownerUid: currentUser.uid,
-        companyId: requireCompanyId(),
+        company_id: requireCompanyId(),
         employeeId,
         ...data,
         lastSeen: new Date().toISOString(),

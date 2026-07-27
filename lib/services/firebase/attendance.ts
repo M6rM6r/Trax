@@ -36,7 +36,7 @@ export const attendanceApi = {
     const companyId = getCompanyId();
     if (!companyId) return [];
     const base = collection(requireDb(), "attendance");
-    const filters: ReturnType<typeof where>[] = [where("companyId", "==", companyId)];
+    const filters: ReturnType<typeof where>[] = [where("company_id", "==", companyId)];
     if (employeeId !== null && employeeId !== undefined)
       filters.push(where("employeeId", "==", employeeId));
     if (dateRange?.from) filters.push(where("date", ">=", dateRange.from));
@@ -49,7 +49,7 @@ export const attendanceApi = {
       return records;
     } catch {
       // Composite index might not be deployed yet — fall back to simpler query
-      const simpleFilters: ReturnType<typeof where>[] = [where("companyId", "==", companyId)];
+      const simpleFilters: ReturnType<typeof where>[] = [where("company_id", "==", companyId)];
       if (employeeId !== null && employeeId !== undefined)
         simpleFilters.push(where("employeeId", "==", employeeId));
       const fallbackQuery = query(base, ...simpleFilters, limit(500));
@@ -170,7 +170,7 @@ export const attendanceApi = {
     const record = {
       id: reference.id,
       ownerUid: currentUser.uid,
-      companyId,
+      company_id: companyId,
       employeeId: payload.employeeId,
       employeeName: payload.employeeName || currentUser.displayName || currentUser.email || "",
       date,

@@ -583,7 +583,20 @@ export default function EmployeesPage() {
                       loginUrl: staffLoginUrl,
                     });
                     try {
-                      await navigator.clipboard.writeText(message);
+                      if (navigator.clipboard && window.isSecureContext) {
+                        await navigator.clipboard.writeText(message);
+                      } else {
+                        const textarea = document.createElement("textarea");
+                        textarea.value = message;
+                        textarea.style.position = "fixed";
+                        textarea.style.left = "-9999px";
+                        textarea.setAttribute("readonly", "");
+                        document.body.appendChild(textarea);
+                        textarea.select();
+                        const copied = document.execCommand("copy");
+                        document.body.removeChild(textarea);
+                        if (!copied) throw new Error("execCommand copy failed");
+                      }
                       toastSuccess("تم نسخ بيانات الدخول");
                     } catch {
                       toastError("تعذر النسخ التلقائي. انسخ البيانات يدويًا.");
