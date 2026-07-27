@@ -41,25 +41,11 @@ export const attendanceApi = {
       filters.push(where("employeeId", "==", employeeId));
     if (dateRange?.from) filters.push(where("date", ">=", dateRange.from));
     if (dateRange?.to) filters.push(where("date", "<=", dateRange.to));
-    try {
-      const attendanceQuery = query(base, ...filters, limit(500));
-      const snapshot = await getDocs(attendanceQuery);
-      const records = snapshot.docs.map((item) => mapAttendance(item.id, item.data()));
-      records.sort((a, b) => b.date.localeCompare(a.date));
-      return records;
-    } catch {
-      // Composite index might not be deployed yet — fall back to simpler query
-      const simpleFilters: ReturnType<typeof where>[] = [where("company_id", "==", companyId)];
-      if (employeeId !== null && employeeId !== undefined)
-        simpleFilters.push(where("employeeId", "==", employeeId));
-      const fallbackQuery = query(base, ...simpleFilters, limit(500));
-      const snapshot = await getDocs(fallbackQuery);
-      let records = snapshot.docs.map((item) => mapAttendance(item.id, item.data()));
-      if (dateRange?.from) records = records.filter((r) => r.date >= dateRange.from!);
-      if (dateRange?.to) records = records.filter((r) => r.date <= dateRange.to!);
-      records.sort((a, b) => b.date.localeCompare(a.date));
-      return records;
-    }
+    const attendanceQuery = query(base, ...filters, limit(500));
+    const snapshot = await getDocs(attendanceQuery);
+    const records = snapshot.docs.map((item) => mapAttendance(item.id, item.data()));
+    records.sort((a, b) => b.date.localeCompare(a.date));
+    return records;
   },
 
   async checkIn(payload: {
