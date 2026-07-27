@@ -32,7 +32,7 @@ const PeakHoursHeatmap = memo(({ data }: PeakHoursHeatmapProps) => {
         </div>
         <div>
           <h3 className="text-lg font-bold text-foreground">ساعات الذروة</h3>
-          <p className="text-sm text-muted-foreground text-muted-foreground">توزيع أوقات الحضور والانصراف</p>
+          <p className="text-sm text-muted-foreground">توزيع أوقات الحضور والانصراف</p>
         </div>
       </div>
       <div

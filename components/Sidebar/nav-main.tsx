@@ -63,15 +63,15 @@ export function NavMain({
 
   return (
     <nav className="w-full grow" aria-label="القائمة الرئيسية" role="navigation">
-      <ul className="space-y-2">
+      <ul className="space-y-1.5">
         {items.map((item) => (
           <li key={item.title} className="relative">
             {item.items?.length ? (
               <div
                 className={cn(
-                  "flex items-center justify-between hover:bg-sidebar-accent p-2 rounded-md group",
+                  "group flex min-h-11 items-center justify-between rounded-lg px-3 py-2 text-sm transition-colors hover:bg-sidebar-accent",
                   (item.isActive || openSections[item.title]) &&
-                    "bg-primary text-primary-foreground"
+                    "bg-primary/12 text-primary ring-1 ring-primary/20"
                 )}
               >
                 <Link
@@ -82,14 +82,14 @@ export function NavMain({
                   <item.icon
                     width={24}
                     className={cn(
-                      "text-sidebar-foreground group-hover:text-primary-foreground",
-                      (item.isActive || openSections[item.title]) && "text-primary-foreground"
+                      "text-sidebar-foreground group-hover:text-foreground",
+                      (item.isActive || openSections[item.title]) && "text-primary"
                     )}
                   />
                   <span
                     className={cn(
-                      "text-16 text-sidebar-foreground group-hover:text-primary-foreground",
-                      (item.isActive || openSections[item.title]) && "text-primary-foreground"
+                      "text-sm font-medium text-sidebar-foreground group-hover:text-foreground",
+                      (item.isActive || openSections[item.title]) && "text-primary"
                     )}
                   >
                     {item.title}
@@ -101,17 +101,16 @@ export function NavMain({
                     toggleSection(item.title);
                   }}
                   className={cn(
-                    "p-1 rounded text-sidebar-foreground group-hover:text-primary-foreground group-hover:bg-primary/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                    (item.isActive || openSections[item.title]) &&
-                      "bg-primary text-primary-foreground"
+                    "rounded-md p-1 text-sidebar-foreground hover:bg-primary/10 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                    (item.isActive || openSections[item.title]) && "text-primary"
                   )}
                   aria-label={openSections[item.title] ? `طي ${item.title}` : `توسيع ${item.title}`}
                   aria-expanded={openSections[item.title]}
                 >
                   <ArrowLeft
-                    className={`transition-transform w-6 text-sidebar-foreground group-hover:text-primary-foreground ${
+                    className={`w-5 transition-transform text-sidebar-foreground group-hover:text-primary ${
                       openSections[item.title] ? "-rotate-90" : ""
-                    } ${(item.isActive || openSections[item.title]) && "text-primary-foreground"}`}
+                    } ${(item.isActive || openSections[item.title]) && "text-primary"}`}
                   />
                 </button>
               </div>
@@ -119,22 +118,22 @@ export function NavMain({
               <Link
                 href={item.url}
                 className={cn(
-                  "flex items-center gap-2 w-full hover:bg-sidebar-accent p-2 rounded-md group",
-                  item.isActive && "bg-primary text-primary-foreground"
+                  "group flex min-h-11 w-full items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors hover:bg-sidebar-accent",
+                  item.isActive && "bg-primary/12 text-primary ring-1 ring-primary/20"
                 )}
                 aria-current={item.isActive ? "page" : undefined}
               >
                 <item.icon
                   width={24}
                   className={cn(
-                    "text-sidebar-foreground group-hover:text-primary-foreground",
-                    item.isActive && "text-primary-foreground"
+                    "text-sidebar-foreground group-hover:text-foreground",
+                    item.isActive && "text-primary"
                   )}
                 />
                 <span
                   className={cn(
-                    "text-16 text-sidebar-foreground group-hover:text-primary-foreground",
-                    item.isActive && "text-primary-foreground"
+                    "text-sm font-medium text-sidebar-foreground group-hover:text-foreground",
+                    item.isActive && "text-primary"
                   )}
                 >
                   {item.title}
@@ -175,9 +174,7 @@ export function NavMain({
                             className={cn(
                               "w-5 h-5",
                               isOpenActive && "text-primary-foreground",
-                              !isOpenActive &&
-                                subItemHasActiveChild &&
-                                "text-primary"
+                              !isOpenActive && subItemHasActiveChild && "text-primary"
                             )}
                           />
                           {subItem.title}
@@ -219,15 +216,11 @@ export function NavMain({
                                 href={subSubItem.url}
                                 aria-current={subSubItem.active ? "page" : undefined}
                                 className={`flex items-center gap-2 text-14 text-sidebar-foreground px-2 py-1 hover:bg-sidebar-accent rounded-md ms-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
-                                  subSubItem.active
-                                    ? " bg-primary/10 text-primary"
-                                    : ""
+                                  subSubItem.active ? " bg-primary/10 text-primary" : ""
                                 }`}
                               >
                                 <Flash
-                                  className={`w-5 h-5 ${
-                                    subSubItem.active && "text-primary"
-                                  }`}
+                                  className={`w-5 h-5 ${subSubItem.active && "text-primary"}`}
                                 />
                                 {subSubItem.title}
                               </Link>

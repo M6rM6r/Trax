@@ -11,14 +11,30 @@ import {
   updateDoc,
   where,
 } from "firebase/firestore";
-import { createUserWithEmailAndPassword, sendPasswordResetEmail } from "firebase/auth";
+import {
+  createUserWithEmailAndPassword,
+  deleteUser,
+  sendPasswordResetEmail,
+  type User,
+} from "firebase/auth";
 import { auth, secondaryAuth } from "@/lib/config/firebase";
 import type { Employee } from "@/lib/types/trackingTypes";
-import { ensureAuth, getCompanyId, requireCompanyId, requireDb, cleanPayload, mapEmployee } from "./helpers";
+import {
+  ensureAuth,
+  getCompanyId,
+  requireCompanyId,
+  requireDb,
+  cleanPayload,
+  mapEmployee,
+} from "./helpers";
 
 export const employeesApi = {
   async list(): Promise<Employee[]> {
-    try { await ensureAuth(); } catch { return []; }
+    try {
+      await ensureAuth();
+    } catch {
+      return [];
+    }
     const companyId = getCompanyId();
     if (!companyId) return [];
     const base = collection(requireDb(), "employees");
@@ -36,36 +52,54 @@ export const employeesApi = {
 
   async create(employee: Omit<Employee, "id"> & { password?: string }): Promise<Employee> {
     await ensureAuth();
+    const database = requireDb();
+    const companyId = requireCompanyId();
     const { password, ...employeeData } = employee;
-    let authUid: string | null = null;
+    let authUser: User | null = null;
+    let employeeDocId: string | null = null;
 
-    if (password && secondaryAuth) {
-      const cred = await createUserWithEmailAndPassword(secondaryAuth, employee.email, password);
-      authUid = cred.user.uid;
-    }
+    try {
+      if (password && secondaryAuth) {
+        const credential = await createUserWithEmailAndPassword(
+          secondaryAuth,
+          employee.email,
+          password
+        );
+        authUser = credential.user;
+      }
 
-    const reference = await addDoc(collection(requireDb(), "employees"), {
-      ...employeeData,
-      ...(authUid ? { authUid } : {}),
-      company_id: requireCompanyId(),
-      createdAt: serverTimestamp(),
-    });
-    const employeeDocId = reference.id;
-
-    if (authUid) {
-      await setDoc(doc(requireDb(), "users", authUid), {
-        name: employee.name,
-        email: employee.email,
-        role: employee.role ?? "employee",
-        company_id: requireCompanyId(),
-        employee_id: employeeDocId,
-        assigned_geofence_id: employee.geofenceId ?? null,
-        attendanceMode: employee.attendanceMode ?? null,
+      const reference = await addDoc(collection(database, "employees"), {
+        ...employeeData,
+        ...(password ? { password } : {}),
+        ...(authUser ? { authUid: authUser.uid } : {}),
+        company_id: companyId,
         createdAt: serverTimestamp(),
       });
-    }
+      employeeDocId = reference.id;
 
-    return mapEmployee(reference.id, { ...employeeData, id: reference.id });
+      if (authUser) {
+        await setDoc(doc(database, "users", authUser.uid), {
+          name: employee.name,
+          email: employee.email,
+          role: employee.role ?? "employee",
+          company_id: companyId,
+          employee_id: employeeDocId,
+          assigned_geofence_id: employee.geofenceId ?? null,
+          attendanceMode: employee.attendanceMode ?? null,
+          createdAt: serverTimestamp(),
+        });
+      }
+
+      return mapEmployee(reference.id, { ...employeeData, password, id: reference.id });
+    } catch (error) {
+      if (employeeDocId) {
+        await deleteDoc(doc(database, "employees", employeeDocId)).catch(() => undefined);
+      }
+      if (authUser) {
+        await deleteUser(authUser).catch(() => undefined);
+      }
+      throw error;
+    }
   },
 
   async update(id: string, employee: Partial<Employee>): Promise<void> {

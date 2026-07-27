@@ -27,6 +27,7 @@ export function useCreateGeofence() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: queryKeys.geofences });
+      qc.invalidateQueries({ queryKey: queryKeys.dashboard });
     },
   });
 }
@@ -40,6 +41,7 @@ export function useUpdateGeofence() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: queryKeys.geofences });
+      qc.invalidateQueries({ queryKey: queryKeys.dashboard });
     },
   });
 }
@@ -53,6 +55,7 @@ export function useDeleteGeofence() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: queryKeys.geofences });
+      qc.invalidateQueries({ queryKey: queryKeys.dashboard });
     },
   });
 }

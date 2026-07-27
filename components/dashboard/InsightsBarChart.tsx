@@ -19,9 +19,7 @@ const InsightsBarChart = memo(({ data }: InsightsBarChartProps) => {
         </div>
         <div>
           <h3 className="text-lg font-bold text-foreground">مقارنة الحضور</h3>
-          <p className="text-sm text-muted-foreground text-muted-foreground">
-            مقارنة مرئية بين الحالات المختلفة
-          </p>
+          <p className="text-sm text-muted-foreground">مقارنة مرئية بين الحالات المختلفة</p>
         </div>
       </div>
 
@@ -37,11 +35,9 @@ const InsightsBarChart = memo(({ data }: InsightsBarChartProps) => {
               onMouseLeave={() => setHoveredIndex(null)}
             >
               <div className="flex justify-between items-center">
-                <span className="font-medium text-muted-foreground text-sm">
-                  {item.name}
-                </span>
+                <span className="font-medium text-muted-foreground text-sm">{item.name}</span>
                 <span className="font-bold text-foreground">
-                  {item.value.toLocaleString()}
+                  {item.value.toLocaleString("en-US")}
                 </span>
               </div>
               <div className="w-full bg-muted rounded-full h-3 overflow-hidden">

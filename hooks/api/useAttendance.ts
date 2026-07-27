@@ -12,6 +12,7 @@ export function useAttendance(options?: { enabled?: boolean }) {
   return useQuery<AttendanceRecord[]>({
     queryKey: [...queryKeys.attendance, companyId ?? "unassigned"],
     staleTime: 30 * 1000,
+    refetchInterval: 60 * 1000,
     enabled: Boolean(companyId) && (options?.enabled ?? true),
     queryFn: async (): Promise<AttendanceRecord[]> => {
       return firebaseData.attendance.list();

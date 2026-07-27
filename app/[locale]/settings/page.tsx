@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { signOut } from "firebase/auth";
 import MainLayout from "@/components/shared/MainLayout";
 import FullPageHead from "@/components/shared/FullPageHead";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,18 +13,21 @@ import {
   Type,
   Globe,
   Clock,
+  Calendar,
   UserCheck,
   MapPin,
   User,
   Building2,
+  Check,
 } from "lucide-react";
-import { Link } from "@/i18n/navigation";
+import { Link, useRouter } from "@/i18n/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { hapticTap, hapticSuccess } from "@/lib/utils/haptics";
-import { toastSuccess } from "@/hooks/use-toast";
+import { hapticTap, hapticSuccess, hapticError } from "@/lib/utils/haptics";
+import { toastSuccess, toastError } from "@/hooks/use-toast";
 import AvatarUpload from "@/components/shared/AvatarUpload";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { Switch } from "@/components/ui/switch";
+import { auth } from "@/lib/config/firebase";
 
 type TabId = "profile" | "general" | "appearance" | "notifications" | "security" | "company";
 
@@ -64,12 +68,12 @@ const accentColorMap: Record<string, string> = {
 };
 
 const accentHslMap: Record<string, { primary: string; accent: string; ring: string }> = {
-  blue:   { primary: "217 91% 60%",  accent: "217 91% 60%",  ring: "217 91% 60%" },
-  green:  { primary: "142 71% 45%",  accent: "142 71% 45%",  ring: "142 71% 45%" },
-  purple: { primary: "271 81% 56%",  accent: "271 81% 56%",  ring: "271 81% 56%" },
-  orange: { primary: "25 95% 53%",   accent: "25 95% 53%",   ring: "25 95% 53%" },
-  pink:   { primary: "330 81% 60%",  accent: "330 81% 60%",  ring: "330 81% 60%" },
-  cyan:   { primary: "168 72% 40%",  accent: "38 88% 55%",   ring: "168 72% 40%" },
+  blue: { primary: "217 91% 60%", accent: "217 91% 60%", ring: "217 91% 60%" },
+  green: { primary: "142 71% 45%", accent: "142 71% 45%", ring: "142 71% 45%" },
+  purple: { primary: "271 81% 56%", accent: "271 81% 56%", ring: "271 81% 56%" },
+  orange: { primary: "25 95% 53%", accent: "25 95% 53%", ring: "25 95% 53%" },
+  pink: { primary: "330 81% 60%", accent: "330 81% 60%", ring: "330 81% 60%" },
+  cyan: { primary: "168 72% 40%", accent: "38 88% 55%", ring: "168 72% 40%" },
 };
 
 function applyAccentColor(colorKey: string) {
@@ -92,7 +96,8 @@ const fontSizeMap: Record<string, string> = {
 };
 
 export default function SettingsPage() {
-  const { user, companyName, role } = useAuthStore();
+  const { user, companyName, role, clearUser } = useAuthStore();
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<TabId>("profile");
   const [accentColor, setAccentColor] = useState<string>("blue");
   const [fontSize, setFontSize] = useState<string>("medium");
@@ -103,6 +108,20 @@ export default function SettingsPage() {
   const [attendanceAlerts, setAttendanceAlerts] = useState(true);
   const [lateAlerts, setLateAlerts] = useState(true);
   const [geofenceExitAlerts, setGeofenceExitAlerts] = useState(false);
+  const [accountActionPending, setAccountActionPending] = useState<"signout" | null>(null);
+
+  const handleCurrentDeviceSignOut = async () => {
+    setAccountActionPending("signout");
+    try {
+      if (auth) await signOut(auth);
+      clearUser();
+      router.replace("/login");
+    } catch {
+      hapticError();
+      toastError("تعذر تسجيل الخروج. حاول مرة أخرى.");
+      setAccountActionPending(null);
+    }
+  };
 
   useEffect(() => {
     const saved = localStorage.getItem("trax_settings");
@@ -239,9 +258,7 @@ export default function SettingsPage() {
                     shape="circle"
                   />
                   <div className="text-center">
-                    <p className="font-semibold text-foreground">
-                      {user?.name ?? "المستخدم"}
-                    </p>
+                    <p className="font-semibold text-foreground">{user?.name ?? "المستخدم"}</p>
                     <p className="text-sm text-muted-foreground">{user?.email}</p>
                     {companyName && (
                       <span className="inline-block mt-2 text-xs px-3 py-1 rounded-full bg-primary/10 text-primary/70 font-medium">
@@ -275,9 +292,7 @@ export default function SettingsPage() {
                         <Globe className="w-4 h-4 text-primary" />
                       </div>
                       <div>
-                        <p className="text-sm font-medium text-foreground">
-                          اللغة
-                        </p>
+                        <p className="text-sm font-medium text-foreground">اللغة</p>
                         <p className="text-xs text-muted-foreground">لغة الواجهة</p>
                       </div>
                     </div>
@@ -287,7 +302,7 @@ export default function SettingsPage() {
                         setLanguage(e.target.value);
                         saveSettings("language", e.target.value);
                       }}
-                      className="px-3 py-2 rounded-lg border border-border border-input bg-background text-sm text-foreground"
+                      className="px-3 py-2 rounded-lg border border-input bg-background text-sm text-foreground"
                     >
                       <option value="ar">العربية</option>
                       <option value="en">English</option>
@@ -299,9 +314,7 @@ export default function SettingsPage() {
                         <Clock className="w-4 h-4 text-primary" />
                       </div>
                       <div>
-                        <p className="text-sm font-medium text-foreground">
-                          المنطقة الزمنية
-                        </p>
+                        <p className="text-sm font-medium text-foreground">المنطقة الزمنية</p>
                         <p className="text-xs text-muted-foreground">التوقيت المحلي</p>
                       </div>
                     </div>
@@ -311,7 +324,7 @@ export default function SettingsPage() {
                         setTimezone(e.target.value);
                         saveSettings("timezone", e.target.value);
                       }}
-                      className="px-3 py-2 rounded-lg border border-border border-input bg-background text-sm text-foreground"
+                      className="px-3 py-2 rounded-lg border border-input bg-background text-sm text-foreground"
                     >
                       <option value="Asia/Riyadh">الرياض</option>
                       <option value="Asia/Dubai">دبي</option>
@@ -325,9 +338,7 @@ export default function SettingsPage() {
                         <Calendar className="w-4 h-4 text-accent-foreground" />
                       </div>
                       <div>
-                        <p className="text-sm font-medium text-foreground">
-                          تنسيق التاريخ
-                        </p>
+                        <p className="text-sm font-medium text-foreground">تنسيق التاريخ</p>
                         <p className="text-xs text-muted-foreground">ميلادي أو هجري</p>
                       </div>
                     </div>
@@ -337,7 +348,7 @@ export default function SettingsPage() {
                         setDateFormat(e.target.value);
                         saveSettings("dateFormat", e.target.value);
                       }}
-                      className="px-3 py-2 rounded-lg border border-border border-input bg-background text-sm text-foreground"
+                      className="px-3 py-2 rounded-lg border border-input bg-background text-sm text-foreground"
                     >
                       <option value="gregorian">ميلادي</option>
                       <option value="hijri">هجري</option>
@@ -360,9 +371,7 @@ export default function SettingsPage() {
               {/* Live Preview */}
               <Card className="border-0 shadow-lg bg-card">
                 <CardHeader>
-                  <CardTitle className="text-lg font-bold text-foreground">
-                    معاينة مباشرة
-                  </CardTitle>
+                  <CardTitle className="text-lg font-bold text-foreground">معاينة مباشرة</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="relative w-full h-24 rounded-xl overflow-hidden border border-border bg-background">
@@ -391,9 +400,7 @@ export default function SettingsPage() {
 
               <Card className="border-0 shadow-lg bg-card">
                 <CardHeader>
-                  <CardTitle className="text-lg font-bold text-foreground">
-                    اللون المميز
-                  </CardTitle>
+                  <CardTitle className="text-lg font-bold text-foreground">اللون المميز</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="grid grid-cols-6 gap-3">
@@ -419,9 +426,7 @@ export default function SettingsPage() {
                         >
                           <div className="absolute inset-0 rounded-full bg-gradient-to-br from-white/40 to-transparent" />
                         </div>
-                        <span className="text-xs text-muted-foreground">
-                          {color.name}
-                        </span>
+                        <span className="text-xs text-muted-foreground">{color.name}</span>
                         {accentColor === color.value && (
                           <Check className="w-3 h-3 text-foreground text-primary-foreground" />
                         )}
@@ -433,9 +438,7 @@ export default function SettingsPage() {
 
               <Card className="border-0 shadow-lg bg-card">
                 <CardHeader>
-                  <CardTitle className="text-lg font-bold text-foreground">
-                    حجم الخط
-                  </CardTitle>
+                  <CardTitle className="text-lg font-bold text-foreground">حجم الخط</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="grid grid-cols-3 gap-4">
@@ -450,7 +453,7 @@ export default function SettingsPage() {
                         className={`flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all ${
                           fontSize === font.value
                             ? "border-primary bg-primary/5"
-                            : "border-border border-input hover:border-input hover:border-input"
+                            : "border-input hover:border-input"
                         }`}
                       >
                         <Type
@@ -466,7 +469,6 @@ export default function SettingsPage() {
                   </div>
                 </CardContent>
               </Card>
-
             </motion.div>
           )}
 
@@ -502,9 +504,7 @@ export default function SettingsPage() {
                             <Icon className="w-4 h-4 text-muted-foreground" />
                           </div>
                           <div>
-                            <p className="text-sm font-medium text-foreground">
-                              {item.title}
-                            </p>
+                            <p className="text-sm font-medium text-foreground">{item.title}</p>
                             <p className="text-xs text-muted-foreground mt-0.5">
                               {item.description}
                             </p>
@@ -540,25 +540,17 @@ export default function SettingsPage() {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="p-4 rounded-xl bg-muted/50">
-                    <p className="text-sm font-medium text-foreground">
-                      كلمة المرور
-                    </p>
+                    <p className="text-sm font-medium text-foreground">جلسات نشطة</p>
                     <p className="text-xs text-muted-foreground mt-0.5 mb-3">
-                      تغيير كلمة المرور
+                      تسجيل الخروج من الجهاز الحالي
                     </p>
-                    <button className="px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors">
-                      تغيير كلمة المرور
-                    </button>
-                  </div>
-                  <div className="p-4 rounded-xl bg-muted/50">
-                    <p className="text-sm font-medium text-foreground">
-                      جلسات نشطة
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-0.5 mb-3">
-                      إدارة الأجهزة المتصلة
-                    </p>
-                    <button className="px-3 py-1.5 rounded-lg bg-destructive text-destructive-foreground text-sm font-medium hover:bg-destructive/90 transition-colors">
-                      تسجيل الخروج من جميع الأجهزة
+                    <button
+                      type="button"
+                      onClick={handleCurrentDeviceSignOut}
+                      disabled={accountActionPending !== null}
+                      className="px-3 py-1.5 rounded-lg bg-destructive text-destructive-foreground text-sm font-medium hover:bg-destructive/90 transition-colors disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {accountActionPending === "signout" ? "جارٍ تسجيل الخروج..." : "تسجيل الخروج"}
                     </button>
                   </div>
                 </CardContent>
@@ -588,7 +580,7 @@ export default function SettingsPage() {
                 <CardContent className="space-y-4">
                   <Link
                     href="settings/company"
-                    className="block p-4 rounded-xl bg-muted/50 hover:bg-muted hover:bg-muted transition-colors"
+                    className="block p-4 rounded-xl bg-muted/50 hover:bg-muted transition-colors"
                   >
                     <div className="flex items-center justify-between">
                       <div>

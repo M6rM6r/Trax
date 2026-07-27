@@ -72,7 +72,9 @@ export default function EmployeeProfilePage({ params }: { params: { id: string }
   });
 
   const employee = employees.find((e) => String(e.id) === String(id));
-  const empAttendance = attendanceData.filter((a) => String(a.employeeId) === String(id)).slice(0, 30);
+  const empAttendance = attendanceData
+    .filter((a) => String(a.employeeId) === String(id))
+    .slice(0, 30);
 
   const last7Days = empAttendance.slice(0, 7);
   const presentCount = last7Days.filter((a) => a.status === "present").length;
@@ -99,7 +101,8 @@ export default function EmployeeProfilePage({ params }: { params: { id: string }
     );
   }
 
-  const geofenceName = geofences.find((g) => String(g.id) === String(employee.geofenceId))?.name || "-";
+  const geofenceName =
+    geofences.find((g) => String(g.id) === String(employee.geofenceId))?.name || "-";
 
   const handleOpenEdit = () => {
     if (!employee) return;
@@ -173,9 +176,7 @@ export default function EmployeeProfilePage({ params }: { params: { id: string }
                   {employee.name.charAt(0)}
                 </div>
                 <div className="flex-1 mt-4 sm:mt-0">
-                  <h1 className="text-2xl font-bold text-foreground">
-                    {employee.name}
-                  </h1>
+                  <h1 className="text-2xl font-bold text-foreground">{employee.name}</h1>
                   <div className="flex items-center gap-2 mt-1">
                     <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary">
                       {roleLabels[employee.role]}
@@ -183,7 +184,7 @@ export default function EmployeeProfilePage({ params }: { params: { id: string }
                     <span
                       className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                         employee.status === "active"
-                          ? "bg-primary/10 text-primary bg-primary/10 text-primary"
+                          ? "bg-primary/10 text-primary"
                           : "bg-muted text-muted-foreground"
                       }`}
                     >
@@ -230,13 +231,11 @@ export default function EmployeeProfilePage({ params }: { params: { id: string }
                 </div>
                 <div className="flex items-center gap-3 p-3 rounded-xl bg-muted/50">
                   <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                    <MapPin className="w-5 h-5 text-primary text-primary" />
+                    <MapPin className="w-5 h-5 text-primary" />
                   </div>
                   <div>
                     <p className="text-xs text-muted-foreground">النطاق الجغرافي</p>
-                    <p className="text-sm font-medium text-foreground">
-                      {geofenceName}
-                    </p>
+                    <p className="text-sm font-medium text-foreground">{geofenceName}</p>
                   </div>
                 </div>
               </div>
@@ -257,9 +256,7 @@ export default function EmployeeProfilePage({ params }: { params: { id: string }
                 <CheckCircle className="w-6 h-6 text-primary" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-foreground">
-                  {presentCount}
-                </p>
+                <p className="text-2xl font-bold text-foreground">{presentCount}</p>
                 <p className="text-xs text-muted-foreground">أيام الحضور (7 أيام)</p>
               </div>
             </CardContent>
@@ -281,9 +278,7 @@ export default function EmployeeProfilePage({ params }: { params: { id: string }
                 <XCircle className="w-6 h-6 text-destructive" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-foreground">
-                  {absentCount}
-                </p>
+                <p className="text-2xl font-bold text-foreground">{absentCount}</p>
                 <p className="text-xs text-muted-foreground">أيام الغياب (7 أيام)</p>
               </div>
             </CardContent>
@@ -306,9 +301,7 @@ export default function EmployeeProfilePage({ params }: { params: { id: string }
                   <CardTitle className="text-lg font-bold text-foreground">
                     سجل الحضور (آخر 30 سجل)
                   </CardTitle>
-                  <p className="text-sm text-muted-foreground text-muted-foreground">
-                    تاريخ عمليات الحضور والانصراف
-                  </p>
+                  <p className="text-sm text-muted-foreground">تاريخ عمليات الحضور والانصراف</p>
                 </div>
               </div>
             </CardHeader>
@@ -355,10 +348,10 @@ export default function EmployeeProfilePage({ params }: { params: { id: string }
                         <span
                           className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                             r.status === "present"
-                              ? "bg-primary/10 text-primary bg-primary/10 text-primary"
+                              ? "bg-primary/10 text-primary"
                               : r.status === "late"
-                                ? "bg-[hsl(48_96%_53%/0.15)] text-[hsl(48_96%_53%)] "
-                                : "bg-destructive/10 text-destructive bg-destructive/10 text-destructive"
+                                ? "bg-[hsl(48_96%_53%/0.15)] text-[hsl(48_96%_53%)]"
+                                : "bg-destructive/10 text-destructive"
                           }`}
                         >
                           {statusLabels[r.status] || r.status}
@@ -422,7 +415,9 @@ export default function EmployeeProfilePage({ params }: { params: { id: string }
             <FormSelect
               label="الدور"
               value={editEmployee.role}
-              onChange={(v) => setEditEmployee({ ...editEmployee, role: v as typeof editEmployee.role })}
+              onChange={(v) =>
+                setEditEmployee({ ...editEmployee, role: v as typeof editEmployee.role })
+              }
             >
               <option value="employee">موظف</option>
               <option value="supervisor">مشرف</option>

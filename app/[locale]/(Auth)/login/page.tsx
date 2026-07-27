@@ -19,10 +19,8 @@ import {
 } from "firebase/auth";
 import { auth } from "@/lib/config/firebase";
 import { getFirebaseUserProfile } from "@/lib/services/firebaseData";
+import { resolveUserRole, normalizeUserRole } from "@/lib/utils/auth";
 import { useFirebaseAuth } from "@/lib/config/env";
-import { normalizeUserRole, resolveUserRole } from "@/lib/utils/auth";
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
 
 interface LoginValues {
   identifier: string;
@@ -157,36 +155,9 @@ const Page = () => {
         );
         const isEmployee = role === "employee";
 
-        let companyId = profileData.company_id ?? companyProfile?.id ?? null;
-        let companyName = String(profileData.company_name ?? companyProfile?.name ?? "");
+        const companyId = profileData.company_id ?? companyProfile?.id ?? null;
+        const companyName = String(profileData.company_name ?? companyProfile?.name ?? "");
 
-        if (typeof companyId !== "string" && typeof companyId !== "number") {
-          throw new Error("Your Firebase account is not assigned to a company");
-        }
-
-        // Optional: enrich with Laravel API if Firestore profile is incomplete.
-        if (!profileData.company_id && !companyProfile?.id) {
-          try {
-            const rawResp = await fetch(`${API_URL}/auth/firebase`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json", Accept: "application/json" },
-              body: JSON.stringify({ id_token: idToken }),
-            });
-            if (rawResp.ok) {
-              const resp = await rawResp.json();
-              if (resp?.success && resp?.data) {
-                companyId = resp.data.user?.company_id ?? companyId;
-                companyName = String(resp.data.company?.name ?? companyName);
-              }
-            }
-          } catch {
-            // Laravel API unreachable — continue with Firestore data.
-          }
-        }
-
-        if (typeof companyId !== "string" && typeof companyId !== "number") {
-          throw new Error("Your Firebase account is not assigned to a company");
-        }
         const resolvedCompanyId: string = String(companyId);
 
         const hasEmployeeId =
@@ -220,25 +191,7 @@ const Page = () => {
             },
           },
         });
-        return;
       }
-
-      // Non-Firebase mode: use Laravel API directly.
-      const rawResp = await fetch(`${API_URL}/auth/firebase`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Accept: "application/json" },
-        body: JSON.stringify({ id_token: idToken }),
-      });
-
-      if (!rawResp.ok) {
-        const errBody = await rawResp.json().catch(() => ({}));
-        hapticError();
-        toastError(errBody?.message || "فشل تسجيل الدخول. تأكد من البيانات.");
-        return;
-      }
-
-      const resp = await rawResp.json();
-      await applyLoginResponse(values, idToken, resp);
     } catch (err) {
       hapticError();
       const firebaseErr = err as { code?: string; message?: string };
@@ -276,76 +229,71 @@ const Page = () => {
           />
         </div>
 
-      <Formik
-        initialValues={{ identifier: initialIdentifier, password: "", rememberMe: false }}
-        enableReinitialize
-        validationSchema={loginSchema}
-        onSubmit={handleSubmit}
-      >
-        {(props) => (
-          <div className="w-full">
-            <Form className="bg-card border border-border rounded-lg p-8 flex flex-col gap-5">
-              <div className="text-center mb-2">
-                <h1 className="text-xl font-bold text-foreground">تسجيل الدخول</h1>
-              </div>
+        <Formik
+          initialValues={{ identifier: initialIdentifier, password: "", rememberMe: false }}
+          enableReinitialize
+          validationSchema={loginSchema}
+          onSubmit={handleSubmit}
+        >
+          {(props) => (
+            <div className="w-full">
+              <Form className="bg-card border border-border rounded-lg p-8 flex flex-col gap-5">
+                <div className="text-center mb-2">
+                  <h1 className="text-xl font-bold text-foreground">تسجيل الدخول</h1>
+                </div>
 
-              <CustomInput
-                type="email"
-                name="identifier"
-                placeholder="email@trax.com"
-                label="البريد الإلكتروني"
-              />
+                <CustomInput
+                  type="email"
+                  name="identifier"
+                  placeholder="email@trax.com"
+                  label="البريد الإلكتروني"
+                />
 
-              <CustomInput
-                type="password"
-                name="password"
-                placeholder="*********"
-                label="كلمة المرور"
-              />
+                <CustomInput
+                  type="password"
+                  name="password"
+                  placeholder="*********"
+                  label="كلمة المرور"
+                />
 
-              <div className="flex items-center justify-between text-sm">
-                <label className="flex items-center gap-2 cursor-pointer text-muted-foreground">
-                  <input
-                    type="checkbox"
-                    name="rememberMe"
-                    className="w-4 h-4 rounded border-input text-primary focus:ring-ring"
-                    checked={props.values.rememberMe}
-                    onChange={() => props.setFieldValue("rememberMe", !props.values.rememberMe)}
-                  />
-                  تذكرني
-                </label>
-                <Link
-                  href="/forgot-password"
-                  className="text-primary hover:underline text-sm"
+                <div className="flex items-center justify-between text-sm">
+                  <label className="flex items-center gap-2 cursor-pointer text-muted-foreground">
+                    <input
+                      type="checkbox"
+                      name="rememberMe"
+                      className="w-4 h-4 rounded border-input text-primary focus:ring-ring"
+                      checked={props.values.rememberMe}
+                      onChange={() => props.setFieldValue("rememberMe", !props.values.rememberMe)}
+                    />
+                    تذكرني
+                  </label>
+                  <Link href="/forgot-password" className="text-primary hover:underline text-sm">
+                    نسيت كلمة المرور؟
+                  </Link>
+                </div>
+
+                <Button
+                  type="submit"
+                  variant="primary"
+                  disabled={props.isSubmitting}
+                  className="h-11 font-semibold flex items-center justify-center gap-2"
                 >
-                  نسيت كلمة المرور؟
-                </Link>
-              </div>
+                  {props.isSubmitting && (
+                    <div className="w-4 h-4 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin" />
+                  )}
+                  {props.isSubmitting ? "جاري التحميل..." : "دخول"}
+                </Button>
+              </Form>
+            </div>
+          )}
+        </Formik>
 
-              <Button
-                type="submit"
-                variant="primary"
-                disabled={props.isSubmitting}
-                className="h-11 font-semibold flex items-center justify-center gap-2"
-              >
-                {props.isSubmitting && (
-                  <div className="w-4 h-4 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin" />
-                )}
-                {props.isSubmitting ? "جاري التحميل..." : "دخول"}
-              </Button>
-            </Form>
+        {showSuccess && (
+          <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-background">
+            <CheckCircle2 className="w-16 h-16 text-primary" />
+            <p className="mt-4 text-lg font-bold text-foreground">تم تسجيل الدخول</p>
           </div>
         )}
-      </Formik>
-
-      {showSuccess && (
-        <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-background">
-          <CheckCircle2 className="w-16 h-16 text-primary" />
-          <p className="mt-4 text-lg font-bold text-foreground">
-            تم تسجيل الدخول
-          </p>
-        </div>
-      )}
       </div>
     </section>
   );

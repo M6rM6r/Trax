@@ -56,6 +56,7 @@ export function useCreateEmployee() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: queryKeys.employees });
+      qc.invalidateQueries({ queryKey: queryKeys.dashboard });
     },
   });
 }
@@ -69,6 +70,7 @@ export function useUpdateEmployee() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: queryKeys.employees });
+      qc.invalidateQueries({ queryKey: queryKeys.dashboard });
     },
   });
 }
@@ -82,6 +84,7 @@ export function useDeleteEmployee() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: queryKeys.employees });
+      qc.invalidateQueries({ queryKey: queryKeys.dashboard });
     },
   });
 }

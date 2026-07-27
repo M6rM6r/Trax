@@ -53,13 +53,11 @@ export function ShortcutsHelp() {
             <div className="flex items-center justify-between mb-5">
               <div className="flex items-center gap-2">
                 <Keyboard className="w-5 h-5 text-primary" />
-                <h2 className="text-lg font-bold text-foreground">
-                  اختصارات لوحة المفاتيح
-                </h2>
+                <h2 className="text-lg font-bold text-foreground">اختصارات لوحة المفاتيح</h2>
               </div>
               <button
                 onClick={() => setOpen(false)}
-                className="p-2 rounded-lg hover:bg-muted hover:bg-muted text-muted-foreground"
+                className="p-2 rounded-lg hover:bg-muted text-muted-foreground"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -75,7 +73,7 @@ export function ShortcutsHelp() {
                     {s.keys.map((key, j) => (
                       <kbd
                         key={j}
-                        className="px-2 py-1 text-xs font-mono font-semibold bg-background border border-border border-input rounded-md text-foreground shadow-sm"
+                        className="px-2 py-1 text-xs font-mono font-semibold bg-background border border-input rounded-md text-foreground shadow-sm"
                       >
                         {key}
                       </kbd>

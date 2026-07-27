@@ -22,7 +22,6 @@ import CustomInput from "@/components/shared/form/CustomInput";
 import { toastSuccess, toastError } from "@/hooks/use-toast";
 import { hapticSuccess, hapticError } from "@/lib/utils/haptics";
 import { useAuthStore, UserRole } from "@/stores/useAuthStore";
-import { httpClient, ApiError } from "@/lib/services/httpClient";
 import { firebaseData } from "@/lib/services/firebaseData";
 import { useFirebaseAuth } from "@/lib/config/env";
 import {
@@ -124,7 +123,13 @@ export default function RegisterPage() {
         /[0-9]/.test(v),
         /[^A-Za-z0-9]/.test(v),
       ].filter(Boolean).length;
-      const colors = ["", "bg-destructive", "bg-[hsl(25_95%_53%)]", "bg-[hsl(48_96%_53%)]", "bg-primary"] as const;
+      const colors = [
+        "",
+        "bg-destructive",
+        "bg-[hsl(25_95%_53%)]",
+        "bg-[hsl(48_96%_53%)]",
+        "bg-primary",
+      ] as const;
       const labels = ["", "ضعيف", "متوسط", "قوي", "ممتاز"] as const;
       return { score, color: colors[score] || "", label: labels[score] || "" };
     },
@@ -191,90 +196,11 @@ export default function RegisterPage() {
         return;
       }
 
-      const resp = await httpClient.post<{
-        success: boolean;
-        message: string;
-        data: {
-          token: string;
-          user: { id: number; name: string; email: string; role: string; company_id: number };
-          company: {
-            id: number;
-            name: string;
-            plan: string;
-            trial_ends_at: string;
-            max_employees: number;
-          };
-        };
-      }>("companies/register", {
-        company_name: values.company_name,
-        industry: values.industry,
-        admin_name: values.admin_name,
-        admin_email: values.admin_email,
-        admin_password: values.admin_password,
-      });
-
-      if (!resp.success) {
-        hapticError();
-        toastError("فشل في إنشاء الحساب. حاول مرة أخرى.");
-        return;
-      }
-
-      const { user, company } = resp.data;
-      const role: UserRole = "boss";
-
-      // Sign in with Firebase to get an ID token
-      let idToken = "";
-      if (auth) {
-        const credential = await signInWithEmailAndPassword(
-          auth,
-          values.admin_email,
-          values.admin_password
-        );
-        idToken = await credential.user.getIdToken();
-      }
-
-      setUser(
-        {
-          id: user.id,
-          name: user.name,
-          email: user.email,
-          role: user.role,
-          permissions: [],
-          created_at: new Date().toISOString(),
-          profile_image: "",
-        },
-        idToken,
-        role,
-        String(user.company_id),
-        company.name
-      );
-
-      hapticSuccess();
-      toastSuccess(resp.message || "تم إنشاء حسابك بنجاح! مرحباً بك في Trax");
-      setRegistrationResult({
-        companyName: company.name,
-        adminEmail: values.admin_email,
-        adminPassword: values.admin_password,
-      });
+      throw new Error("Firebase غير مكون. تواصل مع الإدارة.");
     } catch (err: unknown) {
       hapticError();
-      if (err instanceof ApiError) {
-        if (err.statusCode === 422) {
-          const errors = (err.context as { errors?: Record<string, string[]> })?.errors;
-          const firstError = errors ? Object.values(errors).flat()[0] : null;
-          toastError(firstError || "البريد الإلكتروني مستخدم بالفعل. جرّب بريداً آخر.");
-        } else if (err.statusCode === 500) {
-          toastError(
-            "الخادم أو قاعدة البيانات غير متاحة حالياً. تأكد من تشغيل API و MySQL ثم أعد المحاولة."
-          );
-        } else if (err.statusCode === 0) {
-          toastError("تعذّر الاتصال بالخادم. تأكّد من اتصالك بالإنترنت.");
-        } else {
-          toastError(err.message || "فشل في إنشاء الحساب. حاول مرة أخرى.");
-        }
-      } else {
-        toastError("فشل في إنشاء الحساب. حاول مرة أخرى.");
-      }
+      const message = err instanceof Error ? err.message : "فشل في إنشاء الحساب. حاول مرة أخرى.";
+      toastError(message);
     } finally {
       setSubmitting(false);
     }
@@ -415,7 +341,9 @@ export default function RegisterPage() {
                         >
                           <div className="flex items-center gap-2 mb-4 p-3 rounded-xl bg-primary/10 border border-primary/30">
                             <Building2 className="w-5 h-5 text-primary shrink-0" />
-                            <p className="text-sm text-primary/70">أدخل معلومات شركتك لبدء التسجيل</p>
+                            <p className="text-sm text-primary/70">
+                              أدخل معلومات شركتك لبدء التسجيل
+                            </p>
                           </div>
                           <CustomInput
                             name="company_name"
@@ -460,7 +388,9 @@ export default function RegisterPage() {
                         >
                           <div className="flex items-center gap-2 mb-4 p-3 rounded-xl bg-accent/10 border border-purple-800/30">
                             <User className="w-5 h-5 text-accent-foreground shrink-0" />
-                            <p className="text-sm text-accent-foreground">هذا الحساب سيكون مدير الشركة</p>
+                            <p className="text-sm text-accent-foreground">
+                              هذا الحساب سيكون مدير الشركة
+                            </p>
                           </div>
                           <CustomInput
                             name="admin_name"
@@ -535,8 +465,6 @@ export default function RegisterPage() {
                             {PLANS.map((plan) => (
                               <motion.div
                                 key={plan.key}
-                                
-                                
                                 className={`relative rounded-xl border-2 p-4 cursor-pointer transition-all ${
                                   selectedPlan === plan.key
                                     ? "border-primary bg-primary/10 shadow-md scale-[1.02]"
@@ -555,9 +483,7 @@ export default function RegisterPage() {
                                 <div className="flex items-center justify-between">
                                   <div>
                                     <div className="flex items-center gap-2">
-                                      <span className="font-bold text-foreground">
-                                        {plan.name}
-                                      </span>
+                                      <span className="font-bold text-foreground">{plan.name}</span>
                                       {selectedPlan === plan.key && (
                                         <Check className="w-4 h-4 text-primary" />
                                       )}
@@ -661,10 +587,7 @@ export default function RegisterPage() {
 
                     <p className="text-center text-sm text-muted-foreground mt-4">
                       لديك حساب بالفعل؟{" "}
-                      <a
-                        href="/login"
-                        className="text-primary hover:underline font-medium"
-                      >
+                      <a href="/login" className="text-primary hover:underline font-medium">
                         تسجيل الدخول
                       </a>
                     </p>

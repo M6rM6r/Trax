@@ -6,23 +6,42 @@ import { geofencesApi } from "./geofences";
 import { getCompanyId, ensureAuth } from "./helpers";
 
 const EMPTY_STATS: DashboardStats = {
-  totalEmployees: 0, activeEmployees: 0, inactiveEmployees: 0,
-  presentToday: 0, absentToday: 0, lateToday: 0, checkedOutToday: 0,
-  onTimeRate: 0, avgCheckInTime: "N/A", avgWorkedHours: 0,
-  totalGeofences: 0, fieldToday: 0, officeToday: 0, hourlyToday: 0,
+  totalEmployees: 0,
+  activeEmployees: 0,
+  inactiveEmployees: 0,
+  presentToday: 0,
+  absentToday: 0,
+  lateToday: 0,
+  checkedOutToday: 0,
+  onTimeRate: 0,
+  avgCheckInTime: "N/A",
+  avgWorkedHours: 0,
+  totalGeofences: 0,
+  fieldToday: 0,
+  officeToday: 0,
+  hourlyToday: 0,
 };
 const EMPTY_TRENDS: DashboardTrendsSchema = {
-  weeklyData: [], peakHoursData: [], employeeGrowth: 0,
-  presentChange: 0, lateChange: 0, absentChange: 0, onTimeRateChange: 0,
+  weeklyData: [],
+  peakHoursData: [],
+  employeeGrowth: 0,
+  presentChange: 0,
+  lateChange: 0,
+  absentChange: 0,
+  onTimeRateChange: 0,
 };
 
 export const dashboardApi = {
-  async getDashboardData(): Promise<{
+  async getDashboardData({ from, to }: { from?: string; to?: string } = {}): Promise<{
     stats: DashboardStats;
     trends: DashboardTrendsSchema;
   }> {
     // Ensure user is authenticated first
-    try { await ensureAuth(); } catch { return { stats: EMPTY_STATS, trends: EMPTY_TRENDS }; }
+    try {
+      await ensureAuth();
+    } catch {
+      return { stats: EMPTY_STATS, trends: EMPTY_TRENDS };
+    }
     // If no company assigned yet, return empty dashboard
     if (!getCompanyId()) {
       return { stats: EMPTY_STATS, trends: EMPTY_TRENDS };
@@ -37,12 +56,16 @@ export const dashboardApi = {
         attendanceApi.list(),
         geofencesApi.list(),
       ]);
-    } catch {
-      return { stats: EMPTY_STATS, trends: EMPTY_TRENDS };
+    } catch (error) {
+      throw error;
     }
-    const today = new Date();
-    const todayStr = today.toLocaleDateString("sv-SE");
+    const referenceDate = to ? new Date(to + "T00:00:00") : new Date();
+    const todayStr = to ?? referenceDate.toLocaleDateString("sv-SE");
     const todayRecords = attendance.filter((record) => record.date === todayStr);
+    const rangeRecords =
+      from && to
+        ? attendance.filter((record) => record.date >= from && record.date <= to)
+        : attendance;
     const presentToday = todayRecords.filter(
       (record) => record.status === "present" || record.status === "checked_out"
     ).length;
@@ -86,7 +109,7 @@ export const dashboardApi = {
       avgWorkedHours: number;
     }[] = [];
     for (let i = 6; i >= 0; i--) {
-      const d = new Date(today);
+      const d = new Date(referenceDate);
       d.setDate(d.getDate() - i);
       const dateStr = d.toLocaleDateString("sv-SE");
       const dayRecords = attendance.filter((r) => r.date === dateStr);
@@ -109,7 +132,7 @@ export const dashboardApi = {
     }
     const peakHoursData: { hour: string; count: number }[] = [];
     for (let h = 6; h <= 19; h++) {
-      const count = attendance.filter((r) => {
+      const count = rangeRecords.filter((r) => {
         const checkInHour = parseInt(r.checkInTime?.split(":")[0] ?? "0", 10);
         return checkInHour === h;
       }).length;

@@ -59,18 +59,14 @@ export default function NotFound() {
           🗺️ {t("title")}
         </h1>
 
-        <p className="text-muted-foreground mb-3 text-lg leading-relaxed">
-          {t("subtitle")}
-        </p>
+        <p className="text-muted-foreground mb-3 text-lg leading-relaxed">{t("subtitle")}</p>
 
         <p className="text-muted-foreground mb-6 text-sm">{t("description")}</p>
 
         {/* Suggestions */}
-        <div className="bg-primary/5 border border-primary/20 border-primary/30 rounded-lg p-4 mb-6 text-right">
-          <h3 className="text-primary text-primary font-semibold mb-2">
-            💡 {t("suggestions.title")}
-          </h3>
-          <ul className="text-primary text-primary/70 text-sm space-y-1">
+        <div className="bg-primary/5 border border-primary/30 rounded-lg p-4 mb-6 text-right">
+          <h3 className="text-primary font-semibold mb-2">💡 {t("suggestions.title")}</h3>
+          <ul className="text-primary/70 text-sm space-y-1">
             <li>• {t("suggestions.checkUrl")}</li>
             <li>• {t("suggestions.goBack")}</li>
             <li>• {t("suggestions.goHome")}</li>
@@ -82,9 +78,7 @@ export default function NotFound() {
         <div className="bg-[hsl(48_96%_53%/0.1)] dark:bg-[hsl(48_96%_53%/0.1)] border border-[hsl(48_96%_53%/0.2)] dark:border-[hsl(48_96%_53%/0.3)] rounded-lg p-3 mb-6">
           <p className="text-[hsl(48_96%_53%)] text-sm font-medium">
             {t("redirectMessage")}{" "}
-            <span className="font-bold text-[hsl(48_96%_53%)] text-lg">
-              {countdown}
-            </span>{" "}
+            <span className="font-bold text-[hsl(48_96%_53%)] text-lg">{countdown}</span>{" "}
             {t("seconds")}
           </p>
         </div>

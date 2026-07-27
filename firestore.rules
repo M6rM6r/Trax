@@ -66,6 +66,8 @@ service cloud.firestore {
       allow read: if signedIn() && (
         resource.data.company_id == userCompanyId()
         || manager()
+        || resource.data.authUid == request.auth.uid
+        || resource.data.email == request.auth.token.email
       );
       allow create: if manager()
         && request.resource.data.company_id == userCompanyId();

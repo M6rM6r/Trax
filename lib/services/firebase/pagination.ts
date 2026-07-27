@@ -2,13 +2,11 @@ import {
   collection,
   query,
   where,
-  orderBy,
   limit,
   startAfter,
   getDocs,
   type QueryConstraint,
   type DocumentSnapshot,
-  type Query,
 } from "firebase/firestore";
 import { requireDb } from "./helpers";
 

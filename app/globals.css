@@ -109,11 +109,32 @@
   .light {
     color-scheme: light;
   }
+  html {
+    font-size: var(--base-font-size);
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
   body {
     @apply bg-background text-foreground;
+    min-width: 320px;
+    font-feature-settings:
+      "kern" 1,
+      "liga" 1,
+      "tnum" 1;
     transition:
       background-color 0.2s ease,
       color 0.2s ease;
+  }
+  button,
+  input,
+  select,
+  textarea {
+    font: inherit;
+  }
+  ::selection {
+    background: hsl(var(--primary) / 0.3);
+    color: hsl(var(--foreground));
   }
   *:focus-visible {
     @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background rounded-sm;
@@ -173,6 +194,23 @@
   .animate-slide-up {
     animation: slide-up 0.3s ease-out both;
   }
+  .surface-panel {
+    @apply border border-border/80 bg-card shadow-[0_1px_2px_hsl(var(--background)/0.32),0_12px_32px_hsl(var(--background)/0.12)];
+  }
+  .text-quiet {
+    @apply text-xs font-medium tracking-wide text-muted-foreground;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 
 @layer components {
@@ -201,6 +239,10 @@
 input {
   outline: none;
   text-align: start;
+}
+select option {
+  background-color: hsl(var(--card));
+  color: hsl(var(--foreground));
 }
 .hideScrollbar {
   -ms-overflow-style: none;
@@ -283,7 +325,6 @@ input {
   }
 }
 
-
 /* .prevent-arrows::-webkit-inner-spin-button,
 .prevent-arrows::-webkit-outer-spin-button {
   -webkit-appearance: none !important;
@@ -365,7 +406,6 @@ html {
   outline: 2px solid hsl(var(--ring));
   outline-offset: 2px;
 }
-
 
 button,
 a,

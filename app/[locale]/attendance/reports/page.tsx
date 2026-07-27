@@ -60,7 +60,7 @@ const CustomTooltip = ({ active, payload, label }: CustomTooltipProps) => {
     return (
       <div className="bg-card border border-border rounded-xl p-3 shadow-xl">
         <p className="font-bold text-foreground text-sm">{label}</p>
-        <p className="text-sm text-muted-foreground text-muted-foreground">
+        <p className="text-sm text-muted-foreground">
           العدد: <span className="font-semibold">{payload[0].value}</span>
         </p>
       </div>
@@ -217,12 +217,8 @@ export default function AttendanceReportsPage() {
                 <CardContent className="pt-6">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm text-muted-foreground text-muted-foreground">
-                        نسبة الحضور في الوقت
-                      </p>
-                      <p className="text-3xl font-black text-primary mt-1">
-                        {onTimeRate}%
-                      </p>
+                      <p className="text-sm text-muted-foreground">نسبة الحضور في الوقت</p>
+                      <p className="text-3xl font-black text-primary mt-1">{onTimeRate}%</p>
                     </div>
                     <TrendingUp className="w-8 h-8 text-primary" />
                   </div>
@@ -232,7 +228,7 @@ export default function AttendanceReportsPage() {
                 <CardContent className="pt-6">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm text-muted-foreground text-muted-foreground">متوسط التأخير</p>
+                      <p className="text-sm text-muted-foreground">متوسط التأخير</p>
                       <p className="text-3xl font-black text-[hsl(48_96%_53%)] mt-1">
                         {avgLateMinutes} د
                       </p>
@@ -245,10 +241,8 @@ export default function AttendanceReportsPage() {
                 <CardContent className="pt-6">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm text-muted-foreground text-muted-foreground">إجمالي السجلات</p>
-                      <p className="text-3xl font-black text-primary mt-1">
-                        {attendance.length}
-                      </p>
+                      <p className="text-sm text-muted-foreground">إجمالي السجلات</p>
+                      <p className="text-3xl font-black text-primary mt-1">{attendance.length}</p>
                     </div>
                     <BarChart3 className="w-8 h-8 text-primary" />
                   </div>
@@ -258,10 +252,8 @@ export default function AttendanceReportsPage() {
                 <CardContent className="pt-6">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm text-muted-foreground text-muted-foreground">أيام التأخير</p>
-                      <p className="text-3xl font-black text-destructive mt-1">
-                        {lateCount}
-                      </p>
+                      <p className="text-sm text-muted-foreground">أيام التأخير</p>
+                      <p className="text-3xl font-black text-destructive mt-1">{lateCount}</p>
                     </div>
                     <BarChart3 className="w-8 h-8 text-destructive" />
                   </div>
@@ -294,22 +286,20 @@ export default function AttendanceReportsPage() {
                 </CardHeader>
                 <CardContent className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <p className="text-sm text-muted-foreground text-muted-foreground">
-                      درجة الاحتفاظ المتوقعة
-                    </p>
+                    <p className="text-sm text-muted-foreground">درجة الاحتفاظ المتوقعة</p>
                     <span className="text-2xl font-black text-primary">
                       {retentionInsights.retentionScore}%
                     </span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <p className="text-sm text-muted-foreground text-muted-foreground">مستوى المخاطر</p>
+                    <p className="text-sm text-muted-foreground">مستوى المخاطر</p>
                     <span
                       className={`px-2.5 py-1 rounded-full text-xs font-bold ${
                         retentionInsights.riskLevel === "low"
-                          ? "bg-primary/10 text-primary bg-primary/10 text-primary"
+                          ? "bg-primary/10 text-primary"
                           : retentionInsights.riskLevel === "medium"
-                            ? "bg-[hsl(48_96%_53%/0.15)] text-[hsl(48_96%_53%)] "
-                            : "bg-destructive/10 text-destructive bg-destructive/10 text-destructive"
+                            ? "bg-[hsl(48_96%_53%/0.15)] text-[hsl(48_96%_53%)]"
+                            : "bg-destructive/10 text-destructive"
                       }`}
                     >
                       {retentionInsights.riskLevel === "low"
@@ -319,9 +309,7 @@ export default function AttendanceReportsPage() {
                           : "مرتفع"}
                     </span>
                   </div>
-                  <p className="text-sm text-muted-foreground">
-                    {retentionInsights.summary}
-                  </p>
+                  <p className="text-sm text-muted-foreground">{retentionInsights.summary}</p>
                   {retentionInsights.recommendedActions.length > 0 && (
                     <ul className="list-disc pr-5 text-sm text-muted-foreground space-y-1">
                       {retentionInsights.recommendedActions.map((action) => (
@@ -382,9 +370,7 @@ export default function AttendanceReportsPage() {
                           className="flex items-center justify-between rounded-xl bg-muted/50 px-3 py-2"
                         >
                           <div>
-                            <p className="text-sm font-semibold text-foreground">
-                              {emp.name}
-                            </p>
+                            <p className="text-sm font-semibold text-foreground">{emp.name}</p>
                             <p className="text-xs text-muted-foreground">
                               {emp.lateCount} مرات تأخير
                             </p>
@@ -412,20 +398,14 @@ export default function AttendanceReportsPage() {
                 </CardHeader>
                 <CardContent>
                   {departmentPerformance.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">
-                      لا توجد بيانات كافية للأقسام.
-                    </p>
+                    <p className="text-sm text-muted-foreground">لا توجد بيانات كافية للأقسام.</p>
                   ) : (
                     <div className="space-y-3">
                       {departmentPerformance.map((dept) => (
                         <div key={dept.department}>
                           <div className="flex items-center justify-between text-sm mb-1">
-                            <span className="font-medium text-foreground">
-                              {dept.department}
-                            </span>
-                            <span className="font-bold text-primary">
-                              {dept.rate}%
-                            </span>
+                            <span className="font-medium text-foreground">{dept.department}</span>
+                            <span className="font-bold text-primary">{dept.rate}%</span>
                           </div>
                           <div className="h-2 rounded-full bg-muted overflow-hidden">
                             <div

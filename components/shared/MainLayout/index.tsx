@@ -2,7 +2,15 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { NavMain } from "@/components/Sidebar/nav-main";
 import { usePathname, useRouter, Link } from "@/i18n/navigation";
-import { Category, CheckCircle, Logout, Profile, ShieldTick, Location, Setting2 } from "@/public/SVG";
+import {
+  Category,
+  CheckCircle,
+  Logout,
+  Profile,
+  ShieldTick,
+  Location,
+  Setting2,
+} from "@/public/SVG";
 import { Building2 } from "lucide-react";
 
 import { signOut } from "firebase/auth";
@@ -36,9 +44,11 @@ import NotificationCenter from "../NotificationCenter";
 const Index = ({
   children,
   showSidebar = true,
+  bare = false,
 }: {
   children: React.ReactNode;
   showSidebar?: boolean;
+  bare?: boolean;
 }) => {
   const pathname = usePathname();
   const locale = useLocale();
@@ -143,7 +153,15 @@ const Index = ({
   // Show a minimal spinner until auth state is resolved to avoid flashing the
   // dashboard skeleton/layout to unauthenticated users.
   const effectiveUser = user ?? storedUser.current;
-  if (!authReady || (!effectiveUser && !pathname.includes("/login") && !pathname.includes("/register") && !pathname.includes("/forgot-password") && !pathname.includes("/reset-password") && !pathname.includes("/mastermind"))) {
+  if (
+    !authReady ||
+    (!effectiveUser &&
+      !pathname.includes("/login") &&
+      !pathname.includes("/register") &&
+      !pathname.includes("/forgot-password") &&
+      !pathname.includes("/reset-password") &&
+      !pathname.includes("/mastermind"))
+  ) {
     return (
       <div className="w-screen min-h-screen flex items-center justify-center bg-background">
         <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
@@ -163,79 +181,79 @@ const Index = ({
       <TopLoadingBar />
       <OfflineBanner />
 
-      <nav
-        className="fixed top-0 z-[49] w-full bg-card border-b border-border"
-        style={{ paddingTop: "env(safe-area-inset-top)" }}
-        aria-label="الرأس"
-      >
-        <header className="flex items-center justify-between gap-4 px-4 md:px-6 h-14">
-          <div className="flex items-center gap-3">
-            <Link href="/" className="flex items-center gap-2">
-              <Image
-                src="/images/logo.png"
-                alt="Trax"
-                width={28}
-                height={28}
-                className="h-7 w-auto object-contain"
-                unoptimized
-                onError={(e) => {
-                  (e.currentTarget as HTMLImageElement).style.display = "none";
-                }}
-              />
-            </Link>
-          </div>
-
-          <div className="flex items-center gap-2 md:gap-4">
-            <div className="flex items-center gap-2 md:gap-3 md:border-l md:border-border md:ps-4">
-              <NotificationCenter />
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <button
-                    className="flex items-center gap-2 rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                    aria-label="قائمة المستخدم"
-                  >
-                    <UserAvatar user={user} className="w-8 h-8" />
-                    <span className="hidden md:inline text-sm font-medium text-foreground">
-                      {user?.name || "المستخدم"}
-                    </span>
-                  </button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56" sideOffset={8}>
-                  <div className="px-3 py-2">
-                    <p className="text-sm font-medium text-foreground truncate">
-                      {user?.name || "المستخدم"}
-                    </p>
-                    <p className="text-xs text-muted-foreground truncate">
-                      {user?.email || ""}
-                    </p>
-                  </div>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    onClick={logOut}
-                    className="text-destructive focus:bg-destructive/10 cursor-pointer"
-                  >
-                    <Logout className="w-4 h-4 me-2" />
-                    تسجيل الخروج
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+      {!bare && (
+        <nav
+          className="fixed top-0 z-[49] w-full bg-card border-b border-border"
+          style={{ paddingTop: "env(safe-area-inset-top)" }}
+          aria-label="الرأس"
+        >
+          <header className="mx-auto flex h-16 w-full max-w-[110rem] items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
+            <div className="flex items-center gap-3">
+              <Link href="/" className="flex items-center gap-2">
+                <Image
+                  src="/images/logo.png"
+                  alt="Trax"
+                  width={28}
+                  height={28}
+                  className="h-7 w-auto object-contain"
+                  unoptimized
+                  onError={(e) => {
+                    (e.currentTarget as HTMLImageElement).style.display = "none";
+                  }}
+                />
+              </Link>
             </div>
-          </div>
-        </header>
-      </nav>
 
-      {showSidebar && isSidebarOpen && (
+            <div className="flex items-center gap-2 md:gap-4">
+              <div className="flex items-center gap-2 md:gap-3 md:border-l md:border-border md:ps-4">
+                <NotificationCenter />
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button
+                      className="flex items-center gap-2 rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      aria-label="قائمة المستخدم"
+                    >
+                      <UserAvatar user={user} className="w-8 h-8" />
+                      <span className="hidden md:inline text-sm font-medium text-foreground">
+                        {user?.name || "المستخدم"}
+                      </span>
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-56" sideOffset={8}>
+                    <div className="px-3 py-2">
+                      <p className="text-sm font-medium text-foreground truncate">
+                        {user?.name || "المستخدم"}
+                      </p>
+                      <p className="text-xs text-muted-foreground truncate">{user?.email || ""}</p>
+                    </div>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      onClick={logOut}
+                      className="text-destructive focus:bg-destructive/10 cursor-pointer"
+                    >
+                      <Logout className="w-4 h-4 me-2" />
+                      تسجيل الخروج
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            </div>
+          </header>
+        </nav>
+      )}
+
+      {showSidebar && !bare && isSidebarOpen && (
         <div
           className="fixed inset-0 z-30 bg-black/60 lg:hidden"
           onClick={() => setIsSidebarOpen(false)}
         />
       )}
 
-      {showSidebar && (
+      {showSidebar && !bare && (
         <aside
           id="logo-sidebar"
           className={cn(
-            "fixed top-0 z-40 w-60 h-screen pt-14 transition-transform bg-sidebar border-e border-sidebar-border lg:translate-x-0",
+            "fixed top-0 z-40 h-screen w-64 border-e border-sidebar-border bg-sidebar pt-16 transition-transform lg:translate-x-0",
             locale === "ar"
               ? isSidebarOpen
                 ? "translate-x-0"
@@ -245,7 +263,7 @@ const Index = ({
                 : "-translate-x-full"
           )}
         >
-          <div className="h-full px-3 pb-4 flex flex-col justify-between">
+          <div className="flex h-full flex-col justify-between px-3 py-4">
             <NavMain
               items={
                 role === "employee"
@@ -317,15 +335,18 @@ const Index = ({
         id="main-content"
         tabIndex={-1}
         className={cn(
-          "flex flex-col min-h-screen pt-14 pb-24 lg:pb-6 px-4 md:px-8 max-w-7xl mx-auto transition-all scroll-mt-14 focus:outline-none",
-          showSidebar && "lg:ms-60"
+          "flex min-h-screen w-full flex-col transition-all scroll-mt-16 focus:outline-none",
+          bare ? "pt-0 pb-0" : "pt-16 pb-24 lg:pb-8",
+          showSidebar && !bare && "lg:ms-64 lg:w-[calc(100%-16rem)]"
         )}
       >
-        <div className="py-4">
-          <Breadcrumb />
-        </div>
-        {children}
-        <MobileBottomNav />
+        {!bare && (
+          <div className="w-full px-4 py-4 sm:px-6 lg:px-8">
+            <Breadcrumb />
+          </div>
+        )}
+        <div className="w-full max-w-[110rem]">{children}</div>
+        {!bare && <MobileBottomNav />}
       </main>
       <CommandPalette />
       <ShortcutsHelp />

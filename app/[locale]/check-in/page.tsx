@@ -2,20 +2,9 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import MainLayout from "@/components/shared/MainLayout";
-import UserAvatar from "@/components/shared/Avatar";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import {
-  CheckCircle,
-  LogOut,
-  WifiOff,
-  RefreshCw,
-  MapPin,
-  Clock,
-  Briefcase,
-  RotateCcw,
-} from "lucide-react";
+import { CheckCircle, LogOut, WifiOff, RefreshCw, MapPin, Clock, Briefcase } from "lucide-react";
 import { useCheckIn, useCheckOut, useGeofences, useEmployees, useAttendance } from "@/hooks/useApi";
 import { hapticSuccess, hapticError, hapticTap } from "@/lib/utils/haptics";
 import { fireConfetti } from "@/lib/utils/confetti";
@@ -34,9 +23,9 @@ function LiveClock() {
   useEffect(() => {
     const update = () => {
       const now = new Date();
-      setTime(now.toLocaleTimeString("ar-SA", { hour: "2-digit", minute: "2-digit" }));
+      setTime(now.toLocaleTimeString("ar-SA-u-nu-latn", { hour: "2-digit", minute: "2-digit" }));
       setDate(
-        now.toLocaleDateString("ar-SA", {
+        now.toLocaleDateString("ar-SA-u-nu-latn", {
           weekday: "long",
           month: "long",
           day: "numeric",
@@ -76,9 +65,12 @@ export default function CheckInPage() {
     (r) => r.date === todayStr && String(r.employeeId) === String(user?.employee_id)
   );
 
-  const currentEmployee = employees.find((e) => String(e.id) === String(user?.employee_id));
+  const currentEmployee = employees.find(
+    (e) =>
+      String(e.id) === String(user?.employee_id) ||
+      (user?.email && e.email?.toLowerCase() === user.email.toLowerCase())
+  );
   const [currentLocation, setCurrentLocation] = useState<{ lat: number; lng: number } | null>(null);
-  const [locationError, setLocationError] = useState<string | null>(null);
   const [nearestGeofence, setNearestGeofence] = useState<{
     geofence: Geofence;
     distance: number;
@@ -131,7 +123,6 @@ export default function CheckInPage() {
 
   const updateFromPosition = useCallback((position: GeolocationPosition) => {
     const { latitude, longitude } = position.coords;
-    setLocationError(null);
     setCurrentLocation({ lat: latitude, lng: longitude });
 
     let closest: { geofence: Geofence; distance: number } | null = null;
@@ -145,23 +136,11 @@ export default function CheckInPage() {
   }, []);
 
   const handleLocationError = useCallback((err: GeolocationPositionError) => {
-    let message = "تعذر الحصول على الموقع";
-    if (err.code === err.PERMISSION_DENIED) {
-      message = "تم رفض إذن الموقع — يرجى السماح بالوصول للموقع في إعدادات المتصفح";
-    } else if (err.code === err.POSITION_UNAVAILABLE) {
-      message = "تعذر تحديد الموقع — تأكد من تفعيل GPS";
-    } else if (err.code === err.TIMEOUT) {
-      message = "انتهت مهلة تحديد الموقع — حاول مرة أخرى";
-    }
     console.warn("[geolocation] error:", err.code, err.message);
-    setLocationError(message);
   }, []);
 
   const refreshLocation = useCallback(() => {
-    if (!navigator.geolocation) {
-      setLocationError("الموقع غير مدعوم على هذا الجهاز");
-      return;
-    }
+    if (!navigator.geolocation) return;
     navigator.geolocation.getCurrentPosition(updateFromPosition, handleLocationError, {
       enableHighAccuracy: true,
       timeout: 15000,
@@ -170,10 +149,7 @@ export default function CheckInPage() {
   }, [updateFromPosition, handleLocationError]);
 
   useEffect(() => {
-    if (!navigator.geolocation) {
-      setLocationError("الموقع غير مدعوم على هذا الجهاز");
-      return;
-    }
+    if (!navigator.geolocation) return;
     refreshLocation();
     const id = navigator.geolocation.watchPosition(updateFromPosition, handleLocationError, {
       enableHighAccuracy: true,
@@ -231,7 +207,9 @@ export default function CheckInPage() {
             allowCheckInOutsideGeofence: companySettings.allowCheckInOutsideGeofence,
           });
           const now = new Date();
-          setCheckInTime(now.toLocaleTimeString("ar-SA", { hour: "2-digit", minute: "2-digit" }));
+          setCheckInTime(
+            now.toLocaleTimeString("ar-SA-u-nu-latn", { hour: "2-digit", minute: "2-digit" })
+          );
           setCheckInTimestamp(now.getTime());
           setCheckInStatus("success");
           setShowBurst(true);
@@ -284,7 +262,9 @@ export default function CheckInPage() {
             employee: currentEmployee ?? null,
           });
           const now = new Date();
-          setCheckInTime(now.toLocaleTimeString("ar-SA", { hour: "2-digit", minute: "2-digit" }));
+          setCheckInTime(
+            now.toLocaleTimeString("ar-SA-u-nu-latn", { hour: "2-digit", minute: "2-digit" })
+          );
           setCheckInTimestamp(now.getTime());
           setCheckInStatus("success");
           setShowBurst(true);
@@ -362,7 +342,7 @@ export default function CheckInPage() {
       });
       const nowOffline = new Date();
       setCheckInTime(
-        nowOffline.toLocaleTimeString("ar-SA", { hour: "2-digit", minute: "2-digit" })
+        nowOffline.toLocaleTimeString("ar-SA-u-nu-latn", { hour: "2-digit", minute: "2-digit" })
       );
       setCheckInTimestamp(nowOffline.getTime());
       setCheckInStatus("success");
@@ -417,7 +397,9 @@ export default function CheckInPage() {
       });
 
       const now = new Date();
-      setCheckInTime(now.toLocaleTimeString("ar-SA", { hour: "2-digit", minute: "2-digit" }));
+      setCheckInTime(
+        now.toLocaleTimeString("ar-SA-u-nu-latn", { hour: "2-digit", minute: "2-digit" })
+      );
       setCheckInTimestamp(now.getTime());
       setCheckInStatus("success");
       setShowBurst(true);
@@ -430,11 +412,7 @@ export default function CheckInPage() {
       console.error("[check-in] failed:", err);
       setCheckInStatus("idle");
       const errMsg = err instanceof Error ? err.message : String(err);
-      if (
-        errMsg === "AUTH_EXPIRED" ||
-        errMsg.includes("permission") ||
-        errMsg.includes("PERMISSION")
-      ) {
+      if (errMsg === "AUTH_EXPIRED") {
         toastError("انتهت الجلسة — يرجى تسجيل الدخول مرة أخرى");
         setTimeout(() => {
           if (typeof window !== "undefined") {
@@ -443,6 +421,13 @@ export default function CheckInPage() {
             window.location.href = `/${detectedLocale}/login?reason=session_expired`;
           }
         }, 1500);
+      } else if (errMsg === "NO_COMPANY") {
+        toastError("تعذر تحديد الشركة — يرجى تسجيل الدخول مرة أخرى");
+      } else if (
+        errMsg.includes("Missing or insufficient permissions") ||
+        errMsg.includes("permission-denied")
+      ) {
+        toastError("لا يوجد صلاحية لتسجيل الحضور — تأكد من ربط حسابك بالشركة");
       } else {
         toastError("فشل تسجيل الحضور — تأكد من اتصال الإنترنت وحاول مرة أخرى");
       }
@@ -475,7 +460,7 @@ export default function CheckInPage() {
           timestamp: Date.now(),
         });
         setCheckOutTime(
-          new Date().toLocaleTimeString("ar-SA", { hour: "2-digit", minute: "2-digit" })
+          new Date().toLocaleTimeString("ar-SA-u-nu-latn", { hour: "2-digit", minute: "2-digit" })
         );
         autoCheckInTriggered.current = false;
         hapticSuccess();
@@ -485,7 +470,7 @@ export default function CheckInPage() {
 
       await checkOutMutation.mutateAsync({ employeeId: user.employee_id });
       setCheckOutTime(
-        new Date().toLocaleTimeString("ar-SA", { hour: "2-digit", minute: "2-digit" })
+        new Date().toLocaleTimeString("ar-SA-u-nu-latn", { hour: "2-digit", minute: "2-digit" })
       );
       autoCheckInTriggered.current = false;
       hapticSuccess();
@@ -498,9 +483,7 @@ export default function CheckInPage() {
     }
   };
 
-  const avatarUser = user
-    ? { id: user.id, name: user.name, email: user.email, avatar: user.profile_image || null }
-    : null;
+  const employeeName = currentEmployee?.name || user?.name || "موظف";
 
   const dayComplete = !!checkOutTime;
   const checkedIn = checkInStatus === "success" && !dayComplete;
@@ -508,40 +491,46 @@ export default function CheckInPage() {
   const statusMeta = dayComplete
     ? {
         label: "انتهى الدوام",
-        color: "bg-muted text-muted-foreground/50 bg-card text-muted-foreground",
+        color: "bg-muted-foreground text-primary-foreground",
         icon: Briefcase,
       }
     : checkedIn
       ? {
           label: "مسجل حضور",
-          color: "bg-primary/10 text-primary bg-primary/10 text-primary",
+          color: "bg-primary text-primary-foreground",
           icon: CheckCircle,
         }
       : {
           label: "لم يُسجل اليوم",
-          color: "bg-[hsl(48_96%_53%/0.15)] text-[hsl(48_96%_53%)] ",
+          color: "bg-amber-500 text-primary-foreground",
           icon: Clock,
         };
 
   return (
-    <MainLayout>
-      <div className="flex flex-col gap-4 max-w-md mx-auto pb-8">
+    <MainLayout bare>
+      <div className="flex flex-col gap-4 max-w-md mx-auto px-4 pt-[env(safe-area-inset-top)] pb-8 min-h-screen justify-center">
         {/* Employee Welcome Header */}
-        <Card className="border-0 shadow-md bg-gradient-to-br from-primary to-primary/80 text-primary-foreground overflow-hidden">
-          <CardContent className="p-4 flex items-center gap-3">
-            <UserAvatar user={avatarUser} size="lg" className="border-2 border-background/30" />
-            <div className="flex-1 min-w-0">
-              <h2 className="text-base font-bold truncate">{user?.name || "موظف"}</h2>
-              <p className="text-[10px] text-primary/80 truncate opacity-80">
-                {companyName || user?.email}
-              </p>
+        <Card className="relative overflow-hidden border border-border/50 bg-card shadow-md">
+          <div className="absolute top-0 left-0 w-1 h-full bg-primary" />
+          <CardContent className="relative p-4 flex flex-col gap-3">
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex-1 min-w-0">
+                <p className="text-[10px] text-muted-foreground uppercase tracking-wider">مرحباً</p>
+                <h2 className="text-xl font-bold text-foreground truncate">{employeeName}</h2>
+                <p className="text-xs text-primary font-medium truncate">
+                  {companyName || currentEmployee?.department || user?.email}
+                </p>
+              </div>
+              <span
+                className={cn(
+                  "shrink-0 inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-semibold",
+                  statusMeta.color
+                )}
+              >
+                <statusMeta.icon className="w-3 h-3" />
+                {statusMeta.label}
+              </span>
             </div>
-            <Badge
-              className={cn("text-[10px] px-2 py-0.5 rounded-full border-0", statusMeta.color)}
-            >
-              <statusMeta.icon className="w-3 h-3 ms-1" />
-              {statusMeta.label}
-            </Badge>
           </CardContent>
         </Card>
 
@@ -585,7 +574,6 @@ export default function CheckInPage() {
                   key={checkInStatus + (dayComplete ? "-done" : "")}
                   initial={{ scale: 0.8, opacity: 0 }}
                   animate={{ scale: 1, opacity: 1 }}
-                  
                   onClick={handleCheckIn}
                   disabled={
                     checkInStatus === "success" || checkInStatus === "loading" || dayComplete
@@ -600,14 +588,14 @@ export default function CheckInPage() {
                           : "تسجيل الحضور"
                   }
                   className={cn(
-                    "w-40 h-40 rounded-full flex flex-col items-center justify-center gap-2 shadow-2xl shadow-primary/20 transition-all border-4",
+                    "w-44 h-44 rounded-full flex flex-col items-center justify-center gap-2 shadow-2xl transition-all border-4 active:scale-95",
                     dayComplete
-                      ? "bg-muted-foreground/30 text-muted-foreground/50 border-border bg-card text-muted-foreground/70 border-border"
+                      ? "bg-card text-muted-foreground/70 border-border shadow-muted/20"
                       : checkInStatus === "success"
-                        ? "bg-primary text-primary-foreground border-primary/20 border-primary/20"
-                        : checkInStatus === "outside"
-                          ? "bg-[hsl(48_96%_53%/0.1)]0 text-primary-foreground border-[hsl(48_96%_53%/0.2)] border-[hsl(48_96%_53%/0.2)]"
-                          : "bg-primary text-primary-foreground border-primary/20 border-primary/20"
+                        ? "bg-primary text-primary-foreground border-primary/20 shadow-primary/30"
+                        : checkInStatus === "outside" || !canCheckIn
+                          ? "bg-[hsl(48_96%_53%)] text-primary-foreground border-[hsl(48_96%_53%/0.3)] shadow-amber-500/30"
+                          : "bg-primary text-primary-foreground border-primary/20 shadow-primary/30"
                   )}
                 >
                   {checkInStatus === "loading" ? (
@@ -632,60 +620,74 @@ export default function CheckInPage() {
               </AnimatePresence>
             </div>
 
-            <p className="mt-5 text-xs font-medium text-muted-foreground">
-              {dayComplete
-                ? "انتهى"
-                : checkedIn
-                  ? checkInTime
-                  : isWithinRange
-                    ? "جاهز"
-                    : "خارج النطاق"}
-            </p>
+            <div className="mt-6 flex items-center justify-center gap-2">
+              {dayComplete ? (
+                <>
+                  <Briefcase className="w-4 h-4 text-muted-foreground" />
+                  <span className="text-sm font-semibold text-muted-foreground">انتهى الدوام</span>
+                </>
+              ) : checkedIn ? (
+                <>
+                  <CheckCircle className="w-4 h-4 text-primary" />
+                  <span className="text-sm font-semibold text-primary">
+                    مسجل حضور · {checkInTime}
+                  </span>
+                </>
+              ) : canCheckIn ? (
+                <>
+                  <CheckCircle className="w-4 h-4 text-primary" />
+                  <span className="text-sm font-semibold text-primary">جاهز للتسجيل</span>
+                </>
+              ) : (
+                <>
+                  <MapPin className="w-4 h-4 text-amber-500" />
+                  <span className="text-sm font-semibold text-amber-500">خارج النطاق</span>
+                </>
+              )}
+            </div>
           </CardContent>
         </Card>
 
         {/* Today Timeline */}
-        <Card className="border-0 shadow-md bg-background">
+        <Card className="border border-border/50 bg-card">
           <CardContent className="p-4">
-            <h3 className="text-xs font-bold text-foreground mb-3 flex items-center gap-2">
+            <h3 className="text-sm font-bold text-foreground mb-4 flex items-center gap-2">
               <Clock className="w-4 h-4 text-primary" />
               سجل اليوم
             </h3>
 
-            <div className="relative flex flex-col gap-0">
-              <div className="absolute right-[15px] top-2 bottom-2 w-0.5 bg-muted" />
+            <div className="relative flex flex-col gap-3">
+              <div className="absolute right-[17px] top-2 bottom-2 w-0.5 bg-border" />
 
               {/* Check-in entry */}
-              <div className="relative flex items-start gap-3 py-2">
+              <div className="relative flex items-start gap-3">
                 <div
                   className={cn(
-                    "z-10 w-3 h-3 rounded-full mt-1.5 ring-2 ring-background dark:ring-slate-900",
-                    checkInTime ? "bg-primary" : "bg-muted-foreground/30 bg-muted"
+                    "z-10 w-3.5 h-3.5 rounded-full mt-1 ring-2 ring-card",
+                    checkInTime ? "bg-primary" : "bg-muted"
                   )}
                 />
                 <div className="flex-1">
-                  <p className="text-xs font-bold text-foreground">الحضور</p>
-                  <p className="text-[10px] text-muted-foreground">
-                    {checkInTime || "--:--"}
-                  </p>
+                  <p className="text-sm font-bold text-foreground">الحضور</p>
+                  <p className="text-xs text-muted-foreground">{checkInTime || "--:--"}</p>
                 </div>
               </div>
 
               {/* Check-out entry */}
-              <div className="relative flex items-start gap-3 py-2">
+              <div className="relative flex items-start gap-3">
                 <div
                   className={cn(
-                    "z-10 w-3 h-3 rounded-full mt-1.5 ring-2 ring-background dark:ring-slate-900",
+                    "z-10 w-3.5 h-3.5 rounded-full mt-1 ring-2 ring-card",
                     checkOutTime
                       ? "bg-destructive"
                       : checkedIn
-                        ? "bg-muted-foreground/30 bg-muted animate-pulse"
-                        : "bg-muted-foreground/30 bg-muted"
+                        ? "bg-muted animate-pulse"
+                        : "bg-muted"
                   )}
                 />
                 <div className="flex-1">
-                  <p className="text-xs font-bold text-foreground">الانصراف</p>
-                  <p className="text-[10px] text-muted-foreground">
+                  <p className="text-sm font-bold text-foreground">الانصراف</p>
+                  <p className="text-xs text-muted-foreground">
                     {checkOutTime || (checkedIn ? "جاري الدوام" : "--:--")}
                   </p>
                 </div>
@@ -693,11 +695,11 @@ export default function CheckInPage() {
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="text-destructive text-[10px] gap-1 px-2 py-1 h-auto"
+                    className="text-destructive text-xs gap-1 px-2 py-1 h-auto hover:bg-destructive/10"
                     onClick={handleCheckOutClick}
                     disabled={checkOutStatus === "loading"}
                   >
-                    <LogOut className="w-3 h-3" />
+                    <LogOut className="w-3.5 h-3.5" />
                     {checkOutStatus === "loading" ? "جاري..." : "إنهاء"}
                   </Button>
                 )}
@@ -705,72 +707,17 @@ export default function CheckInPage() {
             </div>
 
             {checkedIn && (
-              <div className="mt-3 pt-3 border-t border-border flex items-center justify-between">
-                <span className="text-[10px] text-muted-foreground">مدة الدوام</span>
-                <span className="text-sm font-mono font-bold text-primary text-primary">
-                  {elapsedTime}
-                </span>
+              <div className="mt-4 pt-3 border-t border-border flex items-center justify-between">
+                <span className="text-xs text-muted-foreground">مدة الدوام</span>
+                <span className="text-base font-mono font-bold text-primary">{elapsedTime}</span>
               </div>
             )}
           </CardContent>
         </Card>
 
-        {/* Compact Location Status */}
-        <div
-          className={cn(
-            "flex items-center justify-between gap-3 px-4 py-3 rounded-xl border shadow-sm",
-            locationError
-              ? "bg-destructive/5 border-destructive/20 bg-destructive/10 border-destructive/20"
-              : isWithinRange
-                ? "bg-primary/5 border-primary/20 bg-primary/10 border-primary/20"
-                : "bg-[hsl(48_96%_53%/0.1)] border-[hsl(48_96%_53%/0.2)] dark:bg-[hsl(48_96%_53%/0.1)] border-[hsl(48_96%_53%/0.2)]"
-          )}
-        >
-          <div className="flex items-center gap-2 min-w-0">
-            <MapPin
-              className={cn(
-                "w-4 h-4 shrink-0",
-                locationError
-                  ? "text-destructive"
-                  : isWithinRange
-                    ? "text-primary"
-                    : "text-[hsl(48_96%_53%)]"
-              )}
-            />
-            <span className="text-xs font-medium truncate text-foreground">
-              {locationError
-                ? "تعذر تحديد الموقع"
-                : nearestGeofence
-                  ? nearestGeofence.geofence.name
-                  : "جاري تحديد الموقع..."}
-            </span>
-          </div>
-          <div className="flex items-center gap-2 shrink-0">
-            {!locationError && nearestGeofence && (
-              <span
-                className={cn(
-                  "text-[10px] px-2 py-0.5 rounded-full font-medium",
-                  isWithinRange
-                    ? "bg-primary/10 text-primary bg-primary/10 text-primary"
-                    : "bg-[hsl(48_96%_53%/0.15)] text-[hsl(48_96%_53%)] "
-                )}
-              >
-                {isWithinRange ? "جاهز" : "اقترب"}
-              </span>
-            )}
-            <button
-              onClick={refreshLocation}
-              className="p-1.5 rounded-md hover:bg-black/5 dark:hover:bg-background/10 text-muted-foreground"
-              aria-label="تحديث الموقع"
-            >
-              <RotateCcw className="w-3.5 h-3.5" />
-            </button>
-          </div>
-        </div>
-
         {/* Offline Banner */}
         {!isOnline && (
-          <div className="flex items-center gap-2 px-4 py-3 bg-[hsl(48_96%_53%/0.1)] text-[hsl(48_96%_53%)] rounded-xl border border-[hsl(48_96%_53%/0.2)] border-[hsl(48_96%_53%/0.2)]">
+          <div className="flex items-center gap-2 px-4 py-3 bg-[hsl(48_96%_53%/0.1)] text-[hsl(48_96%_53%)] rounded-xl border border-[hsl(48_96%_53%/0.2)]">
             <WifiOff className="w-4 h-4 shrink-0" />
             <span className="text-[11px] font-bold">تعمل بدون اتصال · سيتم المزامنة لاحقاً</span>
           </div>
@@ -794,9 +741,7 @@ export default function CheckInPage() {
               onClick={(e) => e.stopPropagation()}
               className="w-full max-w-sm bg-background rounded-2xl shadow-2xl p-6 space-y-4"
             >
-              <h3 className="text-lg font-bold text-foreground text-primary-foreground text-center">
-                تأكيد الانصراف
-              </h3>
+              <h3 className="text-lg font-bold text-foreground text-center">تأكيد الانصراف</h3>
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">وقت الحضور</span>
@@ -804,9 +749,7 @@ export default function CheckInPage() {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">مدة الدوام</span>
-                  <span className="font-mono font-bold text-primary text-primary">
-                    {elapsedTime}
-                  </span>
+                  <span className="font-mono font-bold text-primary">{elapsedTime}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">الموقع</span>

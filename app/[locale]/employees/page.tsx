@@ -5,6 +5,7 @@ import MainLayout from "@/components/shared/MainLayout";
 import FullPageHead from "@/components/shared/FullPageHead";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
 import {
   Users,
   UserPlus,
@@ -55,6 +56,18 @@ const roleLabels: Record<string, string> = {
   employee: "موظف",
   supervisor: "مشرف",
 };
+
+function getEmployeeCreationErrorMessage(error: unknown): string {
+  const code =
+    typeof error === "object" && error !== null && "code" in error ? String(error.code) : "";
+
+  if (code === "auth/email-already-in-use") return "هذا البريد الإلكتروني مستخدم لموظف آخر";
+  if (code === "auth/weak-password") return "كلمة المرور ضعيفة. استخدم 8 أحرف على الأقل";
+  if (code === "permission-denied") return "ليس لديك صلاحية لإضافة موظف";
+  if (error instanceof Error && error.message === "NO_COMPANY") return "تعذر تحديد الشركة الحالية";
+
+  return "تعذر إضافة الموظف. حاول مرة أخرى.";
+}
 
 export default function EmployeesPage() {
   const { data: employees = [], isLoading, isError, error, refetch } = useEmployees();
@@ -117,6 +130,8 @@ export default function EmployeesPage() {
     role: EmployeeRole;
     geofenceId: string;
     attendanceMode: Employee["attendanceMode"];
+    status: "active" | "inactive";
+    password: string;
   }>({
     name: "",
     email: "",
@@ -126,6 +141,8 @@ export default function EmployeesPage() {
     role: "employee",
     geofenceId: "",
     attendanceMode: null,
+    status: "active",
+    password: "",
   });
 
   const resetNewEmployee = () => {
@@ -178,8 +195,8 @@ export default function EmployeesPage() {
           resetNewEmployee();
           setCreatedCredentials({ email, username, password });
         },
-        onError: () => {
-          toastError("حدث خطأ أثناء إضافة الموظف");
+        onError: (error) => {
+          toastError(getEmployeeCreationErrorMessage(error));
         },
       }
     );
@@ -199,16 +216,20 @@ export default function EmployeesPage() {
       role: emp.role,
       geofenceId: emp.geofenceId ?? "",
       attendanceMode: emp.attendanceMode ?? null,
+      status: emp.status ?? "active",
+      password: emp.password ?? "",
     });
   };
 
   const handleUpdate = () => {
     if (!editTarget) return;
+    const { password, ...updateData } = editEmployee;
+    void password;
     updateEmployee.mutate(
       {
         id: editTarget.id,
         data: {
-          ...editEmployee,
+          ...updateData,
           employeeNumber: generateStaffUsername({ employeeNumber: editEmployee.employeeNumber }),
         },
       },
@@ -356,7 +377,6 @@ export default function EmployeesPage() {
     });
   }, [employees, search, filterDept, filterStatus]);
 
-  const activeCount = employees.filter((e) => e.status === "active").length;
   const inactiveCount = employees.filter((e) => e.status !== "active").length;
 
   if (role === "employee") {
@@ -418,7 +438,6 @@ export default function EmployeesPage() {
           }
         />
 
-
         {showAddForm && (
           <FormDrawer
             open={showAddForm}
@@ -445,15 +464,6 @@ export default function EmployeesPage() {
                 ltr
               />
               <FormSelect
-                label="الدور"
-                value={newEmployee.role}
-                onChange={(v) => setNewEmployee({ ...newEmployee, role: v as EmployeeRole })}
-              >
-                <option value="employee">موظف</option>
-                <option value="supervisor">مشرف</option>
-                <option value="manager">مدير</option>
-              </FormSelect>
-              <FormSelect
                 label="النطاق الجغرافي"
                 value={newEmployee.geofenceId}
                 onChange={(v) => setNewEmployee({ ...newEmployee, geofenceId: v })}
@@ -466,7 +476,7 @@ export default function EmployeesPage() {
               </FormSelect>
               <FormField
                 label="كلمة المرور"
-                type="password"
+                type="text"
                 value={newEmployee.password}
                 onChange={(v) => setNewEmployee({ ...newEmployee, password: v })}
                 placeholder="8 أحرف على الأقل"
@@ -488,9 +498,7 @@ export default function EmployeesPage() {
                   <Check className="w-5 h-5 text-primary" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-foreground">
-                    تم إنشاء حساب الموظف
-                  </h3>
+                  <h3 className="font-bold text-foreground">تم إنشاء حساب الموظف</h3>
                   <p className="text-xs text-muted-foreground">
                     احتفظ بهذه البيانات وشاركها مع الموظف
                   </p>
@@ -498,9 +506,7 @@ export default function EmployeesPage() {
               </div>
               <div className="bg-muted rounded-xl p-4 space-y-3 mb-4">
                 <div>
-                  <p className="text-xs text-muted-foreground mb-1">
-                    البريد الإلكتروني
-                  </p>
+                  <p className="text-xs text-muted-foreground mb-1">البريد الإلكتروني</p>
                   <p className="font-mono text-sm font-semibold text-foreground select-all">
                     <span dir="ltr" lang="en" style={{ unicodeBidi: "plaintext" }}>
                       {createdCredentials.email}
@@ -549,7 +555,7 @@ export default function EmployeesPage() {
                       loginUrl: staffLoginUrl,
                     }).body
                   )}`}
-                  className="py-2 px-3 rounded-xl border border-primary/20 border-primary/30 text-sm font-medium text-primary text-primary/70 hover:bg-primary/5 hover:bg-primary/10 transition-colors text-center"
+                  className="py-2 px-3 rounded-xl border border-primary/30 text-sm font-medium text-primary/70 hover:bg-primary/10 transition-colors text-center"
                 >
                   مشاركة عبر البريد
                 </a>
@@ -567,20 +573,12 @@ export default function EmployeesPage() {
         {/* Stats strip */}
         {!isLoading && !isError && employees.length > 0 && (
           <div className="flex items-center gap-4 flex-wrap">
-            <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-primary/5 border border-primary/20 border-primary/30">
+            <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-primary/5 border border-primary/30">
               <Users className="w-4 h-4 text-primary" />
-              <span className="text-sm font-semibold text-primary text-primary/70">
-                {employees.length} موظف
-              </span>
-            </div>
-            <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-primary/5 border border-primary/20 border-primary/30">
-              <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-              <span className="text-sm font-semibold text-primary text-primary/70">
-                {activeCount} نشط
-              </span>
+              <span className="text-sm font-semibold text-primary/70">{employees.length} موظف</span>
             </div>
             {inactiveCount > 0 && (
-              <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-muted border border-border border-input">
+              <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-muted border border-input">
                 <span className="w-2 h-2 rounded-full bg-muted-foreground/50" />
                 <span className="text-sm font-semibold text-muted-foreground">
                   {inactiveCount} غير نشط
@@ -600,7 +598,7 @@ export default function EmployeesPage() {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="بحث بالاسم أو البريد أو القسم..."
-                className="w-full pr-9 pl-3 py-2 rounded-xl border border-border border-input bg-card text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring shadow-sm"
+                className="w-full pr-9 pl-3 py-2 rounded-xl border border-input bg-card text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring shadow-sm"
               />
               {search && (
                 <button
@@ -615,7 +613,7 @@ export default function EmployeesPage() {
               <select
                 value={filterDept}
                 onChange={(e) => setFilterDept(e.target.value)}
-                className="px-3 py-2 rounded-xl border border-border border-input bg-card text-sm text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring shadow-sm"
+                className="px-3 py-2 rounded-xl border border-input bg-card text-sm text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring shadow-sm"
               >
                 <option value="">جميع الأقسام</option>
                 {departments.map((d) => (
@@ -627,7 +625,7 @@ export default function EmployeesPage() {
               <select
                 value={filterStatus}
                 onChange={(e) => setFilterStatus(e.target.value)}
-                className="px-3 py-2 rounded-xl border border-border border-input bg-card text-sm text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring shadow-sm"
+                className="px-3 py-2 rounded-xl border border-input bg-card text-sm text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring shadow-sm"
               >
                 <option value="">جميع الحالات</option>
                 <option value="active">نشط</option>
@@ -654,7 +652,9 @@ export default function EmployeesPage() {
           <div className="space-y-3">
             <ErrorState onRetry={() => refetch()} />
             <div className="bg-destructive/5 border border-destructive/20 border-destructive/30 rounded-xl p-4 text-left">
-              <p className="text-xs font-bold text-destructive text-destructive/70 mb-1">تفاصيل الخطأ:</p>
+              <p className="text-xs font-bold text-destructive text-destructive/70 mb-1">
+                تفاصيل الخطأ:
+              </p>
               <p className="text-xs text-destructive font-mono break-all">
                 {error instanceof Error ? error.message : JSON.stringify(error)}
               </p>
@@ -690,12 +690,9 @@ export default function EmployeesPage() {
                       {/* Avatar + name row */}
                       <div className="flex items-center gap-3 mb-3">
                         <motion.div
-                          
                           transition={{ type: "spring", stiffness: 300 }}
                           className={`relative w-14 h-14 shrink-0 rounded-2xl bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center text-primary-foreground font-bold text-lg overflow-hidden shadow-md ring-2 ${
-                            emp.status === "active"
-                              ? "ring-primary/40"
-                              : "ring-border"
+                            emp.status === "active" ? "ring-primary/40" : "ring-border"
                           }`}
                         >
                           {emp.name.charAt(0)}
@@ -706,18 +703,11 @@ export default function EmployeesPage() {
                           )}
                         </motion.div>
                         <div className="min-w-0 flex-1">
-                          <p className="font-bold text-foreground truncate">
-                            {emp.name}
-                          </p>
-                          <p className="text-xs text-muted-foreground truncate">
-                            {emp.department}
-                          </p>
+                          <p className="font-bold text-foreground truncate">{emp.name}</p>
+                          <p className="text-xs text-muted-foreground truncate">{emp.department}</p>
                           <div className="flex items-center gap-1.5 mt-1">
-                            <span className="inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary bg-primary/10 text-primary">
-                              {roleLabels[emp.role] || emp.role}
-                            </span>
                             {emp.geofenceId && (
-                              <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-xs font-medium bg-primary/5 text-primary bg-primary/10 text-primary">
+                              <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary">
                                 <MapPin className="w-2.5 h-2.5" />
                                 {getGeofenceName(emp.geofenceId)}
                               </span>
@@ -741,10 +731,10 @@ export default function EmployeesPage() {
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-1 pt-3 border-t border-border border-border">
+                      <div className="flex items-center gap-1 pt-3 border-t border-border">
                         <Link
                           href={`/employees/${emp.id}`}
-                          className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg text-xs font-medium text-muted-foreground text-muted-foreground hover:bg-primary/5 hover:text-primary hover:bg-primary/10 hover:text-primary transition-colors"
+                          className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg text-xs font-medium text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors"
                           title="عرض الملف"
                         >
                           <Eye className="w-3.5 h-3.5" />
@@ -753,7 +743,7 @@ export default function EmployeesPage() {
                         <div className="w-px h-5 bg-muted" />
                         <button
                           onClick={() => handleEdit(emp)}
-                          className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg text-xs font-medium text-muted-foreground text-muted-foreground hover:bg-primary/5 hover:text-primary hover:bg-primary/10 hover:text-primary transition-colors"
+                          className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg text-xs font-medium text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors"
                           title="تعديل"
                         >
                           <Edit className="w-3.5 h-3.5" />
@@ -762,7 +752,7 @@ export default function EmployeesPage() {
                         <div className="w-px h-5 bg-muted" />
                         <button
                           onClick={() => handleDelete(emp)}
-                          className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg text-xs font-medium text-muted-foreground text-muted-foreground hover:bg-destructive/5 hover:text-destructive dark:hover:bg-destructive/10 dark:hover:text-destructive transition-colors"
+                          className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg text-xs font-medium text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
                           title="حذف"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
@@ -794,51 +784,36 @@ export default function EmployeesPage() {
                       <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center text-primary-foreground font-bold text-sm overflow-hidden">
                         {emp.name.charAt(0)}
                       </div>
-                      <span className="text-sm font-medium text-foreground">
-                        {emp.name}
-                      </span>
+                      <span className="text-sm font-medium text-foreground">{emp.name}</span>
                     </Link>
                   ),
                 },
                 {
-                  key: "employeeNumber",
-                  header: "الرقم الوظيفي",
+                  key: "status",
+                  header: "الحالة",
                   sortable: true,
-                  filterable: true,
-                  sortValue: (emp) => emp.employeeNumber ?? "",
+                  sortValue: (emp) => emp.status,
                   cell: (emp) => (
                     <span
-                      dir="ltr"
-                      lang="en"
-                      style={{ unicodeBidi: "plaintext" }}
-                      className="inline-block text-left text-sm text-muted-foreground text-muted-foreground font-mono"
+                      className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                        emp.status === "active"
+                          ? "bg-primary/10 text-primary"
+                          : "bg-muted text-muted-foreground"
+                      }`}
                     >
-                      {emp.employeeNumber || "-"}
-                    </span>
-                  ),
-                },
-                {
-                  key: "department",
-                  header: "القسم",
-                  sortable: true,
-                  filterable: true,
-                  sortValue: (emp) => emp.department,
-                  cell: (emp) => emp.department,
-                },
-                {
-                  key: "role",
-                  header: "الدور",
-                  sortable: true,
-                  sortValue: (emp) => emp.role,
-                  cell: (emp) => (
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary bg-primary/10 text-primary">
-                      {roleLabels[emp.role]}
+                      {emp.status === "active" && (
+                        <span className="relative flex h-2 w-2">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
+                          <span className="relative inline-flex rounded-full h-2 w-2 bg-primary" />
+                        </span>
+                      )}
+                      {emp.status === "active" ? "نشط" : "غير نشط"}
                     </span>
                   ),
                 },
                 {
                   key: "contact",
-                  header: "التواصل",
+                  header: "اسم المستخدم",
                   cell: (emp) => (
                     <div className="flex flex-col gap-1 text-xs text-muted-foreground">
                       <span className="flex items-center gap-1">
@@ -863,36 +838,13 @@ export default function EmployeesPage() {
                   ),
                 },
                 {
-                  key: "status",
-                  header: "الحالة",
-                  sortable: true,
-                  sortValue: (emp) => emp.status,
-                  cell: (emp) => (
-                    <span
-                      className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                        emp.status === "active"
-                          ? "bg-primary/10 text-primary bg-primary/10 text-primary"
-                          : "bg-muted text-muted-foreground"
-                      }`}
-                    >
-                      {emp.status === "active" && (
-                        <span className="relative flex h-2 w-2">
-                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
-                          <span className="relative inline-flex rounded-full h-2 w-2 bg-primary" />
-                        </span>
-                      )}
-                      {emp.status === "active" ? "نشط" : "غير نشط"}
-                    </span>
-                  ),
-                },
-                {
                   key: "actions",
                   header: "إجراءات",
                   cell: (emp) => (
                     <div className="flex items-center gap-2">
                       <Link
                         href={`/employees/${emp.id}`}
-                        className="p-1.5 rounded-lg hover:bg-primary/5 text-primary hover:bg-primary/10"
+                        className="p-1.5 rounded-lg text-primary hover:bg-primary/10"
                         title="عرض الملف"
                         aria-label="عرض ملف الموظف"
                       >
@@ -900,7 +852,7 @@ export default function EmployeesPage() {
                       </Link>
                       <button
                         onClick={() => handleEdit(emp)}
-                        className="p-1.5 rounded-lg hover:bg-primary/5 text-primary hover:bg-primary/10"
+                        className="p-1.5 rounded-lg text-primary hover:bg-primary/10"
                         title="تعديل"
                         aria-label="تعديل الموظف"
                       >
@@ -908,7 +860,7 @@ export default function EmployeesPage() {
                       </button>
                       <button
                         onClick={() => handleDelete(emp)}
-                        className="p-1.5 rounded-lg hover:bg-destructive/5 text-destructive dark:hover:bg-destructive/10"
+                        className="p-1.5 rounded-lg text-destructive hover:bg-destructive/10"
                         title="حذف"
                         aria-label="حذف الموظف"
                       >
@@ -919,7 +871,7 @@ export default function EmployeesPage() {
                 },
               ]}
               data={employees}
-              searchPlaceholder="بحث بالاسم أو الرقم الوظيفي أو القسم أو النطاق..."
+              searchPlaceholder="بحث بالاسم أو النطاق..."
               selectable
               selectedIds={selectedIds}
               onSelectionChange={setSelectedIds}
@@ -936,9 +888,7 @@ export default function EmployeesPage() {
               exit={{ opacity: 0, y: 50 }}
               className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-card rounded-2xl shadow-2xl border border-border px-6 py-3 flex items-center gap-4"
             >
-              <span className="text-sm font-medium text-foreground">
-                {selectedIds.length} محدد
-              </span>
+              <span className="text-sm font-medium text-foreground">{selectedIds.length} محدد</span>
               <div className="h-6 w-px bg-muted" />
               <button
                 onClick={handleBulkExport}
@@ -999,15 +949,18 @@ export default function EmployeesPage() {
               placeholder="email@trax.com"
               ltr
             />
-            <FormSelect
-              label="الدور"
-              value={editEmployee.role}
-              onChange={(v) => setEditEmployee({ ...editEmployee, role: v as EmployeeRole })}
-            >
-              <option value="employee">موظف</option>
-              <option value="supervisor">مشرف</option>
-              <option value="manager">مدير</option>
-            </FormSelect>
+            <div className="flex items-center justify-between p-3 rounded-xl border border-input bg-card">
+              <span className="text-sm font-medium text-foreground">
+                {editEmployee.status === "active" ? "نشط" : "غير نشط"}
+              </span>
+              <Switch
+                checked={editEmployee.status === "active"}
+                onCheckedChange={(checked) =>
+                  setEditEmployee({ ...editEmployee, status: checked ? "active" : "inactive" })
+                }
+                aria-label="حالة الموظف"
+              />
+            </div>
             <FormSelect
               label="النطاق الجغرافي"
               value={editEmployee.geofenceId}
@@ -1019,6 +972,15 @@ export default function EmployeesPage() {
                 </option>
               ))}
             </FormSelect>
+            <FormField
+              label="كلمة المرور الحالية"
+              type="text"
+              value={editEmployee.password}
+              onChange={(v) => setEditEmployee({ ...editEmployee, password: v })}
+              placeholder="أدخل كلمة المرور"
+              ltr
+            />
+
             {/* Reset password section */}
             <div className="pt-3 border-t border-border">
               {!showResetPassword ? (

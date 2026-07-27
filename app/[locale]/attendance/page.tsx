@@ -99,7 +99,10 @@ const CalendarHeatmap = memo(function CalendarHeatmap({
   const [currentDate, setCurrentDate] = useState(new Date());
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
-  const monthName = currentDate.toLocaleDateString("ar-SA", { month: "long", year: "numeric" });
+  const monthName = currentDate.toLocaleDateString("ar-SA-u-nu-latn", {
+    month: "long",
+    year: "numeric",
+  });
   const days = useMemo(() => getMonthDays(year, month, records), [year, month, records]);
 
   return (
@@ -111,16 +114,14 @@ const CalendarHeatmap = memo(function CalendarHeatmap({
               <Calendar className="w-5 h-5 text-primary-foreground" />
             </div>
             <div>
-              <CardTitle className="text-lg font-bold text-foreground">
-                تقويم الحضور
-              </CardTitle>
-              <p className="text-sm text-muted-foreground text-muted-foreground">عرض حراري لسجلات الحضور</p>
+              <CardTitle className="text-lg font-bold text-foreground">تقويم الحضور</CardTitle>
+              <p className="text-sm text-muted-foreground">عرض حراري لسجلات الحضور</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
             <button
               onClick={() => setCurrentDate(new Date(year, month - 1, 1))}
-              className="p-2 rounded-lg hover:bg-muted hover:bg-muted transition-colors"
+              className="p-2 rounded-lg hover:bg-muted transition-colors"
               aria-label="الشهر السابق"
             >
               <ChevronRight className="w-5 h-5 text-muted-foreground" />
@@ -130,7 +131,7 @@ const CalendarHeatmap = memo(function CalendarHeatmap({
             </span>
             <button
               onClick={() => setCurrentDate(new Date(year, month + 1, 1))}
-              className="p-2 rounded-lg hover:bg-muted hover:bg-muted transition-colors"
+              className="p-2 rounded-lg hover:bg-muted transition-colors"
               aria-label="الشهر التالي"
             >
               <ChevronLeft className="w-5 h-5 text-muted-foreground" />
@@ -141,10 +142,7 @@ const CalendarHeatmap = memo(function CalendarHeatmap({
       <CardContent>
         <div className="grid grid-cols-7 gap-2 mb-2">
           {dayHeaders.map((day) => (
-            <div
-              key={day}
-              className="text-center text-xs font-medium text-muted-foreground py-2"
-            >
+            <div key={day} className="text-center text-xs font-medium text-muted-foreground py-2">
               {day}
             </div>
           ))}
@@ -257,9 +255,7 @@ export default function AttendancePage() {
                 <button
                   onClick={() => setViewMode("table")}
                   className={`px-3 py-1.5 rounded-md text-sm transition-all ${
-                    viewMode === "table"
-                      ? "bg-card shadow-sm font-medium"
-                      : "text-muted-foreground"
+                    viewMode === "table" ? "bg-card shadow-sm font-medium" : "text-muted-foreground"
                   }`}
                 >
                   جدول
@@ -280,7 +276,7 @@ export default function AttendancePage() {
               <Popover open={showFilters} onOpenChange={setShowFilters}>
                 <PopoverTrigger asChild>
                   <button
-                    className="relative flex items-center gap-2 px-3 py-2 rounded-lg border border-border border-input text-sm text-muted-foreground hover:bg-muted hover:bg-muted transition-colors"
+                    className="relative flex items-center gap-2 px-3 py-2 rounded-lg border border-input text-sm text-muted-foreground hover:bg-muted transition-colors"
                     aria-label="تصفية"
                   >
                     <Filter className="w-4 h-4" />
@@ -292,10 +288,7 @@ export default function AttendancePage() {
                     )}
                   </button>
                 </PopoverTrigger>
-                <PopoverContent
-                  className="w-72 p-4 bg-card border-border"
-                  align="start"
-                >
+                <PopoverContent className="w-72 p-4 bg-card border-border" align="start">
                   <div className="space-y-4">
                     <div>
                       <label className="text-sm font-medium text-muted-foreground mb-1.5 block">
@@ -420,21 +413,15 @@ export default function AttendancePage() {
                   </div>
                   <div className="flex gap-4 text-sm">
                     <div className="text-center">
-                      <p className="text-xl font-bold text-primary">
-                        {presentCount}
-                      </p>
+                      <p className="text-xl font-bold text-primary">{presentCount}</p>
                       <p className="text-xs text-muted-foreground">حاضر</p>
                     </div>
                     <div className="text-center">
-                      <p className="text-xl font-bold text-[hsl(48_96%_53%)]">
-                        {lateCount}
-                      </p>
+                      <p className="text-xl font-bold text-[hsl(48_96%_53%)]">{lateCount}</p>
                       <p className="text-xs text-muted-foreground">متأخر</p>
                     </div>
                     <div className="text-center">
-                      <p className="text-xl font-bold text-destructive">
-                        {absentCount}
-                      </p>
+                      <p className="text-xl font-bold text-destructive">{absentCount}</p>
                       <p className="text-xs text-muted-foreground">غائب</p>
                     </div>
                     <div className="text-center">
@@ -517,10 +504,7 @@ export default function AttendancePage() {
               },
             ] as const
           ).map(({ label, count, Icon, color, bg, border, stagger }) => (
-            <Card
-              key={label}
-              className={`border-0 shadow-md bg-card ${stagger} ${border}`}
-            >
+            <Card key={label} className={`border-0 shadow-md bg-card ${stagger} ${border}`}>
               <CardContent className="pt-6 pb-4">
                 <div className="flex items-center gap-3">
                   <div
@@ -532,7 +516,7 @@ export default function AttendancePage() {
                     <p className={`text-3xl font-black ${color}`}>
                       <CountUp end={count} duration={900} />
                     </p>
-                    <p className="text-sm text-muted-foreground text-muted-foreground">{label}</p>
+                    <p className="text-sm text-muted-foreground">{label}</p>
                   </div>
                 </div>
               </CardContent>
@@ -571,11 +555,11 @@ export default function AttendancePage() {
                       <CardHeader>
                         <div className="flex items-center justify-between">
                           <CardTitle className="text-lg font-bold text-foreground">
-                            سجلات يوم {selectedDay.date.toLocaleDateString("ar-SA")}
+                            سجلات يوم {selectedDay.date.toLocaleDateString("ar-SA-u-nu-latn")}
                           </CardTitle>
                           <button
                             onClick={() => setSelectedDay(null)}
-                            className="p-1.5 rounded-lg hover:bg-muted hover:bg-muted"
+                            className="p-1.5 rounded-lg hover:bg-muted"
                           >
                             <X className="w-4 h-4" />
                           </button>
@@ -662,10 +646,10 @@ export default function AttendancePage() {
                               <span
                                 className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                                   r.status === "present"
-                                    ? "bg-primary/10 text-primary bg-primary/10 text-primary"
+                                    ? "bg-primary/10 text-primary"
                                     : r.status === "late"
-                                      ? "bg-[hsl(48_96%_53%/0.15)] text-[hsl(48_96%_53%)] "
-                                      : "bg-destructive/10 text-destructive bg-destructive/10 text-destructive"
+                                      ? "bg-[hsl(48_96%_53%/0.15)] text-[hsl(48_96%_53%)]"
+                                      : "bg-destructive/10 text-destructive"
                                 }`}
                               >
                                 {statusLabels[r.status]}
@@ -758,10 +742,10 @@ export default function AttendancePage() {
                           <span
                             className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                               r.status === "present"
-                                ? "bg-primary/10 text-primary bg-primary/10 text-primary"
+                                ? "bg-primary/10 text-primary"
                                 : r.status === "late"
-                                  ? "bg-[hsl(48_96%_53%/0.15)] text-[hsl(48_96%_53%)] "
-                                  : "bg-destructive/10 text-destructive bg-destructive/10 text-destructive"
+                                  ? "bg-[hsl(48_96%_53%/0.15)] text-[hsl(48_96%_53%)]"
+                                  : "bg-destructive/10 text-destructive"
                             }`}
                           >
                             {statusLabels[r.status]}

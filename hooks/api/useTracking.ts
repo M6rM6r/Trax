@@ -13,6 +13,7 @@ export function useLiveTracking() {
     queryKey: [...queryKeys.tracking, companyId ?? "unassigned"],
     enabled: Boolean(companyId),
     staleTime: 10 * 1000,
+    retry: 1,
     queryFn: async (): Promise<LiveTrackingEmployee[]> => {
       return firebaseData.tracking.live();
     },

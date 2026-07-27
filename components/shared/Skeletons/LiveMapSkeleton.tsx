@@ -37,7 +37,7 @@ export default function LiveMapSkeleton() {
               {Array.from({ length: 5 }).map((_, i) => (
                 <div
                   key={i}
-                  className="flex items-center gap-3 p-3 rounded-xl border border-border border-border"
+                  className="flex items-center gap-3 p-3 rounded-xl border border-border"
                 >
                   <Skeleton className="h-9 w-9 rounded-full" />
                   <div className="flex-1 space-y-1">

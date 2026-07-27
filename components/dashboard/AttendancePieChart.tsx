@@ -2,7 +2,7 @@
 
 import { memo, useMemo, useCallback } from "react";
 import { PieChart as PieChartIcon } from "lucide-react";
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "@/lib/dynamic/charts";
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
 
 interface AttendancePieChartProps {
   data: Array<{
@@ -34,8 +34,8 @@ const AttendancePieChart = memo(({ data }: AttendancePieChartProps) => {
               <div className="w-3 h-3 rounded-full" style={{ backgroundColor: data.color }} />
               <p className="font-bold text-foreground">{data.name}</p>
             </div>
-            <p className="text-sm text-muted-foreground text-muted-foreground">
-              العدد: <span className="font-semibold">{data.value.toLocaleString()}</span>
+            <p className="text-sm text-muted-foreground">
+              العدد: <span className="font-semibold">{data.value.toLocaleString("en-US")}</span>
             </p>
             <p className="text-xs text-muted-foreground mt-1">
               {((data.value / safeTotal) * 100).toFixed(1)}% من الإجمالي
@@ -56,7 +56,7 @@ const AttendancePieChart = memo(({ data }: AttendancePieChartProps) => {
         </div>
         <div>
           <h3 className="text-lg font-bold text-foreground">توزيع الحضور</h3>
-          <p className="text-sm text-muted-foreground text-muted-foreground">نسبة كل حالة من الإجمالي</p>
+          <p className="text-sm text-muted-foreground">نسبة كل حالة من الإجمالي</p>
         </div>
       </div>
 
@@ -90,7 +90,7 @@ const AttendancePieChart = memo(({ data }: AttendancePieChartProps) => {
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0">
             <div className="text-center">
               <div className="text-2xl font-black text-foreground">
-                {total.toLocaleString()}
+                {total.toLocaleString("en-US")}
               </div>
               <div className="text-xs font-medium text-muted-foreground">الإجمالي</div>
             </div>
@@ -114,15 +114,13 @@ const AttendancePieChart = memo(({ data }: AttendancePieChartProps) => {
                     <Icon className="w-4 h-4" style={{ color: item.color }} />
                   </div>
                   <div>
-                    <div className="font-semibold text-foreground text-sm">
-                      {item.name}
-                    </div>
+                    <div className="font-semibold text-foreground text-sm">{item.name}</div>
                     <div className="text-xs text-muted-foreground">{percentage}%</div>
                   </div>
                 </div>
                 <div className="text-right">
                   <div className="font-bold text-foreground">
-                    {item.value.toLocaleString()}
+                    {item.value.toLocaleString("en-US")}
                   </div>
                 </div>
               </div>

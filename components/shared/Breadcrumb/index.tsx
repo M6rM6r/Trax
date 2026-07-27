@@ -1,8 +1,10 @@
 "use client";
 
+import { useMemo } from "react";
 import { usePathname } from "next/navigation";
 import { Link } from "@/i18n/navigation";
 import { ChevronLeft, Home } from "lucide-react";
+import { useEmployees } from "@/hooks/useApi";
 
 const routeLabels: Record<string, string> = {
   "": "الرئيسية",
@@ -23,9 +25,20 @@ export default function Breadcrumb() {
 
   const segments = pathname.split("/").filter((s) => s !== "" && s !== "ar" && s !== "en");
 
+  const { data: employees = [] } = useEmployees({
+    enabled: segments.includes("employees"),
+  });
+
+  const employeeNameById = useMemo(() => {
+    const map = new Map<string, string>();
+    employees.forEach((e) => map.set(e.id, e.name));
+    return map;
+  }, [employees]);
+
   const crumbs = segments.map((seg, i) => {
     const path = `/${segments.slice(0, i + 1).join("/")}`;
-    return { label: routeLabels[seg] || seg, path };
+    const label = routeLabels[seg] ?? employeeNameById.get(seg) ?? seg;
+    return { label, path };
   });
 
   return (

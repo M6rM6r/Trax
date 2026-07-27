@@ -39,7 +39,8 @@ export function CountUp({ end, duration = 1000, decimals = 0, className }: Count
     };
   }, [end, duration]);
 
-  const formatted = decimals > 0 ? count.toFixed(decimals) : Math.round(count).toLocaleString();
+  const formatted =
+    decimals > 0 ? count.toFixed(decimals) : Math.round(count).toLocaleString("en-US");
 
   return <span className={className}>{formatted}</span>;
 }

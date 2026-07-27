@@ -8,12 +8,6 @@ import { LoadingSkeleton, EmptyState, ErrorState } from "@/components/shared/Sta
 import { DataTable } from "@/components/shared/DataTable/DataTable";
 import type { Employee } from "@/lib/types/trackingTypes";
 
-const roleLabels: Record<string, string> = {
-  manager: "مدير",
-  employee: "موظف",
-  supervisor: "مشرف",
-};
-
 export default function InactiveEmployeesPage() {
   const { data: inactiveEmployees = [], isLoading, isError, refetch } = useInactiveEmployees();
 
@@ -49,9 +43,7 @@ export default function InactiveEmployeesPage() {
                     <div className="w-10 h-10 rounded-full bg-muted-foreground/30 bg-muted flex items-center justify-center text-primary-foreground font-bold text-sm">
                       {emp.name.charAt(0)}
                     </div>
-                    <span className="text-sm font-medium text-foreground">
-                      {emp.name}
-                    </span>
+                    <span className="text-sm font-medium text-foreground">{emp.name}</span>
                   </div>
                 ),
               },
@@ -61,20 +53,7 @@ export default function InactiveEmployeesPage() {
                 sortable: true,
                 filterable: true,
                 sortValue: (emp) => emp.department,
-                cell: (emp) => (
-                  <span className="text-muted-foreground">{emp.department}</span>
-                ),
-              },
-              {
-                key: "role",
-                header: "الدور",
-                sortable: true,
-                sortValue: (emp) => emp.role,
-                cell: (emp) => (
-                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-muted text-muted-foreground">
-                    {roleLabels[emp.role]}
-                  </span>
-                ),
+                cell: (emp) => <span className="text-muted-foreground">{emp.department}</span>,
               },
               {
                 key: "contact",

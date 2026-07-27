@@ -16,7 +16,7 @@ export function useDashboardData(dateRange?: DashboardDateRange) {
     queryKey: [...queryKeys.dashboard, companyId ?? "unassigned", from ?? "all", to ?? "all"],
     staleTime: 60 * 1000,
     enabled: Boolean(companyId),
-    queryFn: async () => firebaseData.dashboard.getDashboardData(),
+    queryFn: async () => firebaseData.dashboard.getDashboardData({ from, to }),
   });
 }
 

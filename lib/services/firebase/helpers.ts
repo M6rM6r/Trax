@@ -1,7 +1,25 @@
 import { onAuthStateChanged, type User } from "firebase/auth";
+import { doc, setDoc } from "firebase/firestore";
 import { auth, db } from "@/lib/config/firebase";
 import { useAuthStore } from "@/stores/useAuthStore";
 import type { AttendanceRecord, Employee, Geofence } from "@/lib/types/trackingTypes";
+
+async function syncUserDoc(user: User) {
+  if (!db) return;
+  const { companyId, role, user: storeUser } = useAuthStore.getState();
+  const payload: Record<string, unknown> = {
+    name: storeUser?.name || user.displayName || null,
+    email: storeUser?.email || user.email || null,
+    lastSignIn: new Date().toISOString(),
+  };
+  if (companyId) payload.company_id = String(companyId);
+  if (role) payload.role = role;
+  try {
+    await setDoc(doc(db, "users", user.uid), cleanPayload(payload), { merge: true });
+  } catch (e) {
+    console.warn("[ensureAuth] failed to sync user doc:", e);
+  }
+}
 
 export function getCompanyId(): string | null {
   const companyId = useAuthStore.getState().companyId;
@@ -31,12 +49,17 @@ export function requireDb() {
 
 export async function ensureAuth(): Promise<User> {
   if (!auth) throw new Error("Firebase Auth is not configured");
-  if (auth.currentUser) return auth.currentUser;
+  if (auth.currentUser) {
+    await syncUserDoc(auth.currentUser);
+    return auth.currentUser;
+  }
   return new Promise((resolve, reject) => {
-    const unsubscribe = onAuthStateChanged(auth!, (user) => {
+    const unsubscribe = onAuthStateChanged(auth!, async (user) => {
       unsubscribe();
-      if (user) resolve(user);
-      else reject(new Error("AUTH_EXPIRED"));
+      if (user) {
+        await syncUserDoc(user);
+        resolve(user);
+      } else reject(new Error("AUTH_EXPIRED"));
     });
   });
 }
@@ -60,7 +83,11 @@ export function mapEmployee(id: string, value: Record<string, unknown>): Employe
     department: String(value.department ?? ""),
     avatar: (value.avatar as string | null | undefined) ?? null,
     geofenceId:
-      value.geofenceId === null || value.geofenceId === undefined ? null : String(value.geofenceId),
+      value.geofenceId !== null && value.geofenceId !== undefined
+        ? String(value.geofenceId)
+        : value.assigned_geofence_id !== null && value.assigned_geofence_id !== undefined
+          ? String(value.assigned_geofence_id)
+          : null,
     status: value.status === "inactive" ? "inactive" : "active",
     currentLat:
       value.currentLat === null || value.currentLat === undefined
@@ -76,6 +103,7 @@ export function mapEmployee(id: string, value: Record<string, unknown>): Employe
         ? null
         : toNumber(value.batteryLevel),
     employeeNumber: (value.employeeNumber as string | null | undefined) ?? null,
+    password: (value.password as string | undefined) ?? undefined,
     attendanceMode: (value.attendanceMode as Employee["attendanceMode"]) ?? null,
     shiftOverride: (value.shiftOverride as Employee["shiftOverride"]) ?? null,
   };

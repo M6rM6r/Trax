@@ -98,12 +98,12 @@ export default function OnboardingBanner({
                   <Rocket className="w-5 h-5 text-primary-foreground" />
                 </div>
                 <div>
-                  <h2 className="font-bold text-foreground text-base">
+                  <h2 className="font-bold text-foreground text-base" dir="rtl">
                     مرحباً بك في Trax
                     {companyName && (
-                      <span className="text-primary text-primary">
-                        {" "}
-                        — {companyName}
+                      <span className="text-primary">
+                        {" — "}
+                        <bdi>{companyName}</bdi>
                       </span>
                     )}
                   </h2>
@@ -114,7 +114,7 @@ export default function OnboardingBanner({
               </div>
               <button
                 onClick={handleDismiss}
-                className="p-1.5 rounded-lg text-muted-foreground/70 hover:text-muted-foreground dark:hover:text-muted-foreground hover:bg-muted hover:bg-muted transition-colors shrink-0"
+                className="p-1.5 rounded-lg text-muted-foreground/70 hover:text-muted-foreground dark:hover:text-muted-foreground hover:bg-muted transition-colors shrink-0"
                 aria-label="إغلاق"
               >
                 <X className="w-4 h-4" />
@@ -127,9 +127,7 @@ export default function OnboardingBanner({
                 <span>
                   {completedCount} من {steps.length} خطوات مكتملة
                 </span>
-                <span className="font-semibold text-primary text-primary">
-                  {Math.round(progress)}%
-                </span>
+                <span className="font-semibold text-primary">{Math.round(progress)}%</span>
               </div>
               <div className="h-2 rounded-full bg-muted overflow-hidden">
                 <motion.div
@@ -172,19 +170,17 @@ export default function OnboardingBanner({
                           <Check className="w-5 h-5 text-primary" />
                         ) : (
                           <Icon
-                            className={`w-5 h-5 ${step.color === "primary" ? "text-primary text-primary" : "text-primary text-primary"}`}
+                            className={`w-5 h-5 ${step.color === "primary" ? "text-primary" : "text-primary"}`}
                           />
                         )}
                       </div>
                       <div className="min-w-0 flex-1">
                         <p
-                          className={`text-sm font-semibold ${step.done ? "text-primary text-primary line-through opacity-75" : "text-foreground"}`}
+                          className={`text-sm font-semibold ${step.done ? "text-primary line-through opacity-75" : "text-foreground"}`}
                         >
                           {step.title}
                         </p>
-                        <p className="text-xs text-muted-foreground mt-0.5">
-                          {step.description}
-                        </p>
+                        <p className="text-xs text-muted-foreground mt-0.5">{step.description}</p>
                         {!step.done && (
                           <button
                             onClick={() => {
@@ -219,12 +215,8 @@ export default function OnboardingBanner({
                   <Check className="w-4 h-4 text-primary-foreground" />
                 </div>
                 <div>
-                  <p className="text-sm font-semibold text-primary text-primary">
-                    رائع! كل شيء جاهز
-                  </p>
-                  <p className="text-xs text-primary/80 text-primary">
-                    يمكن لموظفيك الآن تسجيل الحضور
-                  </p>
+                  <p className="text-sm font-semibold text-primary">رائع! كل شيء جاهز</p>
+                  <p className="text-xs text-primary/80">يمكن لموظفيك الآن تسجيل الحضور</p>
                 </div>
               </motion.div>
             )}

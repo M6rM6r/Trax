@@ -69,7 +69,7 @@ export function DateRangePicker({ value, onChange }: DateRangePickerProps) {
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <button
-          className="flex items-center gap-2 text-sm bg-muted bg-card px-3 py-2 rounded-xl border border-border shadow-sm hover:bg-muted hover:bg-muted transition-colors text-muted-foreground"
+          className="flex items-center gap-2 text-sm bg-card px-3 py-2 rounded-xl border border-border shadow-sm hover:bg-muted transition-colors text-muted-foreground"
           aria-label="اختر نطاق التاريخ"
         >
           <CalendarIcon className="w-4 h-4 text-primary" />
@@ -85,8 +85,8 @@ export function DateRangePicker({ value, onChange }: DateRangePickerProps) {
               onClick={() => handlePresetSelect(option.value)}
               className={`w-full text-right px-3 py-2 rounded-lg text-sm transition-colors ${
                 value.preset === option.value
-                  ? "bg-primary/10 text-primary bg-primary/10 text-primary font-medium"
-                  : "hover:bg-muted hover:bg-muted text-muted-foreground"
+                  ? "bg-primary/10 text-primary font-medium"
+                  : "hover:bg-muted text-muted-foreground"
               }`}
             >
               {option.label}

@@ -134,9 +134,7 @@ export default function CompanySettingsPage() {
                     <div className="w-10 h-10 rounded-xl bg-primary/50 flex items-center justify-center">
                       <Clock className="w-5 h-5 text-primary-foreground" />
                     </div>
-                    <CardTitle className="text-lg font-bold text-foreground">
-                      ساعات العمل
-                    </CardTitle>
+                    <CardTitle className="text-lg font-bold text-foreground">ساعات العمل</CardTitle>
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -149,7 +147,7 @@ export default function CompanySettingsPage() {
                         type="time"
                         value={local.workStartTime}
                         onChange={(e) => update("workStartTime", e.target.value)}
-                        className="w-full px-3 py-2.5 rounded-xl border border-border border-input bg-background text-foreground"
+                        className="w-full px-3 py-2.5 rounded-xl border border-input bg-background text-foreground"
                       />
                     </div>
                     <div>
@@ -160,7 +158,7 @@ export default function CompanySettingsPage() {
                         type="time"
                         value={local.workEndTime}
                         onChange={(e) => update("workEndTime", e.target.value)}
-                        className="w-full px-3 py-2.5 rounded-xl border border-border border-input bg-background text-foreground"
+                        className="w-full px-3 py-2.5 rounded-xl border border-input bg-background text-foreground"
                       />
                     </div>
                   </div>
@@ -174,7 +172,7 @@ export default function CompanySettingsPage() {
                       max={60}
                       value={local.gracePeriodMinutes}
                       onChange={(e) => update("gracePeriodMinutes", Number(e.target.value))}
-                      className="w-full px-3 py-2.5 rounded-xl border border-border border-input bg-background text-foreground"
+                      className="w-full px-3 py-2.5 rounded-xl border border-input bg-background text-foreground"
                     />
                     <p className="text-xs text-muted-foreground mt-1">
                       عدد الدقائق بعد وقت بدء العمل قبل تسجيل التأخير
@@ -190,7 +188,7 @@ export default function CompanySettingsPage() {
                       max={120}
                       value={local.lateThresholdMinutes}
                       onChange={(e) => update("lateThresholdMinutes", Number(e.target.value))}
-                      className="w-full px-3 py-2.5 rounded-xl border border-border border-input bg-background text-foreground"
+                      className="w-full px-3 py-2.5 rounded-xl border border-input bg-background text-foreground"
                     />
                     <p className="text-xs text-muted-foreground mt-1">
                       بعد هذا الحد يُعتبر الموظف متأخراً بشكل كبير
@@ -251,9 +249,7 @@ export default function CompanySettingsPage() {
               <CardContent className="space-y-4">
                 <div className="flex items-center justify-between p-4 rounded-xl bg-muted/50">
                   <div>
-                    <p className="text-sm font-medium text-foreground">
-                      تفعيل الحضور التلقائي
-                    </p>
+                    <p className="text-sm font-medium text-foreground">تفعيل الحضور التلقائي</p>
                     <p className="text-xs text-muted-foreground mt-0.5">
                       تسجيل الحضور تلقائياً عند دخول الموظف للنطاق الجغرافي
                     </p>
@@ -278,7 +274,7 @@ export default function CompanySettingsPage() {
                         max={500}
                         value={local.autoCheckInRadiusOffset}
                         onChange={(e) => update("autoCheckInRadiusOffset", Number(e.target.value))}
-                        className="w-full px-3 py-2.5 rounded-xl border border-border border-input bg-background text-foreground"
+                        className="w-full px-3 py-2.5 rounded-xl border border-input bg-background text-foreground"
                       />
                       <p className="text-xs text-muted-foreground mt-1">
                         مسافة إضافية بالأمتار خارج حدود النطاق لتفعيل الحضور التلقائي
@@ -286,7 +282,7 @@ export default function CompanySettingsPage() {
                     </div>
                     <div className="flex items-start gap-2 p-3 rounded-lg bg-primary/5">
                       <Zap className="w-4 h-4 text-primary mt-0.5 shrink-0" />
-                      <p className="text-xs text-primary text-primary/70">
+                      <p className="text-xs text-primary/70">
                         عند تفعيل هذه الميزة، سيتم تسجيل الحضور تلقائياً للموظف عند اقترابه من
                         النطاق الجغرافي المحدد له
                       </p>
@@ -313,9 +309,7 @@ export default function CompanySettingsPage() {
               <CardContent className="space-y-4">
                 <div className="flex items-center justify-between p-4 rounded-xl bg-muted/50">
                   <div>
-                    <p className="text-sm font-medium text-foreground">
-                      تفعيل الإشعارات
-                    </p>
+                    <p className="text-sm font-medium text-foreground">تفعيل الإشعارات</p>
                     <p className="text-xs text-muted-foreground mt-0.5">
                       مفتاح رئيسي لجميع الإشعارات
                     </p>
@@ -357,12 +351,8 @@ export default function CompanySettingsPage() {
                         className="flex items-center justify-between p-4 rounded-xl bg-muted/50"
                       >
                         <div>
-                          <p className="text-sm font-medium text-foreground">
-                            {item.title}
-                          </p>
-                          <p className="text-xs text-muted-foreground mt-0.5">
-                            {item.desc}
-                          </p>
+                          <p className="text-sm font-medium text-foreground">{item.title}</p>
+                          <p className="text-xs text-muted-foreground mt-0.5">{item.desc}</p>
                         </div>
                         <Switch
                           checked={local[item.key]}
@@ -382,7 +372,7 @@ export default function CompanySettingsPage() {
                           type="time"
                           value={local.checkInReminderTime}
                           onChange={(e) => update("checkInReminderTime", e.target.value)}
-                          className="w-full px-3 py-2.5 rounded-xl border border-border border-input bg-background text-foreground"
+                          className="w-full px-3 py-2.5 rounded-xl border border-input bg-background text-foreground"
                         />
                       </div>
                     )}
@@ -416,7 +406,7 @@ export default function CompanySettingsPage() {
                     max={480}
                     value={local.sessionTimeoutMinutes}
                     onChange={(e) => update("sessionTimeoutMinutes", Number(e.target.value))}
-                    className="w-full px-3 py-2.5 rounded-xl border border-border border-input bg-background text-foreground"
+                    className="w-full px-3 py-2.5 rounded-xl border border-input bg-background text-foreground"
                   />
                   <p className="text-xs text-muted-foreground mt-1">
                     يتم تسجيل الخروج تلقائياً بعد هذه المدة من عدم النشاط
@@ -424,9 +414,7 @@ export default function CompanySettingsPage() {
                 </div>
                 <div className="flex items-center justify-between p-4 rounded-xl bg-muted/50">
                   <div>
-                    <p className="text-sm font-medium text-foreground">
-                      تسجيل الانصراف التلقائي
-                    </p>
+                    <p className="text-sm font-medium text-foreground">تسجيل الانصراف التلقائي</p>
                     <p className="text-xs text-muted-foreground mt-0.5">
                       تسجيل انصراف تلقائي للموظفين بعد وقت محدد
                     </p>
@@ -448,7 +436,7 @@ export default function CompanySettingsPage() {
                       type="time"
                       value={local.autoSignOutTime}
                       onChange={(e) => update("autoSignOutTime", e.target.value)}
-                      className="w-full px-3 py-2.5 rounded-xl border border-border border-input bg-background text-foreground"
+                      className="w-full px-3 py-2.5 rounded-xl border border-input bg-background text-foreground"
                     />
                   </div>
                 )}
@@ -472,9 +460,7 @@ export default function CompanySettingsPage() {
               <CardContent className="space-y-4">
                 <div className="flex items-center justify-between p-4 rounded-xl bg-muted/50">
                   <div>
-                    <p className="text-sm font-medium text-foreground">
-                      اشتراط النطاق للحضور
-                    </p>
+                    <p className="text-sm font-medium text-foreground">اشتراط النطاق للحضور</p>
                     <p className="text-xs text-muted-foreground mt-0.5">
                       منع تسجيل الحضور خارج النطاق الجغرافي
                     </p>

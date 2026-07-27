@@ -25,7 +25,11 @@ import {
 
 export const attendanceApi = {
   async list(employeeId?: string): Promise<AttendanceRecord[]> {
-    try { await ensureAuth(); } catch { return []; }
+    try {
+      await ensureAuth();
+    } catch {
+      return [];
+    }
     const companyId = getCompanyId();
     if (!companyId) return [];
     const base = collection(requireDb(), "attendance");
@@ -49,6 +53,7 @@ export const attendanceApi = {
     employee?: Pick<Employee, "attendanceMode" | "shiftOverride"> | null;
   }): Promise<AttendanceRecord> {
     const currentUser = await ensureAuth();
+    const companyId = requireCompanyId();
     let geofence: Geofence | null = null;
     if (payload.geofenceId) {
       try {
@@ -145,7 +150,7 @@ export const attendanceApi = {
     const record = {
       id: reference.id,
       ownerUid: currentUser.uid,
-      companyId: getCompanyId(),
+      companyId,
       employeeId: payload.employeeId,
       employeeName: payload.employeeName || currentUser.displayName || currentUser.email || "",
       date,

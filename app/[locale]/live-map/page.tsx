@@ -25,9 +25,11 @@ import VectorSource from "ol/source/Vector";
 import OSM from "ol/source/OSM";
 import XYZ from "ol/source/XYZ";
 import { fromLonLat } from "ol/proj";
+import type { Coordinate } from "ol/coordinate";
 import { Point, Circle as CircleGeom, LineString } from "ol/geom";
 import Feature from "ol/Feature";
 import { Style, Stroke, Fill, Circle as CircleStyle, Text } from "ol/style";
+import { boundingExtent, buffer } from "ol/extent";
 import "ol/ol.css";
 import { useLiveTracking, useGeofences } from "@/hooks/useApi";
 import { useLiveTrackingSocket } from "@/hooks/useLiveTrackingSocket";
@@ -39,6 +41,7 @@ import type { LiveTrackingEmployee, Geofence } from "@/lib/types/trackingTypes";
 import { useAuthStore } from "@/stores/useAuthStore";
 import AccessDeniedCard from "@/components/shared/AccessDeniedCard";
 import { MAP_THEME } from "@/lib/utils/mapTheme";
+import { createHybridSatelliteLayers } from "@/lib/utils/mapLayers";
 
 export default function LiveMapPage() {
   const mapRef = useRef<HTMLDivElement>(null);
@@ -58,12 +61,13 @@ export default function LiveMapPage() {
     Array<{ lat: number; lng: number; time: string }>
   >([]);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [tileLayer, setTileLayer] = useState<"osm" | "satellite" | "topo">("osm");
+  const [tileLayer, setTileLayer] = useState<"osm" | "satellite" | "topo">("satellite");
   const [showTilePicker, setShowTilePicker] = useState(false);
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<Map | null>(null);
   const routeSourceRef = useRef<VectorSource | null>(null);
   const tileLayerRef = useRef<TileLayer<OSM | XYZ> | null>(null);
+  const overlayLayersRef = useRef<TileLayer<XYZ>[]>([]);
   const filteredTrackingRef = useRef<LiveTrackingEmployee[]>([]);
 
   const toggleFullscreen = () => {
@@ -109,6 +113,7 @@ export default function LiveMapPage() {
   useEffect(() => {
     if (!mapInstanceRef.current || !tileLayerRef.current) return;
     tileLayerRef.current.setSource(tileSources[tileLayer]());
+    overlayLayersRef.current.forEach((layer) => layer.setVisible(tileLayer === "satellite"));
   }, [tileLayer, tileSources]);
 
   const statusLabels: Record<string, string> = {
@@ -118,8 +123,8 @@ export default function LiveMapPage() {
   };
 
   const statusColors: Record<string, string> = {
-    inside_geofence: "text-primary bg-primary/10 text-primary bg-primary/10",
-    outside_geofence: "text-[hsl(48_96%_53%)] bg-[hsl(48_96%_53%/0.15)] dark:text-[hsl(48_96%_53%)] dark:bg-[hsl(48_96%_53%/0.15)]",
+    inside_geofence: "text-primary bg-primary/10",
+    outside_geofence: "text-[hsl(48_96%_53%)] bg-[hsl(48_96%_53%/0.15)]",
     offline: "text-muted-foreground bg-muted",
   };
 
@@ -147,18 +152,26 @@ export default function LiveMapPage() {
     const routeSource = new VectorSource();
     routeSourceRef.current = routeSource;
 
-    const baseTileLayer = new TileLayer({ source: new OSM() });
+    const baseTileLayer = new TileLayer({ source: tileSources.satellite() });
     tileLayerRef.current = baseTileLayer;
 
-    const vectorLayer = new VectorLayer({ source: vectorSource });
+    const overlayLayers = createHybridSatelliteLayers().slice(1) as TileLayer<XYZ>[];
+    overlayLayersRef.current = overlayLayers;
+
+    const vectorLayer = new VectorLayer({ source: vectorSource, zIndex: 50 });
     const routeLayer = new VectorLayer({ source: routeSource, zIndex: 100 });
+
+    const initialGeofence = geofences[0];
+    const initialCenter = initialGeofence
+      ? fromLonLat([initialGeofence.lng, initialGeofence.lat])
+      : fromLonLat([46.6753, 24.7136]);
 
     const map = new Map({
       target: mapRef.current,
-      layers: [baseTileLayer, vectorLayer, routeLayer],
+      layers: [baseTileLayer, ...overlayLayers, vectorLayer, routeLayer],
       view: new View({
-        center: fromLonLat([46.6753, 24.7136]),
-        zoom: 12,
+        center: initialCenter,
+        zoom: initialGeofence ? 14 : 12,
       }),
     });
     mapInstanceRef.current = map;
@@ -190,10 +203,12 @@ export default function LiveMapPage() {
     if (!vectorSource) return;
 
     vectorSource.clear();
+    const extentCoords: Coordinate[] = [];
 
     // Add geofence circles
     geofences.forEach((geo: Geofence) => {
       const center = fromLonLat([geo.lng, geo.lat]);
+      extentCoords.push(center);
       const circleFeature = new Feature({
         geometry: new CircleGeom(center, geo.radius),
         type: "geofence",
@@ -233,6 +248,7 @@ export default function LiveMapPage() {
     filteredTracking.forEach((emp) => {
       if (emp.lat === null || emp.lng === null) return;
       const point = fromLonLat([emp.lng, emp.lat]);
+      extentCoords.push(point);
       const feature = new Feature({
         geometry: new Point(point),
         type: "employee",
@@ -264,6 +280,12 @@ export default function LiveMapPage() {
       );
       vectorSource.addFeature(feature);
     });
+
+    const map = mapInstanceRef.current;
+    if (map && extentCoords.length >= 1) {
+      const extent = boundingExtent(extentCoords);
+      map.getView().fit(buffer(extent, 2000), { duration: 500 });
+    }
   }, [geofences, filteredTracking]);
 
   // Track route history for selected employee
@@ -272,7 +294,7 @@ export default function LiveMapPage() {
     const newPoint = {
       lat: selectedEmployee.lat,
       lng: selectedEmployee.lng,
-      time: new Date().toLocaleTimeString("ar-SA", {
+      time: new Date().toLocaleTimeString("ar-SA-u-nu-latn", {
         hour: "2-digit",
         minute: "2-digit",
         second: "2-digit",
@@ -356,7 +378,7 @@ export default function LiveMapPage() {
           LeftSection={
             <div className="flex items-center gap-3 text-sm">
               <span
-                className={`flex items-center gap-1.5 px-2 py-1 rounded-lg ${socketConnected ? "bg-primary/10 text-primary bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`}
+                className={`flex items-center gap-1.5 px-2 py-1 rounded-lg ${socketConnected ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`}
               >
                 {socketConnected ? <Wifi className="w-3 h-3" /> : <WifiOff className="w-3 h-3" />}
                 {socketConnected ? "مباشر" : "غير متصل"}
@@ -364,7 +386,7 @@ export default function LiveMapPage() {
               {lastUpdate && (
                 <span className="text-xs text-muted-foreground/70">
                   آخر تحديث:{" "}
-                  {lastUpdate.toLocaleTimeString("ar-SA", {
+                  {lastUpdate.toLocaleTimeString("ar-SA-u-nu-latn", {
                     hour: "2-digit",
                     minute: "2-digit",
                     second: "2-digit",
@@ -446,7 +468,7 @@ export default function LiveMapPage() {
                       }}
                       className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm transition-colors ${
                         showRoute
-                          ? "bg-primary/50 text-primary-foreground"
+                          ? "bg-primary text-primary-foreground"
                           : "bg-muted text-muted-foreground"
                       }`}
                     >
@@ -470,7 +492,7 @@ export default function LiveMapPage() {
                     <div className="absolute top-3 left-3 flex flex-col gap-2 z-10">
                       <button
                         onClick={toggleFullscreen}
-                        className="p-2 rounded-lg bg-background/90 bg-card/90 backdrop-blur-sm shadow-md hover:bg-background hover:bg-muted transition-colors"
+                        className="p-2 rounded-lg bg-card/90 backdrop-blur-sm shadow-md hover:bg-muted transition-colors"
                         title={isFullscreen ? "خروج من الشاشة الكاملة" : "شاشة كاملة"}
                         aria-label={isFullscreen ? "خروج من الشاشة الكاملة" : "دخول الشاشة الكاملة"}
                       >
@@ -483,7 +505,7 @@ export default function LiveMapPage() {
                       <div className="relative">
                         <button
                           onClick={() => setShowTilePicker(!showTilePicker)}
-                          className="p-2 rounded-lg bg-background/90 bg-card/90 backdrop-blur-sm shadow-md hover:bg-background hover:bg-muted transition-colors"
+                          className="p-2 rounded-lg bg-card/90 backdrop-blur-sm shadow-md hover:bg-muted transition-colors"
                           title="طبقة الخريطة"
                           aria-label="اختيار طبقة الخريطة"
                           aria-expanded={showTilePicker}
@@ -505,7 +527,7 @@ export default function LiveMapPage() {
                                   setTileLayer(key);
                                   setShowTilePicker(false);
                                 }}
-                                className={`block w-full px-4 py-2.5 text-sm text-right hover:bg-muted hover:bg-muted transition-colors ${
+                                className={`block w-full px-4 py-2.5 text-sm text-right hover:bg-muted transition-colors ${
                                   tileLayer === key
                                     ? "font-bold text-primary bg-primary/5"
                                     : "text-foreground"
@@ -532,9 +554,7 @@ export default function LiveMapPage() {
                             {selectedEmployee.name.charAt(0)}
                           </div>
                           <div>
-                            <h3 className="font-bold text-foreground">
-                              {selectedEmployee.name}
-                            </h3>
+                            <h3 className="font-bold text-foreground">{selectedEmployee.name}</h3>
                             <span
                               className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${statusColors[selectedEmployee.status]}`}
                             >
@@ -544,7 +564,7 @@ export default function LiveMapPage() {
                         </div>
                         <button
                           onClick={() => setSelectedEmployee(null)}
-                          className="p-1.5 rounded-lg hover:bg-muted hover:bg-muted transition-colors text-muted-foreground/70"
+                          className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground/70"
                           aria-label="إغلاق"
                         >
                           <X className="w-4 h-4" />
@@ -560,10 +580,13 @@ export default function LiveMapPage() {
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">آخر ظهور:</span>
                           <span className="font-medium text-foreground">
-                            {new Date(selectedEmployee.lastSeen).toLocaleTimeString("ar-SA", {
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            })}
+                            {new Date(selectedEmployee.lastSeen).toLocaleTimeString(
+                              "ar-SA-u-nu-latn",
+                              {
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              }
+                            )}
                           </span>
                         </div>
                         <div className="flex justify-between items-center">
@@ -651,7 +674,7 @@ export default function LiveMapPage() {
                           <div
                             key={emp.id}
                             onClick={() => setSelectedEmployee(emp)}
-                            className="flex items-center justify-between p-3 rounded-xl border border-border hover:bg-muted border-border hover:bg-muted/50 cursor-pointer transition-all"
+                            className="flex items-center justify-between p-3 rounded-xl border border-border hover:bg-muted/50 cursor-pointer transition-all"
                           >
                             <div className="flex items-center gap-2">
                               <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center text-primary-foreground text-xs font-bold">

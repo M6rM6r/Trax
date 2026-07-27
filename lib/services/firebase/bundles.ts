@@ -1,11 +1,4 @@
-import {
-  loadBundle,
-  namedQuery,
-  getDocs,
-  type Firestore,
-  type Query,
-  type DocumentData,
-} from "firebase/firestore";
+import { loadBundle, namedQuery, getDocs } from "firebase/firestore";
 import { requireDb } from "./helpers";
 
 /**

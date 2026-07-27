@@ -28,7 +28,7 @@ export default function AvatarUpload({
     <div className="flex flex-col items-center gap-3">
       <div className="relative select-none" style={{ width: size, height: size }}>
         <div
-          className="w-full h-full overflow-hidden border-2 border-border border-input transition-all duration-200"
+          className="w-full h-full overflow-hidden border-2 border-input transition-all duration-200"
           style={{ borderRadius }}
         >
           {currentUrl ? (

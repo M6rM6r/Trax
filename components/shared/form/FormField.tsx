@@ -82,14 +82,12 @@ export function FormSelect({
 }: FormSelectProps) {
   return (
     <div>
-      <label className="text-sm font-medium text-muted-foreground mb-1 block">
-        {label}
-      </label>
+      <label className="text-sm font-medium text-muted-foreground mb-1 block">{label}</label>
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
         disabled={disabled}
-        className={`w-full px-3 py-2 border border-input rounded-lg outline-none focus:ring-2 focus:ring-ring bg-transparent text-foreground ${className}`}
+        className={`w-full px-3 py-2 border border-input rounded-lg outline-none focus:ring-2 focus:ring-ring bg-card text-foreground ${className}`}
       >
         {children}
       </select>

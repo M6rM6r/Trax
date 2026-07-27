@@ -70,9 +70,9 @@ export default function NotFound() {
         </p>
 
         {/* Suggestions */}
-        <div className="bg-primary/5 border border-primary/20 border-primary/30 rounded-lg p-4 mb-6 text-right">
-          <h3 className="text-primary text-primary font-semibold mb-2">💡 اقتراحات:</h3>
-          <ul className="text-primary text-primary/70 text-sm space-y-1">
+        <div className="bg-primary/5 border border-primary/30 rounded-lg p-4 mb-6 text-right">
+          <h3 className="text-primary font-semibold mb-2">💡 اقتراحات:</h3>
+          <ul className="text-primary/70 text-sm space-y-1">
             <li>• تأكد من كتابة العنوان بشكل صحيح</li>
             <li>• استخدم زر الرجوع للعودة للصفحة السابقة</li>
             <li>• انتقل للصفحة الرئيسية واستكشف الموقع</li>
@@ -84,10 +84,7 @@ export default function NotFound() {
         <div className="bg-[hsl(48_96%_53%/0.1)] dark:bg-[hsl(48_96%_53%/0.1)] border border-[hsl(48_96%_53%/0.2)] dark:border-[hsl(48_96%_53%/0.3)] rounded-lg p-3 mb-6">
           <p className="text-[hsl(48_96%_53%)] text-sm font-medium">
             سيتم تحويلك تلقائياً إلى الصفحة الرئيسية خلال{" "}
-            <span className="font-bold text-[hsl(48_96%_53%)] text-lg">
-              {countdown}
-            </span>{" "}
-            ثانية
+            <span className="font-bold text-[hsl(48_96%_53%)] text-lg">{countdown}</span> ثانية
           </p>
         </div>
 

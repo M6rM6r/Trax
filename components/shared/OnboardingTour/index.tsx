@@ -169,7 +169,7 @@ export function OnboardingTour() {
           >
             <button
               onClick={handleSkip}
-              className="absolute top-4 left-4 p-1.5 rounded-lg hover:bg-muted hover:bg-muted transition-colors"
+              className="absolute top-4 left-4 p-1.5 rounded-lg hover:bg-muted transition-colors"
               aria-label="تخطي"
             >
               <X className="w-5 h-5 text-muted-foreground/70" />
@@ -179,12 +179,8 @@ export function OnboardingTour() {
               <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center mb-4 shadow-lg">
                 {step.icon}
               </div>
-              <h2 className="text-xl font-bold text-foreground mb-2">
-                {step.title}
-              </h2>
-              <p className="text-sm text-muted-foreground text-muted-foreground leading-relaxed">
-                {step.description}
-              </p>
+              <h2 className="text-xl font-bold text-foreground mb-2">{step.title}</h2>
+              <p className="text-sm text-muted-foreground leading-relaxed">{step.description}</p>
             </div>
 
             {/* Progress dots */}

@@ -66,11 +66,7 @@ export function LoadingSkeleton({ variant }: { variant: SkeletonVariant }) {
 
   if (variant === "table") {
     return (
-      <Card
-        className="border-0 shadow-lg bg-card"
-        role="status"
-        aria-label="جاري التحميل"
-      >
+      <Card className="border-0 shadow-lg bg-card" role="status" aria-label="جاري التحميل">
         <CardContent className="p-0">
           <div className="overflow-x-auto">
             <table className="w-full">
@@ -105,10 +101,7 @@ export function LoadingSkeleton({ variant }: { variant: SkeletonVariant }) {
     return (
       <div className="space-y-3" role="status" aria-label="جاري التحميل">
         {Array.from({ length: 5 }).map((_, i) => (
-          <div
-            key={i}
-            className="flex items-center gap-3 p-3 rounded-xl border border-border"
-          >
+          <div key={i} className="flex items-center gap-3 p-3 rounded-xl border border-border">
             <Skeleton className="w-10 h-10 rounded-full" />
             <div className="flex-1 space-y-2">
               <Skeleton className="h-4 w-32" />
@@ -149,7 +142,7 @@ export function LoadingSkeleton({ variant }: { variant: SkeletonVariant }) {
                 {Array.from({ length: 4 }).map((_, i) => (
                   <div
                     key={i}
-                    className="flex items-center justify-between p-3 rounded-xl border border-border border-border"
+                    className="flex items-center justify-between p-3 rounded-xl border border-border"
                   >
                     <Skeleton className="h-8 w-8 rounded-full" />
                     <Skeleton className="h-4 w-20" />
@@ -356,9 +349,7 @@ export function ErrorState({
         </h3>
         <p className="text-sm text-muted-foreground mb-6">يرجى المحاولة مرة أخرى</p>
         {retryCount && retryCount > 0 && (
-          <p className="text-xs text-[hsl(48_96%_53%)] mb-3">
-            المحاولة {retryCount} من 3
-          </p>
+          <p className="text-xs text-[hsl(48_96%_53%)] mb-3">المحاولة {retryCount} من 3</p>
         )}
         {onRetry && (
           <Button

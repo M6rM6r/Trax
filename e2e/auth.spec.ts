@@ -1,5 +1,17 @@
 import { test, expect } from "@playwright/test";
 
+const e2eEmail = process.env.E2E_EMAIL;
+const e2ePassword = process.env.E2E_PASSWORD;
+const hasE2ECredentials = Boolean(e2eEmail && e2ePassword);
+
+async function signIn(page: import("@playwright/test").Page) {
+  await page.goto("/ar/login");
+  await page.locator('input[name="identifier"]').fill(e2eEmail!);
+  await page.locator('input[name="password"]').fill(e2ePassword!);
+  await page.locator('button[type="submit"]').click();
+  await page.waitForURL("**/ar", { timeout: 10_000 });
+}
+
 test.describe("Authentication Flow", () => {
   test("login page renders with RTL Arabic", async ({ page }) => {
     await page.goto("/ar/login");
@@ -12,7 +24,7 @@ test.describe("Authentication Flow", () => {
     await page.goto("/ar/login");
     await expect(page.locator('input[name="identifier"]')).toHaveAttribute(
       "placeholder",
-      /example@trax.com|username/
+      "email@trax.com"
     );
   });
 
@@ -20,24 +32,37 @@ test.describe("Authentication Flow", () => {
     await page.goto("/ar/login");
     const passwordInput = page.locator('input[type="password"]');
     await expect(passwordInput).toHaveAttribute("type", "password");
-    const toggleBtn = page.locator('button[aria-label*="إظهار"]');
+    const toggleBtn = page.locator('button[aria-label="Show password"]');
     await toggleBtn.click();
     await expect(page.locator('input[type="text"]')).toBeVisible();
   });
 
-  test("successful login redirects to dashboard", async ({ page }) => {
+  test("login validates required credentials", async ({ page }) => {
     await page.goto("/ar/login");
     await page.locator('button[type="submit"]').click();
-    await page.waitForURL("**/ar", { timeout: 10_000 });
+    await expect(page).toHaveURL(/\/ar\/login$/);
+    await expect(page.getByText("البريد الإلكتروني مطلوب")).toBeVisible();
+    await expect(page.getByText("كلمة المرور مطلوبة")).toBeVisible();
+  });
+
+  test("successful login redirects to dashboard", async ({ page }) => {
+    test.skip(
+      !hasE2ECredentials,
+      "Set E2E_EMAIL and E2E_PASSWORD to run authenticated browser tests."
+    );
+    await signIn(page);
     await expect(page).toHaveURL(/\/ar$/);
   });
 });
 
 test.describe("Dashboard", () => {
+  test.skip(
+    !hasE2ECredentials,
+    "Set E2E_EMAIL and E2E_PASSWORD to run authenticated browser tests."
+  );
+
   test.beforeEach(async ({ page }) => {
-    await page.goto("/ar/login");
-    await page.locator('button[type="submit"]').click();
-    await page.waitForURL("**/ar", { timeout: 10_000 });
+    await signIn(page);
   });
 
   test("dashboard renders stat cards", async ({ page }) => {

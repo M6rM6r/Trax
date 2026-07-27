@@ -35,6 +35,7 @@ export interface Employee {
   lastSeen?: string | null;
   batteryLevel?: number | null;
   employeeNumber?: string | null;
+  password?: string;
   /** Override company default attendance mode. If null, company default is used. */
   attendanceMode?: AttendanceMode | null;
   /** Override company default shift. If null, company schedule is used. */

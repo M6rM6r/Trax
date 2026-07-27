@@ -5,7 +5,7 @@ export const queryKeys = {
   attendanceReports: ["attendance", "reports"] as const,
   geofences: ["geofences"] as const,
   dashboard: ["dashboard", "data"] as const,
-  dashboardTrends: ["dashboard", "data"] as const,
+  dashboardTrends: ["dashboard", "trends"] as const,
   tracking: ["tracking", "live"] as const,
   aiRetention: ["ai", "retention"] as const,
   companySettings: ["company-settings"] as const,
