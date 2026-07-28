@@ -5,7 +5,6 @@ import { getIdTokenResult, onAuthStateChanged } from "firebase/auth";
 import { auth } from "@/lib/config/firebase";
 import { getFirebaseUserProfile } from "@/lib/services/firebaseData";
 import { useAuthStore, type UserRole } from "@/stores/useAuthStore";
-import { useFirebaseAuth } from "@/lib/config/env";
 import { resolveUserRole } from "@/lib/utils/auth";
 
 export default function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -15,7 +14,7 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
   userRef.current = user;
 
   useEffect(() => {
-    if (!auth || !useFirebaseAuth) return;
+    if (!auth) return;
 
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (!firebaseUser) {
@@ -119,7 +118,7 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
   }, [clearUser, token, user, setUser]);
 
   useEffect(() => {
-    if (!auth || !useFirebaseAuth) return;
+    if (!auth) return;
     if (!token && auth.currentUser && user) {
       auth.currentUser
         .getIdToken(false)

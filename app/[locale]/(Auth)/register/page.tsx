@@ -23,7 +23,6 @@ import { toastSuccess, toastError } from "@/hooks/use-toast";
 import { hapticSuccess, hapticError } from "@/lib/utils/haptics";
 import { useAuthStore, UserRole } from "@/stores/useAuthStore";
 import { firebaseData } from "@/lib/services/firebaseData";
-import { useFirebaseAuth } from "@/lib/config/env";
 import {
   getCompanyOnboardingCopy,
   shouldAllowCompanySelfRegistration,
@@ -153,8 +152,8 @@ export default function RegisterPage() {
       return;
     }
     try {
-      if (useFirebaseAuth && auth) {
-        await firebaseData.companies.register({
+      if (auth) {
+        const { companyId: newCompanyId } = await firebaseData.companies.register({
           company_name: values.company_name,
           industry: values.industry,
           admin_name: values.admin_name,
@@ -182,7 +181,7 @@ export default function RegisterPage() {
           },
           idToken,
           role,
-          "0",
+          newCompanyId,
           values.company_name
         );
 
