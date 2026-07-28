@@ -3,7 +3,7 @@ import { getStorage } from "firebase/storage";
 import { getAnalytics, isSupported } from "firebase/analytics";
 import { getAuth, type Auth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
-import { getFunctions, type Functions } from "firebase/functions";
+import { getFunctions } from "firebase/functions";
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,

@@ -48,7 +48,7 @@ function LiveClock() {
     update();
     const id = setInterval(update, 1000);
     return () => clearInterval(id);
-  }, []);
+  }, [timeLocale]);
   return (
     <div className="text-center">
       <p className="text-4xl sm:text-5xl font-extrabold tracking-tighter tabular-nums text-foreground">
@@ -322,6 +322,7 @@ export default function CheckInPage() {
     user,
     checkInMutation,
     currentEmployee,
+    timeLocale,
   ]);
 
   // Physical relation to the closest geofence (only for UI / feedback)
