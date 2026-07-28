@@ -30,6 +30,12 @@ service cloud.firestore {
         && get(/databases/$(database)/documents/companies/$(companyId)).data.ownerId == request.auth.uid;
     }
 
+    function isMastermind(uid) {
+      return signedIn()
+        && exists(/databases/$(database)/documents/users/$(uid))
+        && get(/databases/$(database)/documents/users/$(uid)).data.role == "mastermind";
+    }
+
     match /users/{uid} {
       allow read: if signedIn() && (
         uid == request.auth.uid
@@ -41,9 +47,9 @@ service cloud.firestore {
     }
 
     match /companies/{companyId} {
-      allow read: if signedIn() && (companyId == userCompanyId() || resource.data.ownerId == request.auth.uid);
-      allow create: if signedIn() && request.resource.data.ownerId == request.auth.uid;
-      allow update, delete: if signedIn() && (companyId == userCompanyId() || resource.data.ownerId == request.auth.uid);
+      allow read: if signedIn() && (companyId == userCompanyId() || resource.data.ownerId == request.auth.uid || isMastermind(request.auth.uid));
+      allow create: if signedIn() && (request.resource.data.ownerId == request.auth.uid || isMastermind(request.auth.uid));
+      allow update, delete: if signedIn() && (companyId == userCompanyId() || resource.data.ownerId == request.auth.uid || isMastermind(request.auth.uid));
     }
 
     match /company_settings/{settingsId} {

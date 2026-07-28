@@ -273,3 +273,88 @@ export const sendCompanyNotification = functions.https.onCall(async (data, conte
     data: { sent: totalSent, failed: totalFailed },
   };
 });
+
+async function requireMastermind(context: { auth?: { uid?: string } }): Promise<void> {
+  const uid = context.auth?.uid;
+  if (!uid) {
+    throw new functions.https.HttpsError("unauthenticated", "Authentication required");
+  }
+  const userDoc = await db.collection("users").doc(uid).get();
+  const userData = userDoc.data();
+  if (!userData || userData.role !== "mastermind") {
+    throw new functions.https.HttpsError(
+      "permission-denied",
+      "Only Mastermind admins can perform this action"
+    );
+  }
+}
+
+export const createCompany = functions.https.onCall(async (data, context) => {
+  const { name, industry, admin_email, admin_name, admin_password, plan, maxEmployees } = data as {
+    name: string;
+    industry?: string;
+    admin_email: string;
+    admin_name?: string;
+    admin_password: string;
+    plan?: string;
+    maxEmployees?: number;
+  };
+
+  if (!name?.trim() || !admin_email?.trim() || !admin_password) {
+    throw new functions.https.HttpsError(
+      "invalid-argument",
+      "name, admin_email, and admin_password are required"
+    );
+  }
+
+  await requireMastermind(context);
+
+  const email = normalizeEmail(admin_email);
+  let userRecord;
+  try {
+    userRecord = await auth.createUser({
+      email,
+      password: admin_password,
+      displayName: admin_name?.trim() || email.split("@")[0],
+    });
+  } catch (err: any) {
+    if (err.code === "auth/email-already-exists") {
+      throw new functions.https.HttpsError("already-exists", "Admin email already in use");
+    }
+    throw err;
+  }
+
+  const companyRef = db.collection("companies").doc();
+  const companyId = companyRef.id;
+  const adminName = admin_name?.trim() || email.split("@")[0];
+
+  const batch = db.batch();
+  batch.set(companyRef, {
+    id: companyId,
+    name: name.trim(),
+    industry: industry?.trim() ?? "",
+    plan: plan?.trim() ?? "trial",
+    maxEmployees: maxEmployees ?? 10,
+    active: true,
+    ownerId: userRecord.uid,
+    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+  });
+
+  batch.set(db.collection("users").doc(userRecord.uid), {
+    id: userRecord.uid,
+    name: adminName,
+    email,
+    role: "company",
+    company_id: companyId,
+    company_name: name.trim(),
+    company: { id: companyId, name: name.trim() },
+    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+  });
+
+  await batch.commit();
+
+  return {
+    success: true,
+    data: { companyId, adminUid: userRecord.uid, email, adminPassword: admin_password },
+  };
+});

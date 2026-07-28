@@ -58,4 +58,22 @@ export const cloudFunctionsApi = {
     const data = result.data as { success: boolean; data: Record<string, unknown> };
     return data.data;
   },
+
+  async createCompany(payload: {
+    name: string;
+    industry?: string;
+    admin_email: string;
+    admin_name?: string;
+    admin_password: string;
+    plan?: string;
+    maxEmployees?: number;
+  }): Promise<{ companyId: string; adminUid: string; email: string; adminPassword: string }> {
+    const fn = httpsCallable(requireFunctions(), "createCompany");
+    const result = await fn(payload);
+    const data = result.data as {
+      success: boolean;
+      data: { companyId: string; adminUid: string; email: string; adminPassword: string };
+    };
+    return data.data;
+  },
 };
