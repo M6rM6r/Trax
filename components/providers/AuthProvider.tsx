@@ -22,8 +22,10 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
         if (userRef.current && !hasRedirected.current) {
           hasRedirected.current = true;
           clearUser();
-          console.warn("[auth] Firebase session expired, redirecting to login");
-          if (typeof window !== "undefined") {
+          console.warn("[auth] Firebase session expired");
+          const isLoginPage =
+            typeof window !== "undefined" && window.location.pathname.includes("/login");
+          if (!isLoginPage && typeof window !== "undefined") {
             const pathParts = window.location.pathname.split("/");
             const detectedLocale = pathParts[1] === "en" ? "en" : "ar";
             window.location.href = `/${detectedLocale}/login?reason=session_expired`;

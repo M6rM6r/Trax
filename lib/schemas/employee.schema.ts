@@ -12,7 +12,6 @@ export const employeeSchema = z.object({
   name: z.string().trim().min(2, "Name must be at least 2 characters"),
   email: z.string().trim().email("Invalid email").toLowerCase(),
   phone: z.string().trim().min(1, "Phone is required"),
-  role: z.enum(["manager", "employee", "supervisor"]),
   department: z.string().trim().min(1, "Department is required"),
   avatar: z.string().nullable().optional(),
   geofenceId: z.coerce.string().nullable().optional(),

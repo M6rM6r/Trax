@@ -6,26 +6,6 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    function hasProfileRole(roles) {
-      return signedIn()
-        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
-        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in roles;
-    }
-
-    function manager() {
-      return signedIn() && (
-        request.auth.token.role in ['boss', 'manager', 'supervisor']
-        || hasProfileRole(['boss', 'manager', 'supervisor'])
-      );
-    }
-
-    function boss() {
-      return signedIn() && (
-        request.auth.token.role == 'boss'
-        || hasProfileRole(['boss'])
-      );
-    }
-
     function userCompanyId() {
       return signedIn()
         ? (exists(/databases/$(database)/documents/users/$(request.auth.uid))
@@ -44,53 +24,53 @@ service cloud.firestore {
       return signedIn() && resource.data.ownerUid == request.auth.uid;
     }
 
+    function isCompanyOwner(companyId) {
+      return signedIn()
+        && exists(/databases/$(database)/documents/companies/$(companyId))
+        && get(/databases/$(database)/documents/companies/$(companyId)).data.ownerId == request.auth.uid;
+    }
+
     match /users/{uid} {
       allow read: if signedIn() && (
         uid == request.auth.uid
         || sameCompany(resource)
-        || manager()
       );
-      allow create: if signedIn() && (uid == request.auth.uid || sameCompany(request.resource) || manager());
-      allow update: if signedIn() && (uid == request.auth.uid || sameCompany(resource) || manager());
-      allow delete: if signedIn() && (uid == request.auth.uid || sameCompany(resource) || boss());
+      allow create: if signedIn() && (uid == request.auth.uid || sameCompany(request.resource));
+      allow update: if signedIn() && (uid == request.auth.uid || sameCompany(resource));
+      allow delete: if signedIn() && (uid == request.auth.uid || sameCompany(resource));
     }
 
     match /companies/{companyId} {
-      allow read: if signedIn();
-      allow create: if signedIn();
-      allow update, delete: if signedIn() && (resource.data.ownerId == request.auth.uid || boss());
+      allow read: if signedIn() && (companyId == userCompanyId() || resource.data.ownerId == request.auth.uid);
+      allow create: if signedIn() && request.resource.data.ownerId == request.auth.uid;
+      allow update, delete: if signedIn() && (companyId == userCompanyId() || resource.data.ownerId == request.auth.uid);
     }
 
     match /company_settings/{settingsId} {
-      allow read: if signedIn() && (settingsId == request.auth.uid || sameCompany(resource) || manager());
-      allow write: if signedIn() && (settingsId == request.auth.uid || sameCompany(resource) || manager());
+      allow read: if signedIn() && (settingsId == userCompanyId() || sameCompany(resource));
+      allow create: if signedIn() && (settingsId == userCompanyId() || sameCompany(request.resource));
+      allow update, delete: if signedIn() && (settingsId == userCompanyId() || sameCompany(resource));
     }
 
     match /employees/{employeeId} {
       allow read: if signedIn() && (
         sameCompany(resource)
-        || manager()
         || resource.data.authUid == request.auth.uid
         || resource.data.email == request.auth.token.email
+        || ('company_id' in resource.data && isCompanyOwner(resource.data.company_id))
       );
       allow create: if sameCompany(request.resource);
       allow update, delete: if sameCompany(resource);
     }
 
     match /geofences/{geofenceId} {
-      allow read: if signedIn() && (
-        sameCompany(resource)
-        || manager()
-      );
+      allow read: if signedIn() && (sameCompany(resource) || ('company_id' in resource.data && isCompanyOwner(resource.data.company_id)));
       allow create: if sameCompany(request.resource);
       allow update, delete: if sameCompany(resource);
     }
 
     match /attendance/{attendanceId} {
-      allow read: if signedIn() && (
-        sameCompany(resource)
-        || manager()
-      );
+      allow read: if signedIn() && (sameCompany(resource) || ('company_id' in resource.data && isCompanyOwner(resource.data.company_id)));
       allow create: if signedIn()
         && request.resource.data.ownerUid == request.auth.uid
         && sameCompany(request.resource);
@@ -98,14 +78,11 @@ service cloud.firestore {
     }
 
     match /locations/{employeeId} {
-      allow read: if signedIn() && (
-        sameCompany(resource)
-        || manager()
-      );
+      allow read: if signedIn() && sameCompany(resource);
       allow create, update: if signedIn()
         && request.resource.data.ownerUid == request.auth.uid
         && sameCompany(request.resource);
-      allow delete: if signedIn() && (owns(resource) || manager())
+      allow delete: if signedIn() && owns(resource)
         && sameCompany(resource);
     }
 
@@ -121,26 +98,24 @@ service cloud.firestore {
     }
 
     match /attendance_summaries/{summaryId} {
-      allow read: if signedIn() && (
-        sameCompany(resource)
-        || manager()
-      );
+      allow read: if signedIn() && (sameCompany(resource) || ('company_id' in resource.data && isCompanyOwner(resource.data.company_id)));
       allow write: if false;
     }
 
     match /deleted_users/{uid} {
-      allow read: if signedIn() && boss();
+      allow read: if sameCompany(resource);
       allow write: if false;
     }
 
     match /cache/{cacheKey} {
-      allow read: if signedIn();
-      allow write: if signedIn();
+      allow create: if signedIn() && request.resource.data.ownerUid == request.auth.uid;
+      allow read: if signedIn() && (resource.data == null || resource.data.ownerUid == request.auth.uid);
+      allow update, delete: if signedIn() && resource.data.ownerUid == request.auth.uid;
     }
 
     match /company_cache/{companyId} {
       allow read: if signedIn() && companyId == userCompanyId();
-      allow write: if signedIn() && (companyId == userCompanyId() || manager());
+      allow write: if signedIn() && companyId == userCompanyId();
     }
 
     match /function_metrics/{metricId} {

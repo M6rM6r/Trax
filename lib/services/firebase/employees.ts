@@ -81,7 +81,7 @@ export const employeesApi = {
         await setDoc(doc(database, "users", authUser.uid), {
           name: employee.name,
           email: employee.email,
-          role: employee.role ?? "employee",
+          role: "employee",
           company_id: companyId,
           employee_id: employeeDocId,
           assigned_geofence_id: employee.geofenceId ?? null,

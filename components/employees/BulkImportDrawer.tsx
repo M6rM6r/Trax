@@ -66,10 +66,6 @@ function parseCsv(text: string): string[][] {
   return rows;
 }
 
-function generatePassword(): string {
-  return Math.random().toString(36).slice(2, 10);
-}
-
 export function BulkImportDrawer({ open, onOpenChange, existingEmployees }: BulkImportDrawerProps) {
   const [raw, setRaw] = useState("");
   const [fileName, setFileName] = useState("");
@@ -131,38 +127,26 @@ export function BulkImportDrawer({ open, onOpenChange, existingEmployees }: Bulk
     }
 
     setImporting(true);
-    const failed: string[] = [];
 
-    for (const row of validRows) {
-      try {
-        const password = generatePassword();
-        const employeeNumber = generateStaffUsername({ name: row.name, email: row.email });
-        await firebaseData.employees.create({
-          name: row.name || row.email.split("@")[0],
-          email: row.email,
-          employeeNumber,
-          phone: row.phone,
-          department: row.department,
-          role: "employee",
-          geofenceId: "",
-          attendanceMode: null,
-          status: "active",
-          password,
-        });
-      } catch {
-        failed.push(row.email);
-      }
+    try {
+      const employees = validRows.map((row) => ({
+        name: row.name || row.email.split("@")[0],
+        email: row.email,
+        employeeNumber: generateStaffUsername({ name: row.name, email: row.email }),
+        phone: row.phone,
+        department: row.department,
+        geofenceId: "",
+      }));
+
+      await firebaseData.cloudFunctions.bulkCreateEmployees(employees);
+      toastSuccess(`تم استيراد ${validRows.length} موظف`);
+    } catch {
+      toastError("فشل الاستيراد — تحقق من الاتصال");
     }
 
     setImporting(false);
     qc.invalidateQueries({ queryKey: queryKeys.employees });
     qc.invalidateQueries({ queryKey: queryKeys.dashboard });
-
-    if (failed.length > 0) {
-      toastError(`فشل استيراد ${failed.length} موظف`);
-    } else {
-      toastSuccess(`تم استيراد ${validRows.length} موظف`);
-    }
 
     onOpenChange(false);
     setRaw("");

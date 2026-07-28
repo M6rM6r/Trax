@@ -19,6 +19,7 @@ import {
   User,
   Building2,
   Check,
+  Send,
 } from "lucide-react";
 import { Link, useRouter } from "@/i18n/navigation";
 import { motion, AnimatePresence } from "framer-motion";
@@ -28,6 +29,7 @@ import AvatarUpload from "@/components/shared/AvatarUpload";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { Switch } from "@/components/ui/switch";
 import { auth } from "@/lib/config/firebase";
+import { firebaseData } from "@/lib/services/firebase";
 
 type TabId = "profile" | "general" | "appearance" | "notifications" | "security" | "company";
 
@@ -163,10 +165,30 @@ export default function SettingsPage() {
     { id: "appearance", label: "المظهر", icon: Palette },
     { id: "notifications", label: "الإشعارات", icon: Bell },
     { id: "security", label: "الأمان", icon: Shield },
-    ...(role === "boss" || role === "manager"
-      ? [{ id: "company" as TabId, label: "الشركة", icon: Building2 }]
-      : []),
+    ...(role === "company" ? [{ id: "company" as TabId, label: "الشركة", icon: Building2 }] : []),
   ];
+
+  const [notifTitle, setNotifTitle] = useState("");
+  const [notifBody, setNotifBody] = useState("");
+  const [sendingNotif, setSendingNotif] = useState(false);
+
+  const handleSendNotification = async () => {
+    if (!notifTitle.trim() || !notifBody.trim()) return;
+    setSendingNotif(true);
+    try {
+      const result = await firebaseData.cloudFunctions.sendCompanyNotification(
+        notifTitle.trim(),
+        notifBody.trim()
+      );
+      toastSuccess(`تم إرسال الإشعار إلى ${result.sent} موظف`);
+      setNotifTitle("");
+      setNotifBody("");
+    } catch {
+      toastError("فشل إرسال الإشعار");
+    } finally {
+      setSendingNotif(false);
+    }
+  };
 
   const notificationItems = [
     {
@@ -516,6 +538,45 @@ export default function SettingsPage() {
                   })}
                 </CardContent>
               </Card>
+
+              {role === "company" && (
+                <Card className="border-0 shadow-lg bg-card mt-4">
+                  <CardHeader>
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                        <Send className="w-5 h-5 text-primary" />
+                      </div>
+                      <CardTitle className="text-lg font-bold text-foreground">
+                        إرسال إشعار للموظفين
+                      </CardTitle>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <input
+                      type="text"
+                      value={notifTitle}
+                      onChange={(e) => setNotifTitle(e.target.value)}
+                      placeholder="عنوان الإشعار"
+                      className="w-full px-3 py-2 text-sm border border-input rounded-lg outline-none focus:ring-2 focus:ring-ring bg-transparent text-foreground"
+                    />
+                    <textarea
+                      value={notifBody}
+                      onChange={(e) => setNotifBody(e.target.value)}
+                      placeholder="نص الإشعار"
+                      rows={3}
+                      className="w-full px-3 py-2 text-sm border border-input rounded-lg outline-none focus:ring-2 focus:ring-ring bg-transparent text-foreground resize-none"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleSendNotification}
+                      disabled={!notifTitle.trim() || !notifBody.trim() || sendingNotif}
+                      className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {sendingNotif ? "جارٍ الإرسال..." : "إرسال"}
+                    </button>
+                  </CardContent>
+                </Card>
+              )}
             </motion.div>
           )}
 

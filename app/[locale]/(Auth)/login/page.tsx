@@ -16,9 +16,10 @@ import {
   signInWithEmailAndPassword,
   browserLocalPersistence,
   setPersistence,
+  signOut,
 } from "firebase/auth";
 import { auth } from "@/lib/config/firebase";
-import { getFirebaseUserProfile } from "@/lib/services/firebaseData";
+import { getFirebaseUserProfile, getFirebaseUserProfileFromApi } from "@/lib/services/firebaseData";
 import { resolveUserRole, normalizeUserRole } from "@/lib/utils/auth";
 import { useFirebaseAuth } from "@/lib/config/env";
 
@@ -41,7 +42,7 @@ const Page = () => {
     () => searchParams.get("identifier")?.trim() || "",
     [searchParams]
   );
-  const { setUser, setRememberMe } = useAuthStore();
+  const { setUser, setRememberMe, clearUser } = useAuthStore();
   const [showSuccess, setShowSuccess] = useState(false);
 
   const applyLoginResponse = async (
@@ -58,6 +59,7 @@ const Page = () => {
           company_id: string;
           employee_id?: string | null;
           assigned_geofence_id?: string | null;
+          company_name?: string;
         };
         company?: { id: string; name: string };
       };
@@ -70,11 +72,15 @@ const Page = () => {
     }
 
     const { user, company } = resp.data;
-    let role = normalizeUserRole(user.role);
     const hasCompany = user.company_id !== null && user.company_id !== undefined;
     const hasEmployeeId = user.employee_id !== null && user.employee_id !== undefined;
-    if (hasCompany && !hasEmployeeId) {
-      role = "boss";
+    let role;
+    if (hasEmployeeId) {
+      role = "employee";
+    } else if (hasCompany) {
+      role = "company";
+    } else {
+      role = normalizeUserRole(user.role);
     }
 
     setUser(
@@ -92,7 +98,7 @@ const Page = () => {
       idToken,
       role,
       user.company_id,
-      company?.name
+      company?.name ?? user.company_name
     );
 
     hapticSuccess();
@@ -191,6 +197,31 @@ const Page = () => {
             },
           },
         });
+      } else {
+        const apiProfile = await getFirebaseUserProfileFromApi(idToken);
+        if (!apiProfile || !apiProfile.id) {
+          throw new Error("API login failed");
+        }
+        const apiHasEmployeeId =
+          apiProfile.employee_id !== null && apiProfile.employee_id !== undefined;
+        await applyLoginResponse(values, idToken, {
+          success: true,
+          data: {
+            user: {
+              id: Number(apiProfile.id),
+              name: String(apiProfile.name ?? ""),
+              email: String(apiProfile.email ?? values.identifier),
+              role: String(apiProfile.role ?? ""),
+              company_id: apiProfile.company_id ?? null,
+              employee_id: apiHasEmployeeId ? String(apiProfile.employee_id) : null,
+              assigned_geofence_id: apiProfile.assigned_geofence_id ?? null,
+            },
+            company: {
+              id: String(apiProfile.company_id ?? ""),
+              name: String(apiProfile.company_name ?? ""),
+            },
+          },
+        });
       }
     } catch (err) {
       hapticError();
@@ -210,6 +241,8 @@ const Page = () => {
         msg = firebaseErr.message;
       }
       toastError(msg);
+      await signOut(auth).catch(() => undefined);
+      clearUser();
     } finally {
       setSubmitting(false);
     }

@@ -42,19 +42,13 @@ import { hapticTap, hapticSuccess } from "@/lib/utils/haptics";
 import { Link } from "@/i18n/navigation";
 import { useLocale } from "next-intl";
 import { motion, AnimatePresence } from "framer-motion";
-import type { Employee, EmployeeRole } from "@/lib/types/trackingTypes";
+import type { Employee } from "@/lib/types/trackingTypes";
 import { useAuthStore } from "@/stores/useAuthStore";
 import AccessDeniedCard from "@/components/shared/AccessDeniedCard";
 import { BulkImportDrawer } from "@/components/employees/BulkImportDrawer";
 import { buildStaffCredentialsMessage, generateStaffUsername } from "@/lib/utils/staffOnboarding";
 
 const DEFAULT_PUBLIC_APP_URL = "https://naf--trax-ae.asia-southeast1.hosted.app";
-
-const roleLabels: Record<string, string> = {
-  manager: "مدير",
-  employee: "موظف",
-  supervisor: "مشرف",
-};
 
 function getEmployeeCreationErrorMessage(error: unknown): string {
   const code =
@@ -107,7 +101,6 @@ export default function EmployeesPage() {
     employeeNumber: string;
     phone: string;
     department: string;
-    role: EmployeeRole;
     geofenceId: string;
     attendanceMode: Employee["attendanceMode"];
     password: string;
@@ -117,7 +110,6 @@ export default function EmployeesPage() {
     employeeNumber: "",
     phone: "",
     department: "",
-    role: "employee",
     geofenceId: "",
     attendanceMode: null,
     password: "",
@@ -128,7 +120,6 @@ export default function EmployeesPage() {
     employeeNumber: string;
     phone: string;
     department: string;
-    role: EmployeeRole;
     geofenceId: string;
     attendanceMode: Employee["attendanceMode"];
     status: "active" | "inactive";
@@ -139,7 +130,6 @@ export default function EmployeesPage() {
     employeeNumber: "",
     phone: "",
     department: "",
-    role: "employee",
     geofenceId: "",
     attendanceMode: null,
     status: "active",
@@ -153,7 +143,6 @@ export default function EmployeesPage() {
       employeeNumber: "",
       phone: "",
       department: "",
-      role: "employee",
       geofenceId: "",
       attendanceMode: null,
       password: "",
@@ -214,7 +203,6 @@ export default function EmployeesPage() {
       employeeNumber: emp.employeeNumber ?? "",
       phone: emp.phone,
       department: emp.department,
-      role: emp.role,
       geofenceId: emp.geofenceId ?? "",
       attendanceMode: emp.attendanceMode ?? null,
       status: emp.status ?? "active",
@@ -281,13 +269,12 @@ export default function EmployeesPage() {
       return;
     }
     hapticSuccess();
-    const headers = ["الاسم", "البريد", "الهاتف", "القسم", "الدور", "الحالة"];
+    const headers = ["الاسم", "البريد", "الهاتف", "القسم", "الحالة"];
     const rows = selected.map((e) => [
       e.name,
       e.email,
       e.phone,
       e.department,
-      roleLabels[e.role],
       e.status === "active" ? "نشط" : "غير نشط",
     ]);
     const csv = [headers, ...rows].map((r) => r.map((c) => `"${c}"`).join(",")).join("\n");

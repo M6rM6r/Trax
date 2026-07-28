@@ -1,7 +1,5 @@
 export type AttendanceStatus = "present" | "absent" | "late" | "checked_out";
 
-export type EmployeeRole = "manager" | "employee" | "supervisor";
-
 export type AttendanceMode = "field" | "office_two_shift" | "hourly";
 
 export interface WorkShift {
@@ -25,7 +23,6 @@ export interface Employee {
   name: string;
   email: string;
   phone: string;
-  role: EmployeeRole;
   department: string;
   avatar?: string | null;
   geofenceId?: string | null;
@@ -106,7 +103,6 @@ export interface LiveTrackingEmployee {
   geofenceName?: string | null;
   lastSeen: string;
   batteryLevel: number | null;
-  role?: EmployeeRole;
   avatar?: string | null;
   speed?: number | null;
 }

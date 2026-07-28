@@ -26,7 +26,6 @@ export const liveTrackingEmployeeSchema = z.object({
   lastSeen: z.string(),
   geofenceName: z.string().nullable().optional(),
   batteryLevel: z.coerce.number().min(0).max(100).nullable(),
-  role: z.enum(["manager", "employee", "supervisor"]).optional(),
   avatar: z.string().nullable().optional(),
   speed: z.coerce.number().min(0).nullable().optional(),
 });

@@ -24,13 +24,12 @@ class AuthController extends Controller
                 $q->orWhere('username', $identifier);
             })->first();
 
-        if (! $user) {
-            // Check if this is a known employee
-            $employee = Employee::where('email', $email)
-                ->when($identifier, function ($q) use ($identifier) {
-                    $q->orWhere('employee_number', $identifier);
-                })->first();
+        $employee = Employee::where('email', $email)
+            ->when($identifier, function ($q) use ($identifier) {
+                $q->orWhere('employee_number', $identifier);
+            })->first();
 
+        if (! $user) {
             if ($employee) {
                 $user = User::create([
                     'company_id' => $employee->company_id,
@@ -41,6 +40,24 @@ class AuthController extends Controller
                     'password' => Str::random(32),
                     'role' => $employee->role ?? 'employee',
                 ]);
+            }
+        } elseif ($employee) {
+            // If the email belongs to an employee, keep the auth account in sync with the employee record.
+            $needsUpdate = false;
+            if ($user->company_id != $employee->company_id) {
+                $user->company_id = $employee->company_id;
+                $needsUpdate = true;
+            }
+            if ($employee->name && $user->name !== $employee->name) {
+                $user->name = $employee->name;
+                $needsUpdate = true;
+            }
+            if ($employee->role && $user->role !== $employee->role) {
+                $user->role = $employee->role;
+                $needsUpdate = true;
+            }
+            if ($needsUpdate) {
+                $user->save();
             }
         }
 
@@ -106,14 +123,20 @@ class AuthController extends Controller
             ->where('email', $user->email)
             ->first();
 
+        $isEmployee = $linkedEmployee !== null;
+        $role = $isEmployee ? 'employee' : $user->role;
+        $name = $isEmployee
+            ? ($linkedEmployee->name ?? $user->name)
+            : $user->name;
+
         return response()->json([
             'success' => true,
             'data' => [
                 'user' => [
                     'id' => $user->id,
-                    'name' => $user->name,
+                    'name' => $name,
                     'email' => $user->email,
-                    'role' => $user->role,
+                    'role' => $role,
                     'company_id' => $user->company_id,
                     'employee_id' => $linkedEmployee?->id,
                     'assigned_geofence_id' => $linkedEmployee?->geofence_id,

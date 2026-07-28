@@ -1,13 +1,46 @@
 import * as functions from "firebase-functions";
 import * as admin from "firebase-admin";
+import * as crypto from "crypto";
 
 const db = admin.firestore();
+const messaging = admin.messaging();
+const auth = admin.auth();
+
+const FCM_BATCH_SIZE = 500;
+
+function generatePassword(length = 12): string {
+  const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+  const bytes = crypto.randomBytes(length);
+  return Array.from(bytes, (b) => chars[b % chars.length]).join("");
+}
+
+function normalizeEmail(email: string): string {
+  return email.trim().toLowerCase();
+}
+
+async function requireCompanyAdmin(
+  context: { auth?: { uid?: string } },
+  companyId: string
+): Promise<void> {
+  const uid = context.auth?.uid;
+  if (!uid) {
+    throw new functions.https.HttpsError("unauthenticated", "Authentication required");
+  }
+  const userDoc = await db.collection("users").doc(uid).get();
+  const userData = userDoc.data();
+  if (!userData || userData.company_id !== companyId || userData.role !== "company") {
+    throw new functions.https.HttpsError(
+      "permission-denied",
+      "Only company admins can perform this action"
+    );
+  }
+}
 
 /**
  * Export attendance data as CSV for a given company and date range.
  */
-export const exportAttendance = functions.https.onCall(async (request) => {
-  const { companyId, startDate, endDate } = request.data as {
+export const exportAttendance = functions.https.onCall(async (data, context) => {
+  const { companyId, startDate, endDate } = data as {
     companyId: string;
     startDate: string;
     endDate: string;
@@ -20,17 +53,7 @@ export const exportAttendance = functions.https.onCall(async (request) => {
     );
   }
 
-  // Verify caller belongs to this company
-  if (request.auth?.uid) {
-    const userDoc = await db.collection("users").doc(request.auth.uid).get();
-    const userCompanyId = userDoc.data()?.company_id;
-    if (userCompanyId !== companyId) {
-      throw new functions.https.HttpsError(
-        "permission-denied",
-        "You do not have access to this company's data"
-      );
-    }
-  }
+  await requireCompanyAdmin(context, companyId);
 
   const attendance = await db
     .collection("attendance")
@@ -73,134 +96,180 @@ export const exportAttendance = functions.https.onCall(async (request) => {
 });
 
 /**
- * Bulk create employees in a single transaction.
+ * Bulk create employees with Firebase Auth accounts in a single batch.
  */
-export const bulkCreateEmployees = functions.https.onCall(async (request) => {
-  const { companyId, employees } = request.data as {
+export const bulkCreateEmployees = functions.https.onCall(async (data, context) => {
+  const { companyId, employees } = data as {
     companyId: string;
     employees: Array<{
       name: string;
       email: string;
       phone?: string;
       department?: string;
-      role?: string;
       geofenceId?: string;
       employeeNumber?: string;
     }>;
   };
 
-  if (!companyId || !employees?.length) {
+  if (!companyId || !Array.isArray(employees) || employees.length === 0) {
     throw new functions.https.HttpsError(
       "invalid-argument",
-      "companyId and employees array are required"
+      "companyId and a non-empty employees array are required"
     );
   }
 
-  // Verify caller belongs to this company
-  if (request.auth?.uid) {
-    const userDoc = await db.collection("users").doc(request.auth.uid).get();
-    const userCompanyId = userDoc.data()?.company_id;
-    if (userCompanyId !== companyId) {
-      throw new functions.https.HttpsError(
-        "permission-denied",
-        "You do not have access to this company"
-      );
+  await requireCompanyAdmin(context, companyId);
+
+  const companyDoc = await db.collection("companies").doc(companyId).get();
+  const companyName = companyDoc.data()?.name ?? "";
+  const created: { id: string; email: string; password: string }[] = [];
+  const failed: { email: string; reason: string }[] = [];
+
+  for (const emp of employees) {
+    const email = normalizeEmail(emp.email);
+    const name = emp.name?.trim() || email.split("@")[0];
+
+    if (!email || !email.includes("@")) {
+      failed.push({ email: emp.email, reason: "Invalid email" });
+      continue;
+    }
+
+    const password = generatePassword();
+    const employeeRef = db.collection("employees").doc();
+    const employeeId = employeeRef.id;
+
+    try {
+      const userRecord = await auth.createUser({
+        email,
+        password,
+        displayName: name,
+      });
+
+      const batch = db.batch();
+      batch.set(employeeRef, {
+        name,
+        email,
+        phone: emp.phone ?? "",
+        department: emp.department ?? "",
+        geofenceId: emp.geofenceId || null,
+        employeeNumber: emp.employeeNumber ?? null,
+        company_id: companyId,
+        company_name: companyName,
+        authUid: userRecord.uid,
+        status: "active",
+        currentLat: null,
+        currentLng: null,
+        lastSeen: null,
+        batteryLevel: null,
+        attendanceMode: null,
+        shiftOverride: null,
+        created_at: admin.firestore.FieldValue.serverTimestamp(),
+      });
+
+      batch.set(db.collection("users").doc(userRecord.uid), {
+        name,
+        email,
+        role: "employee",
+        company_id: companyId,
+        company_name: companyName,
+        employee_id: employeeId,
+        assigned_geofence_id: emp.geofenceId || null,
+        attendanceMode: null,
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+
+      await batch.commit();
+      created.push({ id: employeeId, email, password });
+    } catch (err) {
+      functions.logger.error(`Failed to create employee ${email}:`, err);
+      failed.push({ email, reason: err instanceof Error ? err.message : "Unknown error" });
     }
   }
 
-  const batch = db.batch();
-  const created: string[] = [];
-
-  for (const emp of employees) {
-    const ref = db.collection("employees").doc();
-    batch.set(ref, {
-      name: emp.name,
-      email: emp.email.toLowerCase(),
-      phone: emp.phone ?? "",
-      department: emp.department ?? "",
-      role: emp.role ?? "employee",
-      geofenceId: emp.geofenceId ?? null,
-      employeeNumber: emp.employeeNumber ?? null,
-      company_id: companyId,
-      status: "active",
-      currentLat: null,
-      currentLng: null,
-      lastSeen: null,
-      batteryLevel: null,
-      attendanceMode: null,
-      shiftOverride: null,
-      created_at: admin.firestore.FieldValue.serverTimestamp(),
-    });
-    created.push(ref.id);
-  }
-
-  await batch.commit();
-
-  return { success: true, data: { created, count: created.length } };
+  return {
+    success: true,
+    data: { created, createdIds: created.map((c) => c.id), failed, count: created.length },
+  };
 });
 
 /**
- * Send a notification to all employees of a company via FCM.
+ * Send a notification to all employees of a company via FCM with token cleanup.
  */
-export const sendCompanyNotification = functions.https.onCall(async (request) => {
-  const { companyId, title, body } = request.data as {
+export const sendCompanyNotification = functions.https.onCall(async (data, context) => {
+  const { companyId, title, body } = data as {
     companyId: string;
     title: string;
     body: string;
   };
 
-  if (!companyId || !title || !body) {
+  if (!companyId || !title?.trim() || !body?.trim()) {
     throw new functions.https.HttpsError(
       "invalid-argument",
       "companyId, title, and body are required"
     );
   }
 
-  // Verify caller is a manager of this company
-  if (request.auth?.uid) {
-    const userDoc = await db.collection("users").doc(request.auth.uid).get();
-    const userData = userDoc.data();
-    if (
-      userData?.company_id !== companyId ||
-      !["boss", "manager", "supervisor"].includes(userData?.role)
-    ) {
-      throw new functions.https.HttpsError(
-        "permission-denied",
-        "Only managers can send company notifications"
-      );
-    }
+  await requireCompanyAdmin(context, companyId);
+
+  const tokensSnapshot = await db
+    .collection("fcm_tokens")
+    .where("company_id", "==", companyId)
+    .get();
+
+  if (tokensSnapshot.empty) {
+    return { success: true, data: { sent: 0, failed: 0 } };
   }
 
-  // Get all FCM tokens for this company's employees
-  const tokens = await db.collection("fcm_tokens").where("company_id", "==", companyId).get();
+  const allTokens = tokensSnapshot.docs
+    .map((doc) => doc.data().token as string | undefined)
+    .filter((t): t is string => typeof t === "string" && t.length > 0);
 
-  if (tokens.empty) {
-    return { success: true, data: { sent: 0 } };
-  }
-
-  const tokenList = tokens.docs.map((doc) => doc.data().token as string);
-
-  // Send via FCM
-  const message = {
-    notification: { title, body },
+  let totalSent = 0;
+  let totalFailed = 0;
+  const tokensToDelete: FirebaseFirestore.DocumentReference[] = [];
+  const basePayload = {
+    notification: { title: title.trim(), body: body.trim() },
     data: {
       type: "company_announcement",
       company_id: companyId,
+      click_action: "/",
     },
-    tokens: tokenList,
   };
 
-  try {
-    const response = await admin.messaging().sendEachForMulticast(message);
-    return {
-      success: true,
-      data: {
-        sent: response.successCount,
-        failed: response.failureCount,
-      },
-    };
-  } catch (err) {
-    functions.logger.error("FCM send failed:", err);
-    throw new functions.https.HttpsError("internal", "Failed to send notifications");
+  for (let i = 0; i < allTokens.length; i += FCM_BATCH_SIZE) {
+    const chunk = allTokens.slice(i, i + FCM_BATCH_SIZE);
+    try {
+      const response = await messaging.sendEachForMulticast({ ...basePayload, tokens: chunk });
+      totalSent += response.successCount;
+      totalFailed += response.failureCount;
+
+      response.responses.forEach((resp, idx) => {
+        if (resp.error) {
+          const code = (resp.error as { code?: string }).code ?? "";
+          const shouldDelete =
+            code.includes("invalid-registration-token") ||
+            code.includes("registration-token-not-registered") ||
+            code.includes("messaging/invalid-argument");
+          if (shouldDelete) {
+            const docId = tokensSnapshot.docs[i + idx]?.id;
+            if (docId) tokensToDelete.push(db.collection("fcm_tokens").doc(docId));
+          }
+        }
+      });
+    } catch (err) {
+      functions.logger.error("FCM batch send failed:", err);
+      totalFailed += chunk.length;
+    }
   }
+
+  if (tokensToDelete.length > 0) {
+    const cleanupBatch = db.batch();
+    for (const ref of tokensToDelete) cleanupBatch.delete(ref);
+    await cleanupBatch.commit();
+  }
+
+  return {
+    success: true,
+    data: { sent: totalSent, failed: totalFailed },
+  };
 });

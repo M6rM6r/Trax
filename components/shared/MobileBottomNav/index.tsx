@@ -49,9 +49,7 @@ export default function MobileBottomNav() {
                 onClick={() => hapticTap()}
                 className={cn(
                   "relative flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-xl transition-all duration-200 min-w-[56px]",
-                  isActive
-                    ? "text-primary bg-primary/10"
-                    : "text-muted-foreground/70"
+                  isActive ? "text-primary bg-primary/10" : "text-muted-foreground/70"
                 )}
                 aria-current={isActive ? "page" : undefined}
                 aria-label={item.label}
@@ -79,7 +77,10 @@ export default function MobileBottomNav() {
       aria-label="التنقل السفلي"
     >
       <div className="flex items-center justify-around px-1 py-1.5">
-        {(role === "boss" || role === "manager" ? [...PRIMARY_ITEMS.slice(0, 4), COMPANY_ITEM, ...PRIMARY_ITEMS.slice(4)] : PRIMARY_ITEMS).map((item) => {
+        {(role === "company"
+          ? [...PRIMARY_ITEMS.slice(0, 4), COMPANY_ITEM, ...PRIMARY_ITEMS.slice(4)]
+          : PRIMARY_ITEMS
+        ).map((item) => {
           const isActive =
             item.path === "/"
               ? pathname === "/"

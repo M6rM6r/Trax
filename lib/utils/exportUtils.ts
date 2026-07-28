@@ -153,7 +153,6 @@ export function exportEmployeesToCSV(
     name: string;
     email: string;
     phone: string;
-    role: string;
     department: string;
     status: string;
   }>
@@ -162,7 +161,6 @@ export function exportEmployeesToCSV(
     { key: "name", label: "Name" },
     { key: "email", label: "Email" },
     { key: "phone", label: "Phone" },
-    { key: "role", label: "Role" },
     { key: "department", label: "Department" },
     { key: "status", label: "Status" },
   ]);
@@ -173,7 +171,6 @@ export async function exportEmployeesToPDF(
     name: string;
     email: string;
     phone: string;
-    role: string;
     department: string;
     status: string;
   }>
@@ -182,7 +179,6 @@ export async function exportEmployeesToPDF(
     { key: "name", label: "Name" },
     { key: "email", label: "Email" },
     { key: "phone", label: "Phone" },
-    { key: "role", label: "Role" },
     { key: "department", label: "Department" },
     { key: "status", label: "Status" },
   ]);

@@ -169,13 +169,13 @@ export default function RegisterPage() {
         );
         const idToken = await credential.user.getIdToken();
 
-        const role: UserRole = "boss";
+        const role: UserRole = "company";
         setUser(
           {
             id: 0,
             name: values.admin_name,
             email: values.admin_email,
-            role: "boss",
+            role: "company",
             permissions: [],
             created_at: new Date().toISOString(),
             profile_image: "",

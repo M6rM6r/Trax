@@ -35,7 +35,7 @@ export default function CompanySettingsPage() {
     }
   }, [settings.loaded]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  if (role !== "boss" && role !== "manager") {
+  if (role !== "company") {
     return (
       <MainLayout>
         <div className="p-6 text-center">

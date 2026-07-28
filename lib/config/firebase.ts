@@ -3,6 +3,7 @@ import { getStorage } from "firebase/storage";
 import { getAnalytics, isSupported } from "firebase/analytics";
 import { getAuth, type Auth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
+import { getFunctions, type Functions } from "firebase/functions";
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -38,6 +39,7 @@ export const storage = app ? getStorage(app) : null;
 export const auth = app ? getAuth(app) : null;
 
 export const db = app ? getFirestore(app) : null;
+export const functions = app ? getFunctions(app) : null;
 
 export const appCheck = null;
 

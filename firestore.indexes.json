@@ -19,14 +19,6 @@
       ]
     },
     {
-      "collectionGroup": "employees",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "company_id", "order": "ASCENDING" },
-        { "fieldPath": "role", "order": "ASCENDING" }
-      ]
-    },
-    {
       "collectionGroup": "attendance",
       "queryScope": "COLLECTION",
       "fields": [
@@ -90,14 +82,6 @@
       "fields": [
         { "fieldPath": "company_id", "order": "ASCENDING" },
         { "fieldPath": "name", "order": "ASCENDING" }
-      ]
-    },
-    {
-      "collectionGroup": "users",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "company_id", "order": "ASCENDING" },
-        { "fieldPath": "role", "order": "ASCENDING" }
       ]
     },
     {

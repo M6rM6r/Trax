@@ -22,6 +22,7 @@ export {
 export { paginatedQuery, createInfiniteLoader } from "./pagination";
 export { cachedQuery, invalidateCache, invalidateCompanyCache } from "./cache";
 export { loadBundleFromServer, executeNamedQuery, BUNDLE_DEFINITIONS } from "./bundles";
+export { cloudFunctionsApi } from "./cloudFunctions";
 
 import { employeesApi } from "./employees";
 import { geofencesApi } from "./geofences";
@@ -29,6 +30,7 @@ import { attendanceApi } from "./attendance";
 import { dashboardApi } from "./dashboard";
 import { trackingApi } from "./tracking";
 import { companiesApi } from "./companies";
+import { cloudFunctionsApi } from "./cloudFunctions";
 
 export const firebaseData = {
   employees: employeesApi,
@@ -37,4 +39,5 @@ export const firebaseData = {
   dashboard: dashboardApi,
   tracking: trackingApi,
   companies: companiesApi,
+  cloudFunctions: cloudFunctionsApi,
 };

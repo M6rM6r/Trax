@@ -79,7 +79,6 @@ export function mapEmployee(id: string, value: Record<string, unknown>): Employe
     name: String(value.name ?? ""),
     email: String(value.email ?? ""),
     phone: String(value.phone ?? ""),
-    role: (value.role as Employee["role"]) ?? "employee",
     department: String(value.department ?? ""),
     avatar: (value.avatar as string | null | undefined) ?? null,
     geofenceId:

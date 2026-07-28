@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import { useLocale } from "next-intl";
 import MainLayout from "@/components/shared/MainLayout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -16,6 +17,8 @@ import type { Geofence } from "@/lib/types/trackingTypes";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useCompanySettingsStore } from "@/stores/useCompanySettingsStore";
 import { cn } from "@/lib/utils";
+import { signOut } from "firebase/auth";
+import { auth } from "@/lib/config/firebase";
 import {
   addToOfflineQueue,
   addToOfflineCheckOutQueue,
@@ -26,14 +29,16 @@ import {
 import { calculateDistance, GEOFENCE_DISTANCE_BUFFER_METERS } from "@/lib/utils/geo";
 
 function LiveClock() {
+  const locale = useLocale();
+  const timeLocale = locale === "ar" ? "ar-SA-u-nu-latn" : "en-US";
   const [time, setTime] = useState("");
   const [date, setDate] = useState("");
   useEffect(() => {
     const update = () => {
       const now = new Date();
-      setTime(now.toLocaleTimeString("ar-SA-u-nu-latn", { hour: "2-digit", minute: "2-digit" }));
+      setTime(now.toLocaleTimeString(timeLocale, { hour: "2-digit", minute: "2-digit" }));
       setDate(
-        now.toLocaleDateString("ar-SA-u-nu-latn", {
+        now.toLocaleDateString(timeLocale, {
           weekday: "long",
           month: "long",
           day: "numeric",
@@ -67,8 +72,10 @@ export default function CheckInPage() {
   const checkInMutation = useCheckIn();
   const checkOutMutation = useCheckOut();
   const qc = useQueryClient();
-  const { user, companyName } = useAuthStore();
+  const { user, companyName, clearUser } = useAuthStore();
   const companySettings = useCompanySettingsStore();
+  const locale = useLocale();
+  const timeLocale = locale === "ar" ? "ar-SA-u-nu-latn" : "en-US";
   const todayStr = new Date().toLocaleDateString("sv-SE");
   const todayRecord = attendanceRecords.find(
     (r) => r.date === todayStr && String(r.employeeId) === String(user?.employee_id)
@@ -233,7 +240,7 @@ export default function CheckInPage() {
           });
           const now = new Date();
           setCheckInTime(
-            now.toLocaleTimeString("ar-SA-u-nu-latn", { hour: "2-digit", minute: "2-digit" })
+            now.toLocaleTimeString(timeLocale, { hour: "2-digit", minute: "2-digit" })
           );
           setCheckInTimestamp(now.getTime());
           setCheckInStatus("success");
@@ -288,7 +295,7 @@ export default function CheckInPage() {
           });
           const now = new Date();
           setCheckInTime(
-            now.toLocaleTimeString("ar-SA-u-nu-latn", { hour: "2-digit", minute: "2-digit" })
+            now.toLocaleTimeString(timeLocale, { hour: "2-digit", minute: "2-digit" })
           );
           setCheckInTimestamp(now.getTime());
           setCheckInStatus("success");
@@ -367,7 +374,7 @@ export default function CheckInPage() {
       });
       const nowOffline = new Date();
       setCheckInTime(
-        nowOffline.toLocaleTimeString("ar-SA-u-nu-latn", { hour: "2-digit", minute: "2-digit" })
+        nowOffline.toLocaleTimeString(timeLocale, { hour: "2-digit", minute: "2-digit" })
       );
       setCheckInTimestamp(nowOffline.getTime());
       setCheckInStatus("success");
@@ -422,9 +429,7 @@ export default function CheckInPage() {
       });
 
       const now = new Date();
-      setCheckInTime(
-        now.toLocaleTimeString("ar-SA-u-nu-latn", { hour: "2-digit", minute: "2-digit" })
-      );
+      setCheckInTime(now.toLocaleTimeString(timeLocale, { hour: "2-digit", minute: "2-digit" }));
       setCheckInTimestamp(now.getTime());
       setCheckInStatus("success");
       setShowBurst(true);
@@ -485,7 +490,7 @@ export default function CheckInPage() {
           timestamp: Date.now(),
         });
         setCheckOutTime(
-          new Date().toLocaleTimeString("ar-SA-u-nu-latn", { hour: "2-digit", minute: "2-digit" })
+          new Date().toLocaleTimeString(timeLocale, { hour: "2-digit", minute: "2-digit" })
         );
         autoCheckInTriggered.current = false;
         hapticSuccess();
@@ -495,7 +500,7 @@ export default function CheckInPage() {
 
       await checkOutMutation.mutateAsync({ employeeId: user.employee_id });
       setCheckOutTime(
-        new Date().toLocaleTimeString("ar-SA-u-nu-latn", { hour: "2-digit", minute: "2-digit" })
+        new Date().toLocaleTimeString(timeLocale, { hour: "2-digit", minute: "2-digit" })
       );
       autoCheckInTriggered.current = false;
       hapticSuccess();
@@ -509,6 +514,20 @@ export default function CheckInPage() {
   };
 
   const employeeName = currentEmployee?.name || user?.name || "موظف";
+
+  const handleSignOut = async () => {
+    if (auth) {
+      try {
+        await signOut(auth);
+      } catch {
+        // ignore sign-out errors
+      }
+    }
+    clearUser();
+    if (typeof window !== "undefined") {
+      window.location.assign("/ar/login");
+    }
+  };
 
   const dayComplete = !!checkOutTime;
   const checkedIn = checkInStatus === "success" && !dayComplete;
@@ -546,15 +565,26 @@ export default function CheckInPage() {
                   {companyName || currentEmployee?.department || user?.email}
                 </p>
               </div>
-              <span
-                className={cn(
-                  "shrink-0 inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-semibold",
-                  statusMeta.color
-                )}
-              >
-                <statusMeta.icon className="w-3 h-3" />
-                {statusMeta.label}
-              </span>
+              <div className="flex flex-col items-end gap-2">
+                <span
+                  className={cn(
+                    "shrink-0 inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-semibold",
+                    statusMeta.color
+                  )}
+                >
+                  <statusMeta.icon className="w-3 h-3" />
+                  {statusMeta.label}
+                </span>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                  onClick={handleSignOut}
+                  aria-label="تسجيل الخروج"
+                >
+                  <LogOut className="w-4 h-4" />
+                </Button>
+              </div>
             </div>
           </CardContent>
         </Card>

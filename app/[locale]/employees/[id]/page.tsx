@@ -39,12 +39,6 @@ const statusLabels: Record<string, string> = {
   checked_out: "منصرف",
 };
 
-const roleLabels: Record<string, string> = {
-  manager: "مدير",
-  employee: "موظف",
-  supervisor: "مشرف",
-};
-
 export default function EmployeeProfilePage({ params }: { params: { id: string } }) {
   const { id } = params;
   const router = useRouter();
@@ -60,14 +54,12 @@ export default function EmployeeProfilePage({ params }: { params: { id: string }
     email: string;
     phone: string;
     department: string;
-    role: "employee" | "supervisor" | "manager";
     geofenceId: string;
   }>({
     name: "",
     email: "",
     phone: "",
     department: "",
-    role: "employee",
     geofenceId: "",
   });
 
@@ -111,7 +103,6 @@ export default function EmployeeProfilePage({ params }: { params: { id: string }
       email: employee.email,
       phone: employee.phone,
       department: employee.department,
-      role: employee.role as "employee" | "supervisor" | "manager",
       geofenceId: employee.geofenceId ?? "",
     });
     setShowEditForm(true);
@@ -178,9 +169,6 @@ export default function EmployeeProfilePage({ params }: { params: { id: string }
                 <div className="flex-1 mt-4 sm:mt-0">
                   <h1 className="text-2xl font-bold text-foreground">{employee.name}</h1>
                   <div className="flex items-center gap-2 mt-1">
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary">
-                      {roleLabels[employee.role]}
-                    </span>
                     <span
                       className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                         employee.status === "active"
@@ -491,17 +479,6 @@ export default function EmployeeProfilePage({ params }: { params: { id: string }
               placeholder="email@trax.com"
               ltr
             />
-            <FormSelect
-              label="الدور"
-              value={editEmployee.role}
-              onChange={(v) =>
-                setEditEmployee({ ...editEmployee, role: v as typeof editEmployee.role })
-              }
-            >
-              <option value="employee">موظف</option>
-              <option value="supervisor">مشرف</option>
-              <option value="manager">مدير</option>
-            </FormSelect>
             <FormSelect
               label="النطاق الجغرافي"
               value={editEmployee.geofenceId}

@@ -1,4 +1,5 @@
 import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
+import { auth } from "@/lib/config/firebase";
 import { requireDb } from "./helpers";
 
 const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
@@ -37,16 +38,20 @@ export async function cachedQuery<T>(
   // Compute fresh result
   const data = await compute();
 
-  // Store in cache
-  try {
-    await setDoc(cacheRef, {
-      data,
-      cached_at: Date.now(),
-      expires_at: Date.now() + ttlMs,
-      updated_at: serverTimestamp(),
-    });
-  } catch {
-    // Cache write failed — non-critical
+  // Store in cache (only for authenticated users so per-user rules apply)
+  const ownerUid = auth?.currentUser?.uid;
+  if (ownerUid) {
+    try {
+      await setDoc(cacheRef, {
+        data,
+        cached_at: Date.now(),
+        expires_at: Date.now() + ttlMs,
+        updated_at: serverTimestamp(),
+        ownerUid,
+      });
+    } catch {
+      // Cache write failed — non-critical
+    }
   }
 
   return data;

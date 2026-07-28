@@ -161,7 +161,6 @@ export default function MastermindCompanyDetailPage() {
                 <tr>
                   <th className="text-left px-4 py-3 font-medium">Name</th>
                   <th className="text-left px-4 py-3 font-medium">Email</th>
-                  <th className="text-left px-4 py-3 font-medium">Role</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800">
@@ -169,16 +168,11 @@ export default function MastermindCompanyDetailPage() {
                   <tr key={emp.id}>
                     <td className="px-4 py-3 text-foreground">{emp.name}</td>
                     <td className="px-4 py-3 text-muted-foreground">{emp.email}</td>
-                    <td className="px-4 py-3">
-                      <Badge variant="secondary" className="capitalize bg-card text-muted-foreground">
-                        {emp.role}
-                      </Badge>
-                    </td>
                   </tr>
                 ))}
                 {recentEmployees.length === 0 && (
                   <tr>
-                    <td colSpan={3} className="px-4 py-8 text-center text-muted-foreground/70">
+                    <td colSpan={2} className="px-4 py-8 text-center text-muted-foreground/70">
                       No employees yet.
                     </td>
                   </tr>
@@ -207,7 +201,10 @@ export default function MastermindCompanyDetailPage() {
                     <td className="px-4 py-3 text-foreground">{user.name}</td>
                     <td className="px-4 py-3 text-muted-foreground">{user.email}</td>
                     <td className="px-4 py-3">
-                      <Badge variant="secondary" className="capitalize bg-card text-muted-foreground">
+                      <Badge
+                        variant="secondary"
+                        className="capitalize bg-card text-muted-foreground"
+                      >
                         {user.role}
                       </Badge>
                     </td>

@@ -4,7 +4,7 @@ import { AdminUser } from "@/lib/types/responseTypes";
 import { create } from "zustand";
 import { persist, createJSONStorage, type StateStorage } from "zustand/middleware";
 
-export type UserRole = "boss" | "manager" | "supervisor" | "employee";
+export type UserRole = "company" | "employee";
 
 const STORAGE_NAME = "auth-storage";
 const REMEMBER_KEY = `${STORAGE_NAME}-remember`;
@@ -67,7 +67,7 @@ interface AuthState {
   setUser: (
     user: AdminUser,
     token: string,
-    role?: UserRole,
+    role?: string,
     companyId?: string,
     companyName?: string
   ) => void;
@@ -85,14 +85,17 @@ export const useAuthStore = create<AuthState>()(
       companyId: null,
       companyName: null,
       rememberMe: false,
-      setUser: (user, token, role, companyId, companyName) =>
+      setUser: (user, token, role, companyId, companyName) => {
+        const normalizedRole: UserRole | null =
+          role === "employee" ? "employee" : role ? "company" : null;
         set({
           user,
           token,
-          role: role ?? null,
+          role: normalizedRole,
           companyId: companyId ?? null,
           companyName: companyName ?? null,
-        }),
+        });
+      },
       setRole: (role) => set({ role }),
       setRememberMe: (rememberMe) => set({ rememberMe }),
       clearUser: () => {

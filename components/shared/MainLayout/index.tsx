@@ -300,7 +300,7 @@ const Index = ({
                         icon: Location,
                         isActive: pathname.includes("/geofences"),
                       },
-                      ...(role === "boss" || role === "manager"
+                      ...(role === "company"
                         ? [
                             {
                               title: "إعدادات الشركة",
