@@ -1,6 +1,6 @@
 "use client";
 
-import { onSnapshot, collection, query, where, orderBy } from "firebase/firestore";
+import { onSnapshot, collection, query, where, orderBy, limit } from "firebase/firestore";
 import { db } from "@/lib/config/firebase";
 import { getCompanyId, toNumber } from "./firebase/helpers";
 
@@ -66,7 +66,7 @@ export function subscribeRealtimeEvents(callbacks: RealtimeCallbacks): () => voi
   connected = true;
 
   const base = collection(db, "locations");
-  const locationsQuery = query(base, where("company_id", "==", companyId));
+  const locationsQuery = query(base, where("company_id", "==", companyId), limit(500));
   const unsubLocations = onSnapshot(
     locationsQuery,
     (snapshot) => {
@@ -98,7 +98,8 @@ export function subscribeRealtimeEvents(callbacks: RealtimeCallbacks): () => voi
   const attendanceQuery = query(
     attendanceBase,
     where("company_id", "==", companyId),
-    orderBy("checkInTime", "desc")
+    orderBy("checkInTime", "desc"),
+    limit(50)
   );
   const unsubAttendance = onSnapshot(
     attendanceQuery,
@@ -126,7 +127,8 @@ export function subscribeRealtimeEvents(callbacks: RealtimeCallbacks): () => voi
   const notifQuery = query(
     notifBase,
     where("company_id", "==", companyId),
-    orderBy("createdAt", "desc")
+    orderBy("createdAt", "desc"),
+    limit(50)
   );
   const unsubNotifications = onSnapshot(
     notifQuery,

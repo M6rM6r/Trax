@@ -1,4 +1,13 @@
-import { collection, doc, getDoc, getDocs, serverTimestamp, setDoc } from "firebase/firestore";
+import {
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  limit,
+  query,
+  serverTimestamp,
+  setDoc,
+} from "firebase/firestore";
 import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
 import { auth, db } from "@/lib/config/firebase";
 import { requireCompanyId, requireDb, ensureAuth, cleanPayload } from "./helpers";
@@ -6,7 +15,7 @@ import { requireCompanyId, requireDb, ensureAuth, cleanPayload } from "./helpers
 export const companiesApi = {
   async list(): Promise<{ id: string; name: string; plan: string; industry: string }[]> {
     await ensureAuth();
-    const snapshot = await getDocs(collection(requireDb(), "companies"));
+    const snapshot = await getDocs(query(collection(requireDb(), "companies"), limit(1000)));
     return snapshot.docs.map((item) => ({
       id: item.id,
       name: String(item.data().name ?? ""),
