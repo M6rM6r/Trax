@@ -60,3 +60,6 @@ services/api/storage/logs/
 !DOCUMENTATION/
 !DOCUMENTATION/**/*.md
 DOCUMENTATION/TASKS.md
+
+# Local Firebase service account and runtime storage
+storage/
