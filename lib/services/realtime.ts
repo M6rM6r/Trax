@@ -1,142 +1,163 @@
 "use client";
 
-import { io, type Socket } from "socket.io-client";
-import { env } from "@/lib/config/env";
-import { logger } from "@/lib/config/logger";
-
-export type RealtimeEvent =
-  | "employee:location_updated"
-  | "attendance:checked_in"
-  | "attendance:checked_out"
-  | "anomaly:detected"
-  | "geofence:breach";
-
-interface RealtimeHandlers {
-  onLocationUpdate?: (data: LocationUpdatePayload) => void;
-  onAttendanceCheckIn?: (data: AttendancePayload) => void;
-  onAttendanceCheckOut?: (data: AttendancePayload) => void;
-  onAnomalyDetected?: (data: AnomalyPayload) => void;
-  onGeofenceBreach?: (data: GeofenceBreachPayload) => void;
-}
+import { onSnapshot, collection, query, where, orderBy } from "firebase/firestore";
+import { db } from "@/lib/config/firebase";
+import { getCompanyId, toNumber } from "./firebase/helpers";
 
 export interface LocationUpdatePayload {
-  employeeId: number;
+  employeeId: string | number;
   employeeName: string;
   lat: number;
   lng: number;
   status: "inside_geofence" | "outside_geofence" | "offline";
-  geofenceName: string | null;
+  geofenceName?: string;
   lastSeen: string;
   batteryLevel: number | null;
 }
 
-export interface AttendancePayload {
-  employeeId: number;
-  employeeName: string;
-  date: string;
-  checkInTime: string | null;
-  checkOutTime: string | null;
-  status: string;
-  geofenceName: string | null;
-}
-
-export interface AnomalyPayload {
-  employeeId: number;
-  isAnomaly: boolean;
-  anomalyScore: number;
+interface AnomalyPayload {
+  employeeId?: string;
   details: string;
 }
 
-export interface GeofenceBreachPayload {
-  employeeId: number;
+interface GeofenceBreachPayload {
+  employeeId?: string;
   employeeName: string;
   geofenceName: string;
-  distance: number;
-  timestamp: string;
 }
 
-let socket: Socket | null = null;
-
-function getSocket(): Socket | null {
-  if (socket) return socket;
-
-  const wsUrl = env.NEXT_PUBLIC_WS_URL;
-  if (!wsUrl) {
-    logger.warn("WebSocket URL not configured, real-time features disabled");
-    return null;
-  }
-
-  socket = io(wsUrl, {
-    transports: ["websocket"],
-    autoConnect: true,
-    reconnection: true,
-    reconnectionAttempts: 5,
-    reconnectionDelay: 1000,
-    reconnectionDelayMax: 5000,
-  });
-
-  socket.on("connect", () => {
-    logger.info("WebSocket connected", { id: socket?.id });
-  });
-
-  socket.on("disconnect", (reason) => {
-    logger.warn("WebSocket disconnected", { reason });
-  });
-
-  socket.on("connect_error", (error) => {
-    logger.error("WebSocket connection error", { error: error.message });
-  });
-
-  return socket;
+interface AttendanceCheckInPayload {
+  employeeId: string;
+  employeeName: string;
+  checkInTime: string;
 }
 
-export function subscribeRealtimeEvents(handlers: RealtimeHandlers): () => void {
-  const s = getSocket();
-  if (!s) return () => {};
-
-  const unsubscribers: Array<() => void> = [];
-
-  if (handlers.onLocationUpdate) {
-    const handler = (data: LocationUpdatePayload) => handlers.onLocationUpdate?.(data);
-    s.on("employee:location_updated", handler);
-    unsubscribers.push(() => s.off("employee:location_updated", handler));
-  }
-
-  if (handlers.onAttendanceCheckIn) {
-    const handler = (data: AttendancePayload) => handlers.onAttendanceCheckIn?.(data);
-    s.on("attendance:checked_in", handler);
-    unsubscribers.push(() => s.off("attendance:checked_in", handler));
-  }
-
-  if (handlers.onAttendanceCheckOut) {
-    const handler = (data: AttendancePayload) => handlers.onAttendanceCheckOut?.(data);
-    s.on("attendance:checked_out", handler);
-    unsubscribers.push(() => s.off("attendance:checked_out", handler));
-  }
-
-  if (handlers.onAnomalyDetected) {
-    const handler = (data: AnomalyPayload) => handlers.onAnomalyDetected?.(data);
-    s.on("anomaly:detected", handler);
-    unsubscribers.push(() => s.off("anomaly:detected", handler));
-  }
-
-  if (handlers.onGeofenceBreach) {
-    const handler = (data: GeofenceBreachPayload) => handlers.onGeofenceBreach?.(data);
-    s.on("geofence:breach", handler);
-    unsubscribers.push(() => s.off("geofence:breach", handler));
-  }
-
-  return () => unsubscribers.forEach((fn) => fn());
+interface RealtimeCallbacks {
+  onAnomalyDetected?: (data: AnomalyPayload) => void;
+  onGeofenceBreach?: (data: GeofenceBreachPayload) => void;
+  onAttendanceCheckIn?: (data: AttendanceCheckInPayload) => void;
+  onLocationUpdate?: (data: LocationUpdatePayload) => void;
 }
 
-export function disconnectRealtime(): void {
-  if (socket) {
-    socket.disconnect();
-    socket = null;
-    logger.info("WebSocket disconnected and cleaned up");
-  }
+let connected = false;
+
+function getStatus(
+  data: Record<string, unknown>
+): "inside_geofence" | "outside_geofence" | "offline" {
+  const lastSeen = new Date(String(data.lastSeen ?? new Date().toISOString())).getTime();
+  const isStale = Number.isNaN(lastSeen) ? false : Date.now() - lastSeen > 5 * 60 * 1000;
+  if (isStale) return "offline";
+  if (data.isInsideGeofence === false) return "outside_geofence";
+  return "inside_geofence";
 }
 
 export function isRealtimeConnected(): boolean {
-  return socket?.connected ?? false;
+  return connected;
+}
+
+export function subscribeRealtimeEvents(callbacks: RealtimeCallbacks): () => void {
+  const unsubscribers: (() => void)[] = [];
+  const companyId = getCompanyId();
+
+  if (!db || !companyId) {
+    return () => undefined;
+  }
+
+  connected = true;
+
+  const base = collection(db, "locations");
+  const locationsQuery = query(base, where("company_id", "==", companyId));
+  const unsubLocations = onSnapshot(
+    locationsQuery,
+    (snapshot) => {
+      snapshot.docChanges().forEach((change) => {
+        if (change.type === "removed") return;
+        const data = change.doc.data() as Record<string, unknown>;
+        if (callbacks.onLocationUpdate) {
+          callbacks.onLocationUpdate({
+            employeeId: change.doc.id,
+            employeeName: String(data.name ?? data.employeeName ?? ""),
+            lat: toNumber(data.lat ?? data.currentLat ?? data.latitude),
+            lng: toNumber(data.lng ?? data.currentLng ?? data.longitude),
+            status: getStatus(data),
+            geofenceName: data.geofenceName ? String(data.geofenceName) : undefined,
+            lastSeen: String(data.lastSeen ?? new Date().toISOString()),
+            batteryLevel: data.batteryLevel === undefined ? null : toNumber(data.batteryLevel),
+          });
+        }
+      });
+    },
+    (error) => {
+      console.warn("[realtime] locations listener error:", error);
+      connected = false;
+    }
+  );
+  unsubscribers.push(unsubLocations);
+
+  const attendanceBase = collection(db, "attendance");
+  const attendanceQuery = query(
+    attendanceBase,
+    where("company_id", "==", companyId),
+    orderBy("checkInTime", "desc")
+  );
+  const unsubAttendance = onSnapshot(
+    attendanceQuery,
+    (snapshot) => {
+      snapshot.docChanges().forEach((change) => {
+        if (change.type !== "added" || !callbacks.onAttendanceCheckIn) return;
+        const data = change.doc.data() as Record<string, unknown>;
+        const checkInTime = data.checkInTime;
+        if (!checkInTime) return;
+        callbacks.onAttendanceCheckIn({
+          employeeId: String(data.employeeId ?? change.doc.id),
+          employeeName: String(data.employeeName ?? ""),
+          checkInTime: String(checkInTime),
+        });
+      });
+    },
+    (error) => {
+      console.warn("[realtime] attendance listener error:", error);
+      connected = false;
+    }
+  );
+  unsubscribers.push(unsubAttendance);
+
+  const notifBase = collection(db, "notifications");
+  const notifQuery = query(
+    notifBase,
+    where("company_id", "==", companyId),
+    orderBy("createdAt", "desc")
+  );
+  const unsubNotifications = onSnapshot(
+    notifQuery,
+    (snapshot) => {
+      snapshot.docChanges().forEach((change) => {
+        if (change.type !== "added") return;
+        const data = change.doc.data() as Record<string, unknown>;
+        if (data.type === "anomaly_detected" && callbacks.onAnomalyDetected) {
+          callbacks.onAnomalyDetected({
+            employeeId: data.employeeId ? String(data.employeeId) : undefined,
+            details: String(data.details ?? data.message ?? ""),
+          });
+        }
+        if (data.type === "geofence_breach" && callbacks.onGeofenceBreach) {
+          callbacks.onGeofenceBreach({
+            employeeId: data.employeeId ? String(data.employeeId) : undefined,
+            employeeName: String(data.employeeName ?? ""),
+            geofenceName: String(data.geofenceName ?? ""),
+          });
+        }
+      });
+    },
+    (error) => {
+      console.warn("[realtime] notifications listener error:", error);
+      connected = false;
+    }
+  );
+  unsubscribers.push(unsubNotifications);
+
+  return () => {
+    unsubscribers.forEach((unsubscribe) => unsubscribe());
+    connected = false;
+  };
 }
