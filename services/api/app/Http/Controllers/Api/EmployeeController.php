@@ -192,6 +192,14 @@ class EmployeeController extends Controller
             ]);
 
             DB::commit();
+
+            $firebaseService->updateEmployee(
+                (string) $employee->id,
+                array_merge(
+                    (new EmployeeResource($employee))->toArray($request),
+                    ['company_id' => (string) $companyId]
+                )
+            );
         } catch (\Throwable $e) {
             DB::rollBack();
 
@@ -252,6 +260,15 @@ class EmployeeController extends Controller
         }
 
         $employee->update($payload);
+
+        $firebaseService = app(FirebaseUserService::class);
+        $firebaseService->updateEmployee(
+            (string) $employee->id,
+            array_merge(
+                (new EmployeeResource($employee->fresh('geofence')))->toArray($request),
+                ['company_id' => (string) $this->companyId()]
+            )
+        );
 
         if ($linkedUser) {
             $linkedUser->update([
@@ -339,6 +356,8 @@ class EmployeeController extends Controller
             }
 
             DB::commit();
+
+            app(FirebaseUserService::class)->deleteEmployee((string) $id);
         } catch (\Throwable $e) {
             DB::rollBack();
             Log::error('Employee deletion failed: '.$e->getMessage());

@@ -232,6 +232,15 @@ class AttendanceController extends Controller
         } catch (\Throwable) {
         }
 
+        $firebaseService = app(\App\Services\FirebaseUserService::class);
+        $firebaseService->syncAttendance(
+            (string) $record->id,
+            array_merge(
+                (new AttendanceResource($record->load(['employee', 'geofence'])))->toArray($request),
+                ['company_id' => (string) $this->companyId()]
+            )
+        );
+
         try {
             event(new AttendanceCheckedIn(
                 $record->employee_id,
@@ -303,6 +312,15 @@ class AttendanceController extends Controller
             Cache::tags(['attendance', 'dashboard'])->flush();
         } catch (\Throwable) {
         }
+
+        $firebaseService = app(\App\Services\FirebaseUserService::class);
+        $firebaseService->syncAttendance(
+            (string) $record->id,
+            array_merge(
+                (new AttendanceResource($record->load(['employee', 'geofence'])))->toArray($request),
+                ['company_id' => (string) $this->companyId()]
+            )
+        );
 
         try {
             event(new AttendanceCheckedOut(

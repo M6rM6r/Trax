@@ -374,6 +374,48 @@ class FirebaseUserService
     }
 
     /**
+     * Sync attendance record in Firestore.
+     */
+    public function syncAttendance(int|string $id, array $data): bool
+    {
+        $firestore = $this->firestore();
+        if (! $firestore) {
+            return false;
+        }
+
+        try {
+            $database = $firestore->database();
+            $attendanceRef = $database->collection('attendance');
+            $attendanceRef->document((string) $id)->set($data, ['merge' => true]);
+
+            return true;
+        } catch (\Throwable $e) {
+            return false;
+        }
+    }
+
+    /**
+     * Delete attendance from Firestore.
+     */
+    public function deleteAttendance(int|string $id): bool
+    {
+        $firestore = $this->firestore();
+        if (! $firestore) {
+            return false;
+        }
+
+        try {
+            $database = $firestore->database();
+            $attendanceRef = $database->collection('attendance');
+            $attendanceRef->document((string) $id)->delete();
+
+            return true;
+        } catch (\Throwable $e) {
+            return false;
+        }
+    }
+
+    /**
      * Create geofence in Firestore.
      */
     public function createGeofence(array $data): ?string

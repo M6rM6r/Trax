@@ -1,5 +1,12 @@
 <?php
 
+use App\Http\Resources\AttendanceResource;
+use App\Http\Resources\EmployeeResource;
+use App\Http\Resources\GeofenceResource;
+use App\Models\Attendance;
+use App\Models\Employee;
+use App\Models\Geofence;
+use App\Services\FirebaseUserService;
 use Illuminate\Console\Command;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
@@ -55,3 +62,44 @@ Artisan::command('mastermind:provision {--password=}', function (): int {
         return Command::FAILURE;
     }
 })->purpose('Create or reset the configured MasterMind Firebase account.');
+
+Artisan::command('firestore:sync-data', function (): int {
+    $firebase = app(FirebaseUserService::class);
+
+    $this->info('Syncing employees to Firestore...');
+    foreach (Employee::with('geofence')->get() as $employee) {
+        $firebase->updateEmployee(
+            (string) $employee->id,
+            array_merge(
+                (new EmployeeResource($employee))->toArray(request()),
+                ['company_id' => (string) $employee->company_id]
+            )
+        );
+    }
+
+    $this->info('Syncing geofences to Firestore...');
+    foreach (Geofence::all() as $geofence) {
+        $firebase->updateGeofence(
+            (string) $geofence->id,
+            array_merge(
+                (new GeofenceResource($geofence))->toArray(request()),
+                ['company_id' => (string) $geofence->company_id]
+            )
+        );
+    }
+
+    $this->info('Syncing attendance to Firestore...');
+    foreach (Attendance::with(['employee', 'geofence'])->get() as $attendance) {
+        $firebase->syncAttendance(
+            (string) $attendance->id,
+            array_merge(
+                (new AttendanceResource($attendance))->toArray(request()),
+                ['company_id' => (string) ($attendance->employee?->company_id ?? 1)]
+            )
+        );
+    }
+
+    $this->info('Firestore sync complete.');
+
+    return Command::SUCCESS;
+})->purpose('Sync existing MySQL records to Firestore');

@@ -42,6 +42,15 @@ class GeofenceController extends Controller
     {
         $geofence = Geofence::create(array_merge($request->validated(), ['company_id' => $this->companyId()]));
 
+        $firebaseService = app(\App\Services\FirebaseUserService::class);
+        $firebaseService->updateGeofence(
+            (string) $geofence->id,
+            array_merge(
+                (new GeofenceResource($geofence))->toArray($request),
+                ['company_id' => (string) $this->companyId()]
+            )
+        );
+
         return response()->json(['success' => true, 'message' => 'Geofence created', 'data' => new GeofenceResource($geofence)], 201);
     }
 
@@ -55,6 +64,15 @@ class GeofenceController extends Controller
 
         $geofence->update($request->validated());
 
+        $firebaseService = app(\App\Services\FirebaseUserService::class);
+        $firebaseService->updateGeofence(
+            (string) $geofence->id,
+            array_merge(
+                (new GeofenceResource($geofence))->toArray($request),
+                ['company_id' => (string) $this->companyId()]
+            )
+        );
+
         return response()->json(['success' => true, 'message' => 'Geofence updated', 'data' => new GeofenceResource($geofence)]);
     }
 
@@ -67,6 +85,8 @@ class GeofenceController extends Controller
         }
 
         $geofence->delete();
+
+        app(\App\Services\FirebaseUserService::class)->deleteGeofence((string) $id);
 
         return response()->json(['success' => true, 'message' => 'Geofence deleted']);
     }
