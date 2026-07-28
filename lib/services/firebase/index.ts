@@ -1,4 +1,4 @@
-export { getFirebaseUserProfile, getFirebaseUserProfileFromApi } from "./auth";
+export { getFirebaseUserProfile } from "./auth";
 export { employeesApi } from "./employees";
 export { geofencesApi } from "./geofences";
 export { attendanceApi } from "./attendance";

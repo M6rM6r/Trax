@@ -1,3 +1,2 @@
-export { getFirebaseUserProfile, getFirebaseUserProfileFromApi } from './firebase/auth';
-export { firebaseData } from './firebase/index';
-
+export { getFirebaseUserProfile } from "./firebase/auth";
+export { firebaseData } from "./firebase/index";

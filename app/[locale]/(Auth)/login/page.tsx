@@ -19,9 +19,8 @@ import {
   signOut,
 } from "firebase/auth";
 import { auth } from "@/lib/config/firebase";
-import { getFirebaseUserProfile, getFirebaseUserProfileFromApi } from "@/lib/services/firebaseData";
+import { getFirebaseUserProfile } from "@/lib/services/firebaseData";
 import { resolveUserRole, normalizeUserRole } from "@/lib/utils/auth";
-import { useFirebaseAuth } from "@/lib/config/env";
 
 interface LoginValues {
   identifier: string;
@@ -135,94 +134,67 @@ const Page = () => {
       setRememberMe(values.rememberMe);
 
       // Firebase-first: Firestore profile is the primary source of truth.
-      if (useFirebaseAuth) {
-        let profile: Record<string, unknown> | null = null;
-        try {
-          profile = await getFirebaseUserProfile(
-            credential.user.uid,
-            credential.user.email ?? values.identifier
-          );
-        } catch {
-          // Firestore profile lookup failed; continue with defaults below.
-        }
-        const tokenResult = await getIdTokenResult(credential.user);
-        const profileData = (profile ?? {}) as Record<string, unknown> & {
-          company?: { id?: unknown; name?: unknown };
-        };
-        const companyProfile = profileData.company;
-        const numericId = Array.from(credential.user.uid).reduce(
-          (total, character) => (total * 31 + character.charCodeAt(0)) % 2147483647,
-          0
-        );
-        const role = resolveUserRole(
-          profileData,
-          tokenResult.claims,
+      let profile: Record<string, unknown> | null = null;
+      try {
+        profile = await getFirebaseUserProfile(
+          credential.user.uid,
           credential.user.email ?? values.identifier
         );
-        const isEmployee = role === "employee";
-
-        const companyId = profileData.company_id ?? companyProfile?.id ?? null;
-        const companyName = String(profileData.company_name ?? companyProfile?.name ?? "");
-
-        const resolvedCompanyId: string = String(companyId);
-
-        const hasEmployeeId =
-          profileData.employee_id !== null && profileData.employee_id !== undefined;
-
-        await applyLoginResponse(values, idToken, {
-          success: true,
-          data: {
-            user: {
-              id: Number(profileData.id ?? numericId),
-              name: String(
-                profileData.name ?? credential.user.displayName ?? values.identifier.split("@")[0]
-              ),
-              email: String(profileData.email ?? credential.user.email ?? values.identifier),
-              role,
-              company_id: resolvedCompanyId,
-              employee_id: hasEmployeeId
-                ? String(profileData.employee_id)
-                : isEmployee
-                  ? String(numericId)
-                  : null,
-              assigned_geofence_id:
-                profileData.assigned_geofence_id === null ||
-                profileData.assigned_geofence_id === undefined
-                  ? null
-                  : String(profileData.assigned_geofence_id),
-            },
-            company: {
-              id: resolvedCompanyId,
-              name: companyName,
-            },
-          },
-        });
-      } else {
-        const apiProfile = await getFirebaseUserProfileFromApi(idToken);
-        if (!apiProfile || !apiProfile.id) {
-          throw new Error("API login failed");
-        }
-        const apiHasEmployeeId =
-          apiProfile.employee_id !== null && apiProfile.employee_id !== undefined;
-        await applyLoginResponse(values, idToken, {
-          success: true,
-          data: {
-            user: {
-              id: Number(apiProfile.id),
-              name: String(apiProfile.name ?? ""),
-              email: String(apiProfile.email ?? values.identifier),
-              role: String(apiProfile.role ?? ""),
-              company_id: apiProfile.company_id ?? null,
-              employee_id: apiHasEmployeeId ? String(apiProfile.employee_id) : null,
-              assigned_geofence_id: apiProfile.assigned_geofence_id ?? null,
-            },
-            company: {
-              id: String(apiProfile.company_id ?? ""),
-              name: String(apiProfile.company_name ?? ""),
-            },
-          },
-        });
+      } catch {
+        // Firestore profile lookup failed; continue with defaults below.
       }
+      const tokenResult = await getIdTokenResult(credential.user);
+      const profileData = (profile ?? {}) as Record<string, unknown> & {
+        company?: { id?: unknown; name?: unknown };
+      };
+      const companyProfile = profileData.company;
+      const numericId = Array.from(credential.user.uid).reduce(
+        (total, character) => (total * 31 + character.charCodeAt(0)) % 2147483647,
+        0
+      );
+      const role = resolveUserRole(
+        profileData,
+        tokenResult.claims,
+        credential.user.email ?? values.identifier
+      );
+      const isEmployee = role === "employee";
+
+      const companyId = profileData.company_id ?? companyProfile?.id ?? null;
+      const companyName = String(profileData.company_name ?? companyProfile?.name ?? "");
+
+      const resolvedCompanyId: string = String(companyId);
+
+      const hasEmployeeId =
+        profileData.employee_id !== null && profileData.employee_id !== undefined;
+
+      await applyLoginResponse(values, idToken, {
+        success: true,
+        data: {
+          user: {
+            id: Number(profileData.id ?? numericId),
+            name: String(
+              profileData.name ?? credential.user.displayName ?? values.identifier.split("@")[0]
+            ),
+            email: String(profileData.email ?? credential.user.email ?? values.identifier),
+            role,
+            company_id: resolvedCompanyId,
+            employee_id: hasEmployeeId
+              ? String(profileData.employee_id)
+              : isEmployee
+                ? String(numericId)
+                : null,
+            assigned_geofence_id:
+              profileData.assigned_geofence_id === null ||
+              profileData.assigned_geofence_id === undefined
+                ? null
+                : String(profileData.assigned_geofence_id),
+          },
+          company: {
+            id: resolvedCompanyId,
+            name: companyName,
+          },
+        },
+      });
     } catch (err) {
       hapticError();
       const firebaseErr = err as { code?: string; message?: string };

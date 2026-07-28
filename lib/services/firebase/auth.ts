@@ -96,26 +96,3 @@ export async function getFirebaseUserProfile(uid: string, email: string) {
 
   return null;
 }
-
-export async function getFirebaseUserProfileFromApi(idToken: string) {
-  if (!idToken || typeof window === "undefined") return null;
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
-  try {
-    const response = await fetch(`${apiUrl.replace(/\/$/, "")}/auth/firebase`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id_token: idToken }),
-    });
-
-    if (!response.ok) return null;
-    const payload = await response.json();
-    if (!payload?.success || !payload?.data?.user) return null;
-
-    return {
-      ...payload.data.user,
-      company_name: payload.data.company?.name ?? payload.data.user.company_name,
-    };
-  } catch {
-    return null;
-  }
-}

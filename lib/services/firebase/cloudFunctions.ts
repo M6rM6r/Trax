@@ -49,4 +49,13 @@ export const cloudFunctionsApi = {
     const data = result.data as { success: boolean; data: { sent: number; failed: number } };
     return data.data;
   },
+
+  async analyzeRetention(features: Record<string, unknown>): Promise<Record<string, unknown>> {
+    const fn = httpsCallable(requireFunctions(), "analyzeRetention");
+    const companyId = getCompanyId();
+    if (!companyId) throw new Error("NO_COMPANY");
+    const result = await fn({ companyId, features });
+    const data = result.data as { success: boolean; data: Record<string, unknown> };
+    return data.data;
+  },
 };

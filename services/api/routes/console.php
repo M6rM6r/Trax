@@ -4,8 +4,10 @@ use App\Http\Resources\AttendanceResource;
 use App\Http\Resources\EmployeeResource;
 use App\Http\Resources\GeofenceResource;
 use App\Models\Attendance;
+use App\Models\Company;
 use App\Models\Employee;
 use App\Models\Geofence;
+use App\Models\User;
 use App\Services\FirebaseUserService;
 use Illuminate\Console\Command;
 use Illuminate\Foundation\Inspiring;
@@ -97,6 +99,53 @@ Artisan::command('firestore:sync-data', function (): int {
                 ['company_id' => (string) ($attendance->employee?->company_id ?? 1)]
             )
         );
+    }
+
+    $this->info('Syncing companies to Firestore...');
+    foreach (Company::all() as $company) {
+        $owner = User::where('company_id', $company->id)
+            ->whereNotNull('firebase_uid')
+            ->whereNotIn('role', ['employee'])
+            ->first();
+
+        $firebase->updateCompany(
+            (string) $company->id,
+            [
+                'id' => (string) $company->id,
+                'name' => $company->name,
+                'slug' => $company->slug,
+                'ownerId' => $owner?->firebase_uid,
+                'plan' => $company->plan,
+                'maxEmployees' => $company->max_employees,
+                'active' => $company->active,
+                'settings' => $company->settings ?? [],
+            ]
+        );
+    }
+
+    $this->info('Syncing user profiles to Firestore...');
+    foreach (User::whereNotNull('firebase_uid')->get() as $user) {
+        $employee = Employee::where('company_id', $user->company_id)
+            ->where('email', $user->email)
+            ->first();
+
+        $companyName = $user->company?->name ?? '';
+        $profile = [
+            'id' => (string) $user->id,
+            'company_id' => (string) $user->company_id,
+            'name' => $user->name,
+            'email' => $user->email,
+            'role' => $user->role,
+            'company_name' => $companyName,
+            'company' => ['id' => (string) $user->company_id, 'name' => $companyName],
+        ];
+
+        if ($employee) {
+            $profile['employee_id'] = (string) $employee->id;
+            $profile['assigned_geofence_id'] = $employee->geofence_id ? (string) $employee->geofence_id : null;
+        }
+
+        $firebase->syncUserProfile($user->firebase_uid, $profile);
     }
 
     $this->info('Firestore sync complete.');
