@@ -55,21 +55,21 @@ class DashboardController extends Controller
                 ? round(($presentToday + $checkedOutToday) / $totalEmployees * 100, 2)
                 : 0;
 
-            $checkInTimes = Attendance::join('employees', 'attendance.employee_id', '=', 'employees.id')
+            $driver = DB::connection()->getDriverName();
+            $avgSecondsExpr = $driver === 'sqlite'
+                ? "AVG(strftime('%s', check_in_time) - strftime('%s', date(check_in_time))) as avg_seconds"
+                : 'AVG(TIME_TO_SEC(TIME(check_in_time))) as avg_seconds';
+
+            $checkInStats = Attendance::join('employees', 'attendance.employee_id', '=', 'employees.id')
                 ->where('employees.company_id', $cid)
                 ->where('attendance.date', $today)
                 ->whereNotNull('attendance.check_in_time')
-                ->pluck('attendance.check_in_time');
+                ->selectRaw($avgSecondsExpr)
+                ->first();
 
             $avgCheckIn = 'N/A';
-            if ($checkInTimes->isNotEmpty()) {
-                $totalSecs = $checkInTimes->reduce(function (int $carry, $t) {
-                    $time = Carbon::parse($t)->format('H:i');
-                    [$h, $m] = array_map('intval', explode(':', $time));
-
-                    return $carry + $h * 3600 + $m * 60;
-                }, 0);
-                $avgSecs = intdiv($totalSecs, $checkInTimes->count());
+            if ($checkInStats && $checkInStats->avg_seconds !== null) {
+                $avgSecs = (int) $checkInStats->avg_seconds;
                 $avgCheckIn = sprintf('%02d:%02d', intdiv($avgSecs, 3600), intdiv($avgSecs % 3600, 60));
             }
 

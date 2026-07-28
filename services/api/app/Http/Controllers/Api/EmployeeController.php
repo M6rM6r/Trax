@@ -99,8 +99,10 @@ class EmployeeController extends Controller
 
     public function inactive(): JsonResponse
     {
-        $employees = Employee::where('company_id', $this->companyId())
-            ->where('status', 'inactive')->get();
+        $employees = Employee::with('geofence')
+            ->where('company_id', $this->companyId())
+            ->where('status', 'inactive')
+            ->get();
 
         return response()->json([
             'success' => true,

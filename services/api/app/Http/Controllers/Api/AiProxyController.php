@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 
 class AiProxyController extends Controller
@@ -28,12 +29,19 @@ class AiProxyController extends Controller
             return response()->json(['success' => false, 'message' => 'AI service is not configured'], 503);
         }
 
+        $cacheKey = 'ai.retention.'.md5(json_encode($validated));
+        $cached = Cache::get($cacheKey);
+        if ($cached) {
+            return response()->json($cached);
+        }
+
         try {
             $response = Http::withHeaders([
                 'Authorization' => 'Bearer '.$apiKey,
                 'Accept' => 'application/json',
             ])
-                ->timeout(10)
+                ->connectTimeout(2)
+                ->timeout(5)
                 ->post($aiUrl.'/api/v1/retention/analyze', $validated);
         } catch (ConnectionException $e) {
             return response()->json(['success' => false, 'message' => 'AI service unavailable'], 503);
@@ -43,6 +51,9 @@ class AiProxyController extends Controller
             return response()->json(['success' => false, 'message' => 'AI service returned an error'], $response->status());
         }
 
-        return response()->json($response->json());
+        $payload = $response->json();
+        Cache::put($cacheKey, $payload, 60);
+
+        return response()->json($payload);
     }
 }
