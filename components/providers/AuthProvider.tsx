@@ -6,28 +6,46 @@ import { auth } from "@/lib/config/firebase";
 import { getFirebaseUserProfile } from "@/lib/services/firebaseData";
 import { useAuthStore, type UserRole } from "@/stores/useAuthStore";
 import { resolveUserRole } from "@/lib/utils/auth";
+import useSessionTimeout from "@/hooks/useSessionTimeout";
 
 export default function AuthProvider({ children }: { children: React.ReactNode }) {
-  const { user, clearUser, token, setUser, companyId, companyName } = useAuthStore();
+  const user = useAuthStore((state) => state.user);
+  const token = useAuthStore((state) => state.token);
+  const companyId = useAuthStore((state) => state.companyId);
+  const companyName = useAuthStore((state) => state.companyName);
+  const setUser = useAuthStore((state) => state.setUser);
+  const clearUser = useAuthStore((state) => state.clearUser);
   const hasRedirected = useRef(false);
   const userRef = useRef(user);
   userRef.current = user;
+  const tokenRef = useRef(token);
+  tokenRef.current = token;
+  const companyIdRef = useRef(companyId);
+  companyIdRef.current = companyId;
+  const companyNameRef = useRef(companyName);
+  companyNameRef.current = companyName;
+
+  useSessionTimeout();
 
   useEffect(() => {
     if (!auth) return;
 
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (!firebaseUser) {
-        if (userRef.current && !hasRedirected.current) {
-          hasRedirected.current = true;
+        if (userRef.current) {
           clearUser();
           console.warn("[auth] Firebase session expired");
-          const isLoginPage =
-            typeof window !== "undefined" && window.location.pathname.includes("/login");
-          if (!isLoginPage && typeof window !== "undefined") {
-            const pathParts = window.location.pathname.split("/");
-            const detectedLocale = pathParts[1] === "en" ? "en" : "ar";
-            window.location.href = `/${detectedLocale}/login?reason=session_expired`;
+        }
+
+        if (typeof window !== "undefined" && !hasRedirected.current) {
+          const publicPages = ["login", "register", "forgot-password", "reset-password"];
+          const pathParts = window.location.pathname.split("/");
+          const detectedLocale = pathParts[1] === "en" ? "en" : "ar";
+          const currentPage = pathParts[2] ?? "";
+
+          if (!publicPages.includes(currentPage)) {
+            hasRedirected.current = true;
+            window.location.href = `/${detectedLocale}/login?reason=unauthenticated`;
           }
         }
         return;
@@ -38,7 +56,8 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
           hasRedirected.current = false;
         }
 
-        const shouldRestore = !userRef.current || !token || userRef.current.role === "employee";
+        const shouldRestore =
+          !userRef.current || !tokenRef.current || userRef.current.role === "employee";
         if (shouldRestore) {
           try {
             let profile: Record<string, unknown> | null = null;
@@ -115,21 +134,21 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
     });
 
     return () => unsubscribe();
-  }, [clearUser, token, user, setUser]);
+  }, [clearUser, setUser]);
 
   useEffect(() => {
     if (!auth) return;
-    if (!token && auth.currentUser && user) {
+    if (!tokenRef.current && auth.currentUser && userRef.current) {
       auth.currentUser
         .getIdToken(false)
         .then((newToken) => {
-          if (user) {
+          if (userRef.current) {
             setUser(
-              user,
+              userRef.current,
               newToken,
-              (user.role as UserRole) ?? "employee",
-              companyId ?? undefined,
-              companyName ?? undefined
+              (userRef.current.role as UserRole) ?? "employee",
+              companyIdRef.current ?? undefined,
+              companyNameRef.current ?? undefined
             );
           }
         })
@@ -137,7 +156,7 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
           console.warn("[auth] Token refresh failed:", err);
         });
     }
-  }, [token, user, setUser, companyId, companyName]);
+  }, [setUser]);
 
   return <>{children}</>;
 }
