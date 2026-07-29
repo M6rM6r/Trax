@@ -86,22 +86,40 @@ export default function NotificationPreferences() {
   useEffect(() => {
     if (!user?.id || !db) return;
     const firestore = db;
+    let mounted = true;
     const load = async () => {
-      const snap = await getDoc(doc(firestore, "notification_settings", String(user.id)));
-      if (snap.exists()) {
-        setSettings({ ...defaults, ...(snap.data() as Partial<NotificationSettings>) });
+      try {
+        const snap = await getDoc(doc(firestore, "notification_settings", String(user.id)));
+        if (mounted && snap.exists()) {
+          setSettings({ ...defaults, ...(snap.data() as Partial<NotificationSettings>) });
+        }
+      } catch {
+        // ignore — defaults are already set
       }
     };
     load();
+    return () => {
+      mounted = false;
+    };
   }, [user?.id]);
 
   const toggle = async (key: keyof NotificationSettings) => {
     const next = { ...settings, [key]: !settings[key] };
     setSettings(next);
     if (user?.id && db) {
+      const firestore = db;
       setSaving(true);
-      await setDoc(doc(db, "notification_settings", String(user.id)), next, { merge: true });
-      setSaving(false);
+      try {
+        await setDoc(
+          doc(firestore, "notification_settings", String(user.id)),
+          { [key]: next[key] },
+          { merge: true }
+        );
+      } catch {
+        setSettings(settings); // revert on failure
+      } finally {
+        setSaving(false);
+      }
     }
   };
 
@@ -200,8 +218,9 @@ export default function NotificationPreferences() {
                   }}
                   onBlur={() => {
                     if (user?.id && db) {
+                      const firestore = db;
                       setDoc(
-                        doc(db, "notification_settings", String(user.id)),
+                        doc(firestore, "notification_settings", String(user.id)),
                         { quiet_hours_start: settings.quiet_hours_start },
                         { merge: true }
                       );
@@ -219,8 +238,9 @@ export default function NotificationPreferences() {
                   }}
                   onBlur={() => {
                     if (user?.id && db) {
+                      const firestore = db;
                       setDoc(
-                        doc(db, "notification_settings", String(user.id)),
+                        doc(firestore, "notification_settings", String(user.id)),
                         { quiet_hours_end: settings.quiet_hours_end },
                         { merge: true }
                       );

@@ -11,6 +11,7 @@ const ACTIVITY_EVENTS = ["mousedown", "mousemove", "keydown", "touchstart", "scr
 function useSessionTimeout() {
   const role = useAuthStore((state) => state.role);
   const companyId = useAuthStore((state) => state.companyId);
+  const clearUser = useAuthStore((state) => state.clearUser);
   const sessionTimeoutMinutes = useCompanySettingsStore((state) => state.sessionTimeoutMinutes);
   const timeoutMsRef = useRef<number>(60 * 60 * 1000);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
@@ -22,7 +23,13 @@ function useSessionTimeout() {
     } catch (err) {
       console.error("[session-timeout] sign-out failed:", err);
     }
-  }, []);
+    clearUser();
+    if (typeof window !== "undefined") {
+      const pathParts = window.location.pathname.split("/");
+      const detectedLocale = pathParts[1] === "en" ? "en" : "ar";
+      window.location.href = `/${detectedLocale}/login?reason=session_timeout`;
+    }
+  }, [clearUser]);
 
   const resetTimer = useCallback(() => {
     lastActivityRef.current = Date.now();

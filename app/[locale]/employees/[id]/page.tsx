@@ -83,8 +83,12 @@ export default function EmployeeProfilePage({ params }: { params: { id: string }
   );
 
   const last7Days = empAttendance.slice(0, 7);
-  const presentCount = last7Days.filter((a) => a.status === "present").length;
-  const lateCount = last7Days.filter((a) => a.status === "late").length;
+  const presentCount = last7Days.filter(
+    (a) => a.status === "present" || (a.status === "checked_out" && !((a.lateMinutes ?? 0) > 0))
+  ).length;
+  const lateCount = last7Days.filter(
+    (a) => a.status === "late" || (a.status === "checked_out" && (a.lateMinutes ?? 0) > 0)
+  ).length;
   const absentCount = last7Days.filter((a) => a.status === "absent").length;
 
   const geofenceOptions = useMemo(
@@ -153,7 +157,6 @@ export default function EmployeeProfilePage({ params }: { params: { id: string }
         toastWithUndo(t("deleted", { name: deletedEmployee.name }), () => {
           router.push(`/employees`);
         });
-        router.push(`/employees`);
       },
       onError: () => {
         toastError(t("deleteFailed"));
@@ -399,10 +402,11 @@ export default function EmployeeProfilePage({ params }: { params: { id: string }
                   const dateStr = d.toLocaleDateString("sv-SE");
                   const record = empAttendance.find((r) => r.date === dateStr);
                   const status = record?.status;
+                  const isLate = (record?.lateMinutes ?? 0) > 0;
                   const bg =
-                    status === "present" || status === "checked_out"
+                    status === "present" || (status === "checked_out" && !isLate)
                       ? "bg-primary/70"
-                      : status === "late"
+                      : status === "late" || (status === "checked_out" && isLate)
                         ? "bg-[hsl(48_96%_53%/0.7)]"
                         : status === "absent"
                           ? "bg-destructive/60"
@@ -509,21 +513,28 @@ export default function EmployeeProfilePage({ params }: { params: { id: string }
                       header: t("status"),
                       sortable: true,
                       sortValue: (r) => r.status,
-                      cell: (r) => (
-                        <span
-                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                            r.status === "present"
-                              ? "bg-primary/10 text-primary"
-                              : r.status === "late"
-                                ? "bg-[hsl(48_96%_53%/0.15)] text-[hsl(48_96%_53%)]"
-                                : "bg-destructive/10 text-destructive"
-                          }`}
-                        >
-                          {r.status && r.status in statusLabels
-                            ? t(statusLabels[r.status as keyof typeof statusLabels])
-                            : r.status}
-                        </span>
-                      ),
+                      cell: (r) => {
+                        const isLate = (r.lateMinutes ?? 0) > 0;
+                        const isPresent =
+                          r.status === "present" || (r.status === "checked_out" && !isLate);
+                        const isLateStatus =
+                          r.status === "late" || (r.status === "checked_out" && isLate);
+                        return (
+                          <span
+                            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                              isPresent
+                                ? "bg-primary/10 text-primary"
+                                : isLateStatus
+                                  ? "bg-[hsl(48_96%_53%/0.15)] text-[hsl(48_96%_53%)]"
+                                  : "bg-destructive/10 text-destructive"
+                            }`}
+                          >
+                            {r.status && r.status in statusLabels
+                              ? t(statusLabels[r.status as keyof typeof statusLabels])
+                              : r.status}
+                          </span>
+                        );
+                      },
                     },
                     {
                       key: "workedHours",

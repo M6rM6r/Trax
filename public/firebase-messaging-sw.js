@@ -2,12 +2,12 @@ importScripts("https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js
 importScripts("https://www.gstatic.com/firebasejs/10.12.0/firebase-messaging-compat.js");
 
 firebase.initializeApp({
-  apiKey: "AIzaSyDummyKeyReplaceWithYourActualKey",
+  apiKey: "AIzaSyAn53rxOqZzUMmcnDqsRrc7RCj-W2jb46o",
   authDomain: "trax-ae.firebaseapp.com",
   projectId: "trax-ae",
-  storageBucket: "trax-ae.appspot.com",
-  messagingSenderId: "000000000000",
-  appId: "1:000000000000:web:0000000000000000000000",
+  storageBucket: "trax-ae.firebasestorage.app",
+  messagingSenderId: "651185247129",
+  appId: "1:651185247129:web:75c1a8bfd7821ca89ef908",
 });
 
 const messaging = firebase.messaging();

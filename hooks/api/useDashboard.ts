@@ -30,7 +30,9 @@ export function useDashboardData(dateRange?: DashboardDateRange) {
       workStartTime ?? "",
       String(gracePeriodMinutes ?? ""),
     ],
-    staleTime: 60 * 1000,
+    staleTime: 0,
+    refetchInterval: 30 * 1000,
+    refetchOnMount: "always",
     enabled: Boolean(companyId),
     queryFn: async () => firebaseData.dashboard.getDashboardData({ from, to }, companySettings),
   });

@@ -39,7 +39,7 @@ interface RealtimeCallbacks {
   onLocationUpdate?: (data: LocationUpdatePayload) => void;
 }
 
-let connected = false;
+let connectionCount = 0;
 
 function getStatus(
   data: Record<string, unknown>
@@ -56,7 +56,7 @@ function getStatus(
 }
 
 export function isRealtimeConnected(): boolean {
-  return connected;
+  return connectionCount > 0;
 }
 
 export function subscribeRealtimeEvents(callbacks: RealtimeCallbacks): () => void {
@@ -67,103 +67,106 @@ export function subscribeRealtimeEvents(callbacks: RealtimeCallbacks): () => voi
     return () => undefined;
   }
 
-  connected = true;
+  connectionCount++;
 
-  const base = collection(db, "locations");
-  const locationsQuery = query(base, where("company_id", "==", companyId), limit(500));
-  const unsubLocations = onSnapshot(
-    locationsQuery,
-    (snapshot) => {
-      snapshot.docChanges().forEach((change) => {
-        if (change.type === "removed") return;
-        const data = change.doc.data() as Record<string, unknown>;
-        if (callbacks.onLocationUpdate) {
-          callbacks.onLocationUpdate({
-            employeeId: change.doc.id,
-            employeeName: String(data.name ?? data.employeeName ?? ""),
-            lat: toNumber(data.lat ?? data.currentLat ?? data.latitude),
-            lng: toNumber(data.lng ?? data.currentLng ?? data.longitude),
-            status: getStatus(data),
-            geofenceName: data.geofenceName ? String(data.geofenceName) : undefined,
-            lastSeen: String(data.lastSeen ?? new Date().toISOString()),
-            batteryLevel: data.batteryLevel === undefined ? null : toNumber(data.batteryLevel),
-          });
-        }
-      });
-    },
-    (error) => {
-      console.warn("[realtime] locations listener error:", error);
-      connected = false;
-    }
-  );
-  unsubscribers.push(unsubLocations);
-
-  const attendanceBase = collection(db, "attendance");
-  const attendanceQuery = query(
-    attendanceBase,
-    where("company_id", "==", companyId),
-    orderBy("checkInTime", "desc"),
-    limit(50)
-  );
-  const unsubAttendance = onSnapshot(
-    attendanceQuery,
-    (snapshot) => {
-      snapshot.docChanges().forEach((change) => {
-        if (change.type !== "added" || !callbacks.onAttendanceCheckIn) return;
-        const data = change.doc.data() as Record<string, unknown>;
-        const checkInTime = data.checkInTime;
-        if (!checkInTime) return;
-        callbacks.onAttendanceCheckIn({
-          employeeId: String(data.employeeId ?? change.doc.id),
-          employeeName: String(data.employeeName ?? ""),
-          checkInTime: String(checkInTime),
+  if (callbacks.onLocationUpdate) {
+    const base = collection(db, "locations");
+    const locationsQuery = query(base, where("company_id", "==", companyId), limit(500));
+    const unsubLocations = onSnapshot(
+      locationsQuery,
+      (snapshot) => {
+        snapshot.docChanges().forEach((change) => {
+          if (change.type === "removed") return;
+          const data = change.doc.data() as Record<string, unknown>;
+          if (callbacks.onLocationUpdate) {
+            callbacks.onLocationUpdate({
+              employeeId: change.doc.id,
+              employeeName: String(data.name ?? data.employeeName ?? ""),
+              lat: toNumber(data.lat ?? data.currentLat ?? data.latitude),
+              lng: toNumber(data.lng ?? data.currentLng ?? data.longitude),
+              status: getStatus(data),
+              geofenceName: data.geofenceName ? String(data.geofenceName) : undefined,
+              lastSeen: String(data.lastSeen ?? new Date().toISOString()),
+              batteryLevel: data.batteryLevel === undefined ? null : toNumber(data.batteryLevel),
+            });
+          }
         });
-      });
-    },
-    (error) => {
-      console.warn("[realtime] attendance listener error:", error);
-      connected = false;
-    }
-  );
-  unsubscribers.push(unsubAttendance);
+      },
+      (error) => {
+        console.warn("[realtime] locations listener error:", error);
+      }
+    );
+    unsubscribers.push(unsubLocations);
+  }
 
-  const notifBase = collection(db, "notifications");
-  const notifQuery = query(
-    notifBase,
-    where("company_id", "==", companyId),
-    orderBy("createdAt", "desc"),
-    limit(50)
-  );
-  const unsubNotifications = onSnapshot(
-    notifQuery,
-    (snapshot) => {
-      snapshot.docChanges().forEach((change) => {
-        if (change.type !== "added") return;
-        const data = change.doc.data() as Record<string, unknown>;
-        if (data.type === "anomaly_detected" && callbacks.onAnomalyDetected) {
-          callbacks.onAnomalyDetected({
-            employeeId: data.employeeId ? String(data.employeeId) : undefined,
-            details: String(data.details ?? data.message ?? ""),
-          });
-        }
-        if (data.type === "geofence_breach" && callbacks.onGeofenceBreach) {
-          callbacks.onGeofenceBreach({
-            employeeId: data.employeeId ? String(data.employeeId) : undefined,
+  if (callbacks.onAttendanceCheckIn) {
+    const attendanceBase = collection(db, "attendance");
+    const attendanceQuery = query(
+      attendanceBase,
+      where("company_id", "==", companyId),
+      orderBy("checkInTime", "desc"),
+      limit(50)
+    );
+    const unsubAttendance = onSnapshot(
+      attendanceQuery,
+      (snapshot) => {
+        snapshot.docChanges().forEach((change) => {
+          if (change.type !== "added" || !callbacks.onAttendanceCheckIn) return;
+          const data = change.doc.data() as Record<string, unknown>;
+          const checkInTime = data.checkInTime;
+          if (!checkInTime) return;
+          callbacks.onAttendanceCheckIn({
+            employeeId: String(data.employeeId ?? change.doc.id),
             employeeName: String(data.employeeName ?? ""),
-            geofenceName: String(data.geofenceName ?? ""),
+            checkInTime: String(checkInTime),
           });
-        }
-      });
-    },
-    (error) => {
-      console.warn("[realtime] notifications listener error:", error);
-      connected = false;
-    }
-  );
-  unsubscribers.push(unsubNotifications);
+        });
+      },
+      (error) => {
+        console.warn("[realtime] attendance listener error:", error);
+      }
+    );
+    unsubscribers.push(unsubAttendance);
+  }
+
+  if (callbacks.onAnomalyDetected || callbacks.onGeofenceBreach) {
+    const notifBase = collection(db, "notifications");
+    const notifQuery = query(
+      notifBase,
+      where("company_id", "==", companyId),
+      orderBy("createdAt", "desc"),
+      limit(50)
+    );
+    const unsubNotifications = onSnapshot(
+      notifQuery,
+      (snapshot) => {
+        snapshot.docChanges().forEach((change) => {
+          if (change.type !== "added") return;
+          const data = change.doc.data() as Record<string, unknown>;
+          if (data.type === "anomaly_detected" && callbacks.onAnomalyDetected) {
+            callbacks.onAnomalyDetected({
+              employeeId: data.employeeId ? String(data.employeeId) : undefined,
+              details: String(data.details ?? data.message ?? ""),
+            });
+          }
+          if (data.type === "geofence_breach" && callbacks.onGeofenceBreach) {
+            callbacks.onGeofenceBreach({
+              employeeId: data.employeeId ? String(data.employeeId) : undefined,
+              employeeName: String(data.employeeName ?? ""),
+              geofenceName: String(data.geofenceName ?? ""),
+            });
+          }
+        });
+      },
+      (error) => {
+        console.warn("[realtime] notifications listener error:", error);
+      }
+    );
+    unsubscribers.push(unsubNotifications);
+  }
 
   return () => {
     unsubscribers.forEach((unsubscribe) => unsubscribe());
-    connected = false;
+    connectionCount = Math.max(0, connectionCount - 1);
   };
 }

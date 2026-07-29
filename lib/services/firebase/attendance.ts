@@ -4,6 +4,7 @@ import {
   getDoc,
   getDocs,
   limit,
+  orderBy,
   query,
   serverTimestamp,
   setDoc,
@@ -39,9 +40,21 @@ export const attendanceApi = {
     const base = collection(requireDb(), "attendance");
     const extraFilters: ReturnType<typeof where>[] = [];
     if (employeeId) extraFilters.push(where("employeeId", "==", employeeId));
-    if (dateRange?.from) extraFilters.push(where("date", ">=", dateRange.from));
-    if (dateRange?.to) extraFilters.push(where("date", "<=", dateRange.to));
-    const records = await queryByCompanyId(base, extraFilters, mapAttendance);
+    let records = await queryByCompanyId(
+      base,
+      extraFilters,
+      mapAttendance,
+      orderBy("date", "desc")
+    );
+
+    if (dateRange?.from || dateRange?.to) {
+      records = records.filter((record) => {
+        if (dateRange.from && record.date < dateRange.from) return false;
+        if (dateRange.to && record.date > dateRange.to) return false;
+        return true;
+      });
+    }
+
     records.sort((a, b) => b.date.localeCompare(a.date));
     return records;
   },
@@ -67,6 +80,24 @@ export const attendanceApi = {
         }
       } catch {
         // Geofence lookup failed — proceed without geofence name
+      }
+    }
+
+    if (!geofence) {
+      try {
+        const companyGeofences = await queryByCompanyId(
+          collection(requireDb(), "geofences"),
+          [where("active", "==", true)],
+          mapGeofence
+        );
+        geofence =
+          companyGeofences.find(
+            (g) =>
+              calculateDistance(payload.lat, payload.lng, g.lat, g.lng) <=
+              g.radius + GEOFENCE_DISTANCE_BUFFER_METERS
+          ) ?? null;
+      } catch {
+        // proceed without geofence
       }
     }
 
@@ -125,12 +156,14 @@ export const attendanceApi = {
     if (existingDoc) {
       const existingData = existingDoc.data();
       if (existingData.checkOutTime) {
+        const resolvedGeofenceId = geofence?.id ?? payload.geofenceId ?? null;
+        const resolvedGeofenceName = geofence?.name ?? null;
         await updateDoc(existingDoc.ref, {
           checkInTime,
           checkInLat: payload.lat,
           checkInLng: payload.lng,
-          geofenceId: payload.geofenceId ?? null,
-          geofenceName: geofence?.name ?? null,
+          geofenceId: resolvedGeofenceId,
+          geofenceName: resolvedGeofenceName,
           status,
           lateMinutes,
           checkOutTime: null,
@@ -144,6 +177,8 @@ export const attendanceApi = {
           checkInTime,
           checkInLat: payload.lat,
           checkInLng: payload.lng,
+          geofenceId: resolvedGeofenceId,
+          geofenceName: resolvedGeofenceName,
           status,
           lateMinutes,
           checkOutTime: null,
@@ -168,7 +203,7 @@ export const attendanceApi = {
       checkInLng: payload.lng,
       checkOutLat: null,
       checkOutLng: null,
-      geofenceId: payload.geofenceId,
+      geofenceId: geofence?.id ?? payload.geofenceId ?? null,
       geofenceName: geofence?.name ?? null,
       lateMinutes,
       workedHours: 0,

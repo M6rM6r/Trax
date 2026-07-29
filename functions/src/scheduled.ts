@@ -112,7 +112,10 @@ export const dailyAttendanceSummary = functions.pubsub
         const data = doc.data();
         if (data.status === "present") present++;
         else if (data.status === "late") late++;
-        else if (data.status === "absent") absent++;
+        else if (data.status === "checked_out") {
+          if ((data.lateMinutes ?? 0) > 0) late++;
+          else present++;
+        } else if (data.status === "absent") absent++;
       });
 
       // Store daily summary

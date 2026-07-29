@@ -81,8 +81,12 @@ export default function AttendanceReportsPage() {
   } = useRetentionInsights(attendance, employees);
   const { role } = useAuthStore();
   const { toast } = useToast();
-  const presentCount = attendance.filter((r) => r.status === "present").length;
-  const lateCount = attendance.filter((r) => r.status === "late").length;
+  const presentCount = attendance.filter(
+    (r) => r.status === "present" || (r.status === "checked_out" && !(r.lateMinutes > 0))
+  ).length;
+  const lateCount = attendance.filter(
+    (r) => r.status === "late" || (r.status === "checked_out" && r.lateMinutes > 0)
+  ).length;
   const absentCount = attendance.filter((r) => r.status === "absent").length;
   const onTimeRate =
     attendance.length > 0 ? ((presentCount / attendance.length) * 100).toFixed(1) : "0";
@@ -147,7 +151,11 @@ export default function AttendanceReportsPage() {
       };
 
       current.total += 1;
-      if (record.status === "present" || record.status === "late") {
+      if (
+        record.status === "present" ||
+        record.status === "late" ||
+        record.status === "checked_out"
+      ) {
         current.presentOrLate += 1;
       }
       if (record.status === "absent") {

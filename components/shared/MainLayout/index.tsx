@@ -7,7 +7,8 @@ import { Logout } from "@/public/SVG";
 import { signOut } from "firebase/auth";
 import { auth } from "@/lib/config/firebase";
 import { cn } from "@/lib/utils";
-import { useTranslations } from "next-intl";
+import { Globe } from "lucide-react";
+import { useLocale, useTranslations } from "next-intl";
 import { useMainNavItems } from "@/components/Sidebar/nav-main-items";
 import {
   DropdownMenu,
@@ -48,6 +49,7 @@ const Index = ({
 
   const { user, role, clearUser } = useAuthStore();
   const t = useTranslations("Navigation");
+  const locale = useLocale();
   const mainNavItems = useMainNavItems({ pathname, role });
   const [authReady, setAuthReady] = useState(false);
 
@@ -112,6 +114,16 @@ const Index = ({
     router.push("/login");
   }, [router, toast, clearUser, t]);
 
+  const toggleLocale = useCallback(() => {
+    const next = locale === "ar" ? "en" : "ar";
+    document.cookie = `NEXT_LOCALE=${next};path=/;max-age=31536000;SameSite=Lax`;
+    const saved = localStorage.getItem("trax_settings");
+    const current = saved ? JSON.parse(saved) : {};
+    current.language = next;
+    localStorage.setItem("trax_settings", JSON.stringify(current));
+    router.replace(pathname, { locale: next });
+  }, [locale, pathname, router]);
+
   // Show a minimal spinner until auth state is resolved to avoid flashing the
   // dashboard skeleton/layout to unauthenticated users.
   const effectiveUser = user ?? storedUser.current;
@@ -163,6 +175,15 @@ const Index = ({
             </div>
 
             <div className="flex items-center gap-2 md:gap-4">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={toggleLocale}
+                className="gap-1.5 px-2 text-muted-foreground uppercase text-xs font-medium"
+              >
+                <Globe className="w-4 h-4" />
+                {locale}
+              </Button>
               <div className="flex items-center gap-2 md:gap-3 md:border-l md:border-border md:ps-4">
                 <NotificationCenter />
                 <DropdownMenu>
@@ -203,6 +224,7 @@ const Index = ({
       {showSidebar && !bare && (
         <aside
           id="logo-sidebar"
+          style={{ insetInlineStart: 0 }}
           className={cn(
             "fixed top-0 z-40 hidden h-screen w-64 border-e border-sidebar-border bg-sidebar pt-16 lg:block"
           )}

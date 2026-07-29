@@ -1,8 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter, usePathname } from "@/i18n/navigation";
-import { useLocale, useTranslations } from "next-intl";
+import { useTranslations } from "next-intl";
 import MainLayout from "@/components/shared/MainLayout";
 import FullPageHead from "@/components/shared/FullPageHead";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -21,8 +20,6 @@ import {
   Type,
   Check,
   Settings as SettingsIcon,
-  Globe,
-  Calendar,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { hapticTap, hapticSuccess, hapticError } from "@/lib/utils/haptics";
@@ -33,7 +30,7 @@ import { useSaveCompanySettings } from "@/hooks/useApi";
 import { firebaseData } from "@/lib/services/firebase";
 import type { CompanySettings } from "@/lib/types/companySettings";
 
-type TabId = "general" | "work" | "auto" | "notifications" | "session" | "geofence" | "appearance";
+type TabId = "work" | "auto" | "notifications" | "session" | "geofence" | "appearance";
 
 function getThemeColors(t: (key: string) => string) {
   return [
@@ -103,12 +100,6 @@ export default function CompanySettingsPage() {
   const [sendingNotif, setSendingNotif] = useState(false);
   const [accentColor, setAccentColor] = useState("blue");
   const [fontSize, setFontSize] = useState("medium");
-  const router = useRouter();
-  const pathname = usePathname();
-  const currentLocale = useLocale();
-  const [language, setLanguage] = useState(currentLocale);
-  const [timezone, setTimezone] = useState("Asia/Riyadh");
-  const [dateFormat, setDateFormat] = useState("gregorian");
 
   useEffect(() => {
     if (settings.loaded) {
@@ -131,9 +122,6 @@ export default function CompanySettingsPage() {
       setFontSize(fs);
       applyAccentColor(ac);
       document.documentElement.style.setProperty("--base-font-size", fontSizeMap[fs] || "16px");
-      setLanguage(parsed.language || currentLocale);
-      setTimezone(parsed.timezone || "Asia/Riyadh");
-      setDateFormat(parsed.dateFormat || "gregorian");
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -204,9 +192,6 @@ export default function CompanySettingsPage() {
     const current = saved ? JSON.parse(saved) : {};
     current[key] = value;
     localStorage.setItem("trax_settings", JSON.stringify(current));
-    if (key === "language" && typeof value === "string") {
-      document.cookie = `NEXT_LOCALE=${value};path=/;max-age=31536000;SameSite=Lax`;
-    }
     if (key === "accentColor" && typeof value === "string") {
       applyAccentColor(value);
     }
@@ -218,7 +203,6 @@ export default function CompanySettingsPage() {
   };
 
   const tabs: Array<{ id: TabId; label: string; icon: typeof Clock }> = [
-    { id: "general", label: t("tabs.general"), icon: SettingsIcon },
     { id: "work", label: t("tabs.work"), icon: Clock },
     { id: "auto", label: t("tabs.auto"), icon: Navigation },
     { id: "notifications", label: t("tabs.notifications"), icon: Bell },
@@ -843,93 +827,6 @@ export default function CompanySettingsPage() {
                 </CardContent>
               </Card>
             </div>
-          )}
-
-          {/* General Tab */}
-          {activeTab === "general" && (
-            <Card className="border-0 shadow-lg bg-card">
-              <CardHeader>
-                <CardTitle className="text-lg font-bold text-foreground">
-                  {t("general.title")}
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-center justify-between p-4 rounded-xl bg-muted/50">
-                  <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center">
-                      <Globe className="w-4 h-4 text-primary" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-foreground">{t("general.language")}</p>
-                      <p className="text-xs text-muted-foreground">{t("general.languageHelper")}</p>
-                    </div>
-                  </div>
-                  <select
-                    value={language}
-                    onChange={(e) => {
-                      const nextLocale = e.target.value;
-                      setLanguage(nextLocale);
-                      saveLocalSetting("language", nextLocale);
-                      router.replace(pathname, { locale: nextLocale });
-                    }}
-                    className="px-3 py-2 rounded-lg border border-input bg-background text-sm text-foreground"
-                  >
-                    <option value="ar">{t("general.arabic")}</option>
-                    <option value="en">{t("general.english")}</option>
-                  </select>
-                </div>
-                <div className="flex items-center justify-between p-4 rounded-xl bg-muted/50">
-                  <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center">
-                      <Clock className="w-4 h-4 text-primary" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-foreground">{t("general.timezone")}</p>
-                      <p className="text-xs text-muted-foreground">{t("general.timezoneHelper")}</p>
-                    </div>
-                  </div>
-                  <select
-                    value={timezone}
-                    onChange={(e) => {
-                      setTimezone(e.target.value);
-                      saveLocalSetting("timezone", e.target.value);
-                    }}
-                    className="px-3 py-2 rounded-lg border border-input bg-background text-sm text-foreground"
-                  >
-                    <option value="Asia/Riyadh">Riyadh</option>
-                    <option value="Asia/Dubai">Dubai</option>
-                    <option value="Asia/Kuwait">Kuwait</option>
-                    <option value="Asia/Qatar">Doha</option>
-                  </select>
-                </div>
-                <div className="flex items-center justify-between p-4 rounded-xl bg-muted/50">
-                  <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-lg bg-accent/15 flex items-center justify-center">
-                      <Calendar className="w-4 h-4 text-accent-foreground" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-foreground">
-                        {t("general.dateFormat")}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {t("general.dateFormatHelper")}
-                      </p>
-                    </div>
-                  </div>
-                  <select
-                    value={dateFormat}
-                    onChange={(e) => {
-                      setDateFormat(e.target.value);
-                      saveLocalSetting("dateFormat", e.target.value);
-                    }}
-                    className="px-3 py-2 rounded-lg border border-input bg-background text-sm text-foreground"
-                  >
-                    <option value="gregorian">{t("general.gregorian")}</option>
-                    <option value="hijri">{t("general.hijri")}</option>
-                  </select>
-                </div>
-              </CardContent>
-            </Card>
           )}
         </motion.div>
 

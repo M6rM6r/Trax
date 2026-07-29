@@ -28,10 +28,11 @@ async function requireCompanyAdmin(
   }
   const userDoc = await db.collection("users").doc(uid).get();
   const userData = userDoc.data();
+  const adminRoles = ["company", "boss", "admin"];
   if (
     !userData ||
     String(userData.company_id) !== String(companyId) ||
-    userData.role !== "company"
+    !adminRoles.includes(userData.role)
   ) {
     throw new functions.https.HttpsError(
       "permission-denied",
@@ -256,9 +257,12 @@ export const sendCompanyNotification = functions.https.onCall(async (data, conte
     return { success: true, data: { sent: 0, failed: 0 } };
   }
 
-  const allTokens = tokensSnapshot.docs
-    .map((doc) => doc.data().token as string | undefined)
-    .filter((t): t is string => typeof t === "string" && t.length > 0);
+  const tokenDocs = tokensSnapshot.docs
+    .map((doc) => ({ token: doc.data().token as string | undefined, ref: doc.ref }))
+    .filter(
+      (item): item is { token: string; ref: FirebaseFirestore.DocumentReference } =>
+        typeof item.token === "string" && item.token.length > 0
+    );
 
   let totalSent = 0;
   let totalFailed = 0;
@@ -272,10 +276,11 @@ export const sendCompanyNotification = functions.https.onCall(async (data, conte
     },
   };
 
-  for (let i = 0; i < allTokens.length; i += FCM_BATCH_SIZE) {
-    const chunk = allTokens.slice(i, i + FCM_BATCH_SIZE);
+  for (let i = 0; i < tokenDocs.length; i += FCM_BATCH_SIZE) {
+    const chunk = tokenDocs.slice(i, i + FCM_BATCH_SIZE);
+    const tokens = chunk.map((item) => item.token);
     try {
-      const response = await messaging.sendEachForMulticast({ ...basePayload, tokens: chunk });
+      const response = await messaging.sendEachForMulticast({ ...basePayload, tokens });
       totalSent += response.successCount;
       totalFailed += response.failureCount;
 
@@ -287,8 +292,8 @@ export const sendCompanyNotification = functions.https.onCall(async (data, conte
             code.includes("registration-token-not-registered") ||
             code.includes("messaging/invalid-argument");
           if (shouldDelete) {
-            const docId = tokensSnapshot.docs[i + idx]?.id;
-            if (docId) tokensToDelete.push(db.collection("fcm_tokens").doc(docId));
+            const ref = chunk[idx]?.ref;
+            if (ref) tokensToDelete.push(ref);
           }
         }
       });

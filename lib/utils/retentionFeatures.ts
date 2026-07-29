@@ -32,7 +32,7 @@ export function buildRetentionFeatures(
   }
 
   const presentOrLate = attendance.filter(
-    (r) => r.status === "present" || r.status === "late"
+    (r) => r.status === "present" || r.status === "late" || r.status === "checked_out"
   ).length;
   const absentCount = attendance.filter((r) => r.status === "absent").length;
   const checkedOutCount = attendance.filter((r) => Boolean(r.checkOutTime)).length;

@@ -397,7 +397,7 @@ export default function EmployeesPage() {
           description={t("description")}
           Icon={<Users className="w-7 h-7" />}
           LeftSection={
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <div className="flex items-center bg-muted rounded-lg p-1">
                 <button
                   onClick={() => handleViewMode("table")}

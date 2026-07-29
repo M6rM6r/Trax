@@ -18,13 +18,19 @@ export async function requestFCMToken(): Promise<string | null> {
   const messaging = getMessagingInstance();
   if (!messaging) return null;
 
+  const vapidKey = process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY ?? "";
+  if (!vapidKey) {
+    console.warn(
+      "[FCM] NEXT_PUBLIC_FIREBASE_VAPID_KEY is not set — push notifications will not work. Generate a VAPID key in Firebase Console > Project Settings > Cloud Messaging > Web Configuration."
+    );
+    return null;
+  }
+
   try {
     const permission = await Notification.requestPermission();
     if (permission !== "granted") return null;
 
-    const currentToken = await getToken(messaging, {
-      vapidKey: process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY ?? "",
-    });
+    const currentToken = await getToken(messaging, { vapidKey });
 
     if (currentToken) {
       await storeFCMToken(currentToken);

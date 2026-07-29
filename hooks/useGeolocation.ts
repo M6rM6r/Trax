@@ -85,42 +85,54 @@ export function useGeolocation(options: UseGeolocationOptions): GeolocationState
   const pendingPositionRef = useRef<GeolocationPosition | null>(null);
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const locatingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const hasPositionRef = useRef(false);
+  const geofencesRef = useRef(geofences);
+  const bufferMetersRef = useRef(bufferMeters);
+  const accuracyThresholdRef = useRef(accuracyThreshold);
 
-  const updatePosition = useCallback(
-    (pos: GeolocationPosition) => {
-      const { latitude, longitude, accuracy } = pos.coords;
+  useEffect(() => {
+    geofencesRef.current = geofences;
+  }, [geofences]);
+  useEffect(() => {
+    bufferMetersRef.current = bufferMeters;
+  }, [bufferMeters]);
+  useEffect(() => {
+    accuracyThresholdRef.current = accuracyThreshold;
+  }, [accuracyThreshold]);
 
-      // Ignore low-accuracy positions unless we have nothing yet
-      if (accuracy > accuracyThreshold && position) {
-        return;
-      }
+  const updatePosition = useCallback((pos: GeolocationPosition) => {
+    const { latitude, longitude, accuracy } = pos.coords;
 
-      const newPosition = { lat: latitude, lng: longitude, accuracy };
-      setPosition(newPosition);
-      setIsLocating(false);
+    // Ignore low-accuracy positions unless we have nothing yet
+    if (accuracy > accuracyThresholdRef.current && hasPositionRef.current) {
+      return;
+    }
 
-      if (locatingTimerRef.current) {
-        clearTimeout(locatingTimerRef.current);
-        locatingTimerRef.current = null;
-      }
+    const newPosition = { lat: latitude, lng: longitude, accuracy };
+    setPosition(newPosition);
+    hasPositionRef.current = true;
+    setIsLocating(false);
 
-      if (geofences.length === 0) {
-        setNearestGeofence(null);
-        setIsWithinRange(true);
-        return;
-      }
+    if (locatingTimerRef.current) {
+      clearTimeout(locatingTimerRef.current);
+      locatingTimerRef.current = null;
+    }
 
-      const { nearestGeofence: nearest, isWithinRange: within } = isWithinAnyGeofence(
-        latitude,
-        longitude,
-        geofences,
-        bufferMeters
-      );
-      setNearestGeofence(nearest);
-      setIsWithinRange(within);
-    },
-    [accuracyThreshold, bufferMeters, geofences, position]
-  );
+    if (geofencesRef.current.length === 0) {
+      setNearestGeofence(null);
+      setIsWithinRange(true);
+      return;
+    }
+
+    const { nearestGeofence: nearest, isWithinRange: within } = isWithinAnyGeofence(
+      latitude,
+      longitude,
+      geofencesRef.current,
+      bufferMetersRef.current
+    );
+    setNearestGeofence(nearest);
+    setIsWithinRange(within);
+  }, []);
 
   const handlePosition = useCallback(
     (pos: GeolocationPosition) => {
@@ -131,7 +143,7 @@ export function useGeolocation(options: UseGeolocationOptions): GeolocationState
       }
 
       // Immediate update for first position or high accuracy jump; debounce subsequent noisy updates
-      const isFirst = !position;
+      const isFirst = !hasPositionRef.current;
       const delay = isFirst ? 0 : LOCATION_DEBOUNCE_MS;
 
       debounceTimerRef.current = setTimeout(() => {
@@ -141,7 +153,7 @@ export function useGeolocation(options: UseGeolocationOptions): GeolocationState
         }
       }, delay);
     },
-    [position, updatePosition]
+    [updatePosition]
   );
 
   const handleError = useCallback((err: GeolocationPositionError) => {
@@ -163,7 +175,14 @@ export function useGeolocation(options: UseGeolocationOptions): GeolocationState
     }
 
     let watchId = 0;
-    const fallbackId = 0;
+
+    const quickFix = () => {
+      navigator.geolocation.getCurrentPosition(handlePosition, handleError, {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: POSITION_MAX_AGE_MS,
+      });
+    };
 
     const startWatch = () => {
       setIsLocating(true);
@@ -185,21 +204,43 @@ export function useGeolocation(options: UseGeolocationOptions): GeolocationState
             setError({ code: 1, message: "Permission denied" } as GeolocationPositionError);
             setIsLocating(false);
           } else {
+            quickFix();
             startWatch();
           }
         })
-        .catch(() => startWatch());
+        .catch(() => {
+          quickFix();
+          startWatch();
+        });
     } else {
+      quickFix();
       startWatch();
     }
 
     return () => {
       if (watchId) navigator.geolocation.clearWatch(watchId);
-      if (fallbackId) window.clearTimeout(fallbackId);
       if (locatingTimerRef.current) clearTimeout(locatingTimerRef.current);
       if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
     };
   }, [enabled, handlePosition, handleError]);
+
+  // Recompute geofence match when the geofence list or thresholds change
+  useEffect(() => {
+    if (!position) return;
+    if (geofences.length === 0) {
+      setNearestGeofence(null);
+      setIsWithinRange(true);
+      return;
+    }
+    const { nearestGeofence: nearest, isWithinRange: within } = isWithinAnyGeofence(
+      position.lat,
+      position.lng,
+      geofences,
+      bufferMeters
+    );
+    setNearestGeofence(nearest);
+    setIsWithinRange(within);
+  }, [position, geofences, bufferMeters]);
 
   return useMemo(
     () => ({

@@ -1,7 +1,7 @@
 "use client";
 import { cn } from "@/lib/utils";
 import { ArrowLeft, Flash, Line } from "@/public/SVG";
-import Link from "next/link";
+import { Link } from "@/i18n/navigation";
 import React, { useState } from "react";
 import { useTranslations } from "next-intl";
 
@@ -148,7 +148,7 @@ export function NavMain({
             )}
 
             {item.items?.length && openSections[item.title] ? (
-              <ul className="mr-4 mt-2 space-y-1 ">
+              <ul className="ms-4 mt-2 space-y-1 ">
                 {item.items.map((subItem) => {
                   const subItemKey = `${item.title}__${subItem.title}`;
                   const isSubItemOpen = openSubSections[subItemKey] ?? false;
@@ -216,7 +216,7 @@ export function NavMain({
                       </div>
 
                       {hasSubItems && isSubItemOpen && (
-                        <ul className="mr-4 mt-2 space-y-1 ">
+                        <ul className="ms-4 mt-2 space-y-1 ">
                           {subItem.items?.map((subSubItem) => (
                             <li key={subSubItem.title} className=" relative group ">
                               <Line className="w-10 h-[60px] absolute -top-6 -start-7" />

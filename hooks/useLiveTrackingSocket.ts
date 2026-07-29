@@ -1,7 +1,11 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
-import { subscribeRealtimeEvents, type LocationUpdatePayload } from "@/lib/services/realtime";
+import {
+  subscribeRealtimeEvents,
+  isRealtimeConnected,
+  type LocationUpdatePayload,
+} from "@/lib/services/realtime";
 import type { LiveTrackingEmployee } from "@/lib/types/trackingTypes";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { logger } from "@/lib/config/logger";
@@ -47,9 +51,7 @@ export function useLiveTrackingSocket(initialData: LiveTrackingEmployee[]) {
     });
 
     const interval = setInterval(() => {
-      import("@/lib/services/realtime").then(({ isRealtimeConnected }) => {
-        setIsConnected(isRealtimeConnected());
-      });
+      setIsConnected(isRealtimeConnected());
     }, 2000);
 
     return () => {

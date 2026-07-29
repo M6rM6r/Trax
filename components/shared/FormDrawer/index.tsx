@@ -46,8 +46,11 @@ export function FormDrawer({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side={side} className="w-full sm:max-w-lg md:max-w-xl overflow-y-auto">
-        <SheetHeader>
+      <SheetContent
+        side={side}
+        className="w-full p-4 sm:p-6 sm:max-w-lg md:max-w-xl overflow-y-auto"
+      >
+        <SheetHeader className="text-start">
           <SheetTitle className="text-lg font-bold text-foreground">{title}</SheetTitle>
           {description && (
             <SheetDescription className="text-muted-foreground">{description}</SheetDescription>
@@ -57,7 +60,7 @@ export function FormDrawer({
         <div className="mt-6 space-y-4">{children}</div>
 
         {onSubmit && (
-          <SheetFooter className="mt-6 flex-row gap-3 sm:gap-3">
+          <SheetFooter className="mt-6 flex-row flex-wrap gap-3 sm:gap-3">
             <Button
               variant="primary"
               onClick={handleSubmit}

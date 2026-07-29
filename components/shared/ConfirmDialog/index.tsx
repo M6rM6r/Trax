@@ -35,18 +35,18 @@ export default function ConfirmDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-[516px] p-6 rounded-16 flex flex-col bg-card dark:border border-border">
-        <DialogClose className="absolute top-6 left-6">
+        <DialogClose className="absolute top-6 start-6">
           <CloseCircle />
         </DialogClose>
         <DialogHeader>
           <DialogTitle className="text-24 text-foreground font-[600] text-center">
             {title}
           </DialogTitle>
-          <DialogDescription className="text-20 text-muted-foreground text-center">
+          <DialogDescription className="text-20 text-muted-foreground text-center" dir="auto">
             {description}
           </DialogDescription>
         </DialogHeader>
-        <div className="flex w-full gap-4 mt-4">
+        <div className="flex w-full flex-col sm:flex-row gap-4 mt-4">
           <DialogClose asChild>
             <Button type="button" variant="destructive" className="grow" onClick={onConfirm}>
               {confirmLabel}

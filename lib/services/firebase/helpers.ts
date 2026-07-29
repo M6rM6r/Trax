@@ -1,5 +1,15 @@
 import { onAuthStateChanged, type User } from "firebase/auth";
-import { collection, doc, getDocs, limit, query, setDoc, where } from "firebase/firestore";
+import {
+  collection,
+  doc,
+  getDocs,
+  limit,
+  orderBy,
+  query,
+  setDoc,
+  where,
+  type QueryConstraint,
+} from "firebase/firestore";
 import { auth, db } from "@/lib/config/firebase";
 import { useAuthStore } from "@/stores/useAuthStore";
 import type { AttendanceRecord, Employee, Geofence, WorkShift } from "@/lib/types/trackingTypes";
@@ -35,24 +45,50 @@ export function getCompanyId(): string | null {
 export async function queryByCompanyId<T>(
   base: ReturnType<typeof collection>,
   extraFilters: ReturnType<typeof where>[],
-  mapper: (id: string, data: Record<string, unknown>) => T
+  mapper: (id: string, data: Record<string, unknown>) => T,
+  orderByConstraint?: ReturnType<typeof orderBy>
 ): Promise<T[]> {
   const cidStr = getCompanyId();
   if (!cidStr) return [];
   const cidNum = Number(cidStr);
   const isNumeric = String(cidNum) === cidStr;
 
-  // Try string first
-  let snap = await getDocs(
-    query(base, where("company_id", "==", cidStr), ...extraFilters, limit(500))
-  );
-  if (snap.empty && isNumeric) {
-    // Try number
-    snap = await getDocs(
-      query(base, where("company_id", "==", cidNum), ...extraFilters, limit(500))
-    );
+  async function tryFetch(cid: string | number) {
+    const constraints: QueryConstraint[] = [where("company_id", "==", cid), ...extraFilters];
+    if (orderByConstraint) constraints.push(orderByConstraint);
+    constraints.push(limit(500));
+    return getDocs(query(base, ...constraints));
   }
-  return snap.docs.map((item) => mapper(item.id, item.data() as Record<string, unknown>));
+
+  // Try ordered query first; fall back to unordered if the index is missing
+  try {
+    let snap = await tryFetch(cidStr);
+    if (snap.empty && isNumeric) {
+      snap = await tryFetch(cidNum);
+    }
+    return snap.docs.map((item) => mapper(item.id, item.data() as Record<string, unknown>));
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    if (
+      message.includes("The query requires an index") ||
+      message.includes("FAILED_PRECONDITION")
+    ) {
+      console.warn(
+        "[queryByCompanyId] missing composite index, falling back to unordered fetch:",
+        message
+      );
+      let snap = await getDocs(
+        query(base, where("company_id", "==", cidStr), ...extraFilters, limit(500))
+      );
+      if (snap.empty && isNumeric) {
+        snap = await getDocs(
+          query(base, where("company_id", "==", cidNum), ...extraFilters, limit(500))
+        );
+      }
+      return snap.docs.map((item) => mapper(item.id, item.data() as Record<string, unknown>));
+    }
+    throw err;
+  }
 }
 
 export function cleanPayload<T extends Record<string, unknown>>(payload: T): T {

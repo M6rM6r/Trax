@@ -111,7 +111,9 @@ export default function MobileBottomNav() {
               <div className="active:scale-[0.85] transition-transform duration-100">
                 <Icon className="w-[18px] h-[18px]" />
               </div>
-              <span className="text-[9px] font-medium leading-tight">{item.label}</span>
+              <span className="text-[10px] font-medium leading-tight truncate max-w-[4.5rem]">
+                {item.label}
+              </span>
             </Link>
           );
         })}

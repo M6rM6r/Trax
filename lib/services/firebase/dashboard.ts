@@ -79,18 +79,25 @@ export const dashboardApi = {
     else console.warn("[dashboard] attendance fetch failed:", attRes.reason);
     if (geoRes.status === "fulfilled") geofences = geoRes.value;
     else console.warn("[dashboard] geofences fetch failed:", geoRes.reason);
-    const referenceDate = to ? new Date(to + "T00:00:00") : new Date();
-    const todayStr = to ?? referenceDate.toLocaleDateString("sv-SE");
+    const toStr = typeof to === "string" ? to : undefined;
+    const fromStr = typeof from === "string" ? from : undefined;
+    const referenceDate = toStr ? new Date(`${toStr}T00:00:00`) : new Date();
+    const todayStr = toStr || referenceDate.toLocaleDateString("sv-SE");
     const todayRecords = attendance.filter((record) => record.date === todayStr);
     const rangeRecords =
-      from && to
-        ? attendance.filter((record) => record.date >= from && record.date <= to)
+      fromStr && toStr
+        ? attendance.filter((record) => record.date >= fromStr && record.date <= toStr)
         : attendance;
     const activeEmployees = employees.filter((employee) => employee.status === "active");
     const presentToday = todayRecords.filter(
-      (record) => record.status === "present" || record.status === "checked_out"
+      (record) =>
+        record.status === "present" ||
+        (record.status === "checked_out" && !(record.lateMinutes > 0))
     ).length;
-    const lateToday = todayRecords.filter((record) => record.status === "late").length;
+    const lateToday = todayRecords.filter(
+      (record) =>
+        record.status === "late" || (record.status === "checked_out" && record.lateMinutes > 0)
+    ).length;
     const checkedOutToday = todayRecords.filter((record) => record.status === "checked_out").length;
     const earlyCheckoutsToday = todayRecords.filter((record) => record.earlyCheckout).length;
     const worked = todayRecords.map((record) => record.workedHours).filter((hours) => hours > 0);
@@ -139,9 +146,11 @@ export const dashboardApi = {
       const dateStr = d.toLocaleDateString("sv-SE");
       const dayRecords = attendance.filter((r) => r.date === dateStr);
       const present = dayRecords.filter(
-        (r) => r.status === "present" || r.status === "checked_out"
+        (r) => r.status === "present" || (r.status === "checked_out" && !(r.lateMinutes > 0))
       ).length;
-      const late = dayRecords.filter((r) => r.status === "late").length;
+      const late = dayRecords.filter(
+        (r) => r.status === "late" || (r.status === "checked_out" && r.lateMinutes > 0)
+      ).length;
       const absent = Math.max(0, activeEmployees.length - dayRecords.length);
       const dayWorked = dayRecords.map((r) => r.workedHours).filter((h) => h > 0);
       weeklyData.push({

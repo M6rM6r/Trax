@@ -1,12 +1,15 @@
 "use client";
 
-import { useState } from "react";
 import MainLayout from "@/components/shared/MainLayout";
 import FullPageHead from "@/components/shared/FullPageHead";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Bell, UserCheck, Clock, MapPin, Mail, Smartphone } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { useTranslations } from "next-intl";
+import { useCompanySettingsStore } from "@/stores/useCompanySettingsStore";
+import { useSaveCompanySettings } from "@/hooks/api/useCompanySettings";
+import { toastSuccess } from "@/hooks/use-toast";
+import NotificationPreferences from "@/components/shared/NotificationPreferences";
 
 function ToggleSwitch({ enabled, onChange }: { enabled: boolean; onChange: () => void }) {
   return <Switch checked={enabled} onCheckedChange={onChange} />;
@@ -14,47 +17,55 @@ function ToggleSwitch({ enabled, onChange }: { enabled: boolean; onChange: () =>
 
 export default function NotificationSettingsPage() {
   const t = useTranslations("NotificationSettings");
-  const [attendanceAlerts, setAttendanceAlerts] = useState(true);
-  const [lateAlerts, setLateAlerts] = useState(true);
-  const [geofenceExitAlerts, setGeofenceExitAlerts] = useState(false);
-  const [emailNotifications, setEmailNotifications] = useState(true);
-  const [pushNotifications, setPushNotifications] = useState(true);
+  const settings = useCompanySettingsStore();
+  const saveSettings = useSaveCompanySettings();
+
+  const toggleSetting = (key: keyof typeof settings, label: string) => {
+    const next = !settings[key];
+    settings.setSettings({ [key]: next } as Partial<typeof settings>);
+    saveSettings.mutate({ [key]: next } as Partial<typeof settings>, {
+      onSuccess: () => toastSuccess(label),
+      onError: () => {
+        settings.setSettings({ [key]: !next } as Partial<typeof settings>);
+      },
+    });
+  };
 
   const notificationItems = [
     {
       icon: UserCheck,
       title: t("attendanceAlerts"),
       description: t("attendanceAlertsDescription"),
-      enabled: attendanceAlerts,
-      onToggle: () => setAttendanceAlerts(!attendanceAlerts),
+      enabled: settings.attendanceAlertsEnabled,
+      onToggle: () => toggleSetting("attendanceAlertsEnabled", t("attendanceAlerts")),
     },
     {
       icon: Clock,
       title: t("lateAlerts"),
       description: t("lateAlertsDescription"),
-      enabled: lateAlerts,
-      onToggle: () => setLateAlerts(!lateAlerts),
+      enabled: settings.lateAlertsEnabled,
+      onToggle: () => toggleSetting("lateAlertsEnabled", t("lateAlerts")),
     },
     {
       icon: MapPin,
       title: t("geofenceExitAlerts"),
       description: t("geofenceExitAlertsDescription"),
-      enabled: geofenceExitAlerts,
-      onToggle: () => setGeofenceExitAlerts(!geofenceExitAlerts),
+      enabled: settings.geofenceBreachAlertsEnabled,
+      onToggle: () => toggleSetting("geofenceBreachAlertsEnabled", t("geofenceExitAlerts")),
     },
     {
       icon: Mail,
       title: t("emailNotifications"),
       description: t("emailNotificationsDescription"),
-      enabled: emailNotifications,
-      onToggle: () => setEmailNotifications(!emailNotifications),
+      enabled: settings.emailNotificationsEnabled,
+      onToggle: () => toggleSetting("emailNotificationsEnabled", t("emailNotifications")),
     },
     {
       icon: Smartphone,
       title: t("pushNotifications"),
       description: t("pushNotificationsDescription"),
-      enabled: pushNotifications,
-      onToggle: () => setPushNotifications(!pushNotifications),
+      enabled: settings.pushNotificationsEnabled,
+      onToggle: () => toggleSetting("pushNotificationsEnabled", t("pushNotifications")),
     },
   ];
 
@@ -99,6 +110,8 @@ export default function NotificationSettingsPage() {
             })}
           </CardContent>
         </Card>
+
+        <NotificationPreferences />
       </div>
     </MainLayout>
   );

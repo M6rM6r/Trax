@@ -29,7 +29,7 @@ interface NotificationState {
   clearAll: () => void;
 }
 
-export const useNotificationStore = create<NotificationState>()((set, get) => ({
+export const useNotificationStore = create<NotificationState>()((set) => ({
   notifications: [],
   unreadCount: 0,
 
@@ -40,10 +40,13 @@ export const useNotificationStore = create<NotificationState>()((set, get) => ({
       timestamp: new Date().toISOString(),
       read: false,
     };
-    set((state) => ({
-      notifications: [newNotification, ...state.notifications].slice(0, 50),
-      unreadCount: get().notifications.filter((n) => !n.read).length + 1,
-    }));
+    set((state) => {
+      const notifications = [newNotification, ...state.notifications].slice(0, 50);
+      return {
+        notifications,
+        unreadCount: notifications.filter((n) => !n.read).length,
+      };
+    });
   },
 
   markAsRead: (id) => {

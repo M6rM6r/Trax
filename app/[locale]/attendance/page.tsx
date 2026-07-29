@@ -73,8 +73,12 @@ function getMonthDays(year: number, month: number, records: AttendanceRecord[]):
     const date = new Date(year, month, d);
     const dateStr = date.toISOString().split("T")[0];
     const dayRecords = records.filter((r) => r.date === dateStr);
-    const present = dayRecords.filter((r) => r.status === "present").length;
-    const late = dayRecords.filter((r) => r.status === "late").length;
+    const present = dayRecords.filter(
+      (r) => r.status === "present" || (r.status === "checked_out" && !(r.lateMinutes > 0))
+    ).length;
+    const late = dayRecords.filter(
+      (r) => r.status === "late" || (r.status === "checked_out" && r.lateMinutes > 0)
+    ).length;
     const total = dayRecords.length;
     const rate = total > 0 ? ((present + late) / total) * 100 : 0;
     days.push({ date, day: d, isCurrentMonth: true, records: dayRecords, attendanceRate: rate });
@@ -183,12 +187,15 @@ const CalendarHeatmap = memo(function CalendarHeatmap({
               {day.records.length > 0 && (
                 <>
                   <div className="flex gap-0.5 justify-center">
-                    {day.records.some((r) => r.status === "present") && (
-                      <span className="w-1.5 h-1.5 rounded-full bg-background/70" />
-                    )}
-                    {day.records.some((r) => r.status === "late") && (
-                      <span className="w-1.5 h-1.5 rounded-full bg-[hsl(48_96%_53%/0.2)]" />
-                    )}
+                    {day.records.some(
+                      (r) =>
+                        r.status === "present" ||
+                        (r.status === "checked_out" && !(r.lateMinutes > 0))
+                    ) && <span className="w-1.5 h-1.5 rounded-full bg-background/70" />}
+                    {day.records.some(
+                      (r) =>
+                        r.status === "late" || (r.status === "checked_out" && r.lateMinutes > 0)
+                    ) && <span className="w-1.5 h-1.5 rounded-full bg-[hsl(48_96%_53%/0.2)]" />}
                     {day.records.some((r) => r.status === "absent") && (
                       <span className="w-1.5 h-1.5 rounded-full bg-destructive/20" />
                     )}
@@ -266,7 +273,7 @@ export default function AttendancePage() {
           description={t("description")}
           Icon={<Calendar className="w-7 h-7" />}
           LeftSection={
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               {/* View Toggle */}
               <div className="flex items-center bg-muted rounded-lg p-1">
                 <button
@@ -427,12 +434,16 @@ export default function AttendancePage() {
         />
 
         {/* Summary header with attendance rate bar */}
-        {attendance.length > 0 &&
+        {filteredAttendance.length > 0 &&
           (() => {
-            const total = attendance.length;
-            const presentCount = attendance.filter((r) => r.status === "present").length;
-            const lateCount = attendance.filter((r) => r.status === "late").length;
-            const absentCount = attendance.filter((r) => r.status === "absent").length;
+            const total = filteredAttendance.length;
+            const presentCount = filteredAttendance.filter(
+              (r) => r.status === "present" || (r.status === "checked_out" && !(r.lateMinutes > 0))
+            ).length;
+            const lateCount = filteredAttendance.filter(
+              (r) => r.status === "late" || (r.status === "checked_out" && r.lateMinutes > 0)
+            ).length;
+            const absentCount = filteredAttendance.filter((r) => r.status === "absent").length;
             const attendanceRate = Math.round(((presentCount + lateCount) / total) * 100);
             return (
               <div className="rounded-2xl bg-gradient-to-br from-slate-50 to-gray-100/50 dark:from-slate-800 dark:to-slate-900 border border-border/60 border-border p-5 shadow-md">
@@ -503,7 +514,10 @@ export default function AttendancePage() {
             [
               {
                 label: t("present"),
-                count: attendance.filter((r) => r.status === "present").length,
+                count: attendance.filter(
+                  (r) =>
+                    r.status === "present" || (r.status === "checked_out" && !(r.lateMinutes > 0))
+                ).length,
                 Icon: UserCheck,
                 color: "text-primary",
                 bg: "bg-primary/10",
@@ -512,7 +526,9 @@ export default function AttendancePage() {
               },
               {
                 label: t("late"),
-                count: attendance.filter((r) => r.status === "late").length,
+                count: attendance.filter(
+                  (r) => r.status === "late" || (r.status === "checked_out" && r.lateMinutes > 0)
+                ).length,
                 Icon: Clock,
                 color: "text-[hsl(48_96%_53%)]",
                 bg: "bg-[hsl(48_96%_53%/0.15)] dark:bg-[hsl(48_96%_53%/0.15)]",

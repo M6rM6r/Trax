@@ -3,8 +3,8 @@
 import { useMemo, useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Card, CardHeader, CardContent, CardTitle } from "@/components/ui/card";
-import { UserCheck, UserX, Clock, Calendar } from "lucide-react";
-import { useRouter, Link } from "@/i18n/navigation";
+import { UserCheck, UserX, Clock } from "lucide-react";
+import { useRouter } from "@/i18n/navigation";
 import MainLayout from "@/components/shared/MainLayout";
 import {
   useDashboardData,
@@ -20,10 +20,10 @@ import { useQueryClient } from "@tanstack/react-query";
 import { ErrorState } from "@/components/shared/StateViews";
 import DashboardSkeleton from "@/components/shared/Skeletons/DashboardSkeleton";
 import { DataTable } from "@/components/shared/DataTable/DataTable";
-import type { AttendanceRecord } from "@/lib/types/trackingTypes";
+import type { AttendanceRecord, DashboardStats } from "@/lib/types/trackingTypes";
 import { useAuthStore } from "@/stores/useAuthStore";
+import { useCompanySettingsStore } from "@/stores/useCompanySettingsStore";
 import AttendancePieChart from "@/components/dashboard/AttendancePieChart";
-import KpiTicker from "@/components/dashboard/KpiTicker";
 const LiveMapWidget = dynamic(() => import("@/components/dashboard/LiveMapWidget"), { ssr: false });
 import { getDefaultDateRange, type DateRange } from "@/components/shared/DateRangePicker";
 import { toastSuccess } from "@/hooks/use-toast";
@@ -38,15 +38,14 @@ const COLORS = {
 
 export default function DashboardPage() {
   const t = useTranslations("Dashboard");
-  const tAttendance = useTranslations("Attendance");
   const locale = useLocale();
   const dateLocale = locale === "ar" ? "ar-SA-u-nu-latn" : "en-US";
   const timeLocale = locale === "ar" ? "ar-SA-u-nu-latn" : "en-US";
-  const { user, companyName } = useAuthStore();
+  const { user, companyName, role } = useAuthStore();
+  const { workStartTime, gracePeriodMinutes, loaded: settingsLoaded } = useCompanySettingsStore();
   const queryClient = useQueryClient();
   const [dateRange] = useState<DateRange>(getDefaultDateRange());
-  const { data: dashboardData, isLoading, isError, refetch } = useDashboardData(dateRange);
-  const stats = dashboardData?.stats;
+  const { isLoading, isError, refetch } = useDashboardData(dateRange);
   const { data: attendanceData } = useAttendance();
   const { data: employees = [] } = useEmployees();
   const { data: geofences = [] } = useGeofences();
@@ -57,7 +56,6 @@ export default function DashboardPage() {
   const [realtimePulse, setRealtimePulse] = useState(false);
   const lastRealtimeToastAtRef = useRef(0);
   const realtimePulseTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const { role } = useAuthStore();
   const pageRouter = useRouter();
 
   useEffect(() => {
@@ -121,28 +119,84 @@ export default function DashboardPage() {
     };
   }, [queryClient, t]);
 
+  const liveStats: DashboardStats = useMemo(() => {
+    const active = (employees ?? []).filter((e) => e.status === "active");
+    const inactive = (employees ?? []).filter((e) => e.status !== "active");
+    const today = new Date().toLocaleDateString("sv-SE");
+    const todayRecords = (attendanceData ?? []).filter((r) => r.date === today);
+    const presentToday = todayRecords.filter(
+      (r) => r.status === "present" || (r.status === "checked_out" && !((r.lateMinutes ?? 0) > 0))
+    ).length;
+    const lateToday = todayRecords.filter(
+      (r) => r.status === "late" || (r.status === "checked_out" && (r.lateMinutes ?? 0) > 0)
+    ).length;
+    const checkedOutToday = todayRecords.filter((r) => r.status === "checked_out").length;
+    const earlyCheckoutsToday = todayRecords.filter((r) => r.earlyCheckout).length;
+    const isPastDeadline = (() => {
+      if (!settingsLoaded || !workStartTime) return false;
+      const [h, m] = workStartTime.split(":").map(Number);
+      if (Number.isNaN(h) || Number.isNaN(m)) return false;
+      const deadline = new Date();
+      deadline.setHours(h, m + (gracePeriodMinutes ?? 0), 0, 0);
+      return new Date() >= deadline;
+    })();
+    const absentToday = isPastDeadline ? Math.max(0, active.length - todayRecords.length) : 0;
+    const punctualBase = presentToday + lateToday;
+    const onTimeRate =
+      punctualBase > 0 ? Number(((presentToday / punctualBase) * 100).toFixed(1)) : 0;
+    const worked = todayRecords
+      .map((r) => r.workedHours)
+      .filter((h): h is number => typeof h === "number" && h > 0);
+    const avgWorkedHours =
+      worked.length > 0
+        ? Number((worked.reduce((a, b) => a + b, 0) / worked.length).toFixed(1))
+        : 0;
+    const checkInTimes = todayRecords
+      .map((r) => r.checkInTime)
+      .filter((t): t is string => typeof t === "string" && t !== "");
+    const avgCheckInTime =
+      checkInTimes.length > 0 ? checkInTimes[Math.floor(checkInTimes.length / 2)] : "N/A";
+    return {
+      totalEmployees: (employees ?? []).length,
+      activeEmployees: active.length,
+      inactiveEmployees: inactive.length,
+      presentToday,
+      lateToday,
+      absentToday,
+      checkedOutToday,
+      earlyCheckoutsToday,
+      onTimeRate,
+      avgCheckInTime,
+      avgWorkedHours,
+      totalGeofences: (geofences ?? []).length,
+      fieldToday: todayRecords.filter((r) => r.attendanceMode === "field").length,
+      officeToday: todayRecords.filter((r) => r.attendanceMode === "office_two_shift").length,
+      hourlyToday: todayRecords.filter((r) => r.attendanceMode === "hourly").length,
+    };
+  }, [attendanceData, employees, geofences, settingsLoaded, workStartTime, gracePeriodMinutes]);
+
   const attendanceDistribution = useMemo(
     () => [
       {
         name: t("statusPresent"),
-        value: stats?.presentToday ?? 0,
+        value: liveStats.presentToday,
         icon: UserCheck,
         color: COLORS.present,
       },
       {
         name: t("statusLate"),
-        value: stats?.lateToday ?? 0,
+        value: liveStats.lateToday,
         icon: Clock,
         color: COLORS.late,
       },
       {
         name: t("statusAbsent"),
-        value: stats?.absentToday ?? 0,
+        value: liveStats.absentToday,
         icon: UserX,
         color: COLORS.absent,
       },
     ],
-    [stats, t]
+    [liveStats, t]
   );
 
   const recentAttendance = useMemo(() => {
@@ -235,19 +289,6 @@ export default function DashboardPage() {
               )}
             </div>
 
-            {/* Attendance records shortcut */}
-            <div className="flex justify-end">
-              <Link
-                href="/attendance"
-                className="flex items-center gap-2 text-sm bg-card px-3 py-2 rounded-xl border border-border shadow-sm hover:bg-muted transition-colors text-muted-foreground"
-              >
-                <Calendar className="w-4 h-4 text-primary" />
-                <span className="font-medium">{tAttendance("title")}</span>
-              </Link>
-            </div>
-
-            <KpiTicker stats={stats} liveTracking={liveTracking} />
-
             <div className="grid grid-cols-1 gap-4">
               <LiveMapWidget liveTracking={liveTracking} geofences={geofences} />
             </div>
@@ -287,20 +328,6 @@ export default function DashboardPage() {
                         ),
                       },
                       {
-                        key: "department",
-                        header: t("department"),
-                        sortable: true,
-                        filterable: true,
-                        sortValue: (r) => {
-                          const emp = employees.find((e) => String(e.id) === String(r.employeeId));
-                          return emp?.department || "-";
-                        },
-                        cell: (r) => {
-                          const emp = employees.find((e) => String(e.id) === String(r.employeeId));
-                          return emp?.department || "-";
-                        },
-                      },
-                      {
                         key: "checkInTime",
                         header: t("checkInTime"),
                         sortable: true,
@@ -312,34 +339,47 @@ export default function DashboardPage() {
                         header: t("status"),
                         sortable: true,
                         sortValue: (r) => r.status,
-                        cell: (r) => (
-                          <span
-                            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ring-1 ${
-                              r.status === "present"
-                                ? "bg-primary/10 text-primary ring-emerald-400/20"
-                                : r.status === "late"
-                                  ? "bg-[hsl(48_96%_53%/0.1)] text-[hsl(48_96%_53%)] ring-amber-400/20"
-                                  : "bg-destructive/10 text-destructive ring-red-400/20"
-                            }`}
-                          >
-                            {(() => {
-                              const labels: Record<string, string> = {
-                                present: t("statusPresent"),
-                                late: t("statusLate"),
-                                absent: t("statusAbsent"),
-                                checked_out: t("statusCheckedOut"),
-                              };
-                              return labels[r.status] || r.status;
-                            })()}
-                          </span>
-                        ),
+                        cell: (r) => {
+                          const isLate = (r.lateMinutes ?? 0) > 0;
+                          const isPresent =
+                            r.status === "present" || (r.status === "checked_out" && !isLate);
+                          const isLateStatus =
+                            r.status === "late" || (r.status === "checked_out" && isLate);
+                          const labels: Record<string, string> = {
+                            present: t("statusPresent"),
+                            late: t("statusLate"),
+                            absent: t("statusAbsent"),
+                            checked_out: t("statusCheckedOut"),
+                          };
+                          return (
+                            <span
+                              className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ring-1 ${
+                                isPresent
+                                  ? "bg-primary/10 text-primary ring-emerald-400/20"
+                                  : isLateStatus
+                                    ? "bg-[hsl(48_96%_53%/0.1)] text-[hsl(48_96%_53%)] ring-amber-400/20"
+                                    : "bg-destructive/10 text-destructive ring-red-400/20"
+                              }`}
+                            >
+                              {labels[r.status] || r.status}
+                            </span>
+                          );
+                        },
                       },
                       {
                         key: "geofenceName",
                         header: t("location"),
                         filterable: true,
-                        sortValue: (r) => r.geofenceName || "",
-                        cell: (r) => r.geofenceName || "-",
+                        sortValue: (r) =>
+                          r.geofenceName ||
+                          geofences.find((g) => String(g.id) === String(r.geofenceId))?.name ||
+                          "",
+                        cell: (r) => {
+                          const name =
+                            r.geofenceName ||
+                            geofences.find((g) => String(g.id) === String(r.geofenceId))?.name;
+                          return name || "-";
+                        },
                       },
                     ]}
                     data={recentAttendance}

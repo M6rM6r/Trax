@@ -48,6 +48,11 @@ export async function generateMetadata({
       title: t("title"),
       description: t("description"),
     },
+    themeColor: "#0F172A",
+    appleWebApp: {
+      capable: true,
+      statusBarStyle: "black-translucent",
+    },
   };
 }
 

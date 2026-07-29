@@ -265,47 +265,6 @@ export function useCheckInPage() {
     [companyId, employeeId, today]
   );
 
-  // Auto check-in when entering geofence
-  useEffect(() => {
-    if (!companySettings.autoCheckInEnabled) return;
-    if (autoCheckInAttempted.current) return;
-    if (todayRecord?.checkInTime) return;
-    if (!currentLocation || !nearestGeofence?.geofence) return;
-    if (!canCheckIn) return;
-
-    const isWithinAutoRange =
-      nearestGeofence.distance <=
-      nearestGeofence.geofence.radius + (companySettings.autoCheckInRadiusOffset ?? 0);
-
-    if (isWithinAutoRange) {
-      if (autoCheckInTimerRef.current) return;
-      autoCheckInTimerRef.current = setTimeout(() => {
-        autoCheckInAttempted.current = true;
-        void handleCheckIn("auto");
-        autoCheckInTimerRef.current = null;
-      }, AUTO_CHECKIN_DEBOUNCE_MS);
-    } else {
-      if (autoCheckInTimerRef.current) {
-        clearTimeout(autoCheckInTimerRef.current);
-        autoCheckInTimerRef.current = null;
-      }
-    }
-
-    return () => {
-      if (autoCheckInTimerRef.current) {
-        clearTimeout(autoCheckInTimerRef.current);
-        autoCheckInTimerRef.current = null;
-      }
-    };
-  }, [
-    companySettings.autoCheckInEnabled,
-    companySettings.autoCheckInRadiusOffset,
-    todayRecord?.checkInTime,
-    currentLocation,
-    nearestGeofence,
-    canCheckIn,
-  ]);
-
   // Sync any pending offline records when back online
   useEffect(() => {
     if (!isOnline || (!hasOfflineQueue() && !hasOfflineCheckOutQueue())) return;
@@ -493,6 +452,48 @@ export function useCheckInPage() {
     ]
   );
 
+  // Auto check-in when entering geofence
+  useEffect(() => {
+    if (!companySettings.autoCheckInEnabled) return;
+    if (autoCheckInAttempted.current) return;
+    if (todayRecord?.checkInTime) return;
+    if (!currentLocation || !nearestGeofence?.geofence) return;
+    if (!canCheckIn) return;
+
+    const isWithinAutoRange =
+      nearestGeofence.distance <=
+      nearestGeofence.geofence.radius + (companySettings.autoCheckInRadiusOffset ?? 0);
+
+    if (isWithinAutoRange) {
+      if (autoCheckInTimerRef.current) return;
+      autoCheckInTimerRef.current = setTimeout(() => {
+        autoCheckInAttempted.current = true;
+        void handleCheckIn("auto");
+        autoCheckInTimerRef.current = null;
+      }, AUTO_CHECKIN_DEBOUNCE_MS);
+    } else {
+      if (autoCheckInTimerRef.current) {
+        clearTimeout(autoCheckInTimerRef.current);
+        autoCheckInTimerRef.current = null;
+      }
+    }
+
+    return () => {
+      if (autoCheckInTimerRef.current) {
+        clearTimeout(autoCheckInTimerRef.current);
+        autoCheckInTimerRef.current = null;
+      }
+    };
+  }, [
+    companySettings.autoCheckInEnabled,
+    companySettings.autoCheckInRadiusOffset,
+    todayRecord?.checkInTime,
+    currentLocation,
+    nearestGeofence,
+    canCheckIn,
+    handleCheckIn,
+  ]);
+
   const handleCheckOutClick = useCallback(() => {
     if (dayComplete || checkOutMutation.isPending || !checkedIn) return;
     hapticTap();
@@ -541,7 +542,21 @@ export function useCheckInPage() {
     } catch (err) {
       console.error("[check-out] failed:", err);
       hapticError();
-      toastError(t("noCheckInToday"));
+      const errMsg = err instanceof Error ? err.message : String(err);
+      if (errMsg === "AUTH_EXPIRED") {
+        toastError(t("sessionExpired"));
+      } else if (errMsg === "NO_COMPANY") {
+        toastError(t("noCompany"));
+      } else if (
+        errMsg.includes("Missing or insufficient permissions") ||
+        errMsg.includes("permission-denied")
+      ) {
+        toastError(t("noPermission"));
+      } else if (errMsg === "No open attendance record") {
+        toastError(t("noCheckInToday"));
+      } else {
+        toastError(t("checkOutFailed"));
+      }
     } finally {
       checkOutGuardRef.current = false;
     }

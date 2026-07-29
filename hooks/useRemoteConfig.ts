@@ -13,12 +13,26 @@ export function useRemoteConfig(): UseRemoteConfigReturn {
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    initializeRemoteConfig().then(() => setReady(true));
+    let mounted = true;
+    initializeRemoteConfig()
+      .then(() => {
+        if (mounted) setReady(true);
+      })
+      .catch(() => {
+        if (mounted) setReady(true);
+      });
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   const refresh = useCallback(async () => {
     setReady(false);
-    await initializeRemoteConfig();
+    try {
+      await initializeRemoteConfig();
+    } catch {
+      // ignore — still mark ready so UI doesn't hang
+    }
     setReady(true);
   }, []);
 

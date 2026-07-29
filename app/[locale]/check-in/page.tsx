@@ -153,7 +153,7 @@ export default function CheckInPage() {
                   initial={{ scale: 0.8, opacity: 0 }}
                   animate={{ scale: 1, opacity: 1 }}
                   onClick={() => handleCheckIn("manual")}
-                  disabled={checkedIn || dayComplete || isCheckInPending || isLocating}
+                  disabled={checkedIn || dayComplete || isCheckInPending || !canCheckIn}
                   aria-label={
                     dayComplete
                       ? t("shiftDoneStatus")
