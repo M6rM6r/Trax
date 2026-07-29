@@ -42,9 +42,9 @@ export const geofencesApi = {
 
   async update(id: string, geofence: Partial<Geofence>): Promise<void> {
     await ensureAuth();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await updateDoc(
       doc(requireDb(), "geofences", String(id)),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       cleanPayload(geofence as Record<string, unknown>) as any
     );
   },

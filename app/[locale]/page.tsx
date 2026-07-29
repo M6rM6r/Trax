@@ -3,8 +3,8 @@
 import { useMemo, useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Card, CardHeader, CardContent, CardTitle } from "@/components/ui/card";
-import { UserCheck, UserX, Clock } from "lucide-react";
-import { useRouter } from "@/i18n/navigation";
+import { UserCheck, UserX, Clock, Calendar } from "lucide-react";
+import { useRouter, Link } from "@/i18n/navigation";
 import MainLayout from "@/components/shared/MainLayout";
 import {
   useDashboardData,
@@ -24,13 +24,8 @@ import type { AttendanceRecord } from "@/lib/types/trackingTypes";
 import { useAuthStore } from "@/stores/useAuthStore";
 import AttendancePieChart from "@/components/dashboard/AttendancePieChart";
 import KpiTicker from "@/components/dashboard/KpiTicker";
-import ManagerActionQueue from "@/components/dashboard/ManagerActionQueue";
 const LiveMapWidget = dynamic(() => import("@/components/dashboard/LiveMapWidget"), { ssr: false });
-import {
-  DateRangePicker,
-  getDefaultDateRange,
-  type DateRange,
-} from "@/components/shared/DateRangePicker";
+import { getDefaultDateRange, type DateRange } from "@/components/shared/DateRangePicker";
 import { toastSuccess } from "@/hooks/use-toast";
 import { useTranslations, useLocale } from "next-intl";
 
@@ -43,12 +38,13 @@ const COLORS = {
 
 export default function DashboardPage() {
   const t = useTranslations("Dashboard");
+  const tAttendance = useTranslations("Attendance");
   const locale = useLocale();
   const dateLocale = locale === "ar" ? "ar-SA-u-nu-latn" : "en-US";
   const timeLocale = locale === "ar" ? "ar-SA-u-nu-latn" : "en-US";
   const { user, companyName } = useAuthStore();
   const queryClient = useQueryClient();
-  const [dateRange, setDateRange] = useState<DateRange>(getDefaultDateRange());
+  const [dateRange] = useState<DateRange>(getDefaultDateRange());
   const { data: dashboardData, isLoading, isError, refetch } = useDashboardData(dateRange);
   const stats = dashboardData?.stats;
   const { data: attendanceData } = useAttendance();
@@ -239,19 +235,20 @@ export default function DashboardPage() {
               )}
             </div>
 
-            {/* Date range picker — standalone */}
+            {/* Attendance records shortcut */}
             <div className="flex justify-end">
-              <DateRangePicker value={dateRange} onChange={setDateRange} />
+              <Link
+                href="/attendance"
+                className="flex items-center gap-2 text-sm bg-card px-3 py-2 rounded-xl border border-border shadow-sm hover:bg-muted transition-colors text-muted-foreground"
+              >
+                <Calendar className="w-4 h-4 text-primary" />
+                <span className="font-medium">{tAttendance("title")}</span>
+              </Link>
             </div>
 
             <KpiTicker stats={stats} liveTracking={liveTracking} />
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              <ManagerActionQueue
-                attendanceData={attendanceData}
-                employees={employees}
-                liveTracking={liveTracking}
-              />
+            <div className="grid grid-cols-1 gap-4">
               <LiveMapWidget liveTracking={liveTracking} geofences={geofences} />
             </div>
 
@@ -321,7 +318,7 @@ export default function DashboardPage() {
                               r.status === "present"
                                 ? "bg-primary/10 text-primary ring-emerald-400/20"
                                 : r.status === "late"
-                                  ? "bg-[hsl(48_96%_53%/0.1)]0/10 text-[hsl(48_96%_53%)] ring-amber-400/20"
+                                  ? "bg-[hsl(48_96%_53%/0.1)] text-[hsl(48_96%_53%)] ring-amber-400/20"
                                   : "bg-destructive/10 text-destructive ring-red-400/20"
                             }`}
                           >

@@ -21,7 +21,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { useAttendance, useEmployees } from "@/hooks/useApi";
 import { exportAttendanceToCSV, exportAttendanceToPDF } from "@/lib/utils/exportUtils";
-import { firebaseData } from "@/lib/services/firebase";
 import { toastSuccess, toastError } from "@/hooks/use-toast";
 import { hapticTap } from "@/lib/utils/haptics";
 import { EmptyState, ErrorState } from "@/components/shared/StateViews";
@@ -422,37 +421,6 @@ export default function AttendancePage() {
               >
                 <FileText className="w-4 h-4" />
                 {t("exportPdf")}
-              </Button>
-              <Button
-                variant="outline"
-                className="flex items-center gap-2"
-                onClick={async () => {
-                  try {
-                    const today = new Date().toLocaleDateString("sv-SE");
-                    const thirtyDaysAgo = new Date(Date.now() - 30 * 86400000).toLocaleDateString(
-                      "sv-SE"
-                    );
-                    const result = await firebaseData.cloudFunctions.exportAttendance(
-                      thirtyDaysAgo,
-                      today
-                    );
-                    const blob = new Blob(["\uFEFF" + result.csv], {
-                      type: "text/csv;charset=utf-8;",
-                    });
-                    const link = document.createElement("a");
-                    link.href = URL.createObjectURL(blob);
-                    link.download = `attendance_server_${today}.csv`;
-                    link.click();
-                    URL.revokeObjectURL(link.href);
-                    toastSuccess(t("exportServerSuccess", { count: result.count }));
-                  } catch (err) {
-                    console.error("[exportAttendance] failed:", err);
-                    toastError(err instanceof Error ? err.message : t("exportServerFailed"));
-                  }
-                }}
-              >
-                <FileSpreadsheet className="w-4 h-4" />
-                {t("exportServer")}
               </Button>
             </div>
           }

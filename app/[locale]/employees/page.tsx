@@ -25,7 +25,6 @@ import {
 import {
   useEmployees,
   useGeofences,
-  useAttendance,
   useCreateEmployee,
   useDeleteEmployee,
   useUpdateEmployee,
@@ -69,7 +68,6 @@ export default function EmployeesPage() {
   const t = useTranslations("Employees");
   const { data: employees = [], isLoading, isError, error, refetch } = useEmployees();
   const { data: geofences = [] } = useGeofences();
-  const { data: attendanceData = [] } = useAttendance();
   const createEmployee = useCreateEmployee();
   const deleteEmployee = useDeleteEmployee();
   const updateEmployee = useUpdateEmployee();
@@ -292,36 +290,6 @@ export default function EmployeesPage() {
     toastSuccess(t("exportSuccess", { count: selected.length }));
   };
 
-  const handleTodayStatusExport = () => {
-    if (employees.length === 0) {
-      toastError(t("noEmployeesReport"));
-      return;
-    }
-    const today = new Date().toLocaleDateString("sv-SE");
-    const headers = t("attendanceReportHeaders") as unknown as string[];
-    const rows = employees.map((e) => {
-      const record = attendanceData.find(
-        (r) => String(r.employeeId) === String(e.id) && r.date === today
-      );
-      let status = t("statusAbsent");
-      if (record) {
-        if (record.status === "checked_out") status = t("statusCheckedOut");
-        else if (record.status === "present") status = t("statusPresent");
-        else if (record.status === "late") status = t("statusLate");
-      }
-      return [e.name, e.email, status, record?.checkInTime ?? "—", record?.checkOutTime ?? "—"];
-    });
-    const csv = [headers, ...rows].map((r) => r.map((c) => `"${c}"`).join(",")).join("\n");
-    const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `attendance_report_${today}_${Date.now()}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
-    toastSuccess(t("reportExported"));
-  };
-
   const handleDelete = (emp: Employee) => {
     setDeleteTarget(emp);
   };
@@ -461,14 +429,6 @@ export default function EmployeesPage() {
               >
                 <Upload className="w-4 h-4" />
                 {t("importCsv")}
-              </Button>
-              <Button
-                variant="outline"
-                onClick={handleTodayStatusExport}
-                className="flex items-center gap-2"
-              >
-                <Download className="w-4 h-4" />
-                {t("todayReport")}
               </Button>
               <Button
                 variant="primary"
@@ -1029,9 +989,9 @@ export default function EmployeesPage() {
               label={t("currentPassword")}
               type="text"
               value={editEmployee.password}
-              onChange={(v) => setEditEmployee({ ...editEmployee, password: v })}
-              placeholder={t("enterPassword")}
+              readOnly
               ltr
+              className="bg-muted/30"
             />
 
             {/* Reset password section */}

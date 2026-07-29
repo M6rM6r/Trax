@@ -16,14 +16,18 @@ import {
   CheckCircle,
   XCircle,
   AlertCircle,
+  Key,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 import { useRouter, Link } from "@/i18n/navigation";
 import {
-  useEmployees,
+  useEmployee,
   useAttendance,
   useGeofences,
   useDeleteEmployee,
   useUpdateEmployee,
+  useResetEmployeePassword,
 } from "@/hooks/useApi";
 import { FormDrawer } from "@/components/shared/FormDrawer";
 import { FormField, FormSelect } from "@/components/shared/form/FormField";
@@ -32,7 +36,7 @@ import { DataTable } from "@/components/shared/DataTable/DataTable";
 import ConfirmDialog from "@/components/shared/ConfirmDialog";
 import { toastSuccess, toastError, toastWithUndo } from "@/hooks/use-toast";
 import type { AttendanceRecord } from "@/lib/types/trackingTypes";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 
 const statusLabels = {
   present: "statusPresent",
@@ -43,15 +47,19 @@ const statusLabels = {
 
 export default function EmployeeProfilePage({ params }: { params: { id: string } }) {
   const t = useTranslations("Employees");
+  const locale = useLocale();
   const { id } = params;
   const router = useRouter();
-  const { data: employees = [], isLoading: empLoading, isError: empError } = useEmployees();
+  const { data: employee, isLoading: empLoading, isError: empError } = useEmployee(id);
   const { data: attendanceData = [] } = useAttendance();
   const { data: geofences = [] } = useGeofences();
   const deleteEmployee = useDeleteEmployee();
   const updateEmployee = useUpdateEmployee();
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showEditForm, setShowEditForm] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [newPassword, setNewPassword] = useState("");
+  const resetEmployeePassword = useResetEmployeePassword();
   const [editEmployee, setEditEmployee] = useState<{
     name: string;
     email: string;
@@ -66,10 +74,13 @@ export default function EmployeeProfilePage({ params }: { params: { id: string }
     geofenceId: "",
   });
 
-  const employee = employees.find((e) => String(e.id) === String(id));
-  const empAttendance = attendanceData
-    .filter((a) => String(a.employeeId) === String(id))
-    .slice(0, 30);
+  const empAttendance = useMemo(
+    () =>
+      attendanceData
+        .filter((a) => String(a.employeeId) === String(id))
+        .sort((a, b) => (b.date || "").localeCompare(a.date || "")),
+    [attendanceData, id]
+  );
 
   const last7Days = empAttendance.slice(0, 7);
   const presentCount = last7Days.filter((a) => a.status === "present").length;
@@ -239,6 +250,80 @@ export default function EmployeeProfilePage({ params }: { params: { id: string }
                     <p className="text-sm font-medium text-foreground">{geofenceName}</p>
                   </div>
                 </div>
+                <div className="flex items-center gap-3 p-3 rounded-xl bg-muted/50">
+                  <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                    <Key className="w-5 h-5 text-primary" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs text-muted-foreground">{t("employeePassword")}</p>
+                    {employee.password ? (
+                      <div className="flex items-center gap-2">
+                        <input
+                          type={showPassword ? "text" : "password"}
+                          value={employee.password}
+                          readOnly
+                          dir="ltr"
+                          className="bg-transparent text-sm font-medium text-foreground outline-none w-full"
+                          style={{ unicodeBidi: "plaintext" }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword((s) => !s)}
+                          className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                        >
+                          {showPassword ? (
+                            <EyeOff className="w-4 h-4" />
+                          ) : (
+                            <Eye className="w-4 h-4" />
+                          )}
+                        </button>
+                      </div>
+                    ) : (
+                      <p className="text-sm font-medium text-foreground">-</p>
+                    )}
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 p-3 rounded-xl bg-muted/50">
+                  <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                    <Key className="w-5 h-5 text-primary" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs text-muted-foreground">{t("employeePassword")}</p>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="password"
+                        value={newPassword}
+                        onChange={(e) => setNewPassword(e.target.value)}
+                        placeholder={t("employeePassword")}
+                        className="bg-transparent text-sm font-medium text-foreground outline-none w-full"
+                        dir="ltr"
+                      />
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        onClick={() => {
+                          if (newPassword.length < 8) {
+                            toastError("Password must be at least 8 characters");
+                            return;
+                          }
+                          if (!employee) return;
+                          resetEmployeePassword.mutate(
+                            { id: employee.id, password: newPassword, email: employee.email },
+                            {
+                              onSuccess: () => {
+                                setNewPassword("");
+                                toastSuccess("Password set");
+                              },
+                            }
+                          );
+                        }}
+                        disabled={!newPassword || resetEmployeePassword.isPending}
+                      >
+                        Set
+                      </Button>
+                    </div>
+                  </div>
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -325,42 +410,40 @@ export default function EmployeeProfilePage({ params }: { params: { id: string }
                   const label = status
                     ? t(statusLabels[status as keyof typeof statusLabels])
                     : t("noRecord");
-                  const dayLabel = d.toLocaleDateString("ar-SA-u-nu-latn", {
+                  const dateLocale = locale === "ar" ? "ar-SA-u-nu-latn" : "en-US";
+                  const dayLabel = d.toLocaleDateString(dateLocale, {
                     weekday: "short",
                     day: "numeric",
                   });
+                  const hasStatus =
+                    status === "present" || status === "checked_out" || status === "late";
                   return (
                     <div
                       key={i}
                       className={`w-9 h-9 rounded-lg ${bg} flex items-center justify-center transition-all duration-200 hover:scale-110 cursor-default`}
                       title={`${dayLabel} — ${label}`}
                     >
-                      <span className="text-[10px] font-bold text-primary-foreground opacity-0 hover:opacity-100">
+                      <span
+                        className={`text-[10px] font-bold ${hasStatus ? "text-primary-foreground" : "text-muted-foreground"}`}
+                      >
                         {d.getDate()}
                       </span>
                     </div>
                   );
                 })}
               </div>
-              <div className="flex items-center gap-3 mt-4 text-xs text-muted-foreground">
-                <span>{t("less")}</span>
-                <div className="flex gap-1">
-                  <div className="w-4 h-4 rounded bg-muted/40" />
-                  <div className="w-4 h-4 rounded bg-primary/70" />
-                  <div className="w-4 h-4 rounded bg-[hsl(48_96%_53%/0.7)]" />
-                  <div className="w-4 h-4 rounded bg-destructive/60" />
-                </div>
-                <span>{t("more")}</span>
-                <span className="mr-auto flex items-center gap-2">
-                  <span className="inline-flex items-center gap-1">
-                    <span className="w-3 h-3 rounded bg-primary/70" /> {t("statusPresent")}
-                  </span>
-                  <span className="inline-flex items-center gap-1">
-                    <span className="w-3 h-3 rounded bg-[hsl(48_96%_53%/0.7)]" /> {t("statusLate")}
-                  </span>
-                  <span className="inline-flex items-center gap-1">
-                    <span className="w-3 h-3 rounded bg-destructive/60" /> {t("statusAbsent")}
-                  </span>
+              <div className="flex items-center gap-3 mt-4 text-xs text-muted-foreground flex-wrap">
+                <span className="inline-flex items-center gap-1">
+                  <span className="w-3 h-3 rounded bg-muted/40" /> {t("noRecord")}
+                </span>
+                <span className="inline-flex items-center gap-1">
+                  <span className="w-3 h-3 rounded bg-primary/70" /> {t("statusPresent")}
+                </span>
+                <span className="inline-flex items-center gap-1">
+                  <span className="w-3 h-3 rounded bg-[hsl(48_96%_53%/0.7)]" /> {t("statusLate")}
+                </span>
+                <span className="inline-flex items-center gap-1">
+                  <span className="w-3 h-3 rounded bg-destructive/60" /> {t("statusAbsent")}
                 </span>
               </div>
             </CardContent>

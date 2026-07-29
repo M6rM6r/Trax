@@ -68,6 +68,7 @@ export const employeesApi = {
       const reference = await addDoc(collection(database, "employees"), {
         ...employeeData,
         ...(authUser ? { authUid: authUser.uid } : {}),
+        ...(password ? { password } : {}),
         company_id: companyId,
         createdAt: serverTimestamp(),
       });

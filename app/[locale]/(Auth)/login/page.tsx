@@ -6,7 +6,7 @@ import { Form, Formik, FormikHelpers } from "formik";
 import { CheckCircle2 } from "lucide-react";
 import * as Yup from "yup";
 import { toastSuccess, toastError } from "@/hooks/use-toast";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import { Link } from "@/i18n/navigation";
 import { useMemo, useState } from "react";
 import { useAuthStore } from "@/stores/useAuthStore";
@@ -44,6 +44,7 @@ const Page = () => {
     [searchParams]
   );
   const { setUser, setRememberMe, clearUser } = useAuthStore();
+  const router = useRouter();
   const [showSuccess, setShowSuccess] = useState(false);
 
   const applyLoginResponse = async (
@@ -112,9 +113,7 @@ const Page = () => {
           ? "en"
           : "ar";
       const targetPath = role === "employee" ? `/${currentLocale}/check-in` : `/${currentLocale}`;
-      if (typeof window !== "undefined") {
-        window.location.assign(targetPath);
-      }
+      router.push(targetPath);
     }, 800);
   };
 

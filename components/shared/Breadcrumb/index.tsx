@@ -1,10 +1,9 @@
 "use client";
 
-import { useMemo } from "react";
 import { usePathname } from "next/navigation";
 import { Link } from "@/i18n/navigation";
 import { ChevronLeft, Home } from "lucide-react";
-import { useEmployees } from "@/hooks/useApi";
+import { useEmployee } from "@/hooks/useApi";
 import { useTranslations } from "next-intl";
 
 function useRouteLabel(segment: string): string {
@@ -30,20 +29,18 @@ export default function Breadcrumb() {
 
   const segments = pathname.split("/").filter((s) => s !== "" && s !== "ar" && s !== "en");
 
-  const { data: employees = [] } = useEmployees({
-    enabled: segments.includes("employees"),
-  });
-
-  const employeeNameById = useMemo(() => {
-    const map = new Map<string, string>();
-    employees.forEach((e) => map.set(e.id, e.name));
-    return map;
-  }, [employees]);
+  const lastIndex = segments.length - 1;
+  const secondLastSegment = segments.length > 1 ? segments[segments.length - 2] : null;
+  const isEmployeeProfile = secondLastSegment === "employees";
+  const employeeId = isEmployeeProfile ? segments[lastIndex] : null;
+  const { data: activeEmployee } = useEmployee(employeeId);
 
   const getLabel = useRouteLabel;
   const crumbs = segments.map((seg, i) => {
     const path = `/${segments.slice(0, i + 1).join("/")}`;
-    const label = getLabel(seg) ?? employeeNameById.get(seg) ?? seg;
+    const isLast = i === lastIndex;
+    const employeeName = isEmployeeProfile && isLast ? activeEmployee?.name : undefined;
+    const label = getLabel(seg) ?? employeeName ?? (isEmployeeProfile && isLast ? "..." : seg);
     return { label, path };
   });
 

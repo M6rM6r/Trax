@@ -12,7 +12,7 @@ export function useEmployees(options?: { enabled?: boolean }) {
   return useQuery<Employee[]>({
     queryKey: [...queryKeys.employees, companyId ?? "unassigned"],
     enabled: Boolean(companyId) && (options?.enabled ?? true),
-    staleTime: 30 * 1000,
+    staleTime: 0,
     queryFn: async (): Promise<Employee[]> => {
       return firebaseData.employees.list();
     },
@@ -25,7 +25,7 @@ export function useEmployee(employeeId?: string | null) {
   return useQuery<Employee | null>({
     queryKey: [...queryKeys.employees, "byId", employeeId ?? "none", companyId ?? "unassigned"],
     enabled: Boolean(companyId && employeeId),
-    staleTime: 30 * 1000,
+    staleTime: 0,
     queryFn: async (): Promise<Employee | null> => {
       return firebaseData.employees.getById(employeeId!);
     },
@@ -62,7 +62,7 @@ export function useCreateEmployee() {
       return firebaseData.employees.create(employee);
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: queryKeys.employees });
+      qc.invalidateQueries({ queryKey: queryKeys.employees, refetchType: "all" });
       qc.invalidateQueries({ queryKey: queryKeys.dashboard });
     },
   });
@@ -76,7 +76,7 @@ export function useUpdateEmployee() {
       return firebaseData.employees.getById(id) as Promise<Employee>;
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: queryKeys.employees });
+      qc.invalidateQueries({ queryKey: queryKeys.employees, refetchType: "all" });
       qc.invalidateQueries({ queryKey: queryKeys.dashboard });
     },
   });
@@ -90,7 +90,7 @@ export function useDeleteEmployee() {
       return { id };
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: queryKeys.employees });
+      qc.invalidateQueries({ queryKey: queryKeys.employees, refetchType: "all" });
       qc.invalidateQueries({ queryKey: queryKeys.dashboard });
     },
   });
@@ -111,14 +111,18 @@ export function useResetEmployeePassword() {
       if (password && password.length < 8) {
         throw new Error("Password must be at least 8 characters");
       }
+      if (id && password) {
+        await firebaseData.cloudFunctions.setEmployeePassword({ employeeId: id, password });
+        return { id };
+      }
       if (email) {
         await firebaseData.employees.resetPassword(email);
         return { id };
       }
-      throw new Error("Employee email is required to reset password");
+      throw new Error("Employee id or email is required to reset password");
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: queryKeys.employees });
+      qc.invalidateQueries({ queryKey: queryKeys.employees, refetchType: "all" });
     },
   });
 }

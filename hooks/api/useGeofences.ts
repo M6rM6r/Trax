@@ -12,7 +12,7 @@ export function useGeofences() {
   return useQuery<Geofence[]>({
     queryKey: [...queryKeys.geofences, companyId ?? "unassigned"],
     enabled: Boolean(companyId),
-    staleTime: 5 * 60 * 1000,
+    staleTime: 0,
     queryFn: async (): Promise<Geofence[]> => {
       return firebaseData.geofences.list();
     },
@@ -26,7 +26,7 @@ export function useCreateGeofence() {
       return firebaseData.geofences.create(geofence);
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: queryKeys.geofences });
+      qc.invalidateQueries({ queryKey: queryKeys.geofences, refetchType: "all" });
       qc.invalidateQueries({ queryKey: queryKeys.dashboard });
     },
   });
@@ -40,7 +40,7 @@ export function useUpdateGeofence() {
       return { id, ...data } as Geofence;
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: queryKeys.geofences });
+      qc.invalidateQueries({ queryKey: queryKeys.geofences, refetchType: "all" });
       qc.invalidateQueries({ queryKey: queryKeys.dashboard });
     },
   });
@@ -54,7 +54,7 @@ export function useDeleteGeofence() {
       return { id };
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: queryKeys.geofences });
+      qc.invalidateQueries({ queryKey: queryKeys.geofences, refetchType: "all" });
       qc.invalidateQueries({ queryKey: queryKeys.dashboard });
     },
   });

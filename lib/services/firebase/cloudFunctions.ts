@@ -77,4 +77,9 @@ export const cloudFunctionsApi = {
     };
     return data.data;
   },
+
+  async setEmployeePassword(input: { employeeId: string; password: string }): Promise<void> {
+    const fn = httpsCallable(requireFunctions(), "setEmployeePassword");
+    await fn(input);
+  },
 };

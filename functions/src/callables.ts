@@ -394,3 +394,46 @@ export const createCompany = functions.https.onCall(async (data, context) => {
     data: { companyId, adminUid: userRecord.uid, email, adminPassword: admin_password },
   };
 });
+
+/**
+ * Set a new password for an employee.
+ */
+export const setEmployeePassword = functions.https.onCall(async (data, context) => {
+  const { employeeId, password } = data as { employeeId: string; password: string };
+
+  if (!employeeId || !password || password.length < 8) {
+    throw new functions.https.HttpsError(
+      "invalid-argument",
+      "employeeId and a password of at least 8 characters are required"
+    );
+  }
+
+  const empDoc = await db.collection("employees").doc(employeeId).get();
+  if (!empDoc.exists) {
+    throw new functions.https.HttpsError("not-found", "Employee not found");
+  }
+
+  const empData = empDoc.data() as
+    | { company_id?: string | number; authUid?: string; email?: string }
+    | undefined;
+  if (!empData || !empData.email) {
+    throw new functions.https.HttpsError("not-found", "Employee data is incomplete");
+  }
+
+  await requireCompanyAdmin(context, String(empData.company_id ?? ""));
+
+  let authUid = empData.authUid;
+  if (!authUid) {
+    try {
+      const userRecord = await auth.getUserByEmail(empData.email);
+      authUid = userRecord.uid;
+    } catch {
+      throw new functions.https.HttpsError("not-found", "No auth user for this employee");
+    }
+  }
+
+  await auth.updateUser(authUid, { password });
+  await db.collection("employees").doc(employeeId).update({ password });
+
+  return { success: true, data: { employeeId } };
+});

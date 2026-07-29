@@ -203,7 +203,7 @@ export function DataTable<T extends { id: number | string }>({
                           ? "none"
                           : undefined
                     }
-                    className={`text-right py-3 px-4 text-sm font-semibold text-muted-foreground ${
+                    className={`text-right py-3 px-4 text-sm font-semibold text-muted-foreground whitespace-nowrap ${
                       col.sortable ? "cursor-pointer select-none hover:bg-muted" : ""
                     }`}
                     onClick={() => col.sortable && handleSort(col.key)}

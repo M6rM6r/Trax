@@ -98,7 +98,7 @@ export function OnboardingTour() {
       window.removeEventListener("resize", updateHighlight);
       window.removeEventListener("scroll", updateHighlight, true);
     };
-  }, [isOpen, currentStep]);
+  }, [isOpen, currentStep, tourSteps]);
 
   const handleNext = () => {
     hapticTap();

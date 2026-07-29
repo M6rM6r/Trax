@@ -5,11 +5,12 @@ import React from "react";
 interface FormFieldProps {
   label: string;
   value: string;
-  onChange: (value: string) => void;
+  onChange?: (value: string) => void;
   type?: string;
   placeholder?: string;
   required?: boolean;
   disabled?: boolean;
+  readOnly?: boolean;
   dir?: "ltr" | "rtl";
   lang?: string;
   ltr?: boolean;
@@ -28,6 +29,7 @@ export function FormField({
   placeholder,
   required = false,
   disabled = false,
+  readOnly = false,
   dir,
   lang,
   ltr = false,
@@ -46,9 +48,10 @@ export function FormField({
       <input
         type={type}
         value={value}
-        onChange={(e) => onChange(e.target.value)}
+        onChange={onChange ? (e) => onChange(e.target.value) : undefined}
         placeholder={placeholder}
         disabled={disabled}
+        readOnly={readOnly}
         required={required}
         dir={ltr ? "ltr" : dir}
         lang={ltr ? "en" : lang}

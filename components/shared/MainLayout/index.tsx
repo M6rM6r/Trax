@@ -7,7 +7,7 @@ import { Logout } from "@/public/SVG";
 import { signOut } from "firebase/auth";
 import { auth } from "@/lib/config/firebase";
 import { cn } from "@/lib/utils";
-import { useLocale, useTranslations } from "next-intl";
+import { useTranslations } from "next-intl";
 import { useMainNavItems } from "@/components/Sidebar/nav-main-items";
 import {
   DropdownMenu,
@@ -43,10 +43,6 @@ const Index = ({
   bare?: boolean;
 }) => {
   const pathname = usePathname();
-  const locale = useLocale();
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const touchStartX = useRef(0);
-  const touchStartY = useRef(0);
   const { toast } = useToast();
   const router = useRouter();
 
@@ -97,36 +93,8 @@ const Index = ({
   }, [authReady, user, pathname, router]);
 
   useEffect(() => {
-    setIsSidebarOpen(false);
     saveScrollPosition();
   }, [pathname, saveScrollPosition]);
-
-  useEffect(() => {
-    const handleEsc = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setIsSidebarOpen(false);
-    };
-    window.addEventListener("keydown", handleEsc);
-    return () => window.removeEventListener("keydown", handleEsc);
-  }, []);
-
-  const handleTouchStart = useCallback((e: React.TouchEvent) => {
-    touchStartX.current = e.touches[0].clientX;
-    touchStartY.current = e.touches[0].clientY;
-  }, []);
-
-  const handleTouchEnd = useCallback(
-    (e: React.TouchEvent) => {
-      const deltaX = e.changedTouches[0].clientX - touchStartX.current;
-      const deltaY = e.changedTouches[0].clientY - touchStartY.current;
-      if (Math.abs(deltaY) > Math.abs(deltaX)) return;
-      if (deltaX < -80 && isSidebarOpen) {
-        setIsSidebarOpen(false);
-      } else if (deltaX > 80 && !isSidebarOpen && touchStartX.current < 40) {
-        setIsSidebarOpen(true);
-      }
-    },
-    [isSidebarOpen]
-  );
 
   const logOut = useCallback(async () => {
     if (auth) {
@@ -164,11 +132,7 @@ const Index = ({
   }
 
   return (
-    <section
-      className="min-h-screen bg-background"
-      onTouchStart={handleTouchStart}
-      onTouchEnd={handleTouchEnd}
-    >
+    <section className="min-h-screen bg-background">
       <a href="#main-content" className="skip-to-content" aria-label={t("skipToMain")}>
         {t("skipToContent")}
       </a>
@@ -236,25 +200,11 @@ const Index = ({
         </nav>
       )}
 
-      {showSidebar && !bare && isSidebarOpen && (
-        <div
-          className="fixed inset-0 z-30 bg-black/60 lg:hidden"
-          onClick={() => setIsSidebarOpen(false)}
-        />
-      )}
-
       {showSidebar && !bare && (
         <aside
           id="logo-sidebar"
           className={cn(
-            "fixed top-0 z-40 h-screen w-64 border-e border-sidebar-border bg-sidebar pt-16 transition-transform lg:translate-x-0",
-            locale === "ar"
-              ? isSidebarOpen
-                ? "translate-x-0"
-                : "translate-x-full"
-              : isSidebarOpen
-                ? "translate-x-0"
-                : "-translate-x-full"
+            "fixed top-0 z-40 hidden h-screen w-64 border-e border-sidebar-border bg-sidebar pt-16 lg:block"
           )}
         >
           <div className="flex h-full flex-col justify-between px-3 py-4">

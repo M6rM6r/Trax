@@ -228,8 +228,10 @@ export default function MastermindCompaniesPage() {
             <div className="mt-6 p-4 rounded-lg bg-green-50 text-green-900 border border-green-200">
               <p className="font-semibold">{t("companyCreatedSuccess")}</p>
               <p className="text-sm mt-1">{t("companyIdLabel", { id: created.companyId })}</p>
-              <p className="text-sm">{t("emailLabel", { email: created.email })}</p>
-              <p className="text-sm">{t("passwordLabel", { password: created.adminPassword })}</p>
+              <p className="text-sm">{t("companyEmailLabel", { email: created.email })}</p>
+              <p className="text-sm">
+                {t("companyPasswordLabel", { password: created.adminPassword })}
+              </p>
             </div>
           )}
         </CardContent>
