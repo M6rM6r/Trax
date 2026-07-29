@@ -27,7 +27,7 @@ import View from "ol/View";
 import VectorLayer from "ol/layer/Vector";
 import VectorSource from "ol/source/Vector";
 import { fromLonLat, toLonLat } from "ol/proj";
-import { createHybridSatelliteLayers } from "@/lib/utils/mapLayers";
+import { createStreetMapLayers } from "@/lib/utils/mapLayers";
 import Feature from "ol/Feature";
 import Point from "ol/geom/Point";
 import CircleGeom from "ol/geom/Circle";
@@ -268,7 +268,7 @@ export default function GeofencesPage() {
 
     const map = new Map({
       target: previewMapRef.current,
-      layers: [...createHybridSatelliteLayers(), new VectorLayer({ source })],
+      layers: [...createStreetMapLayers(), new VectorLayer({ source })],
       view: new View({
         center,
         zoom: 15,
@@ -372,7 +372,7 @@ export default function GeofencesPage() {
 
       map = new Map({
         target: drawerMapRef.current,
-        layers: [...createHybridSatelliteLayers(), new VectorLayer({ source })],
+        layers: [...createStreetMapLayers(), new VectorLayer({ source })],
         view: new View({
           center: fromLonLat([newGeofence.lng, newGeofence.lat]),
           zoom: 12,
@@ -452,7 +452,7 @@ export default function GeofencesPage() {
 
       map = new Map({
         target: editDrawerMapRef.current,
-        layers: [...createHybridSatelliteLayers(), new VectorLayer({ source })],
+        layers: [...createStreetMapLayers(), new VectorLayer({ source })],
         view: new View({
           center: fromLonLat([editGeofence.lng, editGeofence.lat]),
           zoom: 12,

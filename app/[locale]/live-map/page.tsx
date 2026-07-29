@@ -95,7 +95,12 @@ export default function LiveMapPage() {
 
   const tileSources = useMemo<Record<"osm" | "satellite" | "topo", () => OSM | XYZ>>(
     () => ({
-      osm: () => new OSM(),
+      osm: () =>
+        new XYZ({
+          url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}",
+          maxZoom: 19,
+          attributions: "Esri, HERE, Garmin, USGS, NPS",
+        }) as unknown as OSM,
       satellite: () =>
         new XYZ({
           url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",

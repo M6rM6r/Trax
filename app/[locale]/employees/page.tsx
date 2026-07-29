@@ -568,6 +568,7 @@ export default function EmployeesPage() {
                   onClick={async () => {
                     const message = buildStaffCredentialsMessage({
                       email: createdCredentials.email,
+                      username: createdCredentials.username,
                       password: createdCredentials.password,
                       loginUrl: staffLoginUrl,
                     });

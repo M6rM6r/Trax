@@ -3,10 +3,9 @@
 import { useEffect, useRef, useState } from "react";
 import Map from "ol/Map";
 import View from "ol/View";
-import TileLayer from "ol/layer/Tile";
 import VectorLayer from "ol/layer/Vector";
 import VectorSource from "ol/source/Vector";
-import XYZ from "ol/source/XYZ";
+import { createStreetMapLayers } from "@/lib/utils/mapLayers";
 import { fromLonLat, toLonLat } from "ol/proj";
 import { Point, LineString, Polygon } from "ol/geom";
 import Feature from "ol/Feature";
@@ -71,16 +70,7 @@ export default function OLMap({
 
     const initialMap = new Map({
       target: mapRef.current,
-      layers: [
-        new TileLayer({
-          source: new XYZ({
-            url: "https://{a-c}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
-            attributions:
-              '© <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> contributors, © CARTO',
-            maxZoom: 19,
-          }),
-        }),
-      ],
+      layers: [...createStreetMapLayers()],
       view: new View({
         center: fromLonLat([46.6753, 24.7136]),
         zoom: 13,

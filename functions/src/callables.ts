@@ -59,28 +59,51 @@ export const exportAttendance = functions.https.onCall(async (data, context) => 
 
   await requireCompanyAdmin(context, companyId);
 
-  const attendance = await db
-    .collection("attendance")
-    .where("company_id", "==", companyId)
-    .where("date", ">=", startDate)
-    .where("date", "<=", endDate)
-    .orderBy("date", "desc")
-    .get();
+  try {
+    let snapshot: FirebaseFirestore.QuerySnapshot;
 
-  const headers = [
-    "employeeName",
-    "date",
-    "checkInTime",
-    "checkOutTime",
-    "status",
-    "lateMinutes",
-    "workedHours",
-    "geofenceName",
-  ];
+    try {
+      // Fast path: composite index on (company_id, date) is available.
+      snapshot = await db
+        .collection("attendance")
+        .where("company_id", "==", companyId)
+        .where("date", ">=", startDate)
+        .where("date", "<=", endDate)
+        .orderBy("date", "desc")
+        .get();
+    } catch (indexErr) {
+      const errMessage = String((indexErr as { message?: string }).message ?? indexErr);
 
-  const rows = attendance.docs.map((doc) => {
-    const d = doc.data();
-    return [
+      if (!errMessage.toLowerCase().includes("requires an index")) {
+        throw indexErr;
+      }
+
+      functions.logger.warn(
+        "[exportAttendance] missing composite index, falling back to in-memory filtering",
+        { companyId, startDate, endDate, error: errMessage }
+      );
+
+      // Fallback: single-field query on company_id, then filter/sort in memory.
+      snapshot = await db.collection("attendance").where("company_id", "==", companyId).get();
+    }
+
+    const filtered = snapshot.docs
+      .map((doc) => doc.data())
+      .filter((d) => typeof d.date === "string" && d.date >= startDate && d.date <= endDate)
+      .sort((a, b) => String(b.date).localeCompare(String(a.date)));
+
+    const headers = [
+      "employeeName",
+      "date",
+      "checkInTime",
+      "checkOutTime",
+      "status",
+      "lateMinutes",
+      "workedHours",
+      "geofenceName",
+    ];
+
+    const rows = filtered.map((d) => [
       d.employeeName ?? "",
       d.date ?? "",
       d.checkInTime ?? "",
@@ -89,14 +112,18 @@ export const exportAttendance = functions.https.onCall(async (data, context) => 
       String(d.lateMinutes ?? 0),
       String(d.workedHours ?? 0),
       d.geofenceName ?? "",
-    ];
-  });
+    ]);
 
-  const csv = [headers, ...rows]
-    .map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(","))
-    .join("\n");
+    const csv = [headers, ...rows]
+      .map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(","))
+      .join("\n");
 
-  return { success: true, data: { csv, count: attendance.size } };
+    return { success: true, data: { csv, count: filtered.length } };
+  } catch (err) {
+    functions.logger.error("[exportAttendance] failed:", err);
+    const message = err instanceof Error ? err.message : String(err);
+    throw new functions.https.HttpsError("internal", `Export failed: ${message}`);
+  }
 });
 
 /**

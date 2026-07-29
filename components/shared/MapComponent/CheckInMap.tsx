@@ -4,10 +4,9 @@ import { useEffect, useRef } from "react";
 import { Crosshair, Maximize } from "lucide-react";
 import Map from "ol/Map";
 import View from "ol/View";
-import TileLayer from "ol/layer/Tile";
 import VectorLayer from "ol/layer/Vector";
 import VectorSource from "ol/source/Vector";
-import XYZ from "ol/source/XYZ";
+import { createStreetMapLayers } from "@/lib/utils/mapLayers";
 import { fromLonLat } from "ol/proj";
 import { Point, Circle as CircleGeom } from "ol/geom";
 import Feature from "ol/Feature";
@@ -64,14 +63,7 @@ export default function CheckInMap({
     const map = new Map({
       target: mapRef.current,
       layers: [
-        new TileLayer({
-          source: new XYZ({
-            url: "https://{a-c}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
-            attributions:
-              '© <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> contributors, © CARTO',
-            maxZoom: 19,
-          }),
-        }),
+        ...createStreetMapLayers(),
         new VectorLayer({
           source: vectorSource,
           style: undefined,

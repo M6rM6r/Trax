@@ -564,9 +564,9 @@ export default function AttendancePage() {
                 label: t("total"),
                 count: attendance.length,
                 Icon: Users,
-                color: "text-primary",
-                bg: "bg-primary/10 bg-primary/10",
-                border: "border-b-4 border-primary",
+                color: "text-slate-400",
+                bg: "bg-slate-400/10",
+                border: "border-b-4 border-slate-400",
                 stagger: "animate-stagger-4",
               },
             ] as const
