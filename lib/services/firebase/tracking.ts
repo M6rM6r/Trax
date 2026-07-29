@@ -40,10 +40,12 @@ export const trackingApi = {
     onError: (error: Error) => void
   ): () => void {
     let unsub: (() => void) | null = null;
+    let mounted = true;
 
     (async () => {
       try {
         await ensureAuth();
+        if (!mounted) return;
         const cidStr = getCompanyId();
         if (!cidStr) {
           onUpdate([]);
@@ -60,6 +62,7 @@ export const trackingApi = {
           unsub = onSnapshot(
             queryToUse,
             (snapshot) => {
+              if (!mounted) return;
               if (snapshot.empty && isNumeric && queryToUse === q) {
                 // Fallback to number company_id
                 const qNum = query(base, where("company_id", "==", cidNum), limit(500));
@@ -73,16 +76,21 @@ export const trackingApi = {
               items.sort((a, b) => b.lastSeen.localeCompare(a.lastSeen));
               onUpdate(items);
             },
-            (error) => onError(error instanceof Error ? error : new Error(String(error)))
+            (error) => {
+              if (!mounted) return;
+              onError(error instanceof Error ? error : new Error(String(error)));
+            }
           );
         };
         setupListener(q);
       } catch (error) {
+        if (!mounted) return;
         onError(error instanceof Error ? error : new Error(String(error)));
       }
     })();
 
     return () => {
+      mounted = false;
       if (unsub) unsub();
     };
   },

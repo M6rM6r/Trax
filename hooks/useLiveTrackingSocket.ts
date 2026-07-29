@@ -3,9 +3,11 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { subscribeRealtimeEvents, type LocationUpdatePayload } from "@/lib/services/realtime";
 import type { LiveTrackingEmployee } from "@/lib/types/trackingTypes";
+import { useAuthStore } from "@/stores/useAuthStore";
 import { logger } from "@/lib/config/logger";
 
 export function useLiveTrackingSocket(initialData: LiveTrackingEmployee[]) {
+  const companyId = useAuthStore((state) => state.companyId);
   const [employees, setEmployees] = useState<LiveTrackingEmployee[]>(initialData);
   const [isConnected, setIsConnected] = useState(false);
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
@@ -17,6 +19,7 @@ export function useLiveTrackingSocket(initialData: LiveTrackingEmployee[]) {
   }, [initialData]);
 
   useEffect(() => {
+    if (!companyId) return;
     const unsubscribe = subscribeRealtimeEvents({
       onLocationUpdate: (data: LocationUpdatePayload) => {
         setEmployees((prev) => {
@@ -53,7 +56,7 @@ export function useLiveTrackingSocket(initialData: LiveTrackingEmployee[]) {
       unsubscribe();
       clearInterval(interval);
     };
-  }, []);
+  }, [companyId]);
 
   const forceRefresh = useCallback(() => {
     logger.info("Force refresh requested for live tracking");

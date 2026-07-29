@@ -44,6 +44,10 @@ let connected = false;
 function getStatus(
   data: Record<string, unknown>
 ): "inside_geofence" | "outside_geofence" | "offline" {
+  const stored = data.status;
+  if (stored === "inside_geofence" || stored === "outside_geofence" || stored === "offline") {
+    return stored;
+  }
   const lastSeen = new Date(String(data.lastSeen ?? new Date().toISOString())).getTime();
   const isStale = Number.isNaN(lastSeen) ? false : Date.now() - lastSeen > 5 * 60 * 1000;
   if (isStale) return "offline";

@@ -135,6 +135,14 @@ export default function LiveMapPage() {
     offline: "text-muted-foreground bg-muted",
   };
 
+  const statusCounts = useMemo(() => {
+    const counts = { inside_geofence: 0, outside_geofence: 0, offline: 0 };
+    for (const emp of liveTracking) {
+      if (emp.status in counts) counts[emp.status as keyof typeof counts]++;
+    }
+    return counts;
+  }, [liveTracking]);
+
   const filteredTracking = useMemo(() => {
     return liveTracking.filter((emp) => {
       if (searchQuery && !emp.name.toLowerCase().includes(searchQuery.toLowerCase())) return false;
@@ -399,14 +407,23 @@ export default function LiveMapPage() {
               <span className="flex items-center gap-1.5">
                 <span className="w-3 h-3 rounded-full bg-primary" />
                 <span className="text-muted-foreground">{t("insideGeofence")}</span>
+                <span className="text-xs font-bold text-primary">
+                  {statusCounts.inside_geofence}
+                </span>
               </span>
               <span className="flex items-center gap-1.5">
-                <span className="w-3 h-3 rounded-full bg-[hsl(48_96%_53%/0.1)]0" />
+                <span className="w-3 h-3 rounded-full bg-[hsl(48_96%_53%/0.7)]" />
                 <span className="text-muted-foreground">{t("outsideGeofence")}</span>
+                <span className="text-xs font-bold text-[hsl(48_96%_53%)]">
+                  {statusCounts.outside_geofence}
+                </span>
               </span>
               <span className="flex items-center gap-1.5">
                 <span className="w-3 h-3 rounded-full bg-muted-foreground/50" />
                 <span className="text-muted-foreground">{t("offlineStatus")}</span>
+                <span className="text-xs font-bold text-muted-foreground">
+                  {statusCounts.offline}
+                </span>
               </span>
             </div>
           }
@@ -705,7 +722,7 @@ export default function LiveMapPage() {
                                 <span
                                   className={`w-2 h-2 rounded-full ${
                                     emp.status === "outside_geofence"
-                                      ? "bg-[hsl(48_96%_53%/0.1)]0"
+                                      ? "bg-[hsl(48_96%_53%/0.7)]"
                                       : "bg-muted-foreground/50"
                                   }`}
                                 />

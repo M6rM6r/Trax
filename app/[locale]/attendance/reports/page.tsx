@@ -411,7 +411,7 @@ export default function AttendanceReportsPage() {
                                 dept.rate >= 90
                                   ? "bg-primary"
                                   : dept.rate >= 70
-                                    ? "bg-[hsl(48_96%_53%/0.1)]0"
+                                    ? "bg-[hsl(48_96%_53%/0.7)]"
                                     : "bg-destructive"
                               }`}
                               style={{ width: `${dept.rate}%` }}

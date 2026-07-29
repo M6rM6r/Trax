@@ -1,4 +1,5 @@
 import "package:flutter/material.dart";
+import "package:flutter/services.dart";
 import "package:provider/provider.dart";
 import "package:google_fonts/google_fonts.dart";
 import "package:shared_preferences/shared_preferences.dart";
@@ -22,12 +23,23 @@ import "screens/notification_settings_screen.dart";
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await SystemChrome.setEnabledSystemUIMode(
+    SystemUiMode.edgeToEdge,
+    overlays: SystemUiOverlay.values,
+  );
+  await SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
+    statusBarColor: Colors.transparent,
+    statusBarBrightness: Brightness.dark,
+    statusBarIconBrightness: Brightness.light,
+    systemNavigationBarColor: Colors.transparent,
+    systemNavigationBarDividerColor: Colors.transparent,
+    systemNavigationBarIconBrightness: Brightness.light,
+  ));
   try {
     await Firebase.initializeApp();
   } catch (_) {}
   await NotificationService().initialize();
   final prefs = await SharedPreferences.getInstance();
-  final onboardingCompleted = prefs.getBool("onboarding_completed") ?? false;
   final hasSession = prefs.getString("auth_token") != null;
 
   // Resume background tracking if it was active before the app was killed.
@@ -39,14 +51,13 @@ void main() async {
     );
   } catch (_) {}
 
-  runApp(TraxEmployeeApp(onboardingCompleted: onboardingCompleted, hasSession: hasSession));
+  runApp(TraxEmployeeApp(hasSession: hasSession));
 }
 
 class TraxEmployeeApp extends StatelessWidget {
-  final bool onboardingCompleted;
   final bool hasSession;
 
-  const TraxEmployeeApp({super.key, required this.onboardingCompleted, required this.hasSession});
+  const TraxEmployeeApp({super.key, required this.hasSession});
 
   @override
   Widget build(BuildContext context) {
@@ -74,6 +85,8 @@ class TraxEmployeeApp extends StatelessWidget {
               backgroundColor: Color(0xFF3C7EE7),
               foregroundColor: Colors.white,
             ),
+            scaffoldBackgroundColor: Colors.white,
+            canvasColor: Colors.white,
           ),
           darkTheme: ThemeData(
             colorScheme: ColorScheme.fromSeed(
@@ -88,10 +101,21 @@ class TraxEmployeeApp extends StatelessWidget {
               foregroundColor: Colors.white,
             ),
             scaffoldBackgroundColor: const Color(0xFF0F172A),
+            canvasColor: const Color(0xFF0F172A),
             cardColor: const Color(0xFF1E293B),
           ),
           themeMode: themeProvider.themeMode,
-          initialRoute: hasSession ? "/home" : (onboardingCompleted ? "/login" : "/onboarding"),
+          builder: (context, child) => AnnotatedRegion<SystemUiOverlayStyle>(
+            value: const SystemUiOverlayStyle(
+              statusBarColor: Colors.transparent,
+              statusBarBrightness: Brightness.dark,
+              statusBarIconBrightness: Brightness.light,
+              systemNavigationBarColor: Colors.transparent,
+              systemNavigationBarIconBrightness: Brightness.light,
+            ),
+            child: child!,
+          ),
+          initialRoute: hasSession ? "/home" : "/login",
           routes: {
             "/onboarding": (ctx) => OnboardingScreen(
               onComplete: () => Navigator.pushReplacementNamed(ctx, "/login"),

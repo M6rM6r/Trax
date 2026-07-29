@@ -93,7 +93,7 @@ function getMonthDays(year: number, month: number, records: AttendanceRecord[]):
 function getDayColor(day: CalendarDay): string {
   if (!day.isCurrentMonth || day.records.length === 0) return "bg-muted";
   if (day.attendanceRate >= 90) return "bg-primary text-primary-foreground";
-  if (day.attendanceRate >= 60) return "bg-[hsl(48_96%_53%/0.1)]0 text-primary-foreground";
+  if (day.attendanceRate >= 60) return "bg-[hsl(48_96%_53%/0.7)] text-primary-foreground";
   return "bg-destructive text-primary-foreground";
 }
 
@@ -205,7 +205,7 @@ const CalendarHeatmap = memo(function CalendarHeatmap({
             <span className="w-3 h-3 rounded bg-primary" /> {t("excellentAttendance")}
           </span>
           <span className="flex items-center gap-1.5">
-            <span className="w-3 h-3 rounded bg-[hsl(48_96%_53%/0.1)]0" /> {t("partialAttendance")}
+            <span className="w-3 h-3 rounded bg-[hsl(48_96%_53%/0.7)]" /> {t("partialAttendance")}
           </span>
           <span className="flex items-center gap-1.5">
             <span className="w-3 h-3 rounded bg-destructive" /> {t("highAbsence")}

@@ -491,7 +491,7 @@ export default function CompanySettingsPage() {
               <Card className="border-0 shadow-lg bg-card">
                 <CardHeader>
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-[hsl(48_96%_53%/0.1)]0 flex items-center justify-center">
+                    <div className="w-10 h-10 rounded-xl bg-[hsl(48_96%_53%/0.7)] flex items-center justify-center">
                       <Bell className="w-5 h-5 text-primary-foreground" />
                     </div>
                     <CardTitle className="text-lg font-bold text-foreground">

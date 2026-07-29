@@ -194,7 +194,7 @@ export default function CheckInMap({
   }, [geofences, currentLocation, nearestGeofence, t]);
 
   const statusText = isWithinRange ? t("insideRange") : t("outsideRange");
-  const statusColor = isWithinRange ? "bg-primary" : "bg-[hsl(48_96%_53%/0.1)]0";
+  const statusColor = isWithinRange ? "bg-primary" : "bg-[hsl(48_96%_53%/0.7)]";
 
   return (
     <div className={`relative w-full overflow-hidden rounded-xl ${className}`}>
