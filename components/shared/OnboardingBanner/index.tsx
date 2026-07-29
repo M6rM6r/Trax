@@ -6,6 +6,7 @@ import { Users, MapPin, Check, X, Rocket, ArrowLeft, CheckCircle } from "lucide-
 import { useRouter } from "@/i18n/navigation";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { hapticTap } from "@/lib/utils/haptics";
+import { useTranslations } from "next-intl";
 
 interface OnboardingBannerProps {
   hasEmployees: boolean;
@@ -18,6 +19,7 @@ export default function OnboardingBanner({
   hasGeofences,
   hasAttendanceToday,
 }: OnboardingBannerProps) {
+  const t = useTranslations("Onboarding");
   const router = useRouter();
   const { companyName, companyId } = useAuthStore();
   const [dismissed, setDismissed] = useState(true);
@@ -49,30 +51,30 @@ export default function OnboardingBanner({
       id: "employees",
       done: hasEmployees,
       icon: Users,
-      title: "أضف موظفيك",
-      description: "أضف أول موظف لبدء تتبع الحضور",
+      title: t("addEmployeesTitle"),
+      description: t("addEmployeesDescription"),
       href: "/employees",
-      cta: "إضافة موظف",
+      cta: t("addEmployeesCta"),
       color: "primary",
     },
     {
       id: "geofences",
       done: hasGeofences,
       icon: MapPin,
-      title: "حدد موقع العمل",
-      description: "أنشئ نطاقاً جغرافياً لموقع العمل",
+      title: t("defineWorkLocationTitle"),
+      description: t("defineWorkLocationDescription"),
       href: "/geofences",
-      cta: "إضافة موقع",
+      cta: t("defineWorkLocationCta"),
       color: "indigo",
     },
     {
       id: "attendance",
       done: attendanceDone,
       icon: CheckCircle,
-      title: "اطلب تسجيل الحضور",
-      description: "اطلب من موظفيك تسجيل الحضور عبر التطبيق",
+      title: t("requestCheckInTitle"),
+      description: t("requestCheckInDescription"),
       href: "/check-in",
-      cta: "صفحة الحضور",
+      cta: t("requestCheckInCta"),
       color: "green",
     },
   ];
@@ -99,7 +101,7 @@ export default function OnboardingBanner({
                 </div>
                 <div>
                   <h2 className="font-bold text-foreground text-base" dir="rtl">
-                    مرحباً بك في Trax
+                    {t("welcomeToTrax")}
                     {companyName && (
                       <span className="text-primary">
                         {" — "}
@@ -107,15 +109,13 @@ export default function OnboardingBanner({
                       </span>
                     )}
                   </h2>
-                  <p className="text-sm text-muted-foreground">
-                    أكمل الخطوات التالية لبدء تتبع فريقك
-                  </p>
+                  <p className="text-sm text-muted-foreground">{t("completeSteps")}</p>
                 </div>
               </div>
               <button
                 onClick={handleDismiss}
                 className="p-1.5 rounded-lg text-muted-foreground/70 hover:text-muted-foreground dark:hover:text-muted-foreground hover:bg-muted transition-colors shrink-0"
-                aria-label="إغلاق"
+                aria-label={t("close")}
               >
                 <X className="w-4 h-4" />
               </button>
@@ -125,7 +125,7 @@ export default function OnboardingBanner({
             <div className="mb-5">
               <div className="flex items-center justify-between text-xs text-muted-foreground mb-1.5">
                 <span>
-                  {completedCount} من {steps.length} خطوات مكتملة
+                  {t("stepsCompleted", { completed: completedCount, total: steps.length })}
                 </span>
                 <span className="font-semibold text-primary">{Math.round(progress)}%</span>
               </div>
@@ -215,8 +215,8 @@ export default function OnboardingBanner({
                   <Check className="w-4 h-4 text-primary-foreground" />
                 </div>
                 <div>
-                  <p className="text-sm font-semibold text-primary">رائع! كل شيء جاهز</p>
-                  <p className="text-xs text-primary/80">يمكن لموظفيك الآن تسجيل الحضور</p>
+                  <p className="text-sm font-semibold text-primary">{t("allSetTitle")}</p>
+                  <p className="text-xs text-primary/80">{t("allSetDescription")}</p>
                 </div>
               </motion.div>
             )}

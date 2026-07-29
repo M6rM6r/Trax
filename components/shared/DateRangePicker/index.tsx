@@ -5,6 +5,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar as CalendarIcon, ChevronDown } from "lucide-react";
 import { format, subDays, startOfMonth, endOfMonth } from "date-fns";
 import { hapticTap } from "@/lib/utils/haptics";
+import { useTranslations } from "next-intl";
 
 export type DateRangePreset = "today" | "7days" | "30days" | "month" | "custom";
 
@@ -20,13 +21,16 @@ interface DateRangePickerProps {
   onChange: (range: DateRange) => void;
 }
 
-const presetOptions: { value: DateRangePreset; label: string }[] = [
-  { value: "today", label: "اليوم" },
-  { value: "7days", label: "آخر 7 أيام" },
-  { value: "30days", label: "آخر 30 يوم" },
-  { value: "month", label: "هذا الشهر" },
-  { value: "custom", label: "مخصص" },
-];
+function usePresetOptions() {
+  const t = useTranslations("Common.state");
+  return [
+    { value: "today" as DateRangePreset, label: t("today") },
+    { value: "7days" as DateRangePreset, label: t("last7Days") },
+    { value: "30days" as DateRangePreset, label: t("last30Days") },
+    { value: "month" as DateRangePreset, label: t("thisMonth") },
+    { value: "custom" as DateRangePreset, label: t("custom") },
+  ];
+}
 
 function getPresetRange(preset: DateRangePreset): { from: Date; to: Date } {
   const now = new Date();
@@ -45,6 +49,8 @@ function getPresetRange(preset: DateRangePreset): { from: Date; to: Date } {
 }
 
 export function DateRangePicker({ value, onChange }: DateRangePickerProps) {
+  const t = useTranslations("Common.state");
+  const presetOptions = usePresetOptions();
   const [open, setOpen] = useState(false);
 
   const handlePresetSelect = (preset: DateRangePreset) => {
@@ -57,12 +63,12 @@ export function DateRangePicker({ value, onChange }: DateRangePickerProps) {
 
   const handleCustomFrom = (e: React.ChangeEvent<HTMLInputElement>) => {
     const from = new Date(e.target.value);
-    onChange({ ...value, preset: "custom", from, label: "مخصص" });
+    onChange({ ...value, preset: "custom", from, label: t("custom") });
   };
 
   const handleCustomTo = (e: React.ChangeEvent<HTMLInputElement>) => {
     const to = new Date(e.target.value);
-    onChange({ ...value, preset: "custom", to, label: "مخصص" });
+    onChange({ ...value, preset: "custom", to, label: t("custom") });
   };
 
   return (
@@ -70,7 +76,7 @@ export function DateRangePicker({ value, onChange }: DateRangePickerProps) {
       <PopoverTrigger asChild>
         <button
           className="flex items-center gap-2 text-sm bg-card px-3 py-2 rounded-xl border border-border shadow-sm hover:bg-muted transition-colors text-muted-foreground"
-          aria-label="اختر نطاق التاريخ"
+          aria-label={t("chooseDateRange")}
         >
           <CalendarIcon className="w-4 h-4 text-primary" />
           <span className="font-medium">{value.label}</span>
@@ -96,7 +102,7 @@ export function DateRangePicker({ value, onChange }: DateRangePickerProps) {
         {value.preset === "custom" && (
           <div className="mt-3 pt-3 border-t border-border space-y-2">
             <div>
-              <label className="text-xs text-muted-foreground mb-1 block">من</label>
+              <label className="text-xs text-muted-foreground mb-1 block">{t("from")}</label>
               <input
                 type="date"
                 value={format(value.from, "yyyy-MM-dd")}
@@ -105,7 +111,7 @@ export function DateRangePicker({ value, onChange }: DateRangePickerProps) {
               />
             </div>
             <div>
-              <label className="text-xs text-muted-foreground mb-1 block">إلى</label>
+              <label className="text-xs text-muted-foreground mb-1 block">{t("to")}</label>
               <input
                 type="date"
                 value={format(value.to, "yyyy-MM-dd")}
@@ -121,6 +127,6 @@ export function DateRangePicker({ value, onChange }: DateRangePickerProps) {
 }
 
 export function getDefaultDateRange(): DateRange {
-  const { from, to } = getPresetRange("today");
-  return { preset: "today", from, to, label: "اليوم" };
+  const { from, to } = getPresetRange("7days");
+  return { preset: "7days", from, to, label: "Last 7 days" };
 }

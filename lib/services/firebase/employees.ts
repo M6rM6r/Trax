@@ -4,12 +4,9 @@ import {
   deleteDoc,
   doc,
   getDoc,
-  getDocs,
-  query,
   serverTimestamp,
   setDoc,
   updateDoc,
-  where,
 } from "firebase/firestore";
 import {
   createUserWithEmailAndPassword,
@@ -26,6 +23,7 @@ import {
   requireDb,
   cleanPayload,
   mapEmployee,
+  queryByCompanyId,
 } from "./helpers";
 
 export const employeesApi = {
@@ -38,8 +36,7 @@ export const employeesApi = {
     const companyId = getCompanyId();
     if (!companyId) return [];
     const base = collection(requireDb(), "employees");
-    const snapshot = await getDocs(query(base, where("company_id", "==", companyId)));
-    const employees = snapshot.docs.map((item) => mapEmployee(item.id, item.data()));
+    const employees = await queryByCompanyId(base, [], mapEmployee);
     employees.sort((a, b) => a.name.localeCompare(b.name));
     return employees;
   },
@@ -70,7 +67,6 @@ export const employeesApi = {
 
       const reference = await addDoc(collection(database, "employees"), {
         ...employeeData,
-        ...(password ? { password } : {}),
         ...(authUser ? { authUid: authUser.uid } : {}),
         company_id: companyId,
         createdAt: serverTimestamp(),

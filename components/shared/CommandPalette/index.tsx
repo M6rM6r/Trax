@@ -22,6 +22,7 @@ import { signOut } from "firebase/auth";
 import { auth } from "@/lib/config/firebase";
 import { hapticTap } from "@/lib/utils/haptics";
 import { useEmployees } from "@/hooks/useApi";
+import { useTranslations } from "next-intl";
 
 interface CommandItem {
   id: string;
@@ -33,6 +34,7 @@ interface CommandItem {
 }
 
 export function CommandPalette() {
+  const t = useTranslations("Navigation");
   const [open, setOpen] = useState(false);
   const router = useRouter();
   const { clearUser, token } = useAuthStore();
@@ -63,88 +65,88 @@ export function CommandPalette() {
       label: emp.name,
       icon: UserCircle,
       action: () => navigate(`/employees`),
-      group: "الموظفون",
+      group: t("employees"),
     })),
     {
       id: "dashboard",
-      label: "لوحة التحكم",
+      label: t("dashboard"),
       icon: LayoutDashboard,
       action: () => navigate("/"),
-      group: "التنقل",
+      group: t("navigation"),
     },
     {
       id: "employees",
-      label: "الموظفون",
+      label: t("employees"),
       icon: Users,
       action: () => navigate(`/employees`),
-      group: "التنقل",
+      group: t("navigation"),
     },
     {
       id: "employees-inactive",
-      label: "الموظفون غير النشطين",
+      label: t("employeeInactive"),
       icon: UserX,
       action: () => navigate(`/employees/inactive`),
-      group: "التنقل",
+      group: t("navigation"),
     },
     {
       id: "live-map",
-      label: "التتبع المباشر",
+      label: t("liveMap"),
       icon: MapPin,
       action: () => navigate(`/live-map`),
-      group: "التنقل",
+      group: t("navigation"),
     },
     {
       id: "attendance",
-      label: "الحضور والانصراف",
+      label: t("attendance"),
       icon: Calendar,
       action: () => navigate(`/attendance`),
-      group: "التنقل",
+      group: t("navigation"),
     },
     {
       id: "attendance-reports",
-      label: "تقارير الحضور",
+      label: t("attendanceReports"),
       icon: FileText,
       action: () => navigate(`/attendance/reports`),
-      group: "التنقل",
+      group: t("navigation"),
     },
     {
       id: "geofences",
-      label: "النطاقات الجغرافية",
+      label: t("geofences"),
       icon: MapPin,
       action: () => navigate(`/geofences`),
-      group: "التنقل",
+      group: t("navigation"),
     },
     {
       id: "check-in",
-      label: "تسجيل الحضور",
+      label: t("checkIn"),
       icon: CheckCircle,
       action: () => navigate(`/check-in`),
-      group: "التنقل",
+      group: t("navigation"),
     },
     {
       id: "settings-security",
-      label: "إعدادات الأمان",
+      label: t("securitySettings"),
       icon: Shield,
       action: () => navigate(`/settings/securitySettings`),
-      group: "الإعدادات",
+      group: t("settings"),
     },
     {
       id: "settings-notifications",
-      label: "إعدادات الإشعارات",
+      label: t("notificationSettings"),
       icon: Bell,
       action: () => navigate(`/settings/notificationSettings`),
-      group: "الإعدادات",
+      group: t("settings"),
     },
     {
       id: "logout",
-      label: "تسجيل الخروج",
+      label: t("logout"),
       icon: LogOut,
       action: () => {
         hapticTap();
         handleLogout();
         setOpen(false);
       },
-      group: "إجراءات",
+      group: t("actions"),
     },
   ];
 
@@ -193,11 +195,11 @@ export function CommandPalette() {
         className="relative w-full max-w-xl bg-card rounded-2xl shadow-lg border border-border overflow-hidden animate-slide-up"
         onClick={(e) => e.stopPropagation()}
       >
-        <Command className="flex flex-col" role="dialog" aria-label="لوحة الأوامر">
+        <Command className="flex flex-col" role="dialog" aria-label={t("commandPalette")}>
           <div className="flex items-center gap-3 px-4 border-b border-border">
             <Search className="w-4 h-4 text-muted-foreground/70 shrink-0" />
             <Command.Input
-              placeholder="ابحث عن صفحة أو إجراء..."
+              placeholder={t("searchCommand")}
               className="w-full bg-transparent py-4 outline-none text-sm text-foreground placeholder:text-muted-foreground/70 dark:placeholder:text-muted-foreground/70"
               autoFocus
             />
@@ -207,7 +209,7 @@ export function CommandPalette() {
           </div>
           <Command.List className="max-h-[50vh] overflow-y-auto p-2">
             <Command.Empty className="py-6 text-center text-sm text-muted-foreground/70">
-              لا توجد نتائج
+              {t("noCommandResults")}
             </Command.Empty>
             {groups.map((group) => (
               <Command.Group

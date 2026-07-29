@@ -34,7 +34,7 @@ export function TopLoadingBar() {
     <div
       className="fixed top-0 left-0 right-0 z-[9999] h-1 pointer-events-none"
       role="progressbar"
-      aria-label="جاري التحميل"
+      aria-label="Loading"
     >
       <div
         className="h-full bg-gradient-to-r from-primary via-primary/80 to-primary transition-all duration-300 ease-out"

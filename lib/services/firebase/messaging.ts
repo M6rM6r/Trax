@@ -1,6 +1,7 @@
 import { getMessaging, getToken, onMessage, deleteToken, type Messaging } from "firebase/messaging";
 import { doc, setDoc, deleteDoc, serverTimestamp } from "firebase/firestore";
 import app, { db, isFirebaseConfigured } from "@/lib/config/firebase";
+import { useAuthStore } from "@/stores/useAuthStore";
 import { getCompanyId } from "./helpers";
 
 let messagingInstance: Messaging | null = null;
@@ -52,9 +53,12 @@ async function storeFCMToken(token: string): Promise<void> {
   if (!db) return;
 
   const companyId = getCompanyId();
+  const { user, role } = useAuthStore.getState();
   await setDoc(doc(db, "fcm_tokens", token), {
     token,
     company_id: companyId,
+    user_id: user?.id ?? null,
+    role: role ?? null,
     platform: getPlatform(),
     user_agent: navigator.userAgent,
     created_at: serverTimestamp(),

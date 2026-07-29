@@ -184,10 +184,7 @@ const Index = ({
 
   return (
     <div className={`flex flex-col gap-2 ${containerClassName}`}>
-      <label
-        htmlFor={name}
-        className={`text-16 text-foreground font-[600] ${labelStyle}`}
-      >
+      <label htmlFor={name} className={`text-16 text-foreground font-[600] ${labelStyle}`}>
         {label}
         {required && <span className="text-destructive ml-1">*</span>}
       </label>
@@ -252,7 +249,7 @@ const Index = ({
       {optional && (
         <div className=" flex items-center gap-2">
           <InfoCircle />
-          <span className="text-12 text-muted-foreground">اختياري</span>
+          <span className="text-12 text-muted-foreground">Optional</span>
         </div>
       )}
       <ErrorMessage

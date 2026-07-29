@@ -13,6 +13,7 @@ import { LoadingSkeleton, ErrorState } from "@/components/shared/StateViews";
 import dynamic from "next/dynamic";
 import { useAuthStore } from "@/stores/useAuthStore";
 import AccessDeniedCard from "@/components/shared/AccessDeniedCard";
+import { useTranslations } from "next-intl";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 const BarChart: ComponentType<any> = dynamic(
@@ -56,12 +57,13 @@ interface CustomTooltipProps {
 }
 
 const CustomTooltip = ({ active, payload, label }: CustomTooltipProps) => {
+  const t = useTranslations("AttendanceReports");
   if (active && payload && payload.length) {
     return (
       <div className="bg-card border border-border rounded-xl p-3 shadow-xl">
         <p className="font-bold text-foreground text-sm">{label}</p>
         <p className="text-sm text-muted-foreground">
-          العدد: <span className="font-semibold">{payload[0].value}</span>
+          {t("count")}: <span className="font-semibold">{payload[0].value}</span>
         </p>
       </div>
     );
@@ -89,13 +91,15 @@ export default function AttendanceReportsPage() {
       Math.max(attendance.filter((r) => r.lateMinutes > 0).length, 1)
   );
 
+  const t = useTranslations("AttendanceReports");
+
   const chartData = useMemo(
     () => [
-      { name: "حاضر", value: presentCount, color: "hsl(var(--chart-1))" },
-      { name: "متأخر", value: lateCount, color: "hsl(var(--chart-3))" },
-      { name: "غائب", value: absentCount, color: "hsl(var(--chart-5))" },
+      { name: t("present"), value: presentCount, color: "hsl(var(--chart-1))" },
+      { name: t("late"), value: lateCount, color: "hsl(var(--chart-3))" },
+      { name: t("absent"), value: absentCount, color: "hsl(var(--chart-5))" },
     ],
-    [presentCount, lateCount, absentCount]
+    [presentCount, lateCount, absentCount, t]
   );
 
   const topLateEmployees = useMemo(() => {
@@ -133,7 +137,7 @@ export default function AttendanceReportsPage() {
 
     attendance.forEach((record) => {
       const emp = employeeMap.get(String(record.employeeId));
-      const department = emp?.department || "غير محدد";
+      const department = emp?.department || t("undefinedDepartment");
       const current = departmentMap.get(department) ?? {
         department,
         total: 0,
@@ -157,17 +161,13 @@ export default function AttendanceReportsPage() {
     return Array.from(departmentMap.values())
       .sort((a, b) => b.rate - a.rate)
       .slice(0, 6);
-  }, [attendance, employees]);
+  }, [attendance, employees, t]);
 
   if (role === "employee") {
     return (
       <MainLayout>
         <div className="p-6 min-h-screen">
-          <AccessDeniedCard
-            icon={BarChart3}
-            message="تقارير الحضور متاحة لإدارة الشركة فقط."
-            ctaHref="/check-in"
-          />
+          <AccessDeniedCard icon={BarChart3} message={t("adminOnly")} ctaHref="/check-in" />
         </div>
       </MainLayout>
     );
@@ -177,8 +177,8 @@ export default function AttendanceReportsPage() {
     <MainLayout>
       <div className="p-6 space-y-6 min-h-screen">
         <FullPageHead
-          head="تقارير الحضور"
-          description="تحليلات وإحصائيات الحضور والانصراف"
+          head={t("title")}
+          description={t("description")}
           Icon={<BarChart3 className="w-7 h-7" />}
           LeftSection={
             <div className="flex items-center gap-2">
@@ -187,7 +187,7 @@ export default function AttendanceReportsPage() {
                 className="flex items-center gap-2"
                 onClick={() => {
                   exportAttendanceToCSV(attendance);
-                  toast({ description: "تم تصدير CSV بنجاح" });
+                  toast({ description: t("csvExported") });
                 }}
               >
                 <FileSpreadsheet className="w-4 h-4" />
@@ -198,7 +198,7 @@ export default function AttendanceReportsPage() {
                 className="flex items-center gap-2"
                 onClick={async () => {
                   await exportAttendanceToPDF(attendance);
-                  toast({ description: "تم تصدير PDF بنجاح" });
+                  toast({ description: t("pdfExported") });
                 }}
               >
                 <FileText className="w-4 h-4" />
@@ -217,7 +217,7 @@ export default function AttendanceReportsPage() {
                 <CardContent className="pt-6">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm text-muted-foreground">نسبة الحضور في الوقت</p>
+                      <p className="text-sm text-muted-foreground">{t("onTimeRate")}</p>
                       <p className="text-3xl font-black text-primary mt-1">{onTimeRate}%</p>
                     </div>
                     <TrendingUp className="w-8 h-8 text-primary" />
@@ -228,9 +228,9 @@ export default function AttendanceReportsPage() {
                 <CardContent className="pt-6">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm text-muted-foreground">متوسط التأخير</p>
+                      <p className="text-sm text-muted-foreground">{t("avgLateMinutes")}</p>
                       <p className="text-3xl font-black text-[hsl(48_96%_53%)] mt-1">
-                        {avgLateMinutes} د
+                        {avgLateMinutes} {t("minutes")}
                       </p>
                     </div>
                     <BarChart3 className="w-8 h-8 text-[hsl(48_96%_53%)]" />
@@ -241,7 +241,7 @@ export default function AttendanceReportsPage() {
                 <CardContent className="pt-6">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm text-muted-foreground">إجمالي السجلات</p>
+                      <p className="text-sm text-muted-foreground">{t("totalRecords")}</p>
                       <p className="text-3xl font-black text-primary mt-1">{attendance.length}</p>
                     </div>
                     <BarChart3 className="w-8 h-8 text-primary" />
@@ -252,7 +252,7 @@ export default function AttendanceReportsPage() {
                 <CardContent className="pt-6">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm text-muted-foreground">أيام التأخير</p>
+                      <p className="text-sm text-muted-foreground">{t("lateDays")}</p>
                       <p className="text-3xl font-black text-destructive mt-1">{lateCount}</p>
                     </div>
                     <BarChart3 className="w-8 h-8 text-destructive" />
@@ -264,7 +264,7 @@ export default function AttendanceReportsPage() {
             {isRetentionLoading && (
               <Card className="border-0 shadow-lg bg-card">
                 <CardContent className="p-5 text-sm text-muted-foreground">
-                  جاري تحليل مؤشرات الاحتفاظ بالموظفين...
+                  {t("retentionAnalyzing")}
                 </CardContent>
               </Card>
             )}
@@ -272,7 +272,7 @@ export default function AttendanceReportsPage() {
             {isRetentionError && (
               <Card className="border-0 shadow-lg bg-card">
                 <CardContent className="p-5 text-sm text-[hsl(48_96%_53%)] bg-[hsl(48_96%_53%/0.1)] rounded-xl">
-                  خدمة الذكاء التحليلي غير متاحة حالياً. التقارير الأساسية ما زالت تعمل بشكل طبيعي.
+                  {t("retentionUnavailable")}
                 </CardContent>
               </Card>
             )}
@@ -281,18 +281,18 @@ export default function AttendanceReportsPage() {
               <Card className="border-0 shadow-lg bg-card">
                 <CardHeader>
                   <CardTitle className="text-lg font-bold text-foreground">
-                    ذكاء الاحتفاظ بالموظفين
+                    {t("retentionTitle")}
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <p className="text-sm text-muted-foreground">درجة الاحتفاظ المتوقعة</p>
+                    <p className="text-sm text-muted-foreground">{t("retentionScore")}</p>
                     <span className="text-2xl font-black text-primary">
                       {retentionInsights.retentionScore}%
                     </span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <p className="text-sm text-muted-foreground">مستوى المخاطر</p>
+                    <p className="text-sm text-muted-foreground">{t("riskLevel")}</p>
                     <span
                       className={`px-2.5 py-1 rounded-full text-xs font-bold ${
                         retentionInsights.riskLevel === "low"
@@ -303,10 +303,10 @@ export default function AttendanceReportsPage() {
                       }`}
                     >
                       {retentionInsights.riskLevel === "low"
-                        ? "منخفض"
+                        ? t("riskLow")
                         : retentionInsights.riskLevel === "medium"
-                          ? "متوسط"
-                          : "مرتفع"}
+                          ? t("riskMedium")
+                          : t("riskHigh")}
                     </span>
                   </div>
                   <p className="text-sm text-muted-foreground">{retentionInsights.summary}</p>
@@ -324,7 +324,7 @@ export default function AttendanceReportsPage() {
             <Card className="border-0 shadow-lg bg-card animate-slide-up">
               <CardHeader>
                 <CardTitle className="text-lg font-bold text-foreground">
-                  رسم بياني للحضور
+                  {t("chartTitle")}
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -354,14 +354,12 @@ export default function AttendanceReportsPage() {
               <Card className="border-0 shadow-lg bg-card">
                 <CardHeader>
                   <CardTitle className="text-base font-bold text-foreground">
-                    أعلى الموظفين تأخراً
+                    {t("topLateEmployees")}
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
                   {topLateEmployees.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">
-                      لا توجد حالات تأخير حالياً — أداء ممتاز ✅
-                    </p>
+                    <p className="text-sm text-muted-foreground">{t("noLateEmployees")}</p>
                   ) : (
                     <div className="space-y-2">
                       {topLateEmployees.map((emp, idx) => (
@@ -372,15 +370,15 @@ export default function AttendanceReportsPage() {
                           <div>
                             <p className="text-sm font-semibold text-foreground">{emp.name}</p>
                             <p className="text-xs text-muted-foreground">
-                              {emp.lateCount} مرات تأخير
+                              {emp.lateCount} {t("lateTimes")}
                             </p>
                           </div>
                           <div className="text-left">
                             <p className="text-sm font-bold text-[hsl(48_96%_53%)]">
-                              {emp.totalLateMinutes} د
+                              {t("totalLateMinutes", { minutes: emp.totalLateMinutes })}
                             </p>
                             <p className="text-xs text-muted-foreground">
-                              متوسط {emp.avgLateMinutes} د
+                              {t("avgLateMinutesLabel", { minutes: emp.avgLateMinutes })}
                             </p>
                           </div>
                         </div>
@@ -393,12 +391,12 @@ export default function AttendanceReportsPage() {
               <Card className="border-0 shadow-lg bg-card">
                 <CardHeader>
                   <CardTitle className="text-base font-bold text-foreground">
-                    أداء الأقسام
+                    {t("departmentPerformance")}
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
                   {departmentPerformance.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">لا توجد بيانات كافية للأقسام.</p>
+                    <p className="text-sm text-muted-foreground">{t("noDepartmentData")}</p>
                   ) : (
                     <div className="space-y-3">
                       {departmentPerformance.map((dept) => (

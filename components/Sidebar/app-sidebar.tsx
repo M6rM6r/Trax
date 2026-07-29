@@ -17,10 +17,12 @@ import { usePathname, useRouter } from "@/i18n/navigation";
 import { LogOut, Search } from "lucide-react";
 import { useAuthStore } from "@/stores/useAuthStore";
 import Image from "next/image";
+import { useTranslations } from "next-intl";
 import { signOut } from "firebase/auth";
 import { auth } from "@/lib/config/firebase";
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+  const t = useTranslations("Navigation");
   const pathname = usePathname();
   const router = useRouter();
   const { user, clearUser } = useAuthStore();
@@ -46,13 +48,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     : "T";
 
   return (
-    <Sidebar
-      side="right"
-      variant="inset"
-      {...props}
-      className="bg-sidebar"
-      collapsible="icon"
-    >
+    <Sidebar side="right" variant="inset" {...props} className="bg-sidebar" collapsible="icon">
       <SidebarHeader
         className={` bg-sidebar text-sidebar-foreground flex ${
           sidebar.state === "collapsed" ? "flex-col" : "flex-row-reverse"
@@ -70,16 +66,18 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 <Image
                   src="/images/logo.png"
                   alt="Trax"
-                  width={32}
-                  height={32}
-                  className="h-8 w-8 object-contain"
+                  width={48}
+                  height={48}
+                  className="h-12 w-12 object-contain"
                   unoptimized
                   onError={(e) => {
                     (e.currentTarget as HTMLImageElement).style.display = "none";
                   }}
                 />
                 {sidebar.state !== "collapsed" && (
-                  <span className="text-xl font-bold text-primary-foreground tracking-wide">Trax</span>
+                  <span className="text-xl font-bold text-primary-foreground tracking-wide">
+                    Trax
+                  </span>
                 )}
               </div>
             </SidebarMenuButton>
@@ -91,13 +89,13 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           <div className="px-3 pb-3">
             <button
               className="w-full flex items-center gap-2 px-3 py-2 rounded-lg bg-background/5 hover:bg-background/10 border border-white/10 text-muted-foreground hover:text-foreground transition-colors text-sm"
-              aria-label="بحث سريع — Ctrl+K"
+              aria-label={t("quickSearch")}
               onClick={() => {
                 window.dispatchEvent(new Event("toggle-command-palette"));
               }}
             >
               <Search className="w-3.5 h-3.5" />
-              <span className="flex-1 text-right">بحث...</span>
+              <span className="flex-1 text-right">{t("search")}</span>
               <kbd className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-background/10 text-[10px] font-mono text-primary-foreground/50 border border-white/10">
                 Ctrl <span className="text-[8px]">+</span> K
               </kbd>
@@ -115,15 +113,15 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             <>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-primary-foreground truncate">
-                  {user?.name || "المستخدم"}
+                  {user?.name || t("user")}
                 </p>
                 <p className="text-xs text-muted-foreground truncate">{user?.role || ""}</p>
               </div>
               <button
                 onClick={handleLogout}
                 className="p-1.5 rounded-lg hover:bg-background/10 text-muted-foreground hover:text-primary-foreground transition-colors"
-                title="تسجيل الخروج"
-                aria-label="تسجيل الخروج"
+                title={t("logout")}
+                aria-label={t("logout")}
               >
                 <LogOut className="w-4 h-4" />
               </button>

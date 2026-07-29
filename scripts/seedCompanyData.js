@@ -2,7 +2,7 @@ import { readFileSync } from 'fs';
 const lines = readFileSync('.env.local', 'utf8').split(/\r?\n/).filter((l) => l.trim());
 const env = Object.fromEntries(lines.map((l) => { const idx = l.indexOf('='); return [l.slice(0, idx), l.slice(idx + 1)]; }));
 const { initializeApp } = await import('firebase/app');
-const { getFirestore, doc, setDoc, collection, addDoc, serverTimestamp, query, where, limit, getDocs } = await import('firebase/firestore');
+const { getFirestore, doc, getDoc, setDoc, collection, addDoc, serverTimestamp, query, where, limit, getDocs } = await import('firebase/firestore');
 const { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword } = await import('firebase/auth');
 
 const config = {
@@ -18,7 +18,11 @@ const app = initializeApp(config, 'seedCompanyData');
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-const COMPANY_ID = 1;
+// Secondary app instance for creating auth users without signing out the admin
+const secondaryApp = initializeApp(config, 'seedSecondary');
+const secondaryAuth = getAuth(secondaryApp);
+
+const COMPANY_ID = "1";
 const COMPANY_NAME = 'Trax Demo Company';
 
 // Sample geofence: Dubai Internet City area
@@ -42,6 +46,11 @@ const geofences = [
     color: '#3b82f6',
     active: true,
     company_id: COMPANY_ID,
+    shifts: {
+      defaultShift: { startTime: '09:00', endTime: '18:00', gracePeriodMinutes: 15, lateThresholdMinutes: 15 },
+      morningShift: { startTime: '09:00', endTime: '13:00', gracePeriodMinutes: 15, lateThresholdMinutes: 15 },
+      eveningShift: { startTime: '14:00', endTime: '18:00', gracePeriodMinutes: 15, lateThresholdMinutes: 15 },
+    },
   },
 ];
 
@@ -125,7 +134,11 @@ async function findUserUidByEmail(email) {
 
 async function createAuthUser(email, password, name, role, employeeId, geofenceId, attendanceMode) {
   try {
-    const cred = await createUserWithEmailAndPassword(auth, email, password);
+    const cred = await createUserWithEmailAndPassword(secondaryAuth, email, password);
+    // Write user doc using admin's auth (primary) — admin can write to any user doc
+    // because the rule allows create if uid == request.auth.uid OR sameCompany(request.resource)
+    // Since admin is signed in on primary auth, and the new user's uid != admin's uid,
+    // we need sameCompany — the user doc has company_id: COMPANY_ID which matches admin's
     await setDoc(doc(db, 'users', cred.user.uid), {
       name,
       email,
@@ -142,7 +155,7 @@ async function createAuthUser(email, password, name, role, employeeId, geofenceI
     if (err.code === 'auth/email-already-in-use') {
       // Try to link to existing user profile if we know the password.
       try {
-        const cred = await signInWithEmailAndPassword(auth, email, password);
+        const cred = await signInWithEmailAndPassword(secondaryAuth, email, password);
         await setDoc(doc(db, 'users', cred.user.uid), {
           name,
           email,
@@ -189,6 +202,32 @@ console.log('Signing in as company admin g@g.com...');
 const adminCred = await signInWithEmailAndPassword(auth, 'g@g.com', '11223344');
 console.log('Signed in admin uid:', adminCred.user.uid);
 
+// Step 1: Write admin user doc (allowed by rule: uid == request.auth.uid)
+console.log('Creating admin user doc...');
+await setDoc(doc(db, 'users', adminCred.user.uid), {
+  id: adminCred.user.uid,
+  company_id: COMPANY_ID,
+  name: 'Company Admin',
+  email: 'g@g.com',
+  role: 'company',
+  company_name: COMPANY_NAME,
+  company: { id: COMPANY_ID, name: COMPANY_NAME },
+  createdAt: serverTimestamp(),
+}, { merge: true });
+
+// Step 2: Create company doc (allowed by rule: ownerId == request.auth.uid)
+console.log('Creating company doc...');
+await setDoc(doc(db, 'companies', String(COMPANY_ID)), {
+  id: String(COMPANY_ID),
+  name: COMPANY_NAME,
+  industry: 'Technology',
+  plan: 'trial',
+  maxEmployees: 50,
+  active: true,
+  ownerId: adminCred.user.uid,
+  createdAt: serverTimestamp(),
+}, { merge: true });
+
 // Note: Firestore security rules may restrict deletes from the client SDK,
 // so this script uses deterministic document IDs to stay idempotent on rerun.
 // Any older seed documents created with auto-generated IDs can be removed from
@@ -207,14 +246,13 @@ function slugify(text) {
 
 const createdGeofences = [];
 for (const geofence of geofences) {
-  const docId = `company-${COMPANY_ID}-${slugify(geofence.name)}`;
-  await setDoc(doc(db, 'geofences', docId), {
+  const ref = await addDoc(collection(db, 'geofences'), {
     ...geofence,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
-  }, { merge: true });
-  createdGeofences.push({ id: docId, ...geofence });
-  console.log(`  Created/updated geofence: ${geofence.name} (${docId})`);
+  });
+  createdGeofences.push({ id: ref.id, ...geofence });
+  console.log(`  Created geofence: ${geofence.name} (${ref.id})`);
 }
 
 const mainGeofence = createdGeofences[0];
@@ -224,11 +262,11 @@ const createdEmployees = [];
 for (let i = 0; i < employees.length; i++) {
   const emp = employees[i];
   const geofenceId = i < 4 ? mainGeofence.id : createdGeofences[1]?.id ?? mainGeofence.id;
-  const employeeDocId = emp.email;
-
-  await setDoc(doc(db, 'employees', employeeDocId), {
+  let empRef;
+  try {
+    empRef = await addDoc(collection(db, 'employees'), {
     ...emp,
-    id: employeeDocId,
+    id: emp.email,
     company_id: COMPANY_ID,
     company_name: COMPANY_NAME,
     geofenceId,
@@ -240,17 +278,27 @@ for (let i = 0; i < employees.length; i++) {
     shiftOverride: null,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
-  }, { merge: true });
+  });
+  } catch (empErr) {
+    console.error(`  FAILED to create employee ${emp.email}:`, empErr.code || empErr.message);
+    continue;
+  }
+  const employeeDbId = empRef.id;
 
-  const uid = await createAuthUser(emp.email, emp.password, emp.name, emp.role, employeeDocId, geofenceId, emp.attendanceMode);
+  let uid = null;
+  try {
+    uid = await createAuthUser(emp.email, emp.password, emp.name, emp.role, empRef.id, geofenceId, emp.attendanceMode);
+  } catch (authErr) {
+    console.error(`  FAILED to create auth user for ${emp.email}:`, authErr.code || authErr.message);
+  }
 
   // Update employee with authUid if auth account was linked/created.
   if (uid) {
-    await setDoc(doc(db, 'employees', employeeDocId), { authUid: uid }, { merge: true });
+    await setDoc(doc(db, 'employees', empRef.id), { authUid: uid }, { merge: true });
   }
 
-  createdEmployees.push({ id: employeeDocId, ...emp, geofenceId, authUid: uid });
-  console.log(`  Created/updated employee: ${emp.name} (${emp.email}) - ${emp.role}`);
+  createdEmployees.push({ id: empRef.id, ...emp, geofenceId, authUid: uid });
+  console.log(`  Created employee: ${emp.name} (${emp.email}) - ${emp.role}`);
 }
 
 console.log('Creating sample attendance records for today...');
@@ -262,12 +310,15 @@ const attendanceStatuses = [
   { status: 'present', checkInTime: '08:00', checkOutTime: '17:00', lateMinutes: 0 },
   { status: 'present', checkInTime: '08:10', checkOutTime: '16:50', lateMinutes: 10 },
 ];
+const defaultAppliedShift = { startTime: '08:00', endTime: '17:00', gracePeriodMinutes: 15, lateThresholdMinutes: 15 };
 
 for (let i = 0; i < createdEmployees.length; i++) {
   const emp = createdEmployees[i];
   if (emp.status === 'inactive') continue;
   const record = attendanceStatuses[i];
   await addDoc(collection(db, 'attendance'), {
+    company_id: COMPANY_ID,
+    ownerUid: adminCred.user.uid,
     employeeId: emp.id,
     employeeName: emp.name,
     date: todayStr,
@@ -282,7 +333,10 @@ for (let i = 0; i < createdEmployees.length; i++) {
     geofenceName: mainGeofence.name,
     lateMinutes: record.lateMinutes,
     workedHours: record.checkOutTime && record.checkInTime ? 9 : 0,
-    checkOutStatus: record.checkOutTime ? 'normal' : null,
+    checkOutStatus: record.checkOutTime ? 'present' : null,
+    appliedShift: defaultAppliedShift,
+    expectedCheckoutTime: defaultAppliedShift.endTime,
+    earlyCheckout: Boolean(record.checkOutTime && record.checkOutTime < defaultAppliedShift.endTime),
     attendanceMode: emp.attendanceMode,
     createdAt: serverTimestamp(),
   });

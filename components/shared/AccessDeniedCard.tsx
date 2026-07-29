@@ -12,9 +12,9 @@ interface AccessDeniedCardProps {
 
 export default function AccessDeniedCard({
   icon: Icon,
-  title = "غير مصرح لك بالوصول",
+  title = "Access Denied",
   message,
-  ctaLabel = "الذهاب إلى تسجيل الحضور",
+  ctaLabel = "Go to Check In",
   ctaHref,
 }: AccessDeniedCardProps) {
   return (

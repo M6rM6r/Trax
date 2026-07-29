@@ -11,7 +11,6 @@ describe("Zod Validation Schemas", () => {
       name: "Ahmed",
       email: "ahmed@trax.com",
       phone: "+966501234567",
-      role: "employee",
       department: "IT",
       status: "active",
     };
@@ -22,10 +21,6 @@ describe("Zod Validation Schemas", () => {
 
     it("rejects invalid email", () => {
       expect(() => employeeSchema.parse({ ...validEmployee, email: "not-an-email" })).toThrow();
-    });
-
-    it("rejects invalid role", () => {
-      expect(() => employeeSchema.parse({ ...validEmployee, role: "boss" })).toThrow();
     });
 
     it("rejects short name", () => {
@@ -39,7 +34,6 @@ describe("Zod Validation Schemas", () => {
         name: "Test",
         email: "test@trax.com",
         phone: "+966501234567",
-        role: "manager",
         department: "Ops",
         status: "active",
       };
@@ -141,6 +135,7 @@ describe("Zod Validation Schemas", () => {
         lateToday: 5,
         absentToday: 5,
         checkedOutToday: 3,
+        earlyCheckoutsToday: 1,
         onTimeRate: 0.89,
         avgCheckInTime: "08:15",
         avgWorkedHours: 8.2,

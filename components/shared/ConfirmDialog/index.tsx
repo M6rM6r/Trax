@@ -28,8 +28,8 @@ export default function ConfirmDialog({
   onOpenChange,
   title,
   description,
-  confirmLabel = "حذف",
-  cancelLabel = "إلغاء",
+  confirmLabel = "Delete",
+  cancelLabel = "Cancel",
   onConfirm,
 }: ConfirmDialogProps) {
   return (

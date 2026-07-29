@@ -15,6 +15,7 @@ import { Style, Stroke, Fill, Circle as CircleStyle, Text } from "ol/style";
 import "ol/ol.css";
 import type { Geofence } from "@/lib/types/trackingTypes";
 import { MAP_THEME } from "@/lib/utils/mapTheme";
+import { useTranslations } from "next-intl";
 
 interface CheckInMapProps {
   geofences: Geofence[];
@@ -33,6 +34,7 @@ export default function CheckInMap({
   loading = false,
   className = "",
 }: CheckInMapProps) {
+  const t = useTranslations("CheckIn");
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<Map | null>(null);
   const vectorSourceRef = useRef<VectorSource | null>(null);
@@ -169,7 +171,7 @@ export default function CheckInMap({
             stroke: new Stroke({ color: MAP_THEME.contrastStroke, width: 3 }),
           }),
           text: new Text({
-            text: "أنت هنا",
+            text: t("youAreHere"),
             offsetY: -22,
             font: "bold 12px sans-serif",
             fill: new Fill({ color: MAP_THEME.employeeMarker }),
@@ -197,9 +199,9 @@ export default function CheckInMap({
     } else if (geofences[0]) {
       map.getView().setCenter(fromLonLat([geofences[0].lng, geofences[0].lat]));
     }
-  }, [geofences, currentLocation, nearestGeofence]);
+  }, [geofences, currentLocation, nearestGeofence, t]);
 
-  const statusText = isWithinRange ? "داخل النطاق" : "خارج النطاق";
+  const statusText = isWithinRange ? t("insideRange") : t("outsideRange");
   const statusColor = isWithinRange ? "bg-primary" : "bg-[hsl(48_96%_53%/0.1)]0";
 
   return (
@@ -213,8 +215,8 @@ export default function CheckInMap({
           onClick={recenterOnUser}
           disabled={!currentLocation}
           className="p-2 rounded-lg bg-card/80 text-primary-foreground shadow-md backdrop-blur-sm hover:bg-muted/90 disabled:opacity-40 transition-colors"
-          title="توسيط على موقعي"
-          aria-label="توسيط على موقعي"
+          title={t("recenterOnMe")}
+          aria-label={t("recenterOnMe")}
         >
           <Crosshair className="w-4 h-4" />
         </button>
@@ -222,8 +224,8 @@ export default function CheckInMap({
           type="button"
           onClick={fitToAll}
           className="p-2 rounded-lg bg-card/80 text-primary-foreground shadow-md backdrop-blur-sm hover:bg-muted/90 transition-colors"
-          title="عرض الكل"
-          aria-label="عرض الكل"
+          title={t("showAll")}
+          aria-label={t("showAll")}
         >
           <Maximize className="w-4 h-4" />
         </button>
@@ -232,11 +234,11 @@ export default function CheckInMap({
       {/* Location / geofence info */}
       <div className="absolute bottom-3 left-3 z-10 max-w-[85%] rounded-xl bg-background/80 p-3 text-primary-foreground shadow-lg backdrop-blur-sm">
         {loading ? (
-          <p className="text-[11px]">جاري تحميل النطاقات الجغرافية...</p>
+          <p className="text-[11px]">{t("loadingGeofences")}</p>
         ) : geofences.length === 0 ? (
-          <p className="text-[11px]">لم يتم إعداد نطاق جغرافي بعد.</p>
+          <p className="text-[11px]">{t("noGeofenceSetup")}</p>
         ) : !currentLocation ? (
-          <p className="text-[11px]">جاري تحديد موقعك...</p>
+          <p className="text-[11px]">{t("locatingYou")}</p>
         ) : nearestGeofence ? (
           <div className="space-y-1.5">
             <div className="flex items-center gap-2">
@@ -244,14 +246,17 @@ export default function CheckInMap({
                 className="w-2.5 h-2.5 rounded-full"
                 style={{
                   backgroundColor:
-                    nearestGeofence.geofence.color || (isWithinRange ? MAP_THEME.primary : MAP_THEME.secondary),
+                    nearestGeofence.geofence.color ||
+                    (isWithinRange ? MAP_THEME.primary : MAP_THEME.secondary),
                 }}
               />
               <span className="text-xs font-bold truncate">{nearestGeofence.geofence.name}</span>
             </div>
             <div className="text-[11px] text-muted-foreground">
-              المسافة: {Math.round(nearestGeofence.distance)}م · نصف القطر:{" "}
-              {Math.round(nearestGeofence.geofence.radius)}م
+              {t("distanceAndRadius", {
+                distance: Math.round(nearestGeofence.distance),
+                radius: Math.round(nearestGeofence.geofence.radius),
+              })}
             </div>
             <div className="flex items-center gap-1.5">
               <span className={`w-2 h-2 rounded-full ${statusColor}`} />
@@ -259,7 +264,7 @@ export default function CheckInMap({
             </div>
           </div>
         ) : (
-          <p className="text-[11px]">لا يوجد نطاق جغرافي مطابق.</p>
+          <p className="text-[11px]">{t("noMatchingGeofence")}</p>
         )}
       </div>
     </div>

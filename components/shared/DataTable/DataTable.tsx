@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Search, Inbox, X } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 export interface Column<T> {
   key: string;
@@ -36,7 +37,7 @@ interface DataTableProps<T> {
 export function DataTable<T extends { id: number | string }>({
   columns,
   data,
-  searchPlaceholder = "بحث...",
+  searchPlaceholder,
   pageSize = 10,
   selectable = false,
   selectedIds = [],
@@ -49,6 +50,7 @@ export function DataTable<T extends { id: number | string }>({
   const [currentPage, setCurrentPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(pageSize);
   const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const t = useTranslations("Common.dataTable");
 
   useEffect(() => {
     if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
@@ -141,13 +143,7 @@ export function DataTable<T extends { id: number | string }>({
         <div className="p-4 border-b border-border" role="search">
           <div className="flex items-center justify-between gap-4 mb-3">
             <p className="text-sm text-muted-foreground">
-              عرض{" "}
-              <span className="font-medium text-foreground">
-                {filteredData.length}
-              </span>{" "}
-              من{" "}
-              <span className="font-medium text-foreground">{data.length}</span>{" "}
-              سجل
+              {t("showing", { count: filteredData.length, total: data.length })}
             </p>
           </div>
           <div className="relative max-w-sm">
@@ -155,15 +151,15 @@ export function DataTable<T extends { id: number | string }>({
             <Input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder={searchPlaceholder}
+              placeholder={searchPlaceholder ?? t("searchPlaceholder")}
               className="pr-9 pl-9"
-              aria-label="البحث"
+              aria-label={t("search")}
             />
             {search && (
               <button
                 onClick={() => setSearch("")}
                 className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                aria-label="مسح البحث"
+                aria-label={t("clearSearch")}
               >
                 <X className="w-4 h-4" />
               </button>
@@ -174,12 +170,7 @@ export function DataTable<T extends { id: number | string }>({
       {!hasFilterable && data.length > 0 && (
         <div className="px-4 pt-3 pb-1">
           <p className="text-sm text-muted-foreground">
-            عرض{" "}
-            <span className="font-medium text-foreground">
-              {filteredData.length}
-            </span>{" "}
-            من <span className="font-medium text-foreground">{data.length}</span>{" "}
-            سجل
+            {t("showing", { count: filteredData.length, total: data.length })}
           </p>
         </div>
       )}
@@ -195,7 +186,7 @@ export function DataTable<T extends { id: number | string }>({
                       checked={allOnPageSelected}
                       onChange={(e) => handleSelectAll(e.target.checked)}
                       className="w-4 h-4 rounded border-input text-primary focus:ring-ring cursor-pointer"
-                      aria-label="تحديد الكل"
+                      aria-label={t("selectAll")}
                     />
                   </TableHead>
                 )}
@@ -213,9 +204,7 @@ export function DataTable<T extends { id: number | string }>({
                           : undefined
                     }
                     className={`text-right py-3 px-4 text-sm font-semibold text-muted-foreground ${
-                      col.sortable
-                        ? "cursor-pointer select-none hover:bg-muted"
-                        : ""
+                      col.sortable ? "cursor-pointer select-none hover:bg-muted" : ""
                     }`}
                     onClick={() => col.sortable && handleSort(col.key)}
                     onKeyDown={(e) => {
@@ -249,7 +238,7 @@ export function DataTable<T extends { id: number | string }>({
                   >
                     <div className="flex flex-col items-center gap-2">
                       <Inbox className="w-8 h-8 text-muted-foreground/50" />
-                      <span>لا توجد نتائج مطابقة</span>
+                      <span>{t("noResults")}</span>
                     </div>
                   </TableCell>
                 </TableRow>
@@ -268,15 +257,12 @@ export function DataTable<T extends { id: number | string }>({
                           checked={selectedIds.includes(row.id)}
                           onChange={(e) => handleSelectRow(row.id, e.target.checked)}
                           className="w-4 h-4 rounded border-input text-primary focus:ring-ring cursor-pointer"
-                          aria-label={`تحديد ${row.id}`}
+                          aria-label={t("selectRow", { id: row.id })}
                         />
                       </TableCell>
                     )}
                     {columns.map((col) => (
-                      <TableCell
-                        key={col.key}
-                        className="py-3 px-4 text-sm text-muted-foreground"
-                      >
+                      <TableCell key={col.key} className="py-3 px-4 text-sm text-muted-foreground">
                         {col.cell(row)}
                       </TableCell>
                     ))}
@@ -290,7 +276,7 @@ export function DataTable<T extends { id: number | string }>({
         {sortedData.length > 0 && (
           <div className="flex items-center justify-between p-4 border-t border-border">
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <span>عرض</span>
+              <span>{t("show")}</span>
               <select
                 value={rowsPerPage}
                 onChange={(e) => {
@@ -298,13 +284,13 @@ export function DataTable<T extends { id: number | string }>({
                   setCurrentPage(1);
                 }}
                 className="border border-input rounded-lg px-2 py-1 bg-transparent text-foreground"
-                aria-label="عدد الصفوف في الصفحة"
+                aria-label={t("rowsPerPage")}
               >
                 <option value={10}>10</option>
                 <option value={25}>25</option>
                 <option value={50}>50</option>
               </select>
-              <span>من {sortedData.length}</span>
+              <span>{t("ofTotal", { total: sortedData.length })}</span>
             </div>
             <div className="flex items-center gap-2">
               <Button
@@ -312,7 +298,7 @@ export function DataTable<T extends { id: number | string }>({
                 size="sm"
                 disabled={currentPage === 1}
                 onClick={() => setCurrentPage(currentPage - 1)}
-                aria-label="الصفحة السابقة"
+                aria-label={t("previousPage")}
                 className="text-muted-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 <ChevronRight className="w-4 h-4" />
@@ -325,7 +311,7 @@ export function DataTable<T extends { id: number | string }>({
                 size="sm"
                 disabled={currentPage >= totalPages}
                 onClick={() => setCurrentPage(currentPage + 1)}
-                aria-label="الصفحة التالية"
+                aria-label={t("nextPage")}
                 className="text-muted-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 <ChevronLeft className="w-4 h-4" />

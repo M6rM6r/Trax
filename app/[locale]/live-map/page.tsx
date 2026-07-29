@@ -38,12 +38,14 @@ import LiveMapSkeleton from "@/components/shared/Skeletons/LiveMapSkeleton";
 import { Input } from "@/components/ui/input";
 import { hapticTap } from "@/lib/utils/haptics";
 import type { LiveTrackingEmployee, Geofence } from "@/lib/types/trackingTypes";
+import { useTranslations } from "next-intl";
 import { useAuthStore } from "@/stores/useAuthStore";
 import AccessDeniedCard from "@/components/shared/AccessDeniedCard";
 import { MAP_THEME } from "@/lib/utils/mapTheme";
 import { createHybridSatelliteLayers } from "@/lib/utils/mapLayers";
 
 export default function LiveMapPage() {
+  const t = useTranslations("LiveMap");
   const mapRef = useRef<HTMLDivElement>(null);
   const { data: initialTracking = [], isLoading, isError, refetch } = useLiveTracking();
   const { data: geofences = [] } = useGeofences();
@@ -117,9 +119,9 @@ export default function LiveMapPage() {
   }, [tileLayer, tileSources]);
 
   const statusLabels: Record<string, string> = {
-    inside_geofence: "داخل النطاق",
-    outside_geofence: "خارج النطاق",
-    offline: "غير متصل",
+    inside_geofence: t("insideGeofence"),
+    outside_geofence: t("outsideGeofence"),
+    offline: t("offlineStatus"),
   };
 
   const statusColors: Record<string, string> = {
@@ -358,11 +360,7 @@ export default function LiveMapPage() {
     return (
       <MainLayout>
         <div className="p-6 min-h-screen">
-          <AccessDeniedCard
-            icon={MapPin}
-            message="الخريطة المباشرة مخصصة لمتابعة الإدارة فقط."
-            ctaHref="/check-in"
-          />
+          <AccessDeniedCard icon={MapPin} message={t("accessDenied")} ctaHref="/check-in" />
         </div>
       </MainLayout>
     );
@@ -372,8 +370,8 @@ export default function LiveMapPage() {
     <MainLayout>
       <div className="p-6 space-y-6 min-h-screen">
         <FullPageHead
-          head="تتبع مباشر"
-          description="متابعة موظفيك على الخريطة في الوقت الحقيقي"
+          head={t("title")}
+          description={t("description")}
           Icon={<MapPin className="w-7 h-7" />}
           LeftSection={
             <div className="flex items-center gap-3 text-sm">
@@ -381,12 +379,12 @@ export default function LiveMapPage() {
                 className={`flex items-center gap-1.5 px-2 py-1 rounded-lg ${socketConnected ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`}
               >
                 {socketConnected ? <Wifi className="w-3 h-3" /> : <WifiOff className="w-3 h-3" />}
-                {socketConnected ? "مباشر" : "غير متصل"}
+                {socketConnected ? t("live") : t("offline")}
               </span>
               {lastUpdate && (
                 <span className="text-xs text-muted-foreground/70">
-                  آخر تحديث:{" "}
-                  {lastUpdate.toLocaleTimeString("ar-SA-u-nu-latn", {
+                  {t("lastUpdate")}:{" "}
+                  {lastUpdate.toLocaleTimeString(undefined, {
                     hour: "2-digit",
                     minute: "2-digit",
                     second: "2-digit",
@@ -395,15 +393,15 @@ export default function LiveMapPage() {
               )}
               <span className="flex items-center gap-1.5">
                 <span className="w-3 h-3 rounded-full bg-primary" />
-                <span className="text-muted-foreground">داخل النطاق</span>
+                <span className="text-muted-foreground">{t("insideGeofence")}</span>
               </span>
               <span className="flex items-center gap-1.5">
                 <span className="w-3 h-3 rounded-full bg-[hsl(48_96%_53%/0.1)]0" />
-                <span className="text-muted-foreground">خارج النطاق</span>
+                <span className="text-muted-foreground">{t("outsideGeofence")}</span>
               </span>
               <span className="flex items-center gap-1.5">
                 <span className="w-3 h-3 rounded-full bg-muted-foreground/50" />
-                <span className="text-muted-foreground">غير متصل</span>
+                <span className="text-muted-foreground">{t("offlineStatus")}</span>
               </span>
             </div>
           }
@@ -415,8 +413,8 @@ export default function LiveMapPage() {
           <EmptyState
             icon={MapPin}
             illustration="geofences"
-            title="لا يوجد موظفون متصلون"
-            description="لا يوجد موظفون متصلون حالياً"
+            title={t("noEmployeesConnected")}
+            description={t("noEmployeesConnectedDescription")}
           />
         )}
         {!isLoading && !isError && liveTracking.length > 0 && (
@@ -430,17 +428,17 @@ export default function LiveMapPage() {
                     <Input
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      placeholder="بحث عن موظف..."
+                      placeholder={t("searchEmployee")}
                       className="pr-9 bg-background text-foreground"
-                      aria-label="بحث عن موظف"
+                      aria-label={t("searchEmployeeAria")}
                     />
                   </div>
                   <div className="flex items-center gap-1 bg-muted rounded-lg p-1">
                     {[
-                      { value: "all", label: "الكل" },
-                      { value: "inside_geofence", label: "داخل" },
-                      { value: "outside_geofence", label: "خارج" },
-                      { value: "offline", label: "غير متصل" },
+                      { value: "all", label: t("all") },
+                      { value: "inside_geofence", label: t("inside") },
+                      { value: "outside_geofence", label: t("outside") },
+                      { value: "offline", label: t("offlineStatus") },
                     ].map((opt) => (
                       <button
                         key={opt.value}
@@ -473,7 +471,7 @@ export default function LiveMapPage() {
                       }`}
                     >
                       <Route className="w-4 h-4" />
-                      {showRoute ? "إخفاء المسار" : "عرض المسار"}
+                      {showRoute ? t("hideRoute") : t("showRoute")}
                     </button>
                   )}
                 </div>
@@ -493,8 +491,8 @@ export default function LiveMapPage() {
                       <button
                         onClick={toggleFullscreen}
                         className="p-2 rounded-lg bg-card/90 backdrop-blur-sm shadow-md hover:bg-muted transition-colors"
-                        title={isFullscreen ? "خروج من الشاشة الكاملة" : "شاشة كاملة"}
-                        aria-label={isFullscreen ? "خروج من الشاشة الكاملة" : "دخول الشاشة الكاملة"}
+                        title={isFullscreen ? t("exitFullscreen") : t("fullscreen")}
+                        aria-label={isFullscreen ? t("exitFullscreen") : t("fullscreen")}
                       >
                         {isFullscreen ? (
                           <Minimize2 className="w-4 h-4 text-foreground" />
@@ -506,8 +504,8 @@ export default function LiveMapPage() {
                         <button
                           onClick={() => setShowTilePicker(!showTilePicker)}
                           className="p-2 rounded-lg bg-card/90 backdrop-blur-sm shadow-md hover:bg-muted transition-colors"
-                          title="طبقة الخريطة"
-                          aria-label="اختيار طبقة الخريطة"
+                          title={t("mapLayer")}
+                          aria-label={t("chooseMapLayer")}
                           aria-expanded={showTilePicker}
                         >
                           <Layers className="w-4 h-4 text-foreground" />
@@ -516,9 +514,9 @@ export default function LiveMapPage() {
                           <div className="absolute left-full top-0 ml-2 bg-card rounded-xl shadow-xl border border-border overflow-hidden">
                             {(
                               [
-                                { key: "osm", label: "عادي" },
-                                { key: "satellite", label: "أقمار صناعية" },
-                                { key: "topo", label: "طبوغرافي" },
+                                { key: "osm", label: t("normal") },
+                                { key: "satellite", label: t("satellite") },
+                                { key: "topo", label: t("topographic") },
                               ] as const
                             ).map(({ key, label }) => (
                               <button
@@ -565,32 +563,29 @@ export default function LiveMapPage() {
                         <button
                           onClick={() => setSelectedEmployee(null)}
                           className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground/70"
-                          aria-label="إغلاق"
+                          aria-label={t("close")}
                         >
                           <X className="w-4 h-4" />
                         </button>
                       </div>
                       <div className="space-y-2 text-sm">
                         <div className="flex justify-between">
-                          <span className="text-muted-foreground">الموقع:</span>
+                          <span className="text-muted-foreground">{t("location")}:</span>
                           <span className="font-medium text-foreground">
-                            {selectedEmployee.geofenceName || "خارج النطاق"}
+                            {selectedEmployee.geofenceName || t("outsideGeofenceShort")}
                           </span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-muted-foreground">آخر ظهور:</span>
+                          <span className="text-muted-foreground">{t("lastSeen")}:</span>
                           <span className="font-medium text-foreground">
-                            {new Date(selectedEmployee.lastSeen).toLocaleTimeString(
-                              "ar-SA-u-nu-latn",
-                              {
-                                hour: "2-digit",
-                                minute: "2-digit",
-                              }
-                            )}
+                            {new Date(selectedEmployee.lastSeen).toLocaleTimeString(undefined, {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}
                           </span>
                         </div>
                         <div className="flex justify-between items-center">
-                          <span className="text-muted-foreground">البطارية:</span>
+                          <span className="text-muted-foreground">{t("battery")}:</span>
                           <div className="flex items-center gap-1.5">
                             {selectedEmployee.batteryLevel !== null ? (
                               <>
@@ -604,18 +599,20 @@ export default function LiveMapPage() {
                                 </span>
                               </>
                             ) : (
-                              <span className="text-muted-foreground/70 text-sm">غير متاح</span>
+                              <span className="text-muted-foreground/70 text-sm">
+                                {t("batteryNotAvailable")}
+                              </span>
                             )}
                           </div>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-muted-foreground">خط العرض:</span>
+                          <span className="text-muted-foreground">{t("latitude")}:</span>
                           <span className="font-medium text-foreground">
                             {selectedEmployee.lat.toFixed(4)}
                           </span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-muted-foreground">خط الطول:</span>
+                          <span className="text-muted-foreground">{t("longitude")}:</span>
                           <span className="font-medium text-foreground">
                             {selectedEmployee.lng.toFixed(4)}
                           </span>
@@ -627,7 +624,7 @@ export default function LiveMapPage() {
                         <div className="mt-4 pt-4 border-t border-border">
                           <h4 className="text-sm font-bold text-foreground mb-2 flex items-center gap-2">
                             <Route className="w-4 h-4 text-primary" />
-                            سجل المسار ({routeHistory.length} نقطة)
+                            {t("routeHistory", { count: routeHistory.length })}
                           </h4>
                           <div className="max-h-32 overflow-y-auto space-y-1">
                             {routeHistory
@@ -654,7 +651,7 @@ export default function LiveMapPage() {
                   <Card className="border-0 shadow-lg bg-card">
                     <CardContent className="pt-6 text-center text-muted-foreground">
                       <MapPin className="w-10 h-10 mx-auto mb-2 text-muted-foreground/50" />
-                      <p className="text-sm">انقر على موظف على الخريطة لعرض تفاصيله</p>
+                      <p className="text-sm">{t("clickEmployeeForDetails")}</p>
                     </CardContent>
                   </Card>
                 )}
@@ -662,12 +659,12 @@ export default function LiveMapPage() {
                 <Card className="border-0 shadow-lg bg-card">
                   <CardContent className="pt-6">
                     <h3 className="font-bold text-foreground mb-4">
-                      الموظفون المتصلون ({filteredTracking.length})
+                      {t("connectedEmployees", { count: filteredTracking.length })}
                     </h3>
                     <div className="space-y-2 max-h-[300px] overflow-y-auto">
                       {filteredTracking.length === 0 ? (
                         <p className="text-sm text-muted-foreground/70 text-center py-4">
-                          لا نتائج مطابقة
+                          {t("noMatchingResults")}
                         </p>
                       ) : (
                         filteredTracking.map((emp) => (

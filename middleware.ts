@@ -1,5 +1,4 @@
-import { NextResponse } from "next/server";
-import type { NextRequest } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 import createMiddleware from "next-intl/middleware";
 import { routing } from "./i18n/routing";
 
@@ -18,7 +17,12 @@ export default function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // 2. Run i18n middleware first
+  // 2. Default to Arabic for new users (no cookie yet)
+  if (!request.cookies.get("NEXT_LOCALE")?.value) {
+    request.cookies.set("NEXT_LOCALE", "ar");
+  }
+
+  // 3. Run i18n middleware
   const response = intlMiddleware(request);
 
   // 3. Simple Auth Check (Local testing only)

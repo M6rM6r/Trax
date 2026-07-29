@@ -7,6 +7,7 @@ import { useFCM } from "@/hooks/useFCM";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { db } from "@/lib/config/firebase";
+import { useTranslations } from "next-intl";
 
 interface NotificationSettings {
   check_in_reminder: boolean;
@@ -32,46 +33,51 @@ const defaults: NotificationSettings = {
   quiet_hours_end: "07:00",
 };
 
-const items = [
-  {
-    key: "check_in_reminder" as const,
-    label: "تذكير تسجيل الحضور",
-    icon: Clock,
-    desc: "إشعار عند موعد بدء الدوام",
-  },
-  {
-    key: "late_check_in_alert" as const,
-    label: "تنبيه التأخير",
-    icon: AlertTriangle,
-    desc: "إشعار عند تأخر الموظف عن الحضور",
-  },
-  {
-    key: "geofence_entry_exit" as const,
-    label: "دخول/خروج النطاق",
-    icon: MapPin,
-    desc: "إشعار عند دخول أو خروج الموظف من النطاق الجغرافي",
-  },
-  {
-    key: "company_announcement" as const,
-    label: "إعلانات الشركة",
-    icon: Megaphone,
-    desc: "إشعارات عامة من إدارة الشركة",
-  },
-  {
-    key: "trial_expiring" as const,
-    label: "انتهاء الفترة التجريبية",
-    icon: AlertTriangle,
-    desc: "تذكير قبل انتهاء الفترة التجريبية",
-  },
-  {
-    key: "attendance_report" as const,
-    label: "تقارير الحضور",
-    icon: FileText,
-    desc: "إشعار عند توفر التقرير اليومي",
-  },
-];
+function useNotificationItems() {
+  const t = useTranslations("Notifications");
+  return [
+    {
+      key: "check_in_reminder" as const,
+      label: t("checkInReminder"),
+      icon: Clock,
+      desc: t("checkInReminderDesc"),
+    },
+    {
+      key: "late_check_in_alert" as const,
+      label: t("lateCheckInAlert"),
+      icon: AlertTriangle,
+      desc: t("lateCheckInAlertDesc"),
+    },
+    {
+      key: "geofence_entry_exit" as const,
+      label: t("geofenceEntryExit"),
+      icon: MapPin,
+      desc: t("geofenceEntryExitDesc"),
+    },
+    {
+      key: "company_announcement" as const,
+      label: t("companyAnnouncement"),
+      icon: Megaphone,
+      desc: t("companyAnnouncementDesc"),
+    },
+    {
+      key: "trial_expiring" as const,
+      label: t("trialExpiring"),
+      icon: AlertTriangle,
+      desc: t("trialExpiringDesc"),
+    },
+    {
+      key: "attendance_report" as const,
+      label: t("attendanceReport"),
+      icon: FileText,
+      desc: t("attendanceReportDesc"),
+    },
+  ];
+}
 
 export default function NotificationPreferences() {
+  const t = useTranslations("Notifications");
+  const items = useNotificationItems();
   const { permission, supported, requestPermission, revokePermission } = useFCM();
   const { user } = useAuthStore();
   const [settings, setSettings] = useState<NotificationSettings>(defaults);
@@ -112,7 +118,7 @@ export default function NotificationPreferences() {
       <div className="rounded-xl border border-border bg-card p-6">
         <div className="flex items-center gap-3 text-muted-foreground">
           <BellOff className="w-5 h-5" />
-          <p className="text-sm">الإشعارات غير مدعومة في هذا المتصفح</p>
+          <p className="text-sm">{t("browserNotSupported")}</p>
         </div>
       </div>
     );
@@ -127,13 +133,13 @@ export default function NotificationPreferences() {
               <Bell className="w-5 h-5 text-primary" />
             </div>
             <div>
-              <h3 className="font-semibold text-foreground">الإشعارات</h3>
+              <h3 className="font-semibold text-foreground">{t("title")}</h3>
               <p className="text-xs text-muted-foreground">
                 {permission === "granted"
-                  ? "الإشعارات مفعلة"
+                  ? t("enabled")
                   : permission === "denied"
-                    ? "الإشعارات محظورة — يرجى تغيير إعدادات المتصفح"
-                    : "الإشعارات غير مفعلة"}
+                    ? t("blocked")
+                    : t("notEnabled")}
               </p>
             </div>
           </div>
@@ -147,7 +153,7 @@ export default function NotificationPreferences() {
 
       {permission === "granted" && (
         <div className="rounded-xl border border-border bg-card p-6 space-y-4">
-          <h4 className="font-semibold text-foreground">تفضيلات الإشعارات</h4>
+          <h4 className="font-semibold text-foreground">{t("preferences")}</h4>
           {items.map(({ key, label, icon: Icon, desc }) => (
             <div
               key={key}
@@ -173,8 +179,8 @@ export default function NotificationPreferences() {
               <div className="flex items-center gap-3">
                 <Clock className="w-4 h-4 text-muted-foreground" />
                 <div>
-                  <p className="text-sm font-medium text-foreground">ساعات الهدوء</p>
-                  <p className="text-xs text-muted-foreground">إيقاف الإشعارات خلال هذه الفترة</p>
+                  <p className="text-sm font-medium text-foreground">{t("quietHours")}</p>
+                  <p className="text-xs text-muted-foreground">{t("quietHoursDesc")}</p>
                 </div>
               </div>
               <Switch
@@ -203,7 +209,7 @@ export default function NotificationPreferences() {
                   }}
                   className="px-3 py-1.5 border border-input rounded-lg bg-transparent text-sm"
                 />
-                <span className="text-muted-foreground text-sm">حتى</span>
+                <span className="text-muted-foreground text-sm">{t("until")}</span>
                 <input
                   type="time"
                   value={settings.quiet_hours_end}

@@ -3,7 +3,7 @@
 import { AdminUser } from "@/lib/types/responseTypes";
 import { create } from "zustand";
 
-export type UserRole = "company" | "employee";
+export type UserRole = "company" | "employee" | "mastermind";
 
 interface AuthState {
   user: AdminUser | null;
@@ -33,7 +33,13 @@ export const useAuthStore = create<AuthState>()((set) => ({
   rememberMe: false,
   setUser: (user, token, role, companyId, companyName) => {
     const normalizedRole: UserRole | null =
-      role === "employee" ? "employee" : role ? "company" : null;
+      role === "employee"
+        ? "employee"
+        : role === "mastermind"
+          ? "mastermind"
+          : role
+            ? "company"
+            : null;
     set({
       user,
       token,

@@ -6,12 +6,14 @@ import FullPageHead from "@/components/shared/FullPageHead";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Shield, Smartphone, Clock } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
+import { useTranslations } from "next-intl";
 
 function ToggleSwitch({ enabled, onChange }: { enabled: boolean; onChange: () => void }) {
   return <Switch checked={enabled} onCheckedChange={onChange} />;
 }
 
 export default function SecuritySettingsPage() {
+  const t = useTranslations("SecuritySettings");
   const [twoFactor, setTwoFactor] = useState(false);
   const [loginAlerts, setLoginAlerts] = useState(true);
   const [autoLogout, setAutoLogout] = useState(false);
@@ -21,8 +23,8 @@ export default function SecuritySettingsPage() {
     <MainLayout>
       <div className="p-6 space-y-6 min-h-screen">
         <FullPageHead
-          head="إعدادات الأمان"
-          description="إدارة إعدادات الأمان والتحقق الثنائي"
+          head={t("title")}
+          description={t("description")}
           Icon={<Shield className="w-7 h-7" />}
         />
 
@@ -32,15 +34,15 @@ export default function SecuritySettingsPage() {
               <div className="w-10 h-10 rounded-xl bg-destructive flex items-center justify-center">
                 <Smartphone className="w-5 h-5 text-primary-foreground" />
               </div>
-              <CardTitle className="text-lg font-bold text-foreground">المصادقة الثنائية</CardTitle>
+              <CardTitle className="text-lg font-bold text-foreground">{t("twoFactor")}</CardTitle>
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex items-center justify-between p-4 rounded-xl bg-muted/50">
               <div>
-                <p className="text-sm font-medium text-foreground">تطلب المصادقة الثنائية</p>
+                <p className="text-sm font-medium text-foreground">{t("requireTwoFactor")}</p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  يتطلب رمز تحقق إضافي عند تسجيل الدخول
+                  {t("requireTwoFactorDescription")}
                 </p>
               </div>
               <ToggleSwitch enabled={twoFactor} onChange={() => setTwoFactor(!twoFactor)} />
@@ -48,10 +50,8 @@ export default function SecuritySettingsPage() {
 
             <div className="flex items-center justify-between p-4 rounded-xl bg-muted/50">
               <div>
-                <p className="text-sm font-medium text-foreground">إشعار تسجيل الدخول الجديد</p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  إرسال إشعار عند تسجيل الدخول من جهاز جديد
-                </p>
+                <p className="text-sm font-medium text-foreground">{t("loginAlerts")}</p>
+                <p className="text-xs text-muted-foreground mt-1">{t("loginAlertsDescription")}</p>
               </div>
               <ToggleSwitch enabled={loginAlerts} onChange={() => setLoginAlerts(!loginAlerts)} />
             </div>
@@ -64,16 +64,16 @@ export default function SecuritySettingsPage() {
               <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
                 <Clock className="w-5 h-5 text-primary" />
               </div>
-              <CardTitle className="text-lg font-bold text-foreground">إدارة الجلسة</CardTitle>
+              <CardTitle className="text-lg font-bold text-foreground">
+                {t("sessionManagement")}
+              </CardTitle>
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex items-center justify-between p-4 rounded-xl bg-muted/50">
               <div>
-                <p className="text-sm font-medium text-foreground">انتهاء الجلسة التلقائي</p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  تسجيل الخروج تلقائياً بعد فترة عدم النشاط
-                </p>
+                <p className="text-sm font-medium text-foreground">{t("autoLogout")}</p>
+                <p className="text-xs text-muted-foreground mt-1">{t("autoLogoutDescription")}</p>
               </div>
               <ToggleSwitch enabled={autoLogout} onChange={() => setAutoLogout(!autoLogout)} />
             </div>
@@ -81,9 +81,9 @@ export default function SecuritySettingsPage() {
             {autoLogout && (
               <div className="flex items-center justify-between p-4 rounded-xl bg-muted/50">
                 <div>
-                  <p className="text-sm font-medium text-foreground">مدة انتهاء الجلسة</p>
+                  <p className="text-sm font-medium text-foreground">{t("sessionDuration")}</p>
                   <p className="text-xs text-muted-foreground mt-1">
-                    اختر مدة عدم النشاط قبل تسجيل الخروج
+                    {t("sessionDurationDescription")}
                   </p>
                 </div>
                 <select
@@ -91,10 +91,10 @@ export default function SecuritySettingsPage() {
                   onChange={(e) => setAutoLogoutTime(e.target.value)}
                   className="border border-input rounded-lg px-3 py-2 bg-transparent bg-card text-muted-foreground text-sm"
                 >
-                  <option value="15">15 دقيقة</option>
-                  <option value="30">30 دقيقة</option>
-                  <option value="60">ساعة واحدة</option>
-                  <option value="120">ساعتان</option>
+                  <option value="15">{t("15minutes")}</option>
+                  <option value="30">{t("30minutes")}</option>
+                  <option value="60">{t("1hour")}</option>
+                  <option value="120">{t("2hours")}</option>
                 </select>
               </div>
             )}

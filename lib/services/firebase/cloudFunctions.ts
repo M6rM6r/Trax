@@ -40,12 +40,13 @@ export const cloudFunctionsApi = {
 
   async sendCompanyNotification(
     title: string,
-    body: string
+    body: string,
+    targetRole: "employee" | "company" | "all" = "employee"
   ): Promise<{ sent: number; failed: number }> {
     const fn = httpsCallable(requireFunctions(), "sendCompanyNotification");
     const companyId = getCompanyId();
     if (!companyId) throw new Error("NO_COMPANY");
-    const result = await fn({ companyId, title, body });
+    const result = await fn({ companyId, title, body, targetRole });
     const data = result.data as { success: boolean; data: { sent: number; failed: number } };
     return data.data;
   },

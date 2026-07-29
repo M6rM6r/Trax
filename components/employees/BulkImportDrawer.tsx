@@ -11,6 +11,7 @@ import { queryKeys } from "@/hooks/api/queryKeys";
 import { generateStaffUsername } from "@/lib/utils/staffOnboarding";
 import type { Employee } from "@/lib/types/trackingTypes";
 import { Upload } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 interface BulkImportDrawerProps {
   open: boolean;
@@ -67,6 +68,7 @@ function parseCsv(text: string): string[][] {
 }
 
 export function BulkImportDrawer({ open, onOpenChange, existingEmployees }: BulkImportDrawerProps) {
+  const t = useTranslations("Employees");
   const [raw, setRaw] = useState("");
   const [fileName, setFileName] = useState("");
   const [importing, setImporting] = useState(false);
@@ -85,15 +87,15 @@ export function BulkImportDrawer({ open, onOpenChange, existingEmployees }: Bulk
     const lowerHeader = header.map((h) => h.toLowerCase().trim());
 
     const nameIdx = lowerHeader.findIndex((h) =>
-      ["name", "الاسم", "full name", "الاسم الكامل"].includes(h)
+      ["name", t("nameHeader").toLowerCase(), "full name"].includes(h)
     );
     const emailIdx = lowerHeader.findIndex((h) =>
-      ["email", "البريد", "email address", "البريد الإلكتروني"].includes(h)
+      ["email", t("emailHeader").toLowerCase(), "email address"].includes(h)
     );
-    const phoneIdx = lowerHeader.findIndex((h) =>
-      ["phone", "الهاتف", "mobile", "الجوال"].includes(h)
+    const phoneIdx = lowerHeader.findIndex((h) => ["phone", "mobile"].includes(h));
+    const deptIdx = lowerHeader.findIndex((h) =>
+      ["department", t("departmentHeader").toLowerCase(), "dept"].includes(h)
     );
-    const deptIdx = lowerHeader.findIndex((h) => ["department", "القسم", "dept"].includes(h));
 
     const data = all.slice(1).filter((r) => r.some((c) => c.trim()));
     return data.map((cells, idx) => {
@@ -105,7 +107,7 @@ export function BulkImportDrawer({ open, onOpenChange, existingEmployees }: Bulk
       const invalid = !email || !email.includes("@");
       return { id: idx, name, email, phone, department, duplicate, invalid };
     });
-  }, [raw, existingEmails]);
+  }, [raw, existingEmails, t]);
 
   const validRows = rows.filter((r) => !r.duplicate && !r.invalid);
 
@@ -122,7 +124,7 @@ export function BulkImportDrawer({ open, onOpenChange, existingEmployees }: Bulk
 
   const handleImport = async () => {
     if (validRows.length === 0) {
-      toastError("لا يوجد صفوف صالحة للاستيراد");
+      toastError(t("noValidRows"));
       return;
     }
 
@@ -139,9 +141,9 @@ export function BulkImportDrawer({ open, onOpenChange, existingEmployees }: Bulk
       }));
 
       await firebaseData.cloudFunctions.bulkCreateEmployees(employees);
-      toastSuccess(`تم استيراد ${validRows.length} موظف`);
+      toastSuccess(t("importSuccess", { count: validRows.length }));
     } catch {
-      toastError("فشل الاستيراد — تحقق من الاتصال");
+      toastError(t("importFailed"));
     }
 
     setImporting(false);
@@ -157,8 +159,8 @@ export function BulkImportDrawer({ open, onOpenChange, existingEmployees }: Bulk
     <FormDrawer
       open={open}
       onOpenChange={onOpenChange}
-      title="استيراد موظفين من CSV"
-      description="ارفع ملف CSV يحتوي على الأعمدة: الاسم، البريد الإلكتروني، الهاتف، القسم"
+      title={t("bulkImportTitle")}
+      description={t("bulkImportDescription")}
     >
       <div className="space-y-4">
         <Input
@@ -174,7 +176,7 @@ export function BulkImportDrawer({ open, onOpenChange, existingEmployees }: Bulk
           onClick={() => fileRef.current?.click()}
           className="w-full"
         >
-          <Upload className="w-4 h-4 me-2" /> اختيار ملف CSV
+          <Upload className="w-4 h-4 me-2" /> {t("chooseCsv")}
         </Button>
         {fileName && <p className="text-xs text-muted-foreground">{fileName}</p>}
 
@@ -184,10 +186,10 @@ export function BulkImportDrawer({ open, onOpenChange, existingEmployees }: Bulk
               <table className="w-full text-sm">
                 <thead className="bg-card text-muted-foreground">
                   <tr>
-                    <th className="px-3 py-2 text-right">الاسم</th>
-                    <th className="px-3 py-2 text-right">البريد</th>
-                    <th className="px-3 py-2 text-right">القسم</th>
-                    <th className="px-3 py-2 text-right">الحالة</th>
+                    <th className="px-3 py-2 text-right">{t("nameHeader")}</th>
+                    <th className="px-3 py-2 text-right">{t("emailHeader")}</th>
+                    <th className="px-3 py-2 text-right">{t("departmentHeader")}</th>
+                    <th className="px-3 py-2 text-right">{t("statusHeader")}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
@@ -203,11 +205,11 @@ export function BulkImportDrawer({ open, onOpenChange, existingEmployees }: Bulk
                       <td className="px-3 py-2 text-foreground">{row.department || "—"}</td>
                       <td className="px-3 py-2">
                         {row.duplicate ? (
-                          <span className="text-destructive text-xs">مكرر</span>
+                          <span className="text-destructive text-xs">{t("duplicate")}</span>
                         ) : row.invalid ? (
-                          <span className="text-destructive text-xs">بريد غير صالح</span>
+                          <span className="text-destructive text-xs">{t("invalidEmail")}</span>
                         ) : (
-                          <span className="text-primary text-xs">جاهز</span>
+                          <span className="text-primary text-xs">{t("ready")}</span>
                         )}
                       </td>
                     </tr>
@@ -224,10 +226,10 @@ export function BulkImportDrawer({ open, onOpenChange, existingEmployees }: Bulk
             disabled={importing || validRows.length === 0}
             className="flex-1"
           >
-            {importing ? "جاري الاستيراد..." : `استيراد ${validRows.length} موظف`}
+            {importing ? t("importing") : t("importEmployees", { count: validRows.length })}
           </Button>
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={importing}>
-            إلغاء
+            {t("cancel")}
           </Button>
         </div>
       </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { motion } from "framer-motion";
 import MainLayout from "@/components/shared/MainLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -32,14 +32,17 @@ import { DataTable } from "@/components/shared/DataTable/DataTable";
 import ConfirmDialog from "@/components/shared/ConfirmDialog";
 import { toastSuccess, toastError, toastWithUndo } from "@/hooks/use-toast";
 import type { AttendanceRecord } from "@/lib/types/trackingTypes";
-const statusLabels: Record<string, string> = {
-  present: "حاضر",
-  late: "متأخر",
-  absent: "غائب",
-  checked_out: "منصرف",
-};
+import { useTranslations } from "next-intl";
+
+const statusLabels = {
+  present: "statusPresent",
+  late: "statusLate",
+  absent: "statusAbsent",
+  checked_out: "statusCheckedOut",
+} as const;
 
 export default function EmployeeProfilePage({ params }: { params: { id: string } }) {
+  const t = useTranslations("Employees");
   const { id } = params;
   const router = useRouter();
   const { data: employees = [], isLoading: empLoading, isError: empError } = useEmployees();
@@ -72,6 +75,16 @@ export default function EmployeeProfilePage({ params }: { params: { id: string }
   const presentCount = last7Days.filter((a) => a.status === "present").length;
   const lateCount = last7Days.filter((a) => a.status === "late").length;
   const absentCount = last7Days.filter((a) => a.status === "absent").length;
+
+  const geofenceOptions = useMemo(
+    () =>
+      geofences.map((g) => (
+        <option key={String(g.id)} value={String(g.id)}>
+          {g.name}
+        </option>
+      )),
+    [geofences]
+  );
 
   if (empLoading) {
     return (
@@ -114,10 +127,10 @@ export default function EmployeeProfilePage({ params }: { params: { id: string }
       { id: employee.id, data: editEmployee },
       {
         onSuccess: () => {
-          toastSuccess("تم تحديث بيانات الموظف");
+          toastSuccess(t("updated"));
           setShowEditForm(false);
         },
-        onError: () => toastError("حدث خطأ أثناء التحديث"),
+        onError: () => toastError(t("updateError")),
       }
     );
   };
@@ -126,13 +139,13 @@ export default function EmployeeProfilePage({ params }: { params: { id: string }
     const deletedEmployee = employee;
     deleteEmployee.mutate(employee.id, {
       onSuccess: () => {
-        toastWithUndo(`تم حذف الموظف ${deletedEmployee.name}`, () => {
+        toastWithUndo(t("deleted", { name: deletedEmployee.name }), () => {
           router.push(`/employees`);
         });
         router.push(`/employees`);
       },
       onError: () => {
-        toastError("تعذر حذف الموظف");
+        toastError(t("deleteFailed"));
       },
     });
   };
@@ -147,7 +160,7 @@ export default function EmployeeProfilePage({ params }: { params: { id: string }
             className="flex items-center gap-1 text-primary hover:underline"
           >
             <ArrowLeft className="w-4 h-4" />
-            الموظفون
+            {t("employees")}
           </Link>
           <span className="text-muted-foreground/70">/</span>
           <span className="text-muted-foreground font-medium">{employee.name}</span>
@@ -176,7 +189,7 @@ export default function EmployeeProfilePage({ params }: { params: { id: string }
                           : "bg-muted text-muted-foreground"
                       }`}
                     >
-                      {employee.status === "active" ? "نشط" : "غير نشط"}
+                      {employee.status === "active" ? t("active") : t("inactive")}
                     </span>
                   </div>
                 </div>
@@ -188,7 +201,7 @@ export default function EmployeeProfilePage({ params }: { params: { id: string }
                     onClick={handleOpenEdit}
                   >
                     <Edit className="w-4 h-4" />
-                    تحرير
+                    {t("edit")}
                   </Button>
                   <Button
                     variant="destructive"
@@ -197,7 +210,7 @@ export default function EmployeeProfilePage({ params }: { params: { id: string }
                     onClick={() => setShowDeleteConfirm(true)}
                   >
                     <Trash2 className="w-4 h-4" />
-                    حذف
+                    {t("delete")}
                   </Button>
                 </div>
               </div>
@@ -209,7 +222,7 @@ export default function EmployeeProfilePage({ params }: { params: { id: string }
                     <Mail className="w-5 h-5 text-primary" />
                   </div>
                   <div>
-                    <p className="text-xs text-muted-foreground">البريد الإلكتروني</p>
+                    <p className="text-xs text-muted-foreground">{t("email")}</p>
                     <p className="text-sm font-medium text-foreground">
                       <span dir="ltr" lang="en" style={{ unicodeBidi: "plaintext" }}>
                         {employee.email}
@@ -222,7 +235,7 @@ export default function EmployeeProfilePage({ params }: { params: { id: string }
                     <MapPin className="w-5 h-5 text-primary" />
                   </div>
                   <div>
-                    <p className="text-xs text-muted-foreground">النطاق الجغرافي</p>
+                    <p className="text-xs text-muted-foreground">{t("geofence")}</p>
                     <p className="text-sm font-medium text-foreground">{geofenceName}</p>
                   </div>
                 </div>
@@ -245,7 +258,7 @@ export default function EmployeeProfilePage({ params }: { params: { id: string }
               </div>
               <div>
                 <p className="text-2xl font-bold text-foreground">{presentCount}</p>
-                <p className="text-xs text-muted-foreground">أيام الحضور (7 أيام)</p>
+                <p className="text-xs text-muted-foreground">{t("presentDays")}</p>
               </div>
             </CardContent>
           </Card>
@@ -256,7 +269,7 @@ export default function EmployeeProfilePage({ params }: { params: { id: string }
               </div>
               <div>
                 <p className="text-2xl font-bold text-foreground">{lateCount}</p>
-                <p className="text-xs text-muted-foreground">أيام التأخير (7 أيام)</p>
+                <p className="text-xs text-muted-foreground">{t("lateDays")}</p>
               </div>
             </CardContent>
           </Card>
@@ -267,7 +280,7 @@ export default function EmployeeProfilePage({ params }: { params: { id: string }
               </div>
               <div>
                 <p className="text-2xl font-bold text-foreground">{absentCount}</p>
-                <p className="text-xs text-muted-foreground">أيام الغياب (7 أيام)</p>
+                <p className="text-xs text-muted-foreground">{t("absentDays")}</p>
               </div>
             </CardContent>
           </Card>
@@ -287,9 +300,9 @@ export default function EmployeeProfilePage({ params }: { params: { id: string }
                 </div>
                 <div>
                   <CardTitle className="text-lg font-bold text-foreground">
-                    خريطة الحضور (30 يوم)
+                    {t("attendanceMap")}
                   </CardTitle>
-                  <p className="text-sm text-muted-foreground">نمط الحضور اليومي خلال آخر 30 يوم</p>
+                  <p className="text-sm text-muted-foreground">{t("attendanceMapSubtitle")}</p>
                 </div>
               </div>
             </CardHeader>
@@ -309,7 +322,9 @@ export default function EmployeeProfilePage({ params }: { params: { id: string }
                         : status === "absent"
                           ? "bg-destructive/60"
                           : "bg-muted/40";
-                  const label = status ? statusLabels[status] : "لا يوجد";
+                  const label = status
+                    ? t(statusLabels[status as keyof typeof statusLabels])
+                    : t("noRecord");
                   const dayLabel = d.toLocaleDateString("ar-SA-u-nu-latn", {
                     weekday: "short",
                     day: "numeric",
@@ -328,23 +343,23 @@ export default function EmployeeProfilePage({ params }: { params: { id: string }
                 })}
               </div>
               <div className="flex items-center gap-3 mt-4 text-xs text-muted-foreground">
-                <span>أقل</span>
+                <span>{t("less")}</span>
                 <div className="flex gap-1">
                   <div className="w-4 h-4 rounded bg-muted/40" />
                   <div className="w-4 h-4 rounded bg-primary/70" />
                   <div className="w-4 h-4 rounded bg-[hsl(48_96%_53%/0.7)]" />
                   <div className="w-4 h-4 rounded bg-destructive/60" />
                 </div>
-                <span>أكثر</span>
+                <span>{t("more")}</span>
                 <span className="mr-auto flex items-center gap-2">
                   <span className="inline-flex items-center gap-1">
-                    <span className="w-3 h-3 rounded bg-primary/70" /> حاضر
+                    <span className="w-3 h-3 rounded bg-primary/70" /> {t("statusPresent")}
                   </span>
                   <span className="inline-flex items-center gap-1">
-                    <span className="w-3 h-3 rounded bg-[hsl(48_96%_53%/0.7)]" /> متأخر
+                    <span className="w-3 h-3 rounded bg-[hsl(48_96%_53%/0.7)]" /> {t("statusLate")}
                   </span>
                   <span className="inline-flex items-center gap-1">
-                    <span className="w-3 h-3 rounded bg-destructive/60" /> غائب
+                    <span className="w-3 h-3 rounded bg-destructive/60" /> {t("statusAbsent")}
                   </span>
                 </span>
               </div>
@@ -366,9 +381,9 @@ export default function EmployeeProfilePage({ params }: { params: { id: string }
                 </div>
                 <div>
                   <CardTitle className="text-lg font-bold text-foreground">
-                    سجل الحضور (آخر 30 سجل)
+                    {t("attendanceHistory")}
                   </CardTitle>
-                  <p className="text-sm text-muted-foreground">تاريخ عمليات الحضور والانصراف</p>
+                  <p className="text-sm text-muted-foreground">{t("attendanceHistorySubtitle")}</p>
                 </div>
               </div>
             </CardHeader>
@@ -376,22 +391,22 @@ export default function EmployeeProfilePage({ params }: { params: { id: string }
               {empAttendance.length === 0 ? (
                 <EmptyState
                   illustration="attendance"
-                  title="لا توجد سجلات حضور"
-                  description="لم يتم تسجيل أي حضور لهذا الموظف بعد"
+                  title={t("noAttendanceRecords")}
+                  description={t("noAttendanceDescription")}
                 />
               ) : (
                 <DataTable<AttendanceRecord>
                   columns={[
                     {
                       key: "date",
-                      header: "التاريخ",
+                      header: t("date"),
                       sortable: true,
                       sortValue: (r) => r.date,
                       cell: (r) => r.date,
                     },
                     {
                       key: "checkInTime",
-                      header: "وقت الحضور",
+                      header: t("checkInTime"),
                       sortable: true,
                       sortValue: (r) => r.checkInTime || "",
                       cell: (r) => (
@@ -403,12 +418,12 @@ export default function EmployeeProfilePage({ params }: { params: { id: string }
                     },
                     {
                       key: "checkOutTime",
-                      header: "وقت الانصراف",
+                      header: t("checkOutTime"),
                       cell: (r) => r.checkOutTime || "-",
                     },
                     {
                       key: "status",
-                      header: "الحالة",
+                      header: t("status"),
                       sortable: true,
                       sortValue: (r) => r.status,
                       cell: (r) => (
@@ -421,23 +436,25 @@ export default function EmployeeProfilePage({ params }: { params: { id: string }
                                 : "bg-destructive/10 text-destructive"
                           }`}
                         >
-                          {statusLabels[r.status] || r.status}
+                          {r.status && r.status in statusLabels
+                            ? t(statusLabels[r.status as keyof typeof statusLabels])
+                            : r.status}
                         </span>
                       ),
                     },
                     {
                       key: "workedHours",
-                      header: "ساعات العمل",
-                      cell: (r) => `${r.workedHours?.toFixed(1) || "0"} ساعة`,
+                      header: t("workedHours"),
+                      cell: (r) => `${r.workedHours?.toFixed(1) || "0"} ${t("hours")}`,
                     },
                     {
                       key: "geofenceName",
-                      header: "الموقع",
+                      header: t("location"),
                       cell: (r) => r.geofenceName || "-",
                     },
                   ]}
                   data={empAttendance}
-                  searchPlaceholder="بحث في السجلات..."
+                  searchPlaceholder={t("searchRecords")}
                   pageSize={10}
                 />
               )}
@@ -448,31 +465,31 @@ export default function EmployeeProfilePage({ params }: { params: { id: string }
         <ConfirmDialog
           open={showDeleteConfirm}
           onOpenChange={setShowDeleteConfirm}
-          title="تأكيد الحذف"
-          description={`هل أنت متأكد من حذف ${employee.name}؟ لا يمكن التراجع عن هذا الإجراء.`}
-          confirmLabel="حذف"
-          cancelLabel="إلغاء"
+          title={t("confirmDelete")}
+          description={t("deleteConfirmDescription", { name: employee.name })}
+          confirmLabel={t("deleteConfirmLabel")}
+          cancelLabel={t("cancel")}
           onConfirm={handleDelete}
         />
 
         <FormDrawer
           open={showEditForm}
           onOpenChange={setShowEditForm}
-          title={`تعديل: ${employee.name}`}
-          description="تحديث بيانات الموظف"
+          title={t("editEmployee", { name: employee.name })}
+          description={t("updateEmployeeDescription")}
           onSubmit={handleUpdate}
           isSubmitting={updateEmployee.isPending}
-          submitLabel="حفظ التعديلات"
+          submitLabel={t("saveChanges")}
         >
           <div className="grid grid-cols-1 gap-4">
             <FormField
-              label="الاسم"
+              label={t("name")}
               value={editEmployee.name}
               onChange={(v) => setEditEmployee({ ...editEmployee, name: v })}
-              placeholder="اسم الموظف"
+              placeholder={t("employeeNamePlaceholder")}
             />
             <FormField
-              label="البريد الإلكتروني"
+              label={t("email")}
               type="email"
               value={editEmployee.email}
               onChange={(v) => setEditEmployee({ ...editEmployee, email: v })}
@@ -480,15 +497,11 @@ export default function EmployeeProfilePage({ params }: { params: { id: string }
               ltr
             />
             <FormSelect
-              label="النطاق الجغرافي"
+              label={t("geofence")}
               value={editEmployee.geofenceId}
               onChange={(v) => setEditEmployee({ ...editEmployee, geofenceId: v })}
             >
-              {geofences.map((g) => (
-                <option key={g.id} value={g.id}>
-                  {g.name}
-                </option>
-              ))}
+              {geofenceOptions}
             </FormSelect>
           </div>
         </FormDrawer>

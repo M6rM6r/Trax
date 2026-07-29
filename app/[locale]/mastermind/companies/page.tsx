@@ -19,6 +19,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Shield, Building2, Plus, Loader2, Users } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 interface CompanyResult {
   id: string;
@@ -28,6 +29,7 @@ interface CompanyResult {
 }
 
 export default function MastermindCompaniesPage() {
+  const t = useTranslations("MasterMind");
   const { user } = useAuthStore();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -61,9 +63,9 @@ export default function MastermindCompaniesPage() {
     return (
       <AccessDeniedCard
         icon={Shield}
-        title="وصول محظور"
-        message="هذه الصفحة مخصصة فقط للمسؤول العام (Mastermind)."
-        ctaLabel="تسجيل الدخول"
+        title={t("accessDeniedTitle")}
+        message={t("accessDeniedMessage")}
+        ctaLabel={t("accessDeniedCTA")}
         ctaHref="/ar/login"
       />
     );
@@ -78,8 +80,8 @@ export default function MastermindCompaniesPage() {
     e.preventDefault();
     if (!form.name.trim() || !form.adminEmail.trim() || !form.adminPassword.trim()) {
       toast({
-        title: "بيانات ناقصة",
-        description: "اسم الشركة والبريد الإلكتروني وكلمة المرور للمدير مطلوبة.",
+        title: t("missingData"),
+        description: t("missingDataDescription"),
         variant: "destructive",
       });
       return;
@@ -97,8 +99,8 @@ export default function MastermindCompaniesPage() {
       });
       setCreated(result);
       toast({
-        title: "تم إنشاء الشركة",
-        description: `تم إنشاء ${form.name} ومديرها ${form.adminEmail}`,
+        title: t("companyCreated"),
+        description: t("companyCreatedDescription", { name: form.name, email: form.adminEmail }),
       });
       setForm({
         name: "",
@@ -111,9 +113,9 @@ export default function MastermindCompaniesPage() {
       });
       await refetch();
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "فشل في إنشاء الشركة";
+      const message = err instanceof Error ? err.message : t("createCompanyError");
       toast({
-        title: "خطأ",
+        title: t("errorTitle"),
         description: message,
         variant: "destructive",
       });
@@ -126,85 +128,85 @@ export default function MastermindCompaniesPage() {
     <div className="p-6 md:p-10 max-w-6xl mx-auto space-y-8" dir="rtl">
       <div className="flex items-center gap-3">
         <Building2 className="w-7 h-7 text-primary" />
-        <h1 className="text-2xl font-bold text-foreground">لوحة MasterMind - الشركات</h1>
+        <h1 className="text-2xl font-bold text-foreground">{t("pageTitle")}</h1>
       </div>
 
       <Card>
         <CardHeader>
           <CardTitle className="text-lg flex items-center gap-2">
             <Plus className="w-5 h-5" />
-            إنشاء شركة جديدة
+            {t("createCompanyTitle")}
           </CardTitle>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleCreate} className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="name">اسم الشركة</Label>
+              <Label htmlFor="name">{t("companyName")}</Label>
               <Input
                 id="name"
                 name="name"
                 value={form.name}
                 onChange={handleChange}
-                placeholder="مثال: Trax Demo"
+                placeholder={t("companyNamePlaceholder")}
                 required
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="industry">القطاع</Label>
+              <Label htmlFor="industry">{t("industry")}</Label>
               <Input
                 id="industry"
                 name="industry"
                 value={form.industry}
                 onChange={handleChange}
-                placeholder="مثال: Technology"
+                placeholder={t("industryPlaceholder")}
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="adminName">اسم المدير</Label>
+              <Label htmlFor="adminName">{t("adminName")}</Label>
               <Input
                 id="adminName"
                 name="adminName"
                 value={form.adminName}
                 onChange={handleChange}
-                placeholder="مثال: Mohammed"
+                placeholder={t("adminNamePlaceholder")}
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="adminEmail">بريد المدير</Label>
+              <Label htmlFor="adminEmail">{t("adminEmail")}</Label>
               <Input
                 id="adminEmail"
                 name="adminEmail"
                 type="email"
                 value={form.adminEmail}
                 onChange={handleChange}
-                placeholder="admin@company.com"
+                placeholder={t("adminEmailPlaceholder")}
                 required
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="adminPassword">كلمة مرور المدير</Label>
+              <Label htmlFor="adminPassword">{t("adminPassword")}</Label>
               <Input
                 id="adminPassword"
                 name="adminPassword"
                 type="text"
                 value={form.adminPassword}
                 onChange={handleChange}
-                placeholder="كلمة مرور مؤقتة"
+                placeholder={t("adminPasswordPlaceholder")}
                 required
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="plan">الخطة</Label>
+              <Label htmlFor="plan">{t("plan")}</Label>
               <Input
                 id="plan"
                 name="plan"
                 value={form.plan}
                 onChange={handleChange}
-                placeholder="trial"
+                placeholder={t("planPlaceholder")}
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="maxEmployees">الحد الأقصى للموظفين</Label>
+              <Label htmlFor="maxEmployees">{t("maxEmployees")}</Label>
               <Input
                 id="maxEmployees"
                 name="maxEmployees"
@@ -217,17 +219,17 @@ export default function MastermindCompaniesPage() {
             <div className="md:col-span-2 flex items-end">
               <Button type="submit" disabled={isSubmitting} className="w-full md:w-auto">
                 {isSubmitting && <Loader2 className="w-4 h-4 ml-2 animate-spin" />}
-                إنشاء الشركة
+                {isSubmitting ? t("creating") : t("createCompany")}
               </Button>
             </div>
           </form>
 
           {created && (
             <div className="mt-6 p-4 rounded-lg bg-green-50 text-green-900 border border-green-200">
-              <p className="font-semibold">تم إنشاء الشركة بنجاح</p>
-              <p className="text-sm mt-1">اسم الشركة: {created.companyId}</p>
-              <p className="text-sm">البريد: {created.email}</p>
-              <p className="text-sm">كلمة المرور: {created.adminPassword}</p>
+              <p className="font-semibold">{t("companyCreatedSuccess")}</p>
+              <p className="text-sm mt-1">{t("companyIdLabel", { id: created.companyId })}</p>
+              <p className="text-sm">{t("emailLabel", { email: created.email })}</p>
+              <p className="text-sm">{t("passwordLabel", { password: created.adminPassword })}</p>
             </div>
           )}
         </CardContent>
@@ -237,7 +239,7 @@ export default function MastermindCompaniesPage() {
         <CardHeader>
           <CardTitle className="text-lg flex items-center gap-2">
             <Users className="w-5 h-5" />
-            الشركات
+            {t("companiesList")}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -246,15 +248,15 @@ export default function MastermindCompaniesPage() {
               <Loader2 className="w-6 h-6 animate-spin text-primary" />
             </div>
           ) : companies.length === 0 ? (
-            <p className="text-center text-muted-foreground py-10">لا توجد شركات بعد.</p>
+            <p className="text-center text-muted-foreground py-10">{t("noCompanies")}</p>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>الاسم</TableHead>
-                  <TableHead>القطاع</TableHead>
-                  <TableHead>الخطة</TableHead>
-                  <TableHead>المعرف</TableHead>
+                  <TableHead>{t("tableName")}</TableHead>
+                  <TableHead>{t("tableIndustry")}</TableHead>
+                  <TableHead>{t("tablePlan")}</TableHead>
+                  <TableHead>{t("tableId")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>

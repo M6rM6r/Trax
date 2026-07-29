@@ -1,45 +1,50 @@
 "use client";
 
 import { usePathname, Link } from "@/i18n/navigation";
-import {
-  LayoutDashboard,
-  Users,
-  Calendar,
-  CheckCircle,
-  Target,
-  Settings,
-  Building2,
-} from "lucide-react";
+import { LayoutDashboard, Users, Calendar, CheckCircle, Target, Building2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
 import { hapticTap } from "@/lib/utils/haptics";
 import { useAuthStore } from "@/stores/useAuthStore";
+import { useTranslations } from "next-intl";
 
-const PRIMARY_ITEMS = [
-  { icon: LayoutDashboard, label: "الرئيسية", path: "/" },
-  { icon: Users, label: "الموظفون", path: "/employees" },
-  { icon: Calendar, label: "الحضور", path: "/attendance" },
-  { icon: Target, label: "النطاقات", path: "/geofences" },
-  { icon: Settings, label: "الإعدادات", path: "/settings" },
-];
+function usePrimaryItems() {
+  const t = useTranslations("Navigation");
+  return [
+    { icon: LayoutDashboard, label: t("home"), path: "/" },
+    { icon: Users, label: t("employees"), path: "/employees" },
+    { icon: Calendar, label: t("attendance"), path: "/attendance" },
+    { icon: Target, label: t("geofences"), path: "/geofences" },
+  ];
+}
 
-const COMPANY_ITEM = { icon: Building2, label: "الشركة", path: "/settings/company" };
+function useCompanyItem() {
+  const t = useTranslations("Navigation");
+  return { icon: Building2, label: t("company"), path: "/settings/company" };
+}
 
-const employeeNavItems = [{ icon: CheckCircle, label: "تسجيل الحضور", path: "/check-in" }];
+function useEmployeeNavItems() {
+  const t = useTranslations("Navigation");
+  return [{ icon: CheckCircle, label: t("checkIn"), path: "/check-in" }];
+}
 
 export default function MobileBottomNav() {
+  const t = useTranslations("Navigation");
   const pathname = usePathname();
   const { role } = useAuthStore();
+  const primaryItems = usePrimaryItems();
+  const companyItem = useCompanyItem();
+  const employeeItems = useEmployeeNavItems();
 
   if (role === "employee") {
     return (
       <nav
         className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-background/95 bg-background/95 backdrop-blur-lg border-t border-border"
         style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
-        aria-label="التنقل السفلي"
+        aria-label={t("mobileNavigation")}
       >
         <div className="flex items-center justify-around px-1 py-1.5">
-          {employeeNavItems.map((item) => {
+          {employeeItems.map((item) => {
             const isActive = pathname.startsWith(item.path);
             const Icon = item.icon;
             return (
@@ -74,19 +79,14 @@ export default function MobileBottomNav() {
     <nav
       className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-background/95 bg-background/95 backdrop-blur-lg border-t border-border"
       style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
-      aria-label="التنقل السفلي"
+      aria-label={t("mobileNavigation")}
     >
       <div className="flex items-center justify-around px-1 py-1.5">
         {(role === "company"
-          ? [...PRIMARY_ITEMS.slice(0, 4), COMPANY_ITEM, ...PRIMARY_ITEMS.slice(4)]
-          : PRIMARY_ITEMS
+          ? [...primaryItems.slice(0, 4), companyItem, ...primaryItems.slice(4)]
+          : primaryItems
         ).map((item) => {
-          const isActive =
-            item.path === "/"
-              ? pathname === "/"
-              : item.path === "/settings"
-                ? pathname.startsWith("/settings") && !pathname.includes("/settings/company")
-                : pathname.startsWith(item.path);
+          const isActive = item.path === "/" ? pathname === "/" : pathname.startsWith(item.path);
           const Icon = item.icon;
           return (
             <Link

@@ -8,6 +8,7 @@ import { Trash2 } from "lucide-react";
 import { useNotificationStore, type NotificationType } from "@/stores/useNotificationStore";
 import { subscribeRealtimeEvents } from "@/lib/services/realtime";
 import { useToast } from "@/hooks/use-toast";
+import { useTranslations } from "next-intl";
 
 const NOTIFICATION_ICONS: Record<NotificationType, React.ComponentType<{ className?: string }>> = {
   late_arrival: Warning,
@@ -25,7 +26,10 @@ const NOTIFICATION_COLORS: Record<NotificationType, string> = {
   system: "text-primary",
 };
 
-function formatTimeAgo(timestamp: string): string {
+function formatTimeAgo(
+  timestamp: string,
+  t: (key: string, values?: Record<string, number | string>) => string
+): string {
   const now = new Date();
   const past = new Date(timestamp);
   const diffMs = now.getTime() - past.getTime();
@@ -33,13 +37,14 @@ function formatTimeAgo(timestamp: string): string {
   const diffHour = Math.floor(diffMin / 60);
   const diffDay = Math.floor(diffHour / 24);
 
-  if (diffMin < 1) return "الآن";
-  if (diffMin < 60) return `منذ ${diffMin} دقيقة`;
-  if (diffHour < 24) return `منذ ${diffHour} ساعة`;
-  return `منذ ${diffDay} يوم`;
+  if (diffMin < 1) return t("now");
+  if (diffMin < 60) return t("minutesAgo", { count: diffMin });
+  if (diffHour < 24) return t("hoursAgo", { count: diffHour });
+  return t("daysAgo", { count: diffDay });
 }
 
 export default function NotificationCenter() {
+  const t = useTranslations("Notifications");
   const { notifications, unreadCount, markAsRead, markAllAsRead, addNotification } =
     useNotificationStore();
   const { toast } = useToast();
@@ -49,12 +54,12 @@ export default function NotificationCenter() {
       onAnomalyDetected: (data) => {
         addNotification({
           type: "anomaly_detected",
-          title: "تنبيه: سلوك غير طبيعي",
+          title: t("anomalyAlert"),
           message: data.details,
           employeeId: data.employeeId,
         });
         toast({
-          title: "تنبيه ذكاء اصطناعي",
+          title: t("aiAlert"),
           description: data.details,
           variant: "destructive",
         });
@@ -62,22 +67,28 @@ export default function NotificationCenter() {
       onGeofenceBreach: (data) => {
         addNotification({
           type: "geofence_breach",
-          title: "تجاوز نطاق جغرافي",
-          message: `${data.employeeName} غادر نطاق ${data.geofenceName}`,
+          title: t("geofenceBreach"),
+          message: t("geofenceBreachMessage", {
+            name: data.employeeName,
+            geofence: data.geofenceName,
+          }),
           employeeId: data.employeeId,
           employeeName: data.employeeName,
         });
         toast({
-          title: "تجاوز نطاق جغرافي",
-          description: `${data.employeeName} غادر نطاق ${data.geofenceName}`,
+          title: t("geofenceBreach"),
+          description: t("geofenceBreachMessage", {
+            name: data.employeeName,
+            geofence: data.geofenceName,
+          }),
           variant: "destructive",
         });
       },
       onAttendanceCheckIn: (data) => {
         addNotification({
           type: "attendance",
-          title: "تسجيل حضور",
-          message: `${data.employeeName} سجل الحضور في ${data.checkInTime}`,
+          title: t("checkIn"),
+          message: t("checkInMessage", { name: data.employeeName, time: data.checkInTime }),
           employeeId: data.employeeId,
           employeeName: data.employeeName,
         });
@@ -85,14 +96,16 @@ export default function NotificationCenter() {
     });
 
     return () => unsubscribe();
-  }, [addNotification, toast]);
+  }, [addNotification, toast, t]);
 
   return (
     <Popover>
       <PopoverTrigger asChild>
         <button
           className="relative cursor-pointer"
-          aria-label={`الإشعارات${unreadCount > 0 ? ` (${unreadCount} غير مقروء)` : ""}`}
+          aria-label={
+            t("notificationsAria") + (unreadCount > 0 ? t("unread", { count: unreadCount }) : "")
+          }
         >
           {unreadCount > 0 && (
             <span className="w-[12px] h-[12px] bg-destructive rounded-full border border-background absolute top-0 right-0 flex items-center justify-center text-[8px] text-destructive-foreground font-bold">
@@ -106,22 +119,19 @@ export default function NotificationCenter() {
       <PopoverContent className="max-w-[372px] max-h-[500px] rounded-12 p-0 overflow-auto hideScrollbar bg-popover border-border">
         <div className="flex items-center justify-between gap-5 py-4 px-6">
           <p className="text-16 text-foreground font-[600]">
-            الإشعارات {unreadCount > 0 && `(${unreadCount})`}
+            {t("notificationsAria")} {unreadCount > 0 && `(${unreadCount})`}
           </p>
           <div className="flex items-center gap-3">
             {unreadCount > 0 && (
-              <button
-                onClick={markAllAsRead}
-                className="text-14 text-primary hover:underline"
-              >
-                تحديد الكل كمقروء
+              <button onClick={markAllAsRead} className="text-14 text-primary hover:underline">
+                {t("markAllRead")}
               </button>
             )}
             {notifications.length > 0 && (
               <button
                 onClick={() => useNotificationStore.getState().clearAll()}
                 className="text-14 text-muted-foreground/70 hover:text-destructive"
-                aria-label="مسح الكل"
+                aria-label={t("clearAll")}
               >
                 <Trash2 className="w-3.5 h-3.5" />
               </button>
@@ -133,11 +143,11 @@ export default function NotificationCenter() {
           className="py-4 px-6 flex flex-col gap-3"
           role="list"
           aria-live="polite"
-          aria-label="قائمة الإشعارات"
+          aria-label={t("notificationList")}
         >
           {notifications.length === 0 ? (
             <div className="py-8 text-center">
-              <p className="text-sm text-muted-foreground/70">لا توجد إشعارات</p>
+              <p className="text-sm text-muted-foreground/70">{t("noNotifications")}</p>
             </div>
           ) : (
             notifications.map((notif) => {
@@ -157,23 +167,17 @@ export default function NotificationCenter() {
                   }}
                   aria-label={`${notif.title}: ${notif.message}`}
                   className={`flex items-start gap-4 p-3 rounded-xl cursor-pointer transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring animate-slide-in-right ${
-                    notif.read
-                      ? "bg-transparent"
-                      : "bg-primary/5 hover:bg-primary/10"
+                    notif.read ? "bg-transparent" : "bg-primary/5 hover:bg-primary/10"
                   }`}
                 >
                   <div className={`shrink-0 ${colorClass}`}>
                     <Icon className="w-5 h-5" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-14 text-foreground font-medium">
-                      {notif.title}
-                    </p>
-                    <p className="text-13 text-muted-foreground mt-0.5">
-                      {notif.message}
-                    </p>
+                    <p className="text-14 text-foreground font-medium">{notif.title}</p>
+                    <p className="text-13 text-muted-foreground mt-0.5">{notif.message}</p>
                     <p className="text-11 text-muted-foreground/70 mt-1">
-                      {formatTimeAgo(notif.timestamp)}
+                      {formatTimeAgo(notif.timestamp, t)}
                     </p>
                   </div>
                   {!notif.read && (

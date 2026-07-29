@@ -210,11 +210,11 @@ function toastWithUndo(
   const undoAction = React.createElement(
     ToastAction,
     {
-      altText: "تراجع",
+      altText: "Undo",
       onClick: () => onUndo(),
       className: "border-white/30 text-white hover:bg-white/20",
     },
-    "تراجع"
+    "Undo"
   ) as unknown as ToastActionElement;
 
   return toast({

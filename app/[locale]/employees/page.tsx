@@ -40,7 +40,7 @@ import { FormField, FormSelect } from "@/components/shared/form/FormField";
 import { toastSuccess, toastError, toastWithUndo } from "@/hooks/use-toast";
 import { hapticTap, hapticSuccess } from "@/lib/utils/haptics";
 import { Link } from "@/i18n/navigation";
-import { useLocale } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { motion, AnimatePresence } from "framer-motion";
 import type { Employee } from "@/lib/types/trackingTypes";
 import { useAuthStore } from "@/stores/useAuthStore";
@@ -50,19 +50,23 @@ import { buildStaffCredentialsMessage, generateStaffUsername } from "@/lib/utils
 
 const DEFAULT_PUBLIC_APP_URL = "https://naf--trax-ae.asia-southeast1.hosted.app";
 
-function getEmployeeCreationErrorMessage(error: unknown): string {
+function getEmployeeCreationErrorMessage(
+  error: unknown,
+  t: ReturnType<typeof useTranslations>
+): string {
   const code =
     typeof error === "object" && error !== null && "code" in error ? String(error.code) : "";
 
-  if (code === "auth/email-already-in-use") return "هذا البريد الإلكتروني مستخدم لموظف آخر";
-  if (code === "auth/weak-password") return "كلمة المرور ضعيفة. استخدم 8 أحرف على الأقل";
-  if (code === "permission-denied") return "ليس لديك صلاحية لإضافة موظف";
-  if (error instanceof Error && error.message === "NO_COMPANY") return "تعذر تحديد الشركة الحالية";
+  if (code === "auth/email-already-in-use") return t("emailInUse");
+  if (code === "auth/weak-password") return t("weakPassword");
+  if (code === "permission-denied") return t("noPermission");
+  if (error instanceof Error && error.message === "NO_COMPANY") return t("noCompany");
 
-  return "تعذر إضافة الموظف. حاول مرة أخرى.";
+  return t("addEmployeeFailed");
 }
 
 export default function EmployeesPage() {
+  const t = useTranslations("Employees");
   const { data: employees = [], isLoading, isError, error, refetch } = useEmployees();
   const { data: geofences = [] } = useGeofences();
   const { data: attendanceData = [] } = useAttendance();
@@ -152,16 +156,16 @@ export default function EmployeesPage() {
 
   const handleAdd = () => {
     if (!newEmployee.name || !newEmployee.email || !newEmployee.password) {
-      toastError("يرجى ملء الاسم والبريد الإلكتروني وكلمة المرور");
+      toastError(t("fillRequired"));
       return;
     }
     if (newEmployee.password.length < 8) {
-      toastError("كلمة المرور يجب أن تكون 8 أحرف على الأقل");
+      toastError(t("passwordMin"));
       return;
     }
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(newEmployee.email)) {
-      toastError("البريد الإلكتروني غير صحيح");
+      toastError(t("invalidEmail"));
       return;
     }
     const email = newEmployee.email;
@@ -186,7 +190,7 @@ export default function EmployeesPage() {
           setCreatedCredentials({ email, username, password });
         },
         onError: (error) => {
-          toastError(getEmployeeCreationErrorMessage(error));
+          toastError(getEmployeeCreationErrorMessage(error, t));
         },
       }
     );
@@ -224,10 +228,10 @@ export default function EmployeesPage() {
       },
       {
         onSuccess: () => {
-          toastSuccess("تم تحديث بيانات الموظف بنجاح");
+          toastSuccess(t("employeeUpdated"));
           setEditTarget(null);
         },
-        onError: () => toastError("حدث خطأ أثناء تحديث بيانات الموظف"),
+        onError: () => toastError(t("employeeUpdateFailed")),
       }
     );
   };
@@ -236,7 +240,7 @@ export default function EmployeesPage() {
     hapticTap();
     const selectedEmployees = employees.filter((e) => selectedIds.includes(e.id));
     if (selectedEmployees.length === 0) {
-      toastError("لم يتم تحديد أي موظف");
+      toastError(t("noEmployeeSelected"));
       return;
     }
     let successCount = 0;
@@ -250,14 +254,14 @@ export default function EmployeesPage() {
       )
     );
     if (successCount > 0 && failCount === 0) {
-      toastWithUndo(`تم حذف ${successCount} موظف`, () => {
-        toastError("لا يمكن التراجع — يرجى إعادة إضافة الموظفين يدوياً");
+      toastWithUndo(t("employeesDeleted", { count: successCount }), () => {
+        toastError(t("cannotUndo"));
         void refetch();
       });
     } else if (successCount > 0 && failCount > 0) {
-      toastError(`تم حذف ${successCount} موظف، فشل حذف ${failCount} موظف`);
+      toastError(t("deletePartialSuccess", { success: successCount, failed: failCount }));
     } else {
-      toastError("تعذر حذف الموظفين المحددين");
+      toastError(t("deleteFailed"));
     }
     setSelectedIds([]);
   };
@@ -265,17 +269,17 @@ export default function EmployeesPage() {
   const handleBulkExport = () => {
     const selected = employees.filter((e) => selectedIds.includes(e.id));
     if (selected.length === 0) {
-      toastError("لم يتم تحديد أي موظف للتصدير");
+      toastError(t("noEmployeeSelectedExport"));
       return;
     }
     hapticSuccess();
-    const headers = ["الاسم", "البريد", "الهاتف", "القسم", "الحالة"];
+    const headers = t("csvHeaders") as unknown as string[];
     const rows = selected.map((e) => [
       e.name,
       e.email,
       e.phone,
       e.department,
-      e.status === "active" ? "نشط" : "غير نشط",
+      e.status === "active" ? t("active") : t("inactiveStatus"),
     ]);
     const csv = [headers, ...rows].map((r) => r.map((c) => `"${c}"`).join(",")).join("\n");
     const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8" });
@@ -285,25 +289,25 @@ export default function EmployeesPage() {
     a.download = `employees_export_${Date.now()}.csv`;
     a.click();
     URL.revokeObjectURL(url);
-    toastSuccess(`تم تصدير ${selected.length} موظف`);
+    toastSuccess(t("exportSuccess", { count: selected.length }));
   };
 
   const handleTodayStatusExport = () => {
     if (employees.length === 0) {
-      toastError("لا يوجد موظفون لتصدير التقرير");
+      toastError(t("noEmployeesReport"));
       return;
     }
     const today = new Date().toLocaleDateString("sv-SE");
-    const headers = ["الاسم", "البريد الإلكتروني", "الحالة", "وقت الحضور", "وقت الانصراف"];
+    const headers = t("attendanceReportHeaders") as unknown as string[];
     const rows = employees.map((e) => {
       const record = attendanceData.find(
         (r) => String(r.employeeId) === String(e.id) && r.date === today
       );
-      let status = "غائب";
+      let status = t("statusAbsent");
       if (record) {
-        if (record.status === "checked_out") status = "انصراف";
-        else if (record.status === "present") status = "حاضر";
-        else if (record.status === "late") status = "متأخر";
+        if (record.status === "checked_out") status = t("statusCheckedOut");
+        else if (record.status === "present") status = t("statusPresent");
+        else if (record.status === "late") status = t("statusLate");
       }
       return [e.name, e.email, status, record?.checkInTime ?? "—", record?.checkOutTime ?? "—"];
     });
@@ -315,7 +319,7 @@ export default function EmployeesPage() {
     a.download = `attendance_report_${today}_${Date.now()}.csv`;
     a.click();
     URL.revokeObjectURL(url);
-    toastSuccess("تم تصدير تقرير الحضور اليوم");
+    toastSuccess(t("reportExported"));
   };
 
   const handleDelete = (emp: Employee) => {
@@ -327,14 +331,14 @@ export default function EmployeesPage() {
     const deletedEmployee = deleteTarget;
     deleteEmployee.mutate(deleteTarget.id, {
       onSuccess: () => {
-        toastWithUndo(`تم حذف الموظف ${deletedEmployee.name}`, () => {
-          toastError("لا يمكن التراجع — يرجى إعادة إضافة الموظف يدوياً");
+        toastWithUndo(t("deleteEmployeeSuccess", { name: deletedEmployee.name }), () => {
+          toastError(t("cannotUndo"));
           void refetch();
         });
         setDeleteTarget(null);
       },
       onError: () => {
-        toastError("تعذر حذف الموظف");
+        toastError(t("deleteEmployeeFailed"));
         setDeleteTarget(null);
       },
     });
@@ -344,6 +348,16 @@ export default function EmployeesPage() {
     if (!id) return "-";
     return geofences.find((g) => String(g.id) === String(id))?.name || "-";
   };
+
+  const geofenceOptions = useMemo(
+    () =>
+      geofences.map((g) => (
+        <option key={String(g.id)} value={String(g.id)}>
+          {g.name}
+        </option>
+      )),
+    [geofences]
+  );
 
   const [search, setSearch] = useState("");
   const [filterDept, setFilterDept] = useState("");
@@ -401,11 +415,7 @@ export default function EmployeesPage() {
     return (
       <MainLayout>
         <div className="p-6 min-h-screen">
-          <AccessDeniedCard
-            icon={Users}
-            message="صفحة إدارة الموظفين متاحة لمدير الشركة فقط."
-            ctaHref="/check-in"
-          />
+          <AccessDeniedCard icon={Users} message={t("accessDenied")} ctaHref="/check-in" />
         </div>
       </MainLayout>
     );
@@ -415,8 +425,8 @@ export default function EmployeesPage() {
     <MainLayout>
       <div className="p-6 space-y-6 min-h-screen">
         <FullPageHead
-          head="إدارة الموظفين"
-          description="عرض وإدارة جميع الموظفين في النظام"
+          head={t("title")}
+          description={t("description")}
           Icon={<Users className="w-7 h-7" />}
           LeftSection={
             <div className="flex items-center gap-2">
@@ -428,7 +438,7 @@ export default function EmployeesPage() {
                       ? "bg-card shadow-sm text-primary"
                       : "text-muted-foreground hover:text-muted-foreground dark:hover:text-foreground"
                   }`}
-                  aria-label="عرض جدول"
+                  aria-label={t("tableView")}
                 >
                   <LayoutList className="w-4 h-4" />
                 </button>
@@ -439,7 +449,7 @@ export default function EmployeesPage() {
                       ? "bg-card shadow-sm text-primary"
                       : "text-muted-foreground hover:text-muted-foreground dark:hover:text-foreground"
                   }`}
-                  aria-label="عرض بطاقات"
+                  aria-label={t("cardView")}
                 >
                   <LayoutGrid className="w-4 h-4" />
                 </button>
@@ -450,7 +460,7 @@ export default function EmployeesPage() {
                 className="flex items-center gap-2"
               >
                 <Upload className="w-4 h-4" />
-                استيراد CSV
+                {t("importCsv")}
               </Button>
               <Button
                 variant="outline"
@@ -458,7 +468,7 @@ export default function EmployeesPage() {
                 className="flex items-center gap-2"
               >
                 <Download className="w-4 h-4" />
-                تقرير الحضور اليوم
+                {t("todayReport")}
               </Button>
               <Button
                 variant="primary"
@@ -466,7 +476,7 @@ export default function EmployeesPage() {
                 className="flex items-center gap-2"
               >
                 <UserPlus className="w-4 h-4" />
-                إضافة موظف
+                {t("addEmployee")}
               </Button>
             </div>
           }
@@ -482,21 +492,21 @@ export default function EmployeesPage() {
           <FormDrawer
             open={showAddForm}
             onOpenChange={setShowAddForm}
-            title="إضافة موظف جديد"
-            description="أدخل بيانات الموظف الجديد"
+            title={t("addEmployeeTitle")}
+            description={t("addEmployeeDescription")}
             onSubmit={handleAdd}
             isSubmitting={createEmployee.isPending}
-            submitLabel="حفظ"
+            submitLabel={t("save")}
           >
             <div className="grid grid-cols-1 gap-4">
               <FormField
-                label="الاسم"
+                label={t("name")}
                 value={newEmployee.name}
                 onChange={(v) => setNewEmployee({ ...newEmployee, name: v })}
-                placeholder="اسم الموظف"
+                placeholder={t("employeeNamePlaceholder")}
               />
               <FormField
-                label="البريد الإلكتروني"
+                label={t("email")}
                 type="email"
                 value={newEmployee.email}
                 onChange={(v) => setNewEmployee({ ...newEmployee, email: v })}
@@ -504,27 +514,21 @@ export default function EmployeesPage() {
                 ltr
               />
               <FormSelect
-                label="النطاق الجغرافي"
+                label={t("geofenceLabel")}
                 value={newEmployee.geofenceId}
                 onChange={(v) => setNewEmployee({ ...newEmployee, geofenceId: v })}
               >
-                {geofences.map((g) => (
-                  <option key={g.id} value={g.id}>
-                    {g.name}
-                  </option>
-                ))}
+                {geofenceOptions}
               </FormSelect>
               <FormField
-                label="كلمة المرور"
+                label={t("password")}
                 type="text"
                 value={newEmployee.password}
                 onChange={(v) => setNewEmployee({ ...newEmployee, password: v })}
-                placeholder="8 أحرف على الأقل"
+                placeholder={t("passwordMin")}
                 required
               />
-              <p className="text-xs text-muted-foreground -mt-2">
-                سيستخدم الموظف هذه البيانات لتسجيل الدخول
-              </p>
+              <p className="text-xs text-muted-foreground -mt-2">{t("passwordHint")}</p>
             </div>
           </FormDrawer>
         )}
@@ -538,15 +542,13 @@ export default function EmployeesPage() {
                   <Check className="w-5 h-5 text-primary" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-foreground">تم إنشاء حساب الموظف</h3>
-                  <p className="text-xs text-muted-foreground">
-                    احتفظ بهذه البيانات وشاركها مع الموظف
-                  </p>
+                  <h3 className="font-bold text-foreground">{t("accountCreated")}</h3>
+                  <p className="text-xs text-muted-foreground">{t("keepCredentials")}</p>
                 </div>
               </div>
               <div className="bg-muted rounded-xl p-4 space-y-3 mb-4">
                 <div>
-                  <p className="text-xs text-muted-foreground mb-1">البريد الإلكتروني</p>
+                  <p className="text-xs text-muted-foreground mb-1">{t("adminEmail")}</p>
                   <p className="font-mono text-sm font-semibold text-foreground select-all">
                     <span dir="ltr" lang="en" style={{ unicodeBidi: "plaintext" }}>
                       {createdCredentials.email}
@@ -554,7 +556,7 @@ export default function EmployeesPage() {
                   </p>
                 </div>
                 <div>
-                  <p className="text-xs text-muted-foreground mb-1">كلمة المرور</p>
+                  <p className="text-xs text-muted-foreground mb-1">{t("employeePassword")}</p>
                   <p className="font-mono text-sm font-semibold text-foreground select-all">
                     {createdCredentials.password}
                   </p>
@@ -569,37 +571,52 @@ export default function EmployeesPage() {
                       password: createdCredentials.password,
                       loginUrl: staffLoginUrl,
                     });
-                    try {
-                      if (navigator.clipboard && window.isSecureContext) {
-                        await navigator.clipboard.writeText(message);
-                      } else {
-                        const textarea = document.createElement("textarea");
-                        textarea.value = message;
-                        textarea.style.position = "fixed";
-                        textarea.style.left = "-9999px";
-                        textarea.setAttribute("readonly", "");
-                        document.body.appendChild(textarea);
-                        textarea.select();
-                        const copied = document.execCommand("copy");
-                        document.body.removeChild(textarea);
-                        if (!copied) throw new Error("execCommand copy failed");
+
+                    const copyText = async (text: string) => {
+                      if (navigator.clipboard?.writeText) {
+                        try {
+                          await navigator.clipboard.writeText(text);
+                          return;
+                        } catch {
+                          // fall through to textarea fallback
+                        }
                       }
-                      toastSuccess("تم نسخ بيانات الدخول");
-                    } catch {
-                      toastError("تعذر النسخ التلقائي. انسخ البيانات يدويًا.");
+
+                      const textarea = document.createElement("textarea");
+                      textarea.value = text;
+                      textarea.style.position = "fixed";
+                      textarea.style.top = "0";
+                      textarea.style.left = "0";
+                      textarea.style.opacity = "0";
+                      textarea.style.pointerEvents = "none";
+                      textarea.setAttribute("readonly", "");
+                      document.body.appendChild(textarea);
+                      textarea.focus();
+                      textarea.setSelectionRange(0, text.length);
+                      const copied = document.execCommand("copy");
+                      document.body.removeChild(textarea);
+                      if (!copied) throw new Error("execCommand copy failed");
+                    };
+
+                    try {
+                      await copyText(message);
+                      toastSuccess(t("copySuccess"));
+                    } catch (err) {
+                      console.error("[copyCredentials] failed:", err);
+                      toastError(t("copyFailed"));
                     }
                   }}
-                  aria-label="نسخ بيانات الدخول"
+                  aria-label={t("copyCredentials")}
                   className="w-full py-2 px-3 rounded-xl border border-border text-sm font-medium text-foreground hover:bg-muted transition-colors"
                 >
-                  نسخ البيانات
+                  {t("copyCredentials")}
                 </button>
               </div>
               <button
                 onClick={() => setCreatedCredentials(null)}
                 className="w-full py-2.5 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl font-medium transition-colors"
               >
-                فهمت
+                {t("gotIt")}
               </button>
             </div>
           </div>
@@ -610,13 +627,15 @@ export default function EmployeesPage() {
           <div className="flex items-center gap-4 flex-wrap">
             <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-primary/5 border border-primary/30">
               <Users className="w-4 h-4 text-primary" />
-              <span className="text-sm font-semibold text-primary/70">{employees.length} موظف</span>
+              <span className="text-sm font-semibold text-primary/70">
+                {employees.length} {t("employees")}
+              </span>
             </div>
             {inactiveCount > 0 && (
               <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-muted border border-input">
                 <span className="w-2 h-2 rounded-full bg-muted-foreground/50" />
                 <span className="text-sm font-semibold text-muted-foreground">
-                  {inactiveCount} غير نشط
+                  {inactiveCount} {t("inactive")}
                 </span>
               </div>
             )}
@@ -632,7 +651,7 @@ export default function EmployeesPage() {
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="بحث بالاسم أو البريد أو القسم..."
+                placeholder={t("searchPlaceholder")}
                 className="w-full pr-9 pl-3 py-2 rounded-xl border border-input bg-card text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring shadow-sm"
               />
               {search && (
@@ -650,7 +669,7 @@ export default function EmployeesPage() {
                 onChange={(e) => setFilterDept(e.target.value)}
                 className="px-3 py-2 rounded-xl border border-input bg-card text-sm text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring shadow-sm"
               >
-                <option value="">جميع الأقسام</option>
+                <option value="">{t("allDepartments")}</option>
                 {departments.map((d) => (
                   <option key={d} value={d}>
                     {d}
@@ -662,9 +681,9 @@ export default function EmployeesPage() {
                 onChange={(e) => setFilterStatus(e.target.value)}
                 className="px-3 py-2 rounded-xl border border-input bg-card text-sm text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring shadow-sm"
               >
-                <option value="">جميع الحالات</option>
-                <option value="active">نشط</option>
-                <option value="inactive">غير نشط</option>
+                <option value="">{t("allStatuses")}</option>
+                <option value="active">{t("active")}</option>
+                <option value="inactive">{t("inactiveStatus")}</option>
               </select>
               {(search || filterDept || filterStatus) && (
                 <button
@@ -675,7 +694,7 @@ export default function EmployeesPage() {
                   }}
                   className="px-3 py-2 rounded-xl text-sm text-destructive hover:bg-destructive/5 dark:hover:bg-destructive/10 border border-destructive/20 border-destructive/30 transition-colors"
                 >
-                  مسح
+                  {t("clear")}
                 </button>
               )}
             </div>
@@ -688,7 +707,7 @@ export default function EmployeesPage() {
             <ErrorState onRetry={() => refetch()} />
             <div className="bg-destructive/5 border border-destructive/20 border-destructive/30 rounded-xl p-4 text-left">
               <p className="text-xs font-bold text-destructive text-destructive/70 mb-1">
-                تفاصيل الخطأ:
+                {t("errorDetails")}
               </p>
               <p className="text-xs text-destructive font-mono break-all">
                 {error instanceof Error ? error.message : JSON.stringify(error)}
@@ -700,13 +719,13 @@ export default function EmployeesPage() {
           <EmptyState
             icon={Users}
             illustration="employees"
-            title="لا يوجد موظفون"
-            description="لم يتم العثور على أي موظفين في النظام"
-            actionLabel="إضافة موظف"
+            title={t("noEmployees")}
+            description={t("noEmployeesDescription")}
+            actionLabel={t("addEmployee")}
             onAction={() => setShowAddForm(true)}
-            secondaryActionLabel="استيراد من CSV"
+            secondaryActionLabel={t("importFromCsv")}
             onSecondaryAction={() => setShowBulkImport(true)}
-            tip="يمكنك إضافة موظفين فرديين أو استيراد ملف CSV جماعي"
+            tip={t("addEmployeeTip")}
           />
         )}
         {!isLoading && !isError && employees.length > 0 && viewMode === "grid" && (
@@ -770,28 +789,28 @@ export default function EmployeesPage() {
                         <Link
                           href={`/employees/${emp.id}`}
                           className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg text-xs font-medium text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors"
-                          title="عرض الملف"
+                          title={t("viewProfile")}
                         >
                           <Eye className="w-3.5 h-3.5" />
-                          عرض
+                          {t("view")}
                         </Link>
                         <div className="w-px h-5 bg-muted" />
                         <button
                           onClick={() => handleEdit(emp)}
                           className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg text-xs font-medium text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors"
-                          title="تعديل"
+                          title={t("edit")}
                         >
                           <Edit className="w-3.5 h-3.5" />
-                          تعديل
+                          {t("edit")}
                         </button>
                         <div className="w-px h-5 bg-muted" />
                         <button
                           onClick={() => handleDelete(emp)}
                           className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg text-xs font-medium text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
-                          title="حذف"
+                          title={t("delete")}
                         >
                           <Trash2 className="w-3.5 h-3.5" />
-                          حذف
+                          {t("delete")}
                         </button>
                       </div>
                     </CardContent>
@@ -807,7 +826,7 @@ export default function EmployeesPage() {
               columns={[
                 {
                   key: "name",
-                  header: "الموظف",
+                  header: t("employee"),
                   sortable: true,
                   filterable: true,
                   sortValue: (emp) => emp.name,
@@ -825,7 +844,7 @@ export default function EmployeesPage() {
                 },
                 {
                   key: "status",
-                  header: "الحالة",
+                  header: t("status"),
                   sortable: true,
                   sortValue: (emp) => emp.status,
                   cell: (emp) => (
@@ -842,13 +861,13 @@ export default function EmployeesPage() {
                           <span className="relative inline-flex rounded-full h-2 w-2 bg-primary" />
                         </span>
                       )}
-                      {emp.status === "active" ? "نشط" : "غير نشط"}
+                      {emp.status === "active" ? t("active") : t("inactiveStatus")}
                     </span>
                   ),
                 },
                 {
                   key: "contact",
-                  header: "اسم المستخدم",
+                  header: t("username"),
                   cell: (emp) => (
                     <div className="flex flex-col gap-1 text-xs text-muted-foreground">
                       <span className="flex items-center gap-1">
@@ -862,7 +881,7 @@ export default function EmployeesPage() {
                 },
                 {
                   key: "geofenceId",
-                  header: "النطاق الجغرافي",
+                  header: t("geofence"),
                   filterable: true,
                   sortValue: (emp) => getGeofenceName(emp.geofenceId ?? null),
                   cell: (emp) => (
@@ -874,30 +893,30 @@ export default function EmployeesPage() {
                 },
                 {
                   key: "actions",
-                  header: "إجراءات",
+                  header: t("actions"),
                   cell: (emp) => (
                     <div className="flex items-center gap-2">
                       <Link
                         href={`/employees/${emp.id}`}
                         className="p-1.5 rounded-lg text-primary hover:bg-primary/10"
-                        title="عرض الملف"
-                        aria-label="عرض ملف الموظف"
+                        title={t("viewProfile")}
+                        aria-label={t("viewProfile")}
                       >
                         <Eye className="w-4 h-4" aria-hidden />
                       </Link>
                       <button
                         onClick={() => handleEdit(emp)}
                         className="p-1.5 rounded-lg text-primary hover:bg-primary/10"
-                        title="تعديل"
-                        aria-label="تعديل الموظف"
+                        title={t("edit")}
+                        aria-label={t("edit")}
                       >
                         <Edit className="w-4 h-4" aria-hidden />
                       </button>
                       <button
                         onClick={() => handleDelete(emp)}
                         className="p-1.5 rounded-lg text-destructive hover:bg-destructive/10"
-                        title="حذف"
-                        aria-label="حذف الموظف"
+                        title={t("delete")}
+                        aria-label={t("delete")}
                       >
                         <Trash2 className="w-4 h-4" aria-hidden />
                       </button>
@@ -906,7 +925,7 @@ export default function EmployeesPage() {
                 },
               ]}
               data={employees}
-              searchPlaceholder="بحث بالاسم أو النطاق..."
+              searchPlaceholder={t("searchPlaceholder")}
               selectable
               selectedIds={selectedIds}
               onSelectionChange={setSelectedIds}
@@ -923,21 +942,23 @@ export default function EmployeesPage() {
               exit={{ opacity: 0, y: 50 }}
               className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-card rounded-2xl shadow-2xl border border-border px-6 py-3 flex items-center gap-4"
             >
-              <span className="text-sm font-medium text-foreground">{selectedIds.length} محدد</span>
+              <span className="text-sm font-medium text-foreground">
+                {selectedIds.length} {t("selected")}
+              </span>
               <div className="h-6 w-px bg-muted" />
               <button
                 onClick={handleBulkExport}
                 className="flex items-center gap-1.5 text-sm text-primary hover:bg-primary/5 hover:bg-primary/10 px-3 py-1.5 rounded-lg transition-colors"
               >
                 <Download className="w-4 h-4" />
-                تصدير المحدد
+                {t("exportSelected")}
               </button>
               <button
                 onClick={handleBulkDelete}
                 className="flex items-center gap-1.5 text-sm text-destructive hover:bg-destructive/5 dark:hover:bg-destructive/10 px-3 py-1.5 rounded-lg transition-colors"
               >
                 <Trash2 className="w-4 h-4" />
-                حذف المحدد
+                {t("deleteSelected")}
               </button>
               <button
                 onClick={() => setSelectedIds([])}
@@ -952,10 +973,10 @@ export default function EmployeesPage() {
         <ConfirmDialog
           open={deleteTarget !== null}
           onOpenChange={(open) => !open && setDeleteTarget(null)}
-          title="تأكيد الحذف"
-          description={`هل أنت متأكد من حذف ${deleteTarget?.name}؟ لا يمكن التراجع عن هذا الإجراء.`}
-          confirmLabel="حذف"
-          cancelLabel="إلغاء"
+          title={t("confirmDeleteTitle")}
+          description={t("confirmDeleteDescription", { name: deleteTarget?.name })}
+          confirmLabel={t("delete")}
+          cancelLabel={t("cancel")}
           onConfirm={confirmDelete}
         />
 
@@ -963,21 +984,21 @@ export default function EmployeesPage() {
         <FormDrawer
           open={editTarget !== null}
           onOpenChange={(open) => !open && setEditTarget(null)}
-          title={`تعديل: ${editTarget?.name || ""}`}
-          description="تحديث بيانات الموظف"
+          title={t("editEmployeeTitle", { name: editTarget?.name || "" })}
+          description={t("editEmployeeDescription")}
           onSubmit={handleUpdate}
           isSubmitting={updateEmployee.isPending}
-          submitLabel="حفظ التعديلات"
+          submitLabel={t("saveChanges")}
         >
           <div className="grid grid-cols-1 gap-4">
             <FormField
-              label="الاسم"
+              label={t("name")}
               value={editEmployee.name}
               onChange={(v) => setEditEmployee({ ...editEmployee, name: v })}
-              placeholder="اسم الموظف"
+              placeholder={t("employeeNamePlaceholder")}
             />
             <FormField
-              label="البريد الإلكتروني"
+              label={t("email")}
               type="email"
               value={editEmployee.email}
               onChange={(v) => setEditEmployee({ ...editEmployee, email: v })}
@@ -986,33 +1007,29 @@ export default function EmployeesPage() {
             />
             <div className="flex items-center justify-between p-3 rounded-xl border border-input bg-card">
               <span className="text-sm font-medium text-foreground">
-                {editEmployee.status === "active" ? "نشط" : "غير نشط"}
+                {editEmployee.status === "active" ? t("active") : t("inactiveStatus")}
               </span>
               <Switch
                 checked={editEmployee.status === "active"}
                 onCheckedChange={(checked) =>
                   setEditEmployee({ ...editEmployee, status: checked ? "active" : "inactive" })
                 }
-                aria-label="حالة الموظف"
+                aria-label={t("status")}
               />
             </div>
             <FormSelect
-              label="النطاق الجغرافي"
+              label={t("geofenceLabel")}
               value={editEmployee.geofenceId}
               onChange={(v) => setEditEmployee({ ...editEmployee, geofenceId: v })}
             >
-              {geofences.map((g) => (
-                <option key={g.id} value={g.id}>
-                  {g.name}
-                </option>
-              ))}
+              {geofenceOptions}
             </FormSelect>
             <FormField
-              label="كلمة المرور الحالية"
+              label={t("currentPassword")}
               type="text"
               value={editEmployee.password}
               onChange={(v) => setEditEmployee({ ...editEmployee, password: v })}
-              placeholder="أدخل كلمة المرور"
+              placeholder={t("enterPassword")}
               ltr
             />
 
@@ -1024,19 +1041,19 @@ export default function EmployeesPage() {
                   onClick={() => setShowResetPassword(true)}
                   className="text-xs text-primary hover:underline"
                 >
-                  تعيين كلمة مرور جديدة للموظف
+                  {t("setNewPassword")}
                 </button>
               ) : (
                 <div className="space-y-2">
                   <label className="block text-xs font-medium text-muted-foreground">
-                    كلمة المرور الجديدة
+                    {t("newPassword")}
                   </label>
                   <div className="flex gap-2">
                     <input
                       type="text"
                       value={resetPasswordValue}
                       onChange={(e) => setResetPasswordValue(e.target.value)}
-                      placeholder="8 أحرف على الأقل"
+                      placeholder={t("passwordMin")}
                       dir="ltr"
                       className="flex-1 px-3 py-2 text-sm border border-input rounded-lg outline-none focus:ring-2 focus:ring-ring bg-transparent text-foreground"
                     />
@@ -1053,17 +1070,17 @@ export default function EmployeesPage() {
                           },
                           {
                             onSuccess: () => {
-                              toastSuccess("تم تغيير كلمة المرور بنجاح");
+                              toastSuccess(t("passwordChanged"));
                               setResetPasswordValue("");
                               setShowResetPassword(false);
                             },
-                            onError: () => toastError("فشل تغيير كلمة المرور"),
+                            onError: () => toastError(t("passwordChangeFailed")),
                           }
                         );
                       }}
                       className="px-3 py-2 text-sm bg-primary hover:bg-primary/90 disabled:opacity-40 text-primary-foreground rounded-lg transition-colors"
                     >
-                      {resetEmployeePassword.isPending ? "…" : "حفظ"}
+                      {resetEmployeePassword.isPending ? "…" : t("changePassword")}
                     </button>
                     <button
                       type="button"
@@ -1073,7 +1090,7 @@ export default function EmployeesPage() {
                       }}
                       className="px-3 py-2 text-sm text-muted-foreground hover:text-foreground"
                     >
-                      إلغاء
+                      {t("cancel")}
                     </button>
                   </div>
                 </div>

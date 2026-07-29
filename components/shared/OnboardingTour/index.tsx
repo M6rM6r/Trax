@@ -6,6 +6,7 @@ import { X, ChevronLeft, ChevronRight } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { hapticTap, hapticSuccess } from "@/lib/utils/haptics";
 import { toastSuccess } from "@/hooks/use-toast";
+import { useTranslations } from "next-intl";
 
 const ONBOARDED_KEY = "trax_onboarded";
 
@@ -16,41 +17,44 @@ interface TourStep {
   icon: React.ReactNode;
 }
 
-const tourSteps: TourStep[] = [
-  {
-    title: "مرحباً بك في Trax!",
-    description: "دعنا نتعرف على النظام معاً. جولة سريعة لتكتشف كل الميزات.",
-    icon: <span className="text-4xl">👋</span>,
-  },
-  {
-    title: "القائمة الجانبية",
-    description:
-      "من هنا يمكنك التنقل بين جميع أقسام النظام بسهولة — لوحة التحكم، الموظفون، الحضور، والخريطة.",
-    highlightSelector: "aside#logo-sidebar",
-    icon: <span className="text-4xl">📋</span>,
-  },
-  {
-    title: "بطاقات الإحصائيات",
-    description:
-      "هذه البطاقات تعرض أهم المؤشرات: عدد الموظفين، الحاضرون، المتأخرون، والغائبون. يمكنك سحبها لإعادة ترتيبها!",
-    highlightSelector: ".grid.gap-6.sm\\:grid-cols-2.lg\\:grid-cols-3",
-    icon: <span className="text-4xl">📊</span>,
-  },
-  {
-    title: "لوحة الأوامر",
-    description: "اضغط Ctrl+K (أو ⌘K على Mac) لفتح لوحة الأوامر والوصول السريع لأي قسم.",
-    highlightSelector: "[aria-label='بحث']",
-    icon: <span className="text-4xl">⌨️</span>,
-  },
-  {
-    title: "الإشعارات",
-    description: "ستجد إشعاراتك هنا — تنبيهات الحضور، تجاوز النطاقات، والذكاء الاصطناعي.",
-    highlightSelector: "[aria-label*='الإشعارات']",
-    icon: <span className="text-4xl">🔔</span>,
-  },
-];
+function useTourSteps(): TourStep[] {
+  const t = useTranslations("Onboarding");
+  return [
+    {
+      title: t("tourWelcomeTitle"),
+      description: t("tourWelcomeDescription"),
+      icon: <span className="text-4xl">👋</span>,
+    },
+    {
+      title: t("tourSidebarTitle"),
+      description: t("tourSidebarDescription"),
+      highlightSelector: "aside#logo-sidebar",
+      icon: <span className="text-4xl">📋</span>,
+    },
+    {
+      title: t("tourStatsTitle"),
+      description: t("tourStatsDescription"),
+      highlightSelector: ".grid.gap-6.sm\\:grid-cols-2.lg\\:grid-cols-3",
+      icon: <span className="text-4xl">📊</span>,
+    },
+    {
+      title: t("tourCommandTitle"),
+      description: t("tourCommandDescription"),
+      highlightSelector: "[aria-label='Search']",
+      icon: <span className="text-4xl">⌨️</span>,
+    },
+    {
+      title: t("tourNotificationsTitle"),
+      description: t("tourNotificationsDescription"),
+      highlightSelector: "[aria-label*='Notifications']",
+      icon: <span className="text-4xl">🔔</span>,
+    },
+  ];
+}
 
 export function OnboardingTour() {
+  const t = useTranslations("Onboarding");
+  const tourSteps = useTourSteps();
   const [isOpen, setIsOpen] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
   const [highlightRect, setHighlightRect] = useState<DOMRect | null>(null);
@@ -125,7 +129,7 @@ export function OnboardingTour() {
     } catch {}
     setIsOpen(false);
     setCurrentStep(0);
-    toastSuccess("اكتملت الجولة التعريفية! مرحباً بك في Trax");
+    toastSuccess(t("tourCompleted"));
   };
 
   if (!isOpen) return null;
@@ -170,7 +174,7 @@ export function OnboardingTour() {
             <button
               onClick={handleSkip}
               className="absolute top-4 left-4 p-1.5 rounded-lg hover:bg-muted transition-colors"
-              aria-label="تخطي"
+              aria-label={t("skipAria")}
             >
               <X className="w-5 h-5 text-muted-foreground/70" />
             </button>
@@ -205,7 +209,7 @@ export function OnboardingTour() {
                 onClick={handleSkip}
                 className="text-sm text-muted-foreground hover:text-muted-foreground dark:hover:text-foreground transition-colors"
               >
-                تخطي
+                {t("skip")}
               </button>
               <div className="flex items-center gap-2">
                 {currentStep > 0 && (
@@ -216,7 +220,7 @@ export function OnboardingTour() {
                     className="flex items-center gap-1"
                   >
                     <ChevronRight className="w-4 h-4" />
-                    السابق
+                    {t("previous")}
                   </Button>
                 )}
                 <Button
@@ -225,7 +229,7 @@ export function OnboardingTour() {
                   onClick={handleNext}
                   className="flex items-center gap-1"
                 >
-                  {isLastStep ? "إنهاء" : "التالي"}
+                  {isLastStep ? t("finish") : t("next")}
                   {!isLastStep && <ChevronLeft className="w-4 h-4" />}
                 </Button>
               </div>

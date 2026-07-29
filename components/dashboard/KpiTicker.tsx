@@ -2,6 +2,7 @@
 
 import { UserCheck, UserX, Clock, TrendingUp, MapPin, WifiOff } from "lucide-react";
 import type { DashboardStats, LiveTrackingEmployee } from "@/lib/types/trackingTypes";
+import { useTranslations } from "next-intl";
 
 interface KpiTickerProps {
   stats?: DashboardStats;
@@ -9,42 +10,43 @@ interface KpiTickerProps {
 }
 
 export default function KpiTicker({ stats, liveTracking = [] }: KpiTickerProps) {
+  const t = useTranslations("Dashboard");
   const outside = liveTracking.filter((e) => e.status === "outside_geofence").length;
   const offline = liveTracking.filter((e) => e.status === "offline").length;
 
   const items = [
     {
-      label: "حاضر",
+      label: t("statusPresent"),
       value: stats?.presentToday ?? 0,
       icon: UserCheck,
       color: "text-emerald-500",
     },
     {
-      label: "متأخر",
+      label: t("statusLate"),
       value: stats?.lateToday ?? 0,
       icon: Clock,
       color: "text-amber-500",
     },
     {
-      label: "غائب",
+      label: t("statusAbsent"),
       value: stats?.absentToday ?? 0,
       icon: UserX,
       color: "text-red-500",
     },
     {
-      label: "معدل الحضور",
+      label: t("onTimeRate"),
       value: `${Math.round(stats?.onTimeRate ?? 0)}%`,
       icon: TrendingUp,
       color: "text-primary",
     },
     {
-      label: "خارج النطاق",
+      label: t("outsideGeofence"),
       value: outside,
       icon: MapPin,
       color: "text-amber-500",
     },
     {
-      label: "غير متصل",
+      label: t("offline"),
       value: offline,
       icon: WifiOff,
       color: "text-muted-foreground",

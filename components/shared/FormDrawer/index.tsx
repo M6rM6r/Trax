@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { hapticTap } from "@/lib/utils/haptics";
+import { useTranslations } from "next-intl";
 
 interface FormDrawerProps {
   open: boolean;
@@ -31,12 +32,13 @@ export function FormDrawer({
   title,
   description,
   onSubmit,
-  submitLabel = "حفظ",
-  cancelLabel = "إلغاء",
+  submitLabel = "Save",
+  cancelLabel = "Cancel",
   isSubmitting = false,
   side = "right",
   children,
 }: FormDrawerProps) {
+  const t = useTranslations("Common.state");
   const handleSubmit = () => {
     hapticTap();
     onSubmit?.();
@@ -46,13 +48,9 @@ export function FormDrawer({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side={side} className="w-full sm:max-w-lg md:max-w-xl overflow-y-auto">
         <SheetHeader>
-          <SheetTitle className="text-lg font-bold text-foreground">
-            {title}
-          </SheetTitle>
+          <SheetTitle className="text-lg font-bold text-foreground">{title}</SheetTitle>
           {description && (
-            <SheetDescription className="text-muted-foreground">
-              {description}
-            </SheetDescription>
+            <SheetDescription className="text-muted-foreground">{description}</SheetDescription>
           )}
         </SheetHeader>
 
@@ -69,7 +67,7 @@ export function FormDrawer({
               {isSubmitting ? (
                 <>
                   <div className="w-4 h-4 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin" />
-                  جاري الحفظ...
+                  {t("saving")}
                 </>
               ) : (
                 submitLabel

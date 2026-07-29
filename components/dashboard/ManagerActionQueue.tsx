@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import { AlertCircle, Clock, MapPin, UserX, ShieldAlert } from "lucide-react";
 import type { AttendanceRecord, Employee, LiveTrackingEmployee } from "@/lib/types/trackingTypes";
+import { useTranslations } from "next-intl";
 
 interface ManagerActionQueueProps {
   attendanceData?: AttendanceRecord[];
@@ -25,6 +26,7 @@ export default function ManagerActionQueue({
   employees = [],
   liveTracking = [],
 }: ManagerActionQueueProps) {
+  const t = useTranslations("Dashboard");
   const today = new Date().toISOString().split("T")[0];
 
   const actions = useMemo<ActionItem[]>(() => {
@@ -36,7 +38,9 @@ export default function ManagerActionQueue({
         list.push({
           id: `geo-${e.id}`,
           title: e.name,
-          description: e.geofenceName ? `خارج النطاق (${e.geofenceName})` : "خارج النطاق الجغرافي",
+          description: e.geofenceName
+            ? t("outsideGeofenceDetail", { name: e.geofenceName })
+            : t("outsideGeofenceShort"),
           severity: "high",
           icon: MapPin,
         });
@@ -48,7 +52,7 @@ export default function ManagerActionQueue({
         list.push({
           id: `late-${r.id}`,
           title: r.employeeName,
-          description: `متأخر ${r.lateMinutes} دقيقة`,
+          description: t("lateMinutes", { minutes: r.lateMinutes ?? 0 }),
           severity: "medium",
           icon: Clock,
         });
@@ -60,7 +64,7 @@ export default function ManagerActionQueue({
         list.push({
           id: `absent-${r.id}`,
           title: r.employeeName,
-          description: "لم يسجل الحضور اليوم",
+          description: t("absentToday"),
           severity: "high",
           icon: UserX,
         });
@@ -72,23 +76,23 @@ export default function ManagerActionQueue({
         list.push({
           id: `shift-${e.id}`,
           title: e.name,
-          description: "تجاوز فترة عمل نشط",
+          description: t("shiftOverride"),
           severity: "low",
           icon: ShieldAlert,
         });
       });
 
     return list;
-  }, [attendanceData, employees, liveTracking, today]);
+  }, [attendanceData, employees, liveTracking, today, t]);
 
   if (actions.length === 0) {
     return (
       <div className="rounded-xl bg-card border border-border/50 p-4">
         <div className="flex items-center gap-2 mb-2">
           <AlertCircle className="w-5 h-5 text-primary" />
-          <h3 className="font-bold text-foreground">قائمة الإجراءات</h3>
+          <h3 className="font-bold text-foreground">{t("actionQueue")}</h3>
         </div>
-        <p className="text-sm text-muted-foreground">لا توجد مهام تتطلب تدخلاً حالياً</p>
+        <p className="text-sm text-muted-foreground">{t("noActions")}</p>
       </div>
     );
   }
@@ -97,9 +101,9 @@ export default function ManagerActionQueue({
     <div className="rounded-xl bg-card border border-border/50 p-4 space-y-3">
       <div className="flex items-center gap-2">
         <AlertCircle className="w-5 h-5 text-primary" />
-        <h3 className="font-bold text-foreground">قائمة الإجراءات</h3>
+        <h3 className="font-bold text-foreground">{t("actionQueue")}</h3>
         <span className="mr-auto text-xs text-muted-foreground">
-          {actions.length} يتطلب الاهتمام
+          {t("requiresAttention", { count: actions.length })}
         </span>
       </div>
       <div className="space-y-2">

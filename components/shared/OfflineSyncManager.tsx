@@ -11,8 +11,10 @@ import {
   hasOfflineCheckOutQueue,
 } from "@/lib/utils/offlineQueue";
 import { firebaseData } from "@/lib/services/firebaseData";
+import { useTranslations } from "next-intl";
 
 export default function OfflineSyncManager() {
+  const t = useTranslations("CheckIn");
   const syncingRef = useRef(false);
 
   useEffect(() => {
@@ -33,13 +35,12 @@ export default function OfflineSyncManager() {
             lat: item.lat,
             lng: item.lng,
             geofenceId: item.geofenceId,
-            companySettings: {
-              requireGeofenceForCheckIn: item.requireGeofenceForCheckIn,
-              allowCheckInOutsideGeofence: item.allowCheckInOutsideGeofence,
-            },
+            companySettings: item.settings,
+            employee: item.employeeSnapshot ?? null,
+            checkInTimestamp: item.timestamp,
           });
           removeFromOfflineQueue(item.id);
-          toastSuccess("تم مزامنة تسجيل الحضور المخزن مؤقتاً");
+          toastSuccess(t("offlineCheckInSynced"));
         } catch (err) {
           console.error("[offline-sync] check-in failed for item", item.id, err);
           const errMsg = err instanceof Error ? err.message : String(err);
@@ -51,9 +52,9 @@ export default function OfflineSyncManager() {
       const checkOutQueue = getOfflineCheckOutQueue();
       for (const item of checkOutQueue) {
         try {
-          await firebaseData.attendance.checkOut(item.employeeId);
+          await firebaseData.attendance.checkOut(item.employeeId, item.settings, item.timestamp);
           removeFromOfflineCheckOutQueue(item.id);
-          toastSuccess("تم مزامنة تسجيل الانصراف المخزن مؤقتاً");
+          toastSuccess(t("offlineCheckOutSynced"));
         } catch (err) {
           console.error("[offline-sync] check-out failed for item", item.id, err);
           const errMsg = err instanceof Error ? err.message : String(err);
@@ -68,7 +69,7 @@ export default function OfflineSyncManager() {
 
     window.addEventListener("online", syncQueue);
     return () => window.removeEventListener("online", syncQueue);
-  }, []);
+  }, [t]);
 
   return null;
 }

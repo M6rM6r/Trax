@@ -2,21 +2,13 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { NavMain } from "@/components/Sidebar/nav-main";
 import { usePathname, useRouter, Link } from "@/i18n/navigation";
-import {
-  Category,
-  CheckCircle,
-  Logout,
-  Profile,
-  ShieldTick,
-  Location,
-  Setting2,
-} from "@/public/SVG";
-import { Building2 } from "lucide-react";
+import { Logout } from "@/public/SVG";
 
 import { signOut } from "firebase/auth";
 import { auth } from "@/lib/config/firebase";
 import { cn } from "@/lib/utils";
-import { useLocale } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
+import { useMainNavItems } from "@/components/Sidebar/nav-main-items";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -59,6 +51,8 @@ const Index = ({
   const router = useRouter();
 
   const { user, role, clearUser } = useAuthStore();
+  const t = useTranslations("Navigation");
+  const mainNavItems = useMainNavItems({ pathname, role });
   const [authReady, setAuthReady] = useState(false);
 
   useKeyboardShortcuts();
@@ -144,11 +138,11 @@ const Index = ({
     }
     clearUser();
     toast({
-      description: "تم تسجيل الخروج بنجاح",
+      description: t("logoutSuccess"),
       variant: "default",
     });
     router.push("/login");
-  }, [router, toast, clearUser]);
+  }, [router, toast, clearUser, t]);
 
   // Show a minimal spinner until auth state is resolved to avoid flashing the
   // dashboard skeleton/layout to unauthenticated users.
@@ -175,8 +169,8 @@ const Index = ({
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
     >
-      <a href="#main-content" className="skip-to-content" aria-label="تخطي إلى المحتوى الرئيسي">
-        تخطي إلى المحتوى
+      <a href="#main-content" className="skip-to-content" aria-label={t("skipToMain")}>
+        {t("skipToContent")}
       </a>
       <TopLoadingBar />
       <OfflineBanner />
@@ -185,7 +179,7 @@ const Index = ({
         <nav
           className="fixed top-0 z-[49] w-full bg-card border-b border-border"
           style={{ paddingTop: "env(safe-area-inset-top)" }}
-          aria-label="الرأس"
+          aria-label={t("header")}
         >
           <header className="mx-auto flex h-16 w-full max-w-[110rem] items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
             <div className="flex items-center gap-3">
@@ -193,9 +187,9 @@ const Index = ({
                 <Image
                   src="/images/logo.png"
                   alt="Trax"
-                  width={28}
-                  height={28}
-                  className="h-7 w-auto object-contain"
+                  width={48}
+                  height={48}
+                  className="h-12 w-auto object-contain"
                   unoptimized
                   onError={(e) => {
                     (e.currentTarget as HTMLImageElement).style.display = "none";
@@ -211,18 +205,18 @@ const Index = ({
                   <DropdownMenuTrigger asChild>
                     <button
                       className="flex items-center gap-2 rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                      aria-label="قائمة المستخدم"
+                      aria-label={t("userMenu")}
                     >
                       <UserAvatar user={user} className="w-8 h-8" />
                       <span className="hidden md:inline text-sm font-medium text-foreground">
-                        {user?.name || "المستخدم"}
+                        {user?.name || t("user")}
                       </span>
                     </button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-56" sideOffset={8}>
                     <div className="px-3 py-2">
                       <p className="text-sm font-medium text-foreground truncate">
-                        {user?.name || "المستخدم"}
+                        {user?.name || t("user")}
                       </p>
                       <p className="text-xs text-muted-foreground truncate">{user?.email || ""}</p>
                     </div>
@@ -232,7 +226,7 @@ const Index = ({
                       className="text-destructive focus:bg-destructive/10 cursor-pointer"
                     >
                       <Logout className="w-4 h-4 me-2" />
-                      تسجيل الخروج
+                      {t("logout")}
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -264,68 +258,13 @@ const Index = ({
           )}
         >
           <div className="flex h-full flex-col justify-between px-3 py-4">
-            <NavMain
-              items={
-                role === "employee"
-                  ? [
-                      {
-                        title: "تسجيل الحضور",
-                        url: "/check-in",
-                        icon: CheckCircle,
-                        isActive: pathname.includes("/check-in"),
-                      },
-                    ]
-                  : [
-                      {
-                        title: "لوحة التحكم",
-                        url: "/",
-                        icon: Category,
-                        isActive: pathname === "/",
-                      },
-                      {
-                        title: "الموظفون",
-                        url: "/employees",
-                        icon: Profile,
-                        isActive: pathname.includes("/employees"),
-                      },
-                      {
-                        title: "الحضور والانصراف",
-                        url: "/attendance",
-                        icon: ShieldTick,
-                        isActive: pathname.includes("/attendance"),
-                      },
-                      {
-                        title: "النطاقات الجغرافية",
-                        url: "/geofences",
-                        icon: Location,
-                        isActive: pathname.includes("/geofences"),
-                      },
-                      ...(role === "company"
-                        ? [
-                            {
-                              title: "إعدادات الشركة",
-                              url: "/settings/company",
-                              icon: Building2,
-                              isActive: pathname.includes("/settings/company"),
-                            },
-                          ]
-                        : []),
-                      {
-                        title: "الإعدادات",
-                        url: "/settings",
-                        icon: Setting2,
-                        isActive:
-                          pathname.includes("/settings") && !pathname.includes("/settings/company"),
-                      },
-                    ]
-              }
-            />
+            <NavMain items={mainNavItems?.navMain || []} />
             <Button
               variant="ghost"
               className="w-full justify-start text-destructive hover:bg-destructive/10"
               onClick={logOut}
             >
-              <Logout className="me-2" /> تسجيل الخروج
+              <Logout className="me-2" /> {t("logout")}
             </Button>
           </div>
         </aside>

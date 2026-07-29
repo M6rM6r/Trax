@@ -1,28 +1,114 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter, usePathname } from "@/i18n/navigation";
+import { useLocale, useTranslations } from "next-intl";
 import MainLayout from "@/components/shared/MainLayout";
 import FullPageHead from "@/components/shared/FullPageHead";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
-import { Bell, Clock, MapPin, Zap, Building2, Save, Navigation, Timer } from "lucide-react";
+import {
+  Bell,
+  Clock,
+  MapPin,
+  Zap,
+  Save,
+  Send,
+  Navigation,
+  Timer,
+  Palette,
+  Type,
+  Check,
+  Settings as SettingsIcon,
+  Globe,
+  Calendar,
+} from "lucide-react";
 import { motion } from "framer-motion";
 import { hapticTap, hapticSuccess, hapticError } from "@/lib/utils/haptics";
 import { toastSuccess, toastError } from "@/hooks/use-toast";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useCompanySettingsStore } from "@/stores/useCompanySettingsStore";
 import { useSaveCompanySettings } from "@/hooks/useApi";
+import { firebaseData } from "@/lib/services/firebase";
 import type { CompanySettings } from "@/lib/types/companySettings";
 
-type TabId = "work" | "auto" | "notifications" | "session" | "geofence";
+type TabId = "general" | "work" | "auto" | "notifications" | "session" | "geofence" | "appearance";
+
+function getThemeColors(t: (key: string) => string) {
+  return [
+    { name: t("theme.blue"), value: "blue", color: "bg-[#3B82F6]" },
+    { name: t("theme.green"), value: "green", color: "bg-[#22C55E]" },
+    { name: t("theme.purple"), value: "purple", color: "bg-[#8B5CF6]" },
+    { name: t("theme.orange"), value: "orange", color: "bg-[#F97316]" },
+    { name: t("theme.pink"), value: "pink", color: "bg-[#EC4899]" },
+    { name: t("theme.cyan"), value: "cyan", color: "bg-[#06B6D4]" },
+  ];
+}
+
+function getFontSizes(t: (key: string) => string) {
+  return [
+    { name: t("theme.small"), value: "small", size: "text-sm" },
+    { name: t("theme.medium"), value: "medium", size: "text-base" },
+    { name: t("theme.large"), value: "large", size: "text-lg" },
+  ];
+}
+
+const accentColorMap: Record<string, string> = {
+  blue: "59 130 246",
+  green: "34 197 94",
+  purple: "168 85 247",
+  orange: "249 115 22",
+  pink: "236 72 153",
+  cyan: "6 182 212",
+};
+
+const accentHslMap: Record<string, { primary: string; accent: string; ring: string }> = {
+  blue: { primary: "217 91% 60%", accent: "217 91% 60%", ring: "217 91% 60%" },
+  green: { primary: "142 71% 45%", accent: "142 71% 45%", ring: "142 71% 45%" },
+  purple: { primary: "271 81% 56%", accent: "271 81% 56%", ring: "271 81% 56%" },
+  orange: { primary: "25 95% 53%", accent: "25 95% 53%", ring: "25 95% 53%" },
+  pink: { primary: "330 81% 60%", accent: "330 81% 60%", ring: "330 81% 60%" },
+  cyan: { primary: "168 72% 40%", accent: "38 88% 55%", ring: "168 72% 40%" },
+};
+
+function applyAccentColor(colorKey: string) {
+  const rgb = accentColorMap[colorKey];
+  const hsl = accentHslMap[colorKey];
+  if (!rgb || !hsl) return;
+  const root = document.documentElement;
+  root.style.setProperty("--accent-rgb", rgb);
+  root.style.setProperty("--primary", hsl.primary);
+  root.style.setProperty("--ring", hsl.ring);
+  root.style.setProperty("--sidebar-primary", hsl.primary);
+  root.style.setProperty("--sidebar-ring", hsl.ring);
+  root.style.setProperty("--chart-1", hsl.primary);
+}
+
+const fontSizeMap: Record<string, string> = {
+  small: "14px",
+  medium: "16px",
+  large: "18px",
+};
 
 export default function CompanySettingsPage() {
+  const t = useTranslations("CompanySettings");
   const { role } = useAuthStore();
   const settings = useCompanySettingsStore();
   const saveMutation = useSaveCompanySettings();
   const [activeTab, setActiveTab] = useState<TabId>("work");
   const [local, setLocal] = useState<CompanySettings | null>(null);
+  const [notifTitle, setNotifTitle] = useState("");
+  const [notifBody, setNotifBody] = useState("");
+  const [sendingNotif, setSendingNotif] = useState(false);
+  const [accentColor, setAccentColor] = useState("blue");
+  const [fontSize, setFontSize] = useState("medium");
+  const router = useRouter();
+  const pathname = usePathname();
+  const currentLocale = useLocale();
+  const [language, setLanguage] = useState(currentLocale);
+  const [timezone, setTimezone] = useState("Asia/Riyadh");
+  const [dateFormat, setDateFormat] = useState("gregorian");
 
   useEffect(() => {
     if (settings.loaded) {
@@ -35,11 +121,27 @@ export default function CompanySettingsPage() {
     }
   }, [settings.loaded]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  useEffect(() => {
+    const saved = localStorage.getItem("trax_settings");
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      const ac = parsed.accentColor || "blue";
+      const fs = parsed.fontSize || "medium";
+      setAccentColor(ac);
+      setFontSize(fs);
+      applyAccentColor(ac);
+      document.documentElement.style.setProperty("--base-font-size", fontSizeMap[fs] || "16px");
+      setLanguage(parsed.language || currentLocale);
+      setTimezone(parsed.timezone || "Asia/Riyadh");
+      setDateFormat(parsed.dateFormat || "gregorian");
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   if (role !== "company") {
     return (
       <MainLayout>
         <div className="p-6 text-center">
-          <p className="text-muted-foreground">هذه الصفحة متاحة للمشرفين فقط</p>
+          <p className="text-muted-foreground">{t("adminOnly")}</p>
         </div>
       </MainLayout>
     );
@@ -49,7 +151,7 @@ export default function CompanySettingsPage() {
     return (
       <MainLayout>
         <div className="p-6 text-center">
-          <p className="text-muted-foreground">جاري تحميل الإعدادات...</p>
+          <p className="text-muted-foreground">{t("loading")}</p>
         </div>
       </MainLayout>
     );
@@ -65,34 +167,73 @@ export default function CompanySettingsPage() {
       await saveMutation.mutateAsync(local);
       settings.setSettings(local);
       hapticSuccess();
-      toastSuccess("تم حفظ إعدادات الشركة بنجاح");
+      toastSuccess(t("saveSuccess"));
     } catch (err) {
       console.error("[company-settings] save failed:", err);
       hapticError();
       const errMsg = err instanceof Error ? err.message : String(err);
       if (errMsg === "AUTH_EXPIRED") {
-        toastError("انتهت الجلسة — يرجى تسجيل الدخول مرة أخرى");
+        toastError(t("sessionExpired"));
       } else {
-        toastError("فشل حفظ الإعدادات — حاول مرة أخرى");
+        toastError(t("saveFailed"));
       }
     }
   };
 
+  const handleSendNotification = async () => {
+    if (!notifTitle.trim() || !notifBody.trim()) return;
+    setSendingNotif(true);
+    try {
+      const result = await firebaseData.cloudFunctions.sendCompanyNotification(
+        notifTitle.trim(),
+        notifBody.trim()
+      );
+      toastSuccess(t("notifications.sent", { count: result.sent }));
+      setNotifTitle("");
+      setNotifBody("");
+    } catch {
+      hapticError();
+      toastError(t("notifications.sendFailed"));
+    } finally {
+      setSendingNotif(false);
+    }
+  };
+
+  const saveLocalSetting = (key: string, value: string) => {
+    const saved = localStorage.getItem("trax_settings");
+    const current = saved ? JSON.parse(saved) : {};
+    current[key] = value;
+    localStorage.setItem("trax_settings", JSON.stringify(current));
+    if (key === "language" && typeof value === "string") {
+      document.cookie = `NEXT_LOCALE=${value};path=/;max-age=31536000;SameSite=Lax`;
+    }
+    if (key === "accentColor" && typeof value === "string") {
+      applyAccentColor(value);
+    }
+    if (key === "fontSize" && typeof value === "string") {
+      document.documentElement.style.setProperty("--base-font-size", fontSizeMap[value] || "16px");
+    }
+    hapticSuccess();
+    toastSuccess(t("saved"));
+  };
+
   const tabs: Array<{ id: TabId; label: string; icon: typeof Clock }> = [
-    { id: "work", label: "ساعات العمل", icon: Clock },
-    { id: "auto", label: "الحضور التلقائي", icon: Navigation },
-    { id: "notifications", label: "الإشعارات", icon: Bell },
-    { id: "session", label: "الجلسة", icon: Timer },
-    { id: "geofence", label: "النطاق الجغرافي", icon: MapPin },
+    { id: "general", label: t("tabs.general"), icon: SettingsIcon },
+    { id: "work", label: t("tabs.work"), icon: Clock },
+    { id: "auto", label: t("tabs.auto"), icon: Navigation },
+    { id: "notifications", label: t("tabs.notifications"), icon: Bell },
+    { id: "session", label: t("tabs.session"), icon: Timer },
+    { id: "geofence", label: t("tabs.geofence"), icon: MapPin },
+    { id: "appearance", label: t("tabs.appearance"), icon: Palette },
   ];
 
   return (
     <MainLayout>
       <div className="p-6 space-y-6 min-h-screen">
         <FullPageHead
-          head="إعدادات الشركة"
-          description="تحكم كامل في إعدادات الحضور والإشعارات والنطاقات"
-          Icon={<Building2 className="w-7 h-7" />}
+          head={t("title")}
+          description={t("description")}
+          Icon={<SettingsIcon className="w-7 h-7" />}
         />
 
         {/* Tab Bar */}
@@ -134,14 +275,16 @@ export default function CompanySettingsPage() {
                     <div className="w-10 h-10 rounded-xl bg-primary/50 flex items-center justify-center">
                       <Clock className="w-5 h-5 text-primary-foreground" />
                     </div>
-                    <CardTitle className="text-lg font-bold text-foreground">ساعات العمل</CardTitle>
+                    <CardTitle className="text-lg font-bold text-foreground">
+                      {t("work.title")}
+                    </CardTitle>
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="text-sm font-medium text-muted-foreground mb-2 block">
-                        وقت بدء العمل
+                        {t("work.startTime")}
                       </label>
                       <input
                         type="time"
@@ -152,7 +295,7 @@ export default function CompanySettingsPage() {
                     </div>
                     <div>
                       <label className="text-sm font-medium text-muted-foreground mb-2 block">
-                        وقت انتهاء العمل
+                        {t("work.endTime")}
                       </label>
                       <input
                         type="time"
@@ -164,7 +307,7 @@ export default function CompanySettingsPage() {
                   </div>
                   <div>
                     <label className="text-sm font-medium text-muted-foreground mb-2 block">
-                      فترة السماح (دقائق)
+                      {t("work.gracePeriod")}
                     </label>
                     <input
                       type="number"
@@ -175,12 +318,12 @@ export default function CompanySettingsPage() {
                       className="w-full px-3 py-2.5 rounded-xl border border-input bg-background text-foreground"
                     />
                     <p className="text-xs text-muted-foreground mt-1">
-                      عدد الدقائق بعد وقت بدء العمل قبل تسجيل التأخير
+                      {t("work.gracePeriodHelper")}
                     </p>
                   </div>
                   <div>
                     <label className="text-sm font-medium text-muted-foreground mb-2 block">
-                      حد التأخير (دقائق)
+                      {t("work.lateThreshold")}
                     </label>
                     <input
                       type="number"
@@ -191,22 +334,76 @@ export default function CompanySettingsPage() {
                       className="w-full px-3 py-2.5 rounded-xl border border-input bg-background text-foreground"
                     />
                     <p className="text-xs text-muted-foreground mt-1">
-                      بعد هذا الحد يُعتبر الموظف متأخراً بشكل كبير
+                      {t("work.lateThresholdHelper")}
                     </p>
+                  </div>
+                  <div className="p-4 rounded-xl bg-muted/50 space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-foreground">
+                          {t("work.checkoutReference")}
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          {t("work.checkoutReferenceHelper")}
+                        </p>
+                      </div>
+                      <Switch
+                        checked={local.checkoutTimeRangeEnabled}
+                        onCheckedChange={() => {
+                          hapticTap();
+                          update("checkoutTimeRangeEnabled", !local.checkoutTimeRangeEnabled);
+                        }}
+                      />
+                    </div>
+                    {local.checkoutTimeRangeEnabled && (
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="text-sm font-medium text-muted-foreground mb-2 block">
+                            {t("work.checkoutStart")}
+                          </label>
+                          <input
+                            type="time"
+                            value={local.checkoutStartTime}
+                            onChange={(e) => update("checkoutStartTime", e.target.value)}
+                            className="w-full px-3 py-2.5 rounded-xl border border-input bg-background text-foreground"
+                          />
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {t("work.checkoutStartHelper")}
+                          </p>
+                        </div>
+                        <div>
+                          <label className="text-sm font-medium text-muted-foreground mb-2 block">
+                            {t("work.checkoutEnd")}
+                          </label>
+                          <input
+                            type="time"
+                            value={local.checkoutEndTime}
+                            onChange={(e) => update("checkoutEndTime", e.target.value)}
+                            className="w-full px-3 py-2.5 rounded-xl border border-input bg-background text-foreground"
+                          />
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {t("work.checkoutEndHelper")}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                    {!local.checkoutTimeRangeEnabled && (
+                      <p className="text-xs text-muted-foreground">{t("work.checkoutDefault")}</p>
+                    )}
                   </div>
                   <div>
                     <label className="text-sm font-medium text-muted-foreground mb-2 block">
-                      أيام العطلة
+                      {t("work.weekendDays")}
                     </label>
                     <div className="flex gap-2 flex-wrap">
                       {[
-                        { day: 0, label: "الأحد" },
-                        { day: 1, label: "الإثنين" },
-                        { day: 2, label: "الثلاثاء" },
-                        { day: 3, label: "الأربعاء" },
-                        { day: 4, label: "الخميس" },
-                        { day: 5, label: "الجمعة" },
-                        { day: 6, label: "السبت" },
+                        { day: 0, label: t("days.sunday") },
+                        { day: 1, label: t("days.monday") },
+                        { day: 2, label: t("days.tuesday") },
+                        { day: 3, label: t("days.wednesday") },
+                        { day: 4, label: t("days.thursday") },
+                        { day: 5, label: t("days.friday") },
+                        { day: 6, label: t("days.saturday") },
                       ].map((d) => (
                         <button
                           key={d.day}
@@ -242,17 +439,15 @@ export default function CompanySettingsPage() {
                     <Navigation className="w-5 h-5 text-primary-foreground" />
                   </div>
                   <CardTitle className="text-lg font-bold text-foreground">
-                    الحضور التلقائي
+                    {t("auto.title")}
                   </CardTitle>
                 </div>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex items-center justify-between p-4 rounded-xl bg-muted/50">
                   <div>
-                    <p className="text-sm font-medium text-foreground">تفعيل الحضور التلقائي</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      تسجيل الحضور تلقائياً عند دخول الموظف للنطاق الجغرافي
-                    </p>
+                    <p className="text-sm font-medium text-foreground">{t("auto.enable")}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">{t("auto.enableHelper")}</p>
                   </div>
                   <Switch
                     checked={local.autoCheckInEnabled}
@@ -266,7 +461,7 @@ export default function CompanySettingsPage() {
                   <div className="p-4 rounded-xl bg-primary/10 space-y-4">
                     <div>
                       <label className="text-sm font-medium text-muted-foreground mb-2 block">
-                        مسافة التشغيل الإضافية (متر)
+                        {t("auto.radiusOffset")}
                       </label>
                       <input
                         type="number"
@@ -277,15 +472,12 @@ export default function CompanySettingsPage() {
                         className="w-full px-3 py-2.5 rounded-xl border border-input bg-background text-foreground"
                       />
                       <p className="text-xs text-muted-foreground mt-1">
-                        مسافة إضافية بالأمتار خارج حدود النطاق لتفعيل الحضور التلقائي
+                        {t("auto.radiusOffsetHelper")}
                       </p>
                     </div>
                     <div className="flex items-start gap-2 p-3 rounded-lg bg-primary/5">
                       <Zap className="w-4 h-4 text-primary mt-0.5 shrink-0" />
-                      <p className="text-xs text-primary/70">
-                        عند تفعيل هذه الميزة، سيتم تسجيل الحضور تلقائياً للموظف عند اقترابه من
-                        النطاق الجغرافي المحدد له
-                      </p>
+                      <p className="text-xs text-primary/70">{t("auto.info")}</p>
                     </div>
                   </div>
                 )}
@@ -295,91 +487,141 @@ export default function CompanySettingsPage() {
 
           {/* Notifications Tab */}
           {activeTab === "notifications" && (
-            <Card className="border-0 shadow-lg bg-card">
-              <CardHeader>
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-[hsl(48_96%_53%/0.1)]0 flex items-center justify-center">
-                    <Bell className="w-5 h-5 text-primary-foreground" />
+            <>
+              <Card className="border-0 shadow-lg bg-card">
+                <CardHeader>
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-[hsl(48_96%_53%/0.1)]0 flex items-center justify-center">
+                      <Bell className="w-5 h-5 text-primary-foreground" />
+                    </div>
+                    <CardTitle className="text-lg font-bold text-foreground">
+                      {t("notifications.title")}
+                    </CardTitle>
                   </div>
-                  <CardTitle className="text-lg font-bold text-foreground">
-                    إعدادات الإشعارات
-                  </CardTitle>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-center justify-between p-4 rounded-xl bg-muted/50">
-                  <div>
-                    <p className="text-sm font-medium text-foreground">تفعيل الإشعارات</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      مفتاح رئيسي لجميع الإشعارات
-                    </p>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex items-center justify-between p-4 rounded-xl bg-muted/50">
+                    <div>
+                      <p className="text-sm font-medium text-foreground">
+                        {t("notifications.enable")}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {t("notifications.enableHelper")}
+                      </p>
+                    </div>
+                    <Switch
+                      checked={local.notificationsEnabled}
+                      onCheckedChange={() => {
+                        hapticTap();
+                        update("notificationsEnabled", !local.notificationsEnabled);
+                      }}
+                    />
                   </div>
-                  <Switch
-                    checked={local.notificationsEnabled}
-                    onCheckedChange={() => {
-                      hapticTap();
-                      update("notificationsEnabled", !local.notificationsEnabled);
-                    }}
-                  />
-                </div>
-                {local.notificationsEnabled && (
-                  <>
-                    {[
-                      {
-                        key: "lateAlertsEnabled" as const,
-                        title: "إشعارات التأخير",
-                        desc: "تنبيه عند تأخر الموظف عن وقت الحضور",
-                      },
-                      {
-                        key: "attendanceAlertsEnabled" as const,
-                        title: "إشعارات الحضور",
-                        desc: "تنبيه عند تسجيل الموظفين للحضور",
-                      },
-                      {
-                        key: "geofenceBreachAlertsEnabled" as const,
-                        title: "إشعارات الخروج من النطاق",
-                        desc: "تنبيه عند خروج الموظف من النطاق الجغرافي",
-                      },
-                      {
-                        key: "checkInReminderEnabled" as const,
-                        title: "تذكير الحضور",
-                        desc: "إرسال تذكير للموظفين قبل وقت الحضور",
-                      },
-                    ].map((item) => (
-                      <div
-                        key={item.key}
-                        className="flex items-center justify-between p-4 rounded-xl bg-muted/50"
-                      >
-                        <div>
-                          <p className="text-sm font-medium text-foreground">{item.title}</p>
-                          <p className="text-xs text-muted-foreground mt-0.5">{item.desc}</p>
+                  {local.notificationsEnabled && (
+                    <>
+                      {[
+                        {
+                          key: "lateAlertsEnabled" as const,
+                          title: t("notifications.lateAlerts"),
+                          desc: t("notifications.lateAlertsHelper"),
+                        },
+                        {
+                          key: "attendanceAlertsEnabled" as const,
+                          title: t("notifications.attendanceAlerts"),
+                          desc: t("notifications.attendanceAlertsHelper"),
+                        },
+                        {
+                          key: "geofenceBreachAlertsEnabled" as const,
+                          title: t("notifications.geofenceBreach"),
+                          desc: t("notifications.geofenceBreachHelper"),
+                        },
+                        {
+                          key: "checkInReminderEnabled" as const,
+                          title: t("notifications.checkInReminder"),
+                          desc: t("notifications.checkInReminderHelper"),
+                        },
+                      ].map((item) => (
+                        <div
+                          key={item.key}
+                          className="flex items-center justify-between p-4 rounded-xl bg-muted/50"
+                        >
+                          <div>
+                            <p className="text-sm font-medium text-foreground">{item.title}</p>
+                            <p className="text-xs text-muted-foreground mt-0.5">{item.desc}</p>
+                          </div>
+                          <Switch
+                            checked={local[item.key]}
+                            onCheckedChange={() => {
+                              hapticTap();
+                              update(item.key, !local[item.key]);
+                            }}
+                          />
                         </div>
-                        <Switch
-                          checked={local[item.key]}
-                          onCheckedChange={() => {
-                            hapticTap();
-                            update(item.key, !local[item.key]);
-                          }}
-                        />
-                      </div>
-                    ))}
-                    {local.checkInReminderEnabled && (
-                      <div className="p-4 rounded-xl bg-muted/50">
-                        <label className="text-sm font-medium text-muted-foreground mb-2 block">
-                          وقت تذكير الحضور
-                        </label>
-                        <input
-                          type="time"
-                          value={local.checkInReminderTime}
-                          onChange={(e) => update("checkInReminderTime", e.target.value)}
-                          className="w-full px-3 py-2.5 rounded-xl border border-input bg-background text-foreground"
-                        />
-                      </div>
-                    )}
-                  </>
-                )}
-              </CardContent>
-            </Card>
+                      ))}
+                      {local.checkInReminderEnabled && (
+                        <div className="p-4 rounded-xl bg-muted/50">
+                          <label className="text-sm font-medium text-muted-foreground mb-2 block">
+                            {t("notifications.reminderTime")}
+                          </label>
+                          <input
+                            type="time"
+                            value={local.checkInReminderTime}
+                            onChange={(e) => update("checkInReminderTime", e.target.value)}
+                            className="w-full px-3 py-2.5 rounded-xl border border-input bg-background text-foreground"
+                          />
+                        </div>
+                      )}
+                    </>
+                  )}
+                </CardContent>
+              </Card>
+              <Card className="border-0 shadow-lg bg-card mt-6">
+                <CardHeader>
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                      <Send className="w-5 h-5 text-primary" />
+                    </div>
+                    <CardTitle className="text-lg font-bold text-foreground">
+                      {t("notifications.sendTitle")}
+                    </CardTitle>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <input
+                    type="text"
+                    value={notifTitle}
+                    onChange={(e) => setNotifTitle(e.target.value)}
+                    placeholder={t("notifications.sendTitlePlaceholder")}
+                    className="w-full px-3 py-2 text-sm border border-input rounded-lg outline-none focus:ring-2 focus:ring-ring bg-transparent text-foreground"
+                  />
+                  <textarea
+                    value={notifBody}
+                    onChange={(e) => setNotifBody(e.target.value)}
+                    placeholder={t("notifications.sendBodyPlaceholder")}
+                    rows={3}
+                    className="w-full px-3 py-2 text-sm border border-input rounded-lg outline-none focus:ring-2 focus:ring-ring bg-transparent text-foreground resize-none"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleSendNotification}
+                    disabled={
+                      !local.notificationsEnabled ||
+                      !notifTitle.trim() ||
+                      !notifBody.trim() ||
+                      sendingNotif
+                    }
+                    className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {sendingNotif ? t("notifications.sending") : t("notifications.send")}
+                  </button>
+                  {!local.notificationsEnabled && (
+                    <p className="text-xs text-muted-foreground">
+                      {t("notifications.enableFirst")}
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
+            </>
           )}
 
           {/* Session Tab */}
@@ -391,14 +633,14 @@ export default function CompanySettingsPage() {
                     <Timer className="w-5 h-5 text-primary-foreground" />
                   </div>
                   <CardTitle className="text-lg font-bold text-foreground">
-                    إعدادات الجلسة
+                    {t("session.title")}
                   </CardTitle>
                 </div>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div>
                   <label className="text-sm font-medium text-muted-foreground mb-2 block">
-                    مدة انتهاء الجلسة (دقائق)
+                    {t("session.timeout")}
                   </label>
                   <input
                     type="number"
@@ -408,15 +650,15 @@ export default function CompanySettingsPage() {
                     onChange={(e) => update("sessionTimeoutMinutes", Number(e.target.value))}
                     className="w-full px-3 py-2.5 rounded-xl border border-input bg-background text-foreground"
                   />
-                  <p className="text-xs text-muted-foreground mt-1">
-                    يتم تسجيل الخروج تلقائياً بعد هذه المدة من عدم النشاط
-                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">{t("session.timeoutHelper")}</p>
                 </div>
                 <div className="flex items-center justify-between p-4 rounded-xl bg-muted/50">
                   <div>
-                    <p className="text-sm font-medium text-foreground">تسجيل الانصراف التلقائي</p>
+                    <p className="text-sm font-medium text-foreground">
+                      {t("session.autoSignOut")}
+                    </p>
                     <p className="text-xs text-muted-foreground mt-0.5">
-                      تسجيل انصراف تلقائي للموظفين بعد وقت محدد
+                      {t("session.autoSignOutHelper")}
                     </p>
                   </div>
                   <Switch
@@ -430,7 +672,7 @@ export default function CompanySettingsPage() {
                 {local.autoSignOutEnabled && (
                   <div className="p-4 rounded-xl bg-muted/50">
                     <label className="text-sm font-medium text-muted-foreground mb-2 block">
-                      وقت تسجيل الانصراف التلقائي
+                      {t("session.autoSignOutTime")}
                     </label>
                     <input
                       type="time"
@@ -453,16 +695,16 @@ export default function CompanySettingsPage() {
                     <MapPin className="w-5 h-5 text-primary-foreground" />
                   </div>
                   <CardTitle className="text-lg font-bold text-foreground">
-                    إعدادات النطاق الجغرافي
+                    {t("geofence.title")}
                   </CardTitle>
                 </div>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex items-center justify-between p-4 rounded-xl bg-muted/50">
                   <div>
-                    <p className="text-sm font-medium text-foreground">اشتراط النطاق للحضور</p>
+                    <p className="text-sm font-medium text-foreground">{t("geofence.require")}</p>
                     <p className="text-xs text-muted-foreground mt-0.5">
-                      منع تسجيل الحضور خارج النطاق الجغرافي
+                      {t("geofence.requireHelper")}
                     </p>
                   </div>
                   <Switch
@@ -476,10 +718,10 @@ export default function CompanySettingsPage() {
                 <div className="flex items-center justify-between p-4 rounded-xl bg-muted/50">
                   <div>
                     <p className="text-sm font-medium text-foreground">
-                      السماح بالحضور خارج النطاق
+                      {t("geofence.allowOutside")}
                     </p>
                     <p className="text-xs text-muted-foreground mt-0.5">
-                      السماح للموظف بتسجيل الحضور حتى لو كان خارج النطاق
+                      {t("geofence.allowOutsideHelper")}
                     </p>
                   </div>
                   <Switch
@@ -489,6 +731,202 @@ export default function CompanySettingsPage() {
                       update("allowCheckInOutsideGeofence", !local.allowCheckInOutsideGeofence);
                     }}
                   />
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Appearance Tab */}
+          {activeTab === "appearance" && (
+            <div className="space-y-6">
+              <Card className="border-0 shadow-lg bg-card">
+                <CardHeader>
+                  <CardTitle className="text-lg font-bold text-foreground">
+                    {t("appearance.livePreview")}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="relative w-full h-24 rounded-xl overflow-hidden border border-border bg-background">
+                    <div
+                      className="absolute right-0 top-0 bottom-0 w-3"
+                      style={{ backgroundColor: `rgb(${accentColorMap[accentColor]})` }}
+                    />
+                    <div className="absolute top-0 left-0 right-3 h-5 bg-muted" />
+                    <div className="absolute top-8 right-5 left-3 space-y-2">
+                      <div className="h-3 w-4/5 rounded-md bg-muted" />
+                      <div className="h-3 w-3/5 rounded-md bg-muted" />
+                      <div
+                        className="h-4 w-16 rounded-lg"
+                        style={{
+                          backgroundColor: `rgb(${accentColorMap[accentColor]})`,
+                          opacity: 0.8,
+                        }}
+                      />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="border-0 shadow-lg bg-card">
+                <CardHeader>
+                  <CardTitle className="text-lg font-bold text-foreground">
+                    {t("theme.color")}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-6 gap-3">
+                    {getThemeColors(t).map((color) => (
+                      <button
+                        key={color.value}
+                        onClick={() => {
+                          hapticTap();
+                          setAccentColor(color.value);
+                          saveLocalSetting("accentColor", color.value);
+                        }}
+                        title={color.name}
+                        className={`flex flex-col items-center gap-2 p-3 rounded-xl transition-all ${
+                          accentColor === color.value ? "scale-110" : "hover:scale-105"
+                        }`}
+                      >
+                        <div
+                          className={`relative w-8 h-8 rounded-full ${color.color} shadow-md ${
+                            accentColor === color.value
+                              ? "ring-2 ring-offset-2 ring-gray-900 dark:ring-background"
+                              : ""
+                          }`}
+                        >
+                          <div className="absolute inset-0 rounded-full bg-gradient-to-br from-white/40 to-transparent" />
+                        </div>
+                        <span className="text-xs text-muted-foreground">{color.name}</span>
+                        {accentColor === color.value && (
+                          <Check className="w-3 h-3 text-foreground text-primary-foreground" />
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="border-0 shadow-lg bg-card">
+                <CardHeader>
+                  <CardTitle className="text-lg font-bold text-foreground">
+                    {t("theme.fontSize")}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-3 gap-4">
+                    {getFontSizes(t).map((font) => (
+                      <button
+                        key={font.value}
+                        onClick={() => {
+                          hapticTap();
+                          setFontSize(font.value);
+                          saveLocalSetting("fontSize", font.value);
+                        }}
+                        className={`flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all ${
+                          fontSize === font.value
+                            ? "border-primary bg-primary/5"
+                            : "border-input hover:border-input"
+                        }`}
+                      >
+                        <Type
+                          className={`w-5 h-5 ${fontSize === font.value ? "text-primary" : "text-muted-foreground/70"}`}
+                        />
+                        <span
+                          className={`${font.size} ${fontSize === font.value ? "text-primary font-medium" : "text-muted-foreground"}`}
+                        >
+                          {font.name}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
+          {/* General Tab */}
+          {activeTab === "general" && (
+            <Card className="border-0 shadow-lg bg-card">
+              <CardHeader>
+                <CardTitle className="text-lg font-bold text-foreground">
+                  {t("general.title")}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center justify-between p-4 rounded-xl bg-muted/50">
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center">
+                      <Globe className="w-4 h-4 text-primary" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-foreground">{t("general.language")}</p>
+                      <p className="text-xs text-muted-foreground">{t("general.languageHelper")}</p>
+                    </div>
+                  </div>
+                  <select
+                    value={language}
+                    onChange={(e) => {
+                      const nextLocale = e.target.value;
+                      setLanguage(nextLocale);
+                      saveLocalSetting("language", nextLocale);
+                      router.replace(pathname, { locale: nextLocale });
+                    }}
+                    className="px-3 py-2 rounded-lg border border-input bg-background text-sm text-foreground"
+                  >
+                    <option value="ar">{t("general.arabic")}</option>
+                    <option value="en">{t("general.english")}</option>
+                  </select>
+                </div>
+                <div className="flex items-center justify-between p-4 rounded-xl bg-muted/50">
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center">
+                      <Clock className="w-4 h-4 text-primary" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-foreground">{t("general.timezone")}</p>
+                      <p className="text-xs text-muted-foreground">{t("general.timezoneHelper")}</p>
+                    </div>
+                  </div>
+                  <select
+                    value={timezone}
+                    onChange={(e) => {
+                      setTimezone(e.target.value);
+                      saveLocalSetting("timezone", e.target.value);
+                    }}
+                    className="px-3 py-2 rounded-lg border border-input bg-background text-sm text-foreground"
+                  >
+                    <option value="Asia/Riyadh">Riyadh</option>
+                    <option value="Asia/Dubai">Dubai</option>
+                    <option value="Asia/Kuwait">Kuwait</option>
+                    <option value="Asia/Qatar">Doha</option>
+                  </select>
+                </div>
+                <div className="flex items-center justify-between p-4 rounded-xl bg-muted/50">
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-lg bg-accent/15 flex items-center justify-center">
+                      <Calendar className="w-4 h-4 text-accent-foreground" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-foreground">
+                        {t("general.dateFormat")}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {t("general.dateFormatHelper")}
+                      </p>
+                    </div>
+                  </div>
+                  <select
+                    value={dateFormat}
+                    onChange={(e) => {
+                      setDateFormat(e.target.value);
+                      saveLocalSetting("dateFormat", e.target.value);
+                    }}
+                    className="px-3 py-2 rounded-lg border border-input bg-background text-sm text-foreground"
+                  >
+                    <option value="gregorian">{t("general.gregorian")}</option>
+                    <option value="hijri">{t("general.hijri")}</option>
+                  </select>
                 </div>
               </CardContent>
             </Card>
@@ -503,7 +941,7 @@ export default function CompanySettingsPage() {
             className="w-full h-12 text-base font-bold gap-2 shadow-xl"
           >
             <Save className="w-5 h-5" />
-            {saveMutation.isPending ? "جاري الحفظ..." : "حفظ الإعدادات"}
+            {saveMutation.isPending ? t("saving") : t("save")}
           </Button>
         </div>
       </div>

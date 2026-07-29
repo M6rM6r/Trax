@@ -7,6 +7,7 @@ import { memo } from "react";
 import { CountUp } from "@/components/shared/CountUp";
 import Link from "next/link";
 import * as Tooltip from "@radix-ui/react-tooltip";
+import { useTranslations } from "next-intl";
 
 export interface DashboardCardData {
   id: string;
@@ -25,6 +26,7 @@ interface SortableDashboardCardProps {
 export const SortableDashboardCard = memo(function SortableDashboardCard({
   stat,
 }: SortableDashboardCardProps) {
+  const t = useTranslations("Dashboard");
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: stat.id,
   });
@@ -47,7 +49,7 @@ export const SortableDashboardCard = memo(function SortableDashboardCard({
     >
       <button
         className="absolute top-3 left-3 z-20 p-1 rounded-md bg-muted/60 opacity-0 group-hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing touch-none"
-        aria-label="سحب لإعادة الترتيب"
+        aria-label={t("dragToReorder")}
         {...listeners}
       >
         <GripVertical className="w-3.5 h-3.5 text-muted-foreground" />
@@ -78,7 +80,7 @@ export const SortableDashboardCard = memo(function SortableDashboardCard({
                     sideOffset={6}
                     className="rounded-lg bg-muted text-primary-foreground text-xs px-3 py-1.5 shadow-lg z-50"
                   >
-                    {stat.trend >= 0 ? "زيادة" : "انخفاض"} {Math.abs(stat.trend)}%
+                    {stat.trend >= 0 ? t("increase") : t("decrease")} {Math.abs(stat.trend)}%
                     <Tooltip.Arrow className="fill-slate-700" />
                   </Tooltip.Content>
                 </Tooltip.Portal>

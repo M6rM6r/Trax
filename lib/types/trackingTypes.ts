@@ -49,6 +49,12 @@ export interface Geofence {
   color: string;
   active: boolean;
   employeesCount?: number;
+  /** Optional shift overrides for this location. When present, employees assigned here use these shifts instead of company defaults. */
+  shifts?: {
+    defaultShift: WorkShift;
+    morningShift: WorkShift;
+    eveningShift: WorkShift;
+  } | null;
 }
 
 export interface AttendanceRecord {
@@ -68,6 +74,10 @@ export interface AttendanceRecord {
   lateMinutes: number;
   workedHours: number;
   checkOutStatus?: "present" | "late" | "absent" | null;
+  /** The expected checkout time used to flag early checkout. */
+  expectedCheckoutTime?: string | null;
+  /** True when checkout happened before the company's expected checkout time. */
+  earlyCheckout?: boolean;
   /** Attendance mode applied when this record was created. */
   attendanceMode?: AttendanceMode | null;
   /** Active shift details (start/end/grace) applied when this record was created. */
@@ -84,6 +94,7 @@ export interface DashboardStats {
   absentToday: number;
   lateToday: number;
   checkedOutToday: number;
+  earlyCheckoutsToday: number;
   onTimeRate: number;
   avgCheckInTime: string;
   avgWorkedHours: number;

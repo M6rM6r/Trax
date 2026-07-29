@@ -11,13 +11,15 @@ import { Form, Formik } from "formik";
 import * as Yup from "yup";
 import { sendPasswordResetEmail } from "firebase/auth";
 import { auth } from "@/lib/config/firebase";
+import { useTranslations } from "next-intl";
 
 export default function ForgotPasswordPage() {
+  const t = useTranslations("Auth");
   const [sent, setSent] = useState(false);
   const [sentTo, setSentTo] = useState("");
 
   const schema = Yup.object({
-    email: Yup.string().email("البريد غير صحيح").required("البريد الإلكتروني مطلوب"),
+    email: Yup.string().email(t("emailInvalid")).required(t("emailRequired")),
   });
 
   const handleSubmit = async (
@@ -25,7 +27,7 @@ export default function ForgotPasswordPage() {
     { setSubmitting }: { setSubmitting: (b: boolean) => void }
   ) => {
     if (!auth) {
-      toastError("Firebase غير مكون. تواصل مع الإدارة.");
+      toastError(t("firebaseNotConfigured"));
       setSubmitting(false);
       return;
     }
@@ -33,9 +35,9 @@ export default function ForgotPasswordPage() {
       await sendPasswordResetEmail(auth, values.email);
       setSentTo(values.email);
       setSent(true);
-      toastSuccess("تم إرسال رابط إعادة التعيين");
+      toastSuccess(t("resetLinkSent"));
     } catch {
-      toastError("البريد الإلكتروني غير مسجل في النظام");
+      toastError(t("emailNotRegistered"));
     } finally {
       setSubmitting(false);
     }
@@ -44,7 +46,7 @@ export default function ForgotPasswordPage() {
   return (
     <section className="w-screen h-screen flex items-center justify-center bg-background">
       <div className="w-full max-w-[400px] px-6 flex flex-col items-center gap-8">
-        <div className="relative h-10 w-40">
+        <div className="relative h-14 w-56">
           <Image
             src="/images/logo.png"
             alt="Trax"
@@ -63,10 +65,10 @@ export default function ForgotPasswordPage() {
                   <KeyRound className="w-6 h-6 text-primary" />
                 </div>
                 <h1 className="text-xl font-bold text-center text-foreground mb-1">
-                  نسيت كلمة المرور؟
+                  {t("forgotPasswordTitle")}
                 </h1>
                 <p className="text-sm text-center text-muted-foreground mb-6">
-                  أدخل بريدك الإلكتروني وسنرسل لك رابط إعادة التعيين
+                  {t("forgotPasswordDescription")}
                 </p>
 
                 <Formik
@@ -79,7 +81,7 @@ export default function ForgotPasswordPage() {
                       <CustomInput
                         name="email"
                         type="email"
-                        label="البريد الإلكتروني"
+                        label={t("email")}
                         placeholder="example@company.com"
                         className="text-left [direction:ltr] [unicode-bidi:plaintext]"
                       />
@@ -93,7 +95,7 @@ export default function ForgotPasswordPage() {
                           <div className="w-4 h-4 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin" />
                         )}
                         <Mail className="w-4 h-4" />
-                        إرسال رابط الاستعادة
+                        {t("sendResetLink")}
                       </Button>
                     </Form>
                   )}
@@ -104,10 +106,8 @@ export default function ForgotPasswordPage() {
                 <div className="flex items-center justify-center w-14 h-14 rounded-full bg-primary/10 mb-4 mx-auto">
                   <CheckCircle2 className="w-7 h-7 text-primary" />
                 </div>
-                <h2 className="text-xl font-bold text-foreground mb-2">تم الإرسال!</h2>
-                <p className="text-sm text-muted-foreground mb-1">
-                  تم إرسال رابط إعادة التعيين إلى
-                </p>
+                <h2 className="text-xl font-bold text-foreground mb-2">{t("resetLinkSent")}</h2>
+                <p className="text-sm text-muted-foreground mb-1">{t("resetLinkSentTo")}</p>
                 <p
                   dir="ltr"
                   lang="en"
@@ -116,9 +116,7 @@ export default function ForgotPasswordPage() {
                 >
                   {sentTo}
                 </p>
-                <p className="text-xs text-muted-foreground mb-6">
-                  لم يصلك البريد؟ تحقق من مجلد البريد غير المرغوب فيه
-                </p>
+                <p className="text-xs text-muted-foreground mb-6">{t("checkSpam")}</p>
               </div>
             )}
 
@@ -128,7 +126,7 @@ export default function ForgotPasswordPage() {
                 className="flex items-center justify-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors"
               >
                 <ArrowRight className="w-4 h-4" />
-                العودة إلى تسجيل الدخول
+                {t("backToLogin")}
               </Link>
             </div>
           </div>

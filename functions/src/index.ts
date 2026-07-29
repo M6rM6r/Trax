@@ -3,8 +3,19 @@ import * as admin from "firebase-admin";
 admin.initializeApp();
 
 export { onUserCreated, onUserDeleted } from "./authTriggers";
-export { onAttendanceWritten, onEmployeeWritten, onCompanyDeleted } from "./firestoreTriggers";
-export { dailyAttendanceSummary, checkTrialExpiry, cleanupStaleLocations } from "./scheduled";
+export {
+  onAttendanceWritten,
+  onEmployeeWritten,
+  onCompanyDeleted,
+  onLocationWritten,
+} from "./firestoreTriggers";
+export {
+  dailyAttendanceSummary,
+  checkTrialExpiry,
+  cleanupStaleLocations,
+  autoCheckoutEmployees,
+  checkInReminders,
+} from "./scheduled";
 export {
   exportAttendance,
   bulkCreateEmployees,

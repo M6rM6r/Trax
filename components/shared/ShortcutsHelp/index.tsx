@@ -3,20 +3,26 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Keyboard, X } from "lucide-react";
+import { useTranslations } from "next-intl";
 
-const shortcuts = [
-  { keys: ["⌘", "K"], description: "فتح لوحة الأوامر" },
-  { keys: ["⌘", "B"], description: "إظهار/إخفاء القائمة الجانبية" },
-  { keys: ["?"], description: "إظهار اختصارات لوحة المفاتيح" },
-  { keys: ["Esc"], description: "إغلاق النوافذ المنبثقة" },
-  { keys: ["G", "D"], description: "الذهاب إلى لوحة التحكم" },
-  { keys: ["G", "E"], description: "الذهاب إلى الموظفين" },
-  { keys: ["G", "A"], description: "الذهاب إلى الحضور" },
-  { keys: ["G", "M"], description: "الذهاب إلى الخريطة المباشرة" },
-  { keys: ["G", "S"], description: "الذهاب إلى الإعدادات" },
-];
+function useShortcuts() {
+  const t = useTranslations("Navigation");
+  return [
+    { keys: ["⌘", "K"], description: t("openCommandPalette") },
+    { keys: ["⌘", "B"], description: t("toggleSidebar") },
+    { keys: ["?"], description: t("showShortcuts") },
+    { keys: ["Esc"], description: t("closePopups") },
+    { keys: ["G", "D"], description: t("goToDashboard") },
+    { keys: ["G", "E"], description: t("goToEmployees") },
+    { keys: ["G", "A"], description: t("goToAttendance") },
+    { keys: ["G", "M"], description: t("goToLiveMap") },
+    { keys: ["G", "S"], description: t("goToSettings") },
+  ];
+}
 
 export function ShortcutsHelp() {
+  const t = useTranslations("Navigation");
+  const shortcuts = useShortcuts();
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
@@ -53,7 +59,7 @@ export function ShortcutsHelp() {
             <div className="flex items-center justify-between mb-5">
               <div className="flex items-center gap-2">
                 <Keyboard className="w-5 h-5 text-primary" />
-                <h2 className="text-lg font-bold text-foreground">اختصارات لوحة المفاتيح</h2>
+                <h2 className="text-lg font-bold text-foreground">{t("keyboardShortcuts")}</h2>
               </div>
               <button
                 onClick={() => setOpen(false)}

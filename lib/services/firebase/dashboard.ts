@@ -1,5 +1,6 @@
 import type { DashboardStats } from "@/lib/types/trackingTypes";
 import type { DashboardTrendsSchema } from "@/lib/schemas/dashboard.schema";
+import type { CompanySettings } from "@/lib/types/companySettings";
 import { employeesApi } from "./employees";
 import { attendanceApi } from "./attendance";
 import { geofencesApi } from "./geofences";
@@ -13,6 +14,7 @@ const EMPTY_STATS: DashboardStats = {
   absentToday: 0,
   lateToday: 0,
   checkedOutToday: 0,
+  earlyCheckoutsToday: 0,
   onTimeRate: 0,
   avgCheckInTime: "N/A",
   avgWorkedHours: 0,
@@ -31,8 +33,23 @@ const EMPTY_TRENDS: DashboardTrendsSchema = {
   onTimeRateChange: 0,
 };
 
+function isPastCheckInDeadline(
+  settings?: Partial<CompanySettings>,
+  referenceDate: Date = new Date()
+): boolean {
+  if (!settings?.workStartTime) return true;
+  const [hours, minutes] = settings.workStartTime.split(":").map(Number);
+  if (Number.isNaN(hours) || Number.isNaN(minutes)) return true;
+  const deadline = new Date(referenceDate);
+  deadline.setHours(hours, minutes + (settings.gracePeriodMinutes ?? 0), 0, 0);
+  return referenceDate >= deadline;
+}
+
 export const dashboardApi = {
-  async getDashboardData({ from, to }: { from?: string; to?: string } = {}): Promise<{
+  async getDashboardData(
+    { from, to }: { from?: string; to?: string } = {},
+    companySettings?: Partial<CompanySettings>
+  ): Promise<{
     stats: DashboardStats;
     trends: DashboardTrendsSchema;
   }> {
@@ -43,22 +60,25 @@ export const dashboardApi = {
       return { stats: EMPTY_STATS, trends: EMPTY_TRENDS };
     }
     // If no company assigned yet, return empty dashboard
-    if (!getCompanyId()) {
+    const companyId = getCompanyId();
+    if (!companyId) {
       return { stats: EMPTY_STATS, trends: EMPTY_TRENDS };
     }
 
     let employees: Awaited<ReturnType<typeof employeesApi.list>> = [];
     let attendance: Awaited<ReturnType<typeof attendanceApi.list>> = [];
     let geofences: Awaited<ReturnType<typeof geofencesApi.list>> = [];
-    try {
-      [employees, attendance, geofences] = await Promise.all([
-        employeesApi.list(),
-        attendanceApi.list(undefined, { from, to }),
-        geofencesApi.list(),
-      ]);
-    } catch {
-      return { stats: EMPTY_STATS, trends: EMPTY_TRENDS };
-    }
+    const [empRes, attRes, geoRes] = await Promise.allSettled([
+      employeesApi.list(),
+      attendanceApi.list(undefined, { from, to }),
+      geofencesApi.list(),
+    ]);
+    if (empRes.status === "fulfilled") employees = empRes.value;
+    else console.warn("[dashboard] employees fetch failed:", empRes.reason);
+    if (attRes.status === "fulfilled") attendance = attRes.value;
+    else console.warn("[dashboard] attendance fetch failed:", attRes.reason);
+    if (geoRes.status === "fulfilled") geofences = geoRes.value;
+    else console.warn("[dashboard] geofences fetch failed:", geoRes.reason);
     const referenceDate = to ? new Date(to + "T00:00:00") : new Date();
     const todayStr = to ?? referenceDate.toLocaleDateString("sv-SE");
     const todayRecords = attendance.filter((record) => record.date === todayStr);
@@ -66,11 +86,13 @@ export const dashboardApi = {
       from && to
         ? attendance.filter((record) => record.date >= from && record.date <= to)
         : attendance;
+    const activeEmployees = employees.filter((employee) => employee.status === "active");
     const presentToday = todayRecords.filter(
       (record) => record.status === "present" || record.status === "checked_out"
     ).length;
     const lateToday = todayRecords.filter((record) => record.status === "late").length;
     const checkedOutToday = todayRecords.filter((record) => record.status === "checked_out").length;
+    const earlyCheckoutsToday = todayRecords.filter((record) => record.earlyCheckout).length;
     const worked = todayRecords.map((record) => record.workedHours).filter((hours) => hours > 0);
     const punctualBase = presentToday + lateToday;
     const checkInTimes = todayRecords
@@ -85,9 +107,12 @@ export const dashboardApi = {
       activeEmployees: employees.filter((employee) => employee.status === "active").length,
       inactiveEmployees: employees.filter((employee) => employee.status === "inactive").length,
       presentToday,
-      absentToday: Math.max(0, employees.length - todayRecords.length),
+      absentToday: isPastCheckInDeadline(companySettings, referenceDate)
+        ? Math.max(0, activeEmployees.length - todayRecords.length)
+        : 0,
       lateToday,
       checkedOutToday,
+      earlyCheckoutsToday,
       onTimeRate: punctualBase > 0 ? Number(((presentToday / punctualBase) * 100).toFixed(1)) : 0,
       avgCheckInTime: medianCheckIn,
       avgWorkedHours:
@@ -117,7 +142,7 @@ export const dashboardApi = {
         (r) => r.status === "present" || r.status === "checked_out"
       ).length;
       const late = dayRecords.filter((r) => r.status === "late").length;
-      const absent = Math.max(0, employees.length - dayRecords.length);
+      const absent = Math.max(0, activeEmployees.length - dayRecords.length);
       const dayWorked = dayRecords.map((r) => r.workedHours).filter((h) => h > 0);
       weeklyData.push({
         day: dayNames[d.getDay()],

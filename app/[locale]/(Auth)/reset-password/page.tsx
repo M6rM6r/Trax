@@ -12,8 +12,10 @@ import { Form, Formik } from "formik";
 import * as Yup from "yup";
 import { auth } from "@/lib/config/firebase";
 import { confirmPasswordReset } from "firebase/auth";
+import { useTranslations } from "next-intl";
 
 function ResetPasswordForm() {
+  const t = useTranslations("Auth");
   const router = useRouter();
   const params = useSearchParams();
   const oobCode = params.get("oobCode") ?? "";
@@ -22,10 +24,10 @@ function ResetPasswordForm() {
   const [showConfirm, setShowConfirm] = useState(false);
 
   const schema = Yup.object({
-    password: Yup.string().min(8, "8 أحرف على الأقل").required("كلمة المرور مطلوبة"),
+    password: Yup.string().min(8, t("passwordMin")).required(t("passwordRequired")),
     confirm_password: Yup.string()
-      .oneOf([Yup.ref("password")], "كلمات المرور غير متطابقة")
-      .required("تأكيد كلمة المرور مطلوب"),
+      .oneOf([Yup.ref("password")], t("passwordsMismatch"))
+      .required(t("confirmPasswordRequired")),
   });
 
   const handleSubmit = async (
@@ -36,10 +38,10 @@ function ResetPasswordForm() {
       if (!auth) throw new Error("Firebase Auth is not configured");
       await confirmPasswordReset(auth, oobCode, values.password);
       setDone(true);
-      toastSuccess("تم تغيير كلمة المرور بنجاح");
+      toastSuccess(t("passwordChanged"));
       setTimeout(() => router.push("/login"), 2500);
     } catch {
-      toastError("الرابط منتهي الصلاحية أو غير صحيح");
+      toastError(t("linkExpired"));
     } finally {
       setSubmitting(false);
     }
@@ -48,12 +50,12 @@ function ResetPasswordForm() {
   if (!oobCode) {
     return (
       <div className="text-center py-8">
-        <p className="text-destructive font-medium">رابط غير صحيح أو منتهي الصلاحية</p>
+        <p className="text-destructive font-medium">{t("invalidOrExpiredLink")}</p>
         <Link
           href="/forgot-password"
           className="mt-3 inline-block text-sm text-primary hover:underline"
         >
-          طلب رابط جديد
+          {t("requestNewLink")}
         </Link>
       </div>
     );
@@ -67,10 +69,10 @@ function ResetPasswordForm() {
             <Lock className="w-6 h-6 text-primary" />
           </div>
           <h1 className="text-xl font-bold text-center text-foreground mb-1">
-            إعادة تعيين كلمة المرور
+            {t("resetPasswordTitle")}
           </h1>
           <p className="text-sm text-center text-muted-foreground mb-6">
-            أدخل كلمة المرور الجديدة لحسابك
+            {t("resetPasswordDescription")}
           </p>
 
           <Formik
@@ -84,8 +86,8 @@ function ResetPasswordForm() {
                   <CustomInput
                     name="password"
                     type={showPwd ? "text" : "password"}
-                    label="كلمة المرور الجديدة"
-                    placeholder="8 أحرف على الأقل"
+                    label={t("newPassword")}
+                    placeholder={t("passwordMin")}
                   />
                   <button
                     type="button"
@@ -99,8 +101,8 @@ function ResetPasswordForm() {
                   <CustomInput
                     name="confirm_password"
                     type={showConfirm ? "text" : "password"}
-                    label="تأكيد كلمة المرور"
-                    placeholder="أعد كتابة كلمة المرور"
+                    label={t("confirmPassword")}
+                    placeholder={t("confirmPasswordPlaceholder")}
                   />
                   <button
                     type="button"
@@ -119,7 +121,7 @@ function ResetPasswordForm() {
                   {props.isSubmitting && (
                     <div className="w-4 h-4 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin" />
                   )}
-                  تعيين كلمة المرور
+                  {t("reset")}
                 </Button>
               </Form>
             )}
@@ -130,10 +132,8 @@ function ResetPasswordForm() {
           <div className="flex items-center justify-center w-14 h-14 rounded-full bg-primary/10 mb-4 mx-auto">
             <CheckCircle2 className="w-7 h-7 text-primary" />
           </div>
-          <h2 className="text-xl font-bold text-foreground mb-2">تم بنجاح!</h2>
-          <p className="text-sm text-muted-foreground">
-            جاري تحويلك إلى صفحة تسجيل الدخول...
-          </p>
+          <h2 className="text-xl font-bold text-foreground mb-2">{t("resetSuccess")}</h2>
+          <p className="text-sm text-muted-foreground">{t("redirectingToLogin")}</p>
         </div>
       )}
     </div>
@@ -141,10 +141,11 @@ function ResetPasswordForm() {
 }
 
 export default function ResetPasswordPage() {
+  const t = useTranslations("Auth");
   return (
     <section className="w-screen h-screen flex items-center justify-center bg-background">
       <div className="w-full max-w-[400px] px-6 flex flex-col items-center gap-8">
-        <div className="relative h-10 w-40">
+        <div className="relative h-14 w-56">
           <Image
             src="/images/logo.png"
             alt="Trax"
@@ -155,29 +156,29 @@ export default function ResetPasswordPage() {
           />
         </div>
 
-      <div className="w-full">
-        <div className="bg-card border border-border rounded-lg p-6">
-          <Suspense
-            fallback={
-              <div className="flex items-center justify-center py-8 text-muted-foreground gap-2">
-                <span className="w-5 h-5 border-2 border-muted-foreground border-t-primary rounded-full animate-spin" />
-                جاري التحميل...
-              </div>
-            }
-          >
-            <ResetPasswordForm />
-          </Suspense>
-
-          <div className="mt-4 pt-4 border-t border-border">
-            <Link
-              href="/login"
-              className="flex items-center justify-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors"
+        <div className="w-full">
+          <div className="bg-card border border-border rounded-lg p-6">
+            <Suspense
+              fallback={
+                <div className="flex items-center justify-center py-8 text-muted-foreground gap-2">
+                  <span className="w-5 h-5 border-2 border-muted-foreground border-t-primary rounded-full animate-spin" />
+                  {t("loading")}
+                </div>
+              }
             >
-              العودة إلى تسجيل الدخول
-            </Link>
+              <ResetPasswordForm />
+            </Suspense>
+
+            <div className="mt-4 pt-4 border-t border-border">
+              <Link
+                href="/login"
+                className="flex items-center justify-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors"
+              >
+                {t("backToLogin")}
+              </Link>
+            </div>
           </div>
         </div>
-      </div>
       </div>
     </section>
   );

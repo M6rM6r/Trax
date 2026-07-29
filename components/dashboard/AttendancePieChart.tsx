@@ -3,6 +3,7 @@
 import { memo, useMemo, useCallback } from "react";
 import { PieChart as PieChartIcon } from "lucide-react";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
+import { useTranslations } from "next-intl";
 
 interface AttendancePieChartProps {
   data: Array<{
@@ -14,6 +15,7 @@ interface AttendancePieChartProps {
 }
 
 const AttendancePieChart = memo(({ data }: AttendancePieChartProps) => {
+  const t = useTranslations("Dashboard");
   const total = useMemo(() => data.reduce((sum, item) => sum + item.value, 0), [data]);
 
   const safeTotal = total || 1;
@@ -35,17 +37,18 @@ const AttendancePieChart = memo(({ data }: AttendancePieChartProps) => {
               <p className="font-bold text-foreground">{data.name}</p>
             </div>
             <p className="text-sm text-muted-foreground">
-              العدد: <span className="font-semibold">{data.value.toLocaleString("en-US")}</span>
+              {t("count")}:{" "}
+              <span className="font-semibold">{data.value.toLocaleString("en-US")}</span>
             </p>
             <p className="text-xs text-muted-foreground mt-1">
-              {((data.value / safeTotal) * 100).toFixed(1)}% من الإجمالي
+              {((data.value / safeTotal) * 100).toFixed(1)}% {t("ofTotal")}
             </p>
           </div>
         );
       }
       return null;
     },
-    [safeTotal]
+    [safeTotal, t]
   );
 
   return (
@@ -55,8 +58,8 @@ const AttendancePieChart = memo(({ data }: AttendancePieChartProps) => {
           <PieChartIcon className="w-5 h-5 text-primary-foreground" />
         </div>
         <div>
-          <h3 className="text-lg font-bold text-foreground">توزيع الحضور</h3>
-          <p className="text-sm text-muted-foreground">نسبة كل حالة من الإجمالي</p>
+          <h3 className="text-lg font-bold text-foreground">{t("attendanceDistribution")}</h3>
+          <p className="text-sm text-muted-foreground">{t("attendanceDistributionSubtitle")}</p>
         </div>
       </div>
 
@@ -92,7 +95,7 @@ const AttendancePieChart = memo(({ data }: AttendancePieChartProps) => {
               <div className="text-2xl font-black text-foreground">
                 {total.toLocaleString("en-US")}
               </div>
-              <div className="text-xs font-medium text-muted-foreground">الإجمالي</div>
+              <div className="text-xs font-medium text-muted-foreground">{t("total")}</div>
             </div>
           </div>
         </div>

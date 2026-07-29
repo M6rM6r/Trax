@@ -3,6 +3,7 @@ import { cn } from "@/lib/utils";
 import { ArrowLeft, Flash, Line } from "@/public/SVG";
 import Link from "next/link";
 import React, { useState } from "react";
+import { useTranslations } from "next-intl";
 
 interface SubItem {
   title: string;
@@ -27,6 +28,7 @@ export function NavMain({
     }[];
   }[];
 }) {
+  const t = useTranslations("Navigation");
   const [openSections, setOpenSections] = useState<Record<string, boolean>>(() =>
     items.reduce(
       (acc, item) => {
@@ -62,7 +64,7 @@ export function NavMain({
   };
 
   return (
-    <nav className="w-full grow" aria-label="القائمة الرئيسية" role="navigation">
+    <nav className="w-full grow" aria-label={t("mainMenu")} role="navigation">
       <ul className="space-y-1.5">
         {items.map((item) => (
           <li key={item.title} className="relative">
@@ -104,7 +106,11 @@ export function NavMain({
                     "rounded-md p-1 text-sidebar-foreground hover:bg-primary/10 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                     (item.isActive || openSections[item.title]) && "text-primary"
                   )}
-                  aria-label={openSections[item.title] ? `طي ${item.title}` : `توسيع ${item.title}`}
+                  aria-label={
+                    openSections[item.title]
+                      ? `${t("collapse")} ${item.title}`
+                      : `${t("expand")} ${item.title}`
+                  }
                   aria-expanded={openSections[item.title]}
                 >
                   <ArrowLeft
@@ -188,7 +194,9 @@ export function NavMain({
                             }}
                             className="p-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded"
                             aria-label={
-                              isSubItemOpen ? `طي ${subItem.title}` : `توسيع ${subItem.title}`
+                              isSubItemOpen
+                                ? `${t("collapse")} ${subItem.title}`
+                                : `${t("expand")} ${subItem.title}`
                             }
                             aria-expanded={isSubItemOpen}
                           >

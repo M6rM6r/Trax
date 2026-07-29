@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Download, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
+import { useTranslations } from "next-intl";
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
@@ -11,6 +12,7 @@ interface BeforeInstallPromptEvent extends Event {
 }
 
 export default function InstallPrompt() {
+  const t = useTranslations("Common.state");
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [showPrompt, setShowPrompt] = useState(false);
   const [dismissed, setDismissed] = useState(false);
@@ -64,19 +66,17 @@ export default function InstallPrompt() {
               <Download className="w-5 h-5 text-primary" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-bold text-foreground">تثبيت Trax</p>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                أضف التطبيق إلى شاشتك الرئيسية للوصول السريع
-              </p>
+              <p className="text-sm font-bold text-foreground">{t("installApp")}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">{t("installAppDescription")}</p>
             </div>
             <div className="flex items-center gap-2">
               <Button size="sm" onClick={handleInstall} className="h-8 px-3 text-xs">
-                تثبيت
+                {t("install")}
               </Button>
               <button
                 onClick={handleDismiss}
                 className="p-1.5 rounded-lg hover:bg-muted dark:hover:bg-card text-muted-foreground/70"
-                aria-label="إغلاق"
+                aria-label={t("close")}
               >
                 <X className="w-4 h-4" />
               </button>

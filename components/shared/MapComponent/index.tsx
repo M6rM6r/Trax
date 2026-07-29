@@ -16,6 +16,7 @@ import { Modify, Snap } from "ol/interaction";
 import { Button } from "@/components/ui/button";
 import { FormikProps } from "formik";
 import { MAP_THEME } from "@/lib/utils/mapTheme";
+import { useTranslations } from "next-intl";
 
 interface MapPoint {
   id: string;
@@ -37,6 +38,7 @@ export default function OLMap({
   name: string;
   formikProps: FormikProps<Record<string, unknown>>;
 }) {
+  const t = useTranslations("Geofences");
   const mapRef = useRef<HTMLDivElement>(null);
   const [map, setMap] = useState<Map | null>(null);
   const [currentShape, setCurrentShape] = useState<Shape | null>(null);
@@ -312,13 +314,13 @@ export default function OLMap({
       <div className=" flex gap-5 mt-5">
         {currentShape && (
           <Button variant={"primary"} onClick={clearCurrentShape} type="button">
-            حذف الشكل
+            {t("deleteShape")}
           </Button>
         )}
 
         {(showSaveButton || currentShape?.type === "polygon") && (
           <Button variant={"primary"} onClick={saveShape} type="button">
-            حفظ الشكل
+            {t("saveShape")}
           </Button>
         )}
       </div>

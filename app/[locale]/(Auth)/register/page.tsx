@@ -6,7 +6,11 @@ import * as Yup from "yup";
 import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";
 import { useRouter } from "@/i18n/navigation";
-import { signInWithEmailAndPassword } from "firebase/auth";
+import {
+  browserSessionPersistence,
+  setPersistence,
+  signInWithEmailAndPassword,
+} from "firebase/auth";
 import { auth } from "@/lib/config/firebase";
 import { Building2, User, Briefcase, ChevronLeft, ChevronRight, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -23,6 +27,7 @@ import { toastSuccess, toastError } from "@/hooks/use-toast";
 import { hapticSuccess, hapticError } from "@/lib/utils/haptics";
 import { useAuthStore, UserRole } from "@/stores/useAuthStore";
 import { firebaseData } from "@/lib/services/firebaseData";
+import { useTranslations } from "next-intl";
 import {
   getCompanyOnboardingCopy,
   shouldAllowCompanySelfRegistration,
@@ -38,73 +43,95 @@ interface RegisterValues {
   confirm_password: string;
 }
 
-const INDUSTRIES = [
-  "التجزئة",
-  "الضيافة والفنادق",
-  "المقاولات والبناء",
-  "التصنيع",
-  "الرعاية الصحية",
-  "التعليم",
-  "الخدمات اللوجستية",
-  "تقنية المعلومات",
-  "الخدمات المالية",
-  "أخرى",
-];
+function useTranslatedIndustries() {
+  const t = useTranslations("Auth");
+  return [
+    t("industries.retail"),
+    t("industries.hospitality"),
+    t("industries.construction"),
+    t("industries.manufacturing"),
+    t("industries.healthcare"),
+    t("industries.education"),
+    t("industries.logistics"),
+    t("industries.it"),
+    t("industries.finance"),
+    t("industries.other"),
+  ];
+}
 
-const PLANS = [
-  {
-    key: "trial",
-    name: "تجريبي",
-    price: "مجاني",
-    duration: "14 يوم",
-    employees: 10,
-    color: "border-input",
-    badge: "",
-    features: ["10 موظفين", "جميع المميزات", "دعم بالبريد الإلكتروني"],
-  },
-  {
-    key: "starter",
-    name: "مبتدئ",
-    price: "199 ر.س",
-    duration: "شهرياً",
-    employees: 25,
-    color: "border-primary",
-    badge: "الأكثر شيوعاً",
-    features: ["25 موظفاً", "تقارير متقدمة", "دعم أولوية"],
-  },
-  {
-    key: "pro",
-    name: "احترافي",
-    price: "499 ر.س",
-    duration: "شهرياً",
-    employees: 100,
-    color: "border-purple-500",
-    badge: "",
-    features: ["100 موظف", "API كامل", "دعم على مدار الساعة"],
-  },
-];
+function useTranslatedPlans() {
+  const t = useTranslations("Auth");
+  return [
+    {
+      key: "trial",
+      name: t("plans.trial"),
+      price: t("plans.trialPrice"),
+      duration: t("plans.trialDuration"),
+      employees: 10,
+      color: "border-input",
+      badge: "",
+      features: [
+        t("plans.trialFeatures.0"),
+        t("plans.trialFeatures.1"),
+        t("plans.trialFeatures.2"),
+      ],
+    },
+    {
+      key: "starter",
+      name: t("plans.starter"),
+      price: t("plans.starterPrice"),
+      duration: t("plans.starterDuration"),
+      employees: 25,
+      color: "border-primary",
+      badge: t("plans.starterBadge"),
+      features: [
+        t("plans.starterFeatures.0"),
+        t("plans.starterFeatures.1"),
+        t("plans.starterFeatures.2"),
+      ],
+    },
+    {
+      key: "pro",
+      name: t("plans.pro"),
+      price: t("plans.proPrice"),
+      duration: t("plans.proDuration"),
+      employees: 100,
+      color: "border-purple-500",
+      badge: "",
+      features: [t("plans.proFeatures.0"), t("plans.proFeatures.1"), t("plans.proFeatures.2")],
+    },
+  ];
+}
 
-const stepSchema = [
-  Yup.object({
-    company_name: Yup.string().required("اسم الشركة مطلوب").min(2, "الاسم قصير جداً"),
-    industry: Yup.string().required("يرجى اختيار القطاع"),
-  }),
-  Yup.object({
-    admin_name: Yup.string().required("الاسم مطلوب"),
-    admin_email: Yup.string().email("البريد غير صحيح").required("البريد الإلكتروني مطلوب"),
-    admin_password: Yup.string().min(8, "8 أحرف على الأقل").required("كلمة المرور مطلوبة"),
-    confirm_password: Yup.string()
-      .oneOf([Yup.ref("admin_password")], "كلمات المرور غير متطابقة")
-      .required("تأكيد كلمة المرور مطلوب"),
-  }),
-];
-
-const STEP_LABELS = ["معلومات الشركة", "حساب المدير", "اختيار الخطة"];
+function useRegisterSchema(step: number) {
+  const t = useTranslations("Auth");
+  return [
+    Yup.object({
+      company_name: Yup.string()
+        .required(t("companyNameRequired"))
+        .min(2, t("companyNameTooShort")),
+      industry: Yup.string().required(t("industryRequired")),
+    }),
+    Yup.object({
+      admin_name: Yup.string().required(t("fullNameRequired")),
+      admin_email: Yup.string().email(t("emailInvalid")).required(t("emailRequired")),
+      admin_password: Yup.string().min(8, t("passwordMin")).required(t("passwordRequired")),
+      confirm_password: Yup.string()
+        .oneOf([Yup.ref("admin_password")], t("passwordsMismatch"))
+        .required(t("confirmPasswordRequired")),
+    }),
+  ][step];
+}
 
 export default function RegisterPage() {
+  const t = useTranslations("Auth");
   const router = useRouter();
   const { setUser } = useAuthStore();
   const [step, setStep] = useState(0);
+  const INDUSTRIES = useTranslatedIndustries();
+  const PLANS = useTranslatedPlans();
+  const STEP_LABELS = [t("stepCompany"), t("stepAdmin"), t("stepPlan")];
+  const currentStepSchema = useRegisterSchema(step);
   const onboardingCopy = getCompanyOnboardingCopy();
   const allowSelfRegistration = shouldAllowCompanySelfRegistration();
   const [selectedPlan] = useState("trial");
@@ -129,10 +156,16 @@ export default function RegisterPage() {
         "bg-[hsl(48_96%_53%)]",
         "bg-primary",
       ] as const;
-      const labels = ["", "ضعيف", "متوسط", "قوي", "ممتاز"] as const;
+      const labels = [
+        "",
+        t("passwordStrength.weak"),
+        t("passwordStrength.fair"),
+        t("passwordStrength.good"),
+        t("passwordStrength.excellent"),
+      ] as const;
       return { score, color: colors[score] || "", label: labels[score] || "" };
     },
-    []
+    [t]
   );
 
   const handleSubmit = async (
@@ -153,6 +186,8 @@ export default function RegisterPage() {
     }
     try {
       if (auth) {
+        await setPersistence(auth, browserSessionPersistence);
+
         const { companyId: newCompanyId } = await firebaseData.companies.register({
           company_name: values.company_name,
           industry: values.industry,
@@ -186,7 +221,7 @@ export default function RegisterPage() {
         );
 
         hapticSuccess();
-        toastSuccess("تم إنشاء حسابك بنجاح! مرحباً بك في Trax");
+        toastSuccess(t("registerSuccess"));
         setRegistrationResult({
           companyName: values.company_name,
           adminEmail: values.admin_email,
@@ -195,10 +230,10 @@ export default function RegisterPage() {
         return;
       }
 
-      throw new Error("Firebase غير مكون. تواصل مع الإدارة.");
+      throw new Error(t("firebaseNotConfiguredRegister"));
     } catch (err: unknown) {
       hapticError();
-      const message = err instanceof Error ? err.message : "فشل في إنشاء الحساب. حاول مرة أخرى.";
+      const message = err instanceof Error ? err.message : t("accountCreationFailed");
       toastError(message);
     } finally {
       setSubmitting(false);
@@ -223,7 +258,7 @@ export default function RegisterPage() {
       />
 
       <div className="absolute left-1/2 -translate-x-1/2 top-6 z-20">
-        <div className="relative h-10 w-40">
+        <div className="relative h-14 w-56">
           <Image
             src="/images/logo.png"
             alt="Trax"
@@ -245,12 +280,10 @@ export default function RegisterPage() {
           {/* Header */}
           <div className="mb-6">
             <h1 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-              {allowSelfRegistration ? "إنشاء حساب شركة" : onboardingCopy.title}
+              {allowSelfRegistration ? t("registerTitle") : onboardingCopy.title}
             </h1>
             <p className="text-sm text-muted-foreground mt-1">
-              {allowSelfRegistration
-                ? "ابدأ تجربتك المجانية 14 يوماً — لا حاجة لبطاقة ائتمان"
-                : onboardingCopy.description}
+              {allowSelfRegistration ? t("trialSubtitle") : onboardingCopy.description}
             </p>
           </div>
 
@@ -269,7 +302,7 @@ export default function RegisterPage() {
                 onClick={() => router.push("/login")}
                 className="w-full"
               >
-                العودة إلى تسجيل الدخول
+                {t("backToLogin")}
               </Button>
             </div>
           ) : (
@@ -320,7 +353,7 @@ export default function RegisterPage() {
                   admin_password: "",
                   confirm_password: "",
                 }}
-                validationSchema={step < 2 ? stepSchema[step] : undefined}
+                validationSchema={step < 2 ? currentStepSchema : undefined}
                 onSubmit={handleSubmit}
                 validateOnChange={false}
                 validateOnBlur={true}
@@ -340,19 +373,17 @@ export default function RegisterPage() {
                         >
                           <div className="flex items-center gap-2 mb-4 p-3 rounded-xl bg-primary/10 border border-primary/30">
                             <Building2 className="w-5 h-5 text-primary shrink-0" />
-                            <p className="text-sm text-primary/70">
-                              أدخل معلومات شركتك لبدء التسجيل
-                            </p>
+                            <p className="text-sm text-primary/70">{t("companyInfoHint")}</p>
                           </div>
                           <CustomInput
                             name="company_name"
                             type="text"
-                            label="اسم الشركة"
-                            placeholder="مثال: شركة الأفق للتجزئة"
+                            label={t("companyName")}
+                            placeholder={t("companyNamePlaceholder")}
                           />
                           <div className="flex flex-col gap-1.5">
                             <label className="text-sm font-medium text-muted-foreground">
-                              القطاع
+                              {t("industry")}
                             </label>
                             <select
                               name="industry"
@@ -361,7 +392,7 @@ export default function RegisterPage() {
                               onBlur={props.handleBlur}
                               className="w-full rounded-xl border border-border bg-card text-foreground px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring transition-all"
                             >
-                              <option value="">اختر القطاع...</option>
+                              <option value="">{t("selectIndustry")}</option>
                               {INDUSTRIES.map((ind) => (
                                 <option key={ind} value={ind}>
                                   {ind}
@@ -388,19 +419,19 @@ export default function RegisterPage() {
                           <div className="flex items-center gap-2 mb-4 p-3 rounded-xl bg-accent/10 border border-purple-800/30">
                             <User className="w-5 h-5 text-accent-foreground shrink-0" />
                             <p className="text-sm text-accent-foreground">
-                              هذا الحساب سيكون مدير الشركة
+                              {t("adminAccountHint")}
                             </p>
                           </div>
                           <CustomInput
                             name="admin_name"
                             type="text"
-                            label="الاسم الكامل"
-                            placeholder="محمد عبدالله"
+                            label={t("fullName")}
+                            placeholder={t("fullNamePlaceholder")}
                           />
                           <CustomInput
                             name="admin_email"
                             type="email"
-                            label="البريد الإلكتروني"
+                            label={t("email")}
                             placeholder="admin@company.com"
                             className="text-left [direction:ltr] [unicode-bidi:plaintext]"
                           />
@@ -408,8 +439,8 @@ export default function RegisterPage() {
                             <CustomInput
                               name="admin_password"
                               type="password"
-                              label="كلمة المرور"
-                              placeholder="8 أحرف على الأقل"
+                              label={t("password")}
+                              placeholder={t("passwordMin")}
                             />
                             {props.values.admin_password.length > 0 &&
                               (() => {
@@ -438,8 +469,8 @@ export default function RegisterPage() {
                           <CustomInput
                             name="confirm_password"
                             type="password"
-                            label="تأكيد كلمة المرور"
-                            placeholder="أعد كتابة كلمة المرور"
+                            label={t("confirmPassword")}
+                            placeholder={t("confirmPasswordPlaceholder")}
                           />
                         </motion.div>
                       )}
@@ -456,9 +487,7 @@ export default function RegisterPage() {
                         >
                           <div className="flex items-center gap-2 mb-2 p-3 rounded-xl bg-primary/10 border border-primary/20">
                             <Briefcase className="w-5 h-5 text-primary shrink-0" />
-                            <p className="text-sm text-primary/70">
-                              ابدأ مجاناً — يمكنك الترقية في أي وقت
-                            </p>
+                            <p className="text-sm text-primary/70">{t("planHint")}</p>
                           </div>
                           <div className="space-y-3">
                             {PLANS.map((plan) => (
@@ -512,22 +541,22 @@ export default function RegisterPage() {
                             ))}
                           </div>
                           <p className="text-xs text-center text-muted-foreground mt-2">
-                            سيتم تفعيل الخطة التجريبية تلقائياً — لا حاجة لبطاقة ائتمان
+                            {t("trialAutoActivate")}
                           </p>
 
                           {/* Summary */}
                           <div className="mt-4 p-4 rounded-xl bg-muted border border-border space-y-2">
                             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                              ملخص الحساب
+                              {t("accountSummary")}
                             </p>
                             <div className="flex items-center justify-between text-sm">
-                              <span className="text-muted-foreground">الشركة</span>
+                              <span className="text-muted-foreground">{t("company")}</span>
                               <span className="font-medium text-foreground">
                                 {props.values.company_name || "—"}
                               </span>
                             </div>
                             <div className="flex items-center justify-between text-sm">
-                              <span className="text-muted-foreground">المدير</span>
+                              <span className="text-muted-foreground">{t("admin")}</span>
                               <span
                                 dir="ltr"
                                 lang="en"
@@ -538,10 +567,8 @@ export default function RegisterPage() {
                               </span>
                             </div>
                             <div className="flex items-center justify-between text-sm">
-                              <span className="text-muted-foreground">الخطة</span>
-                              <span className="font-medium text-primary">
-                                تجريبي مجاني — 14 يوم
-                              </span>
+                              <span className="text-muted-foreground">{t("plan")}</span>
+                              <span className="font-medium text-primary">{t("trialPlan")}</span>
                             </div>
                           </div>
                         </motion.div>
@@ -560,7 +587,7 @@ export default function RegisterPage() {
                           className="flex items-center gap-2 px-4"
                         >
                           <ChevronRight className="w-4 h-4" />
-                          السابق
+                          {t("previous")}
                         </Button>
                       )}
                       <Button
@@ -574,20 +601,20 @@ export default function RegisterPage() {
                         )}
                         {step < 2 ? (
                           <>
-                            التالي <ChevronLeft className="w-4 h-4" />
+                            {t("next")} <ChevronLeft className="w-4 h-4" />
                           </>
                         ) : (
                           <>
-                            إنشاء الحساب <Check className="w-4 h-4" />
+                            {t("createAccount")} <Check className="w-4 h-4" />
                           </>
                         )}
                       </Button>
                     </div>
 
                     <p className="text-center text-sm text-muted-foreground mt-4">
-                      لديك حساب بالفعل؟{" "}
+                      {t("hasAccount")}{" "}
                       <a href="/login" className="text-primary hover:underline font-medium">
-                        تسجيل الدخول
+                        {t("login")}
                       </a>
                     </p>
                   </Form>
@@ -607,15 +634,15 @@ export default function RegisterPage() {
             <div className="mx-auto w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center mb-3">
               <Check className="w-7 h-7 text-primary" />
             </div>
-            <DialogTitle className="text-xl">تم إنشاء حسابك بنجاح</DialogTitle>
+            <DialogTitle className="text-xl">{t("registerSuccess")}</DialogTitle>
             <DialogDescription>
               {registrationResult && (
                 <>
-                  مرحباً بك في{" "}
+                  {t("welcomeTo")}{" "}
                   <span className="font-semibold text-foreground">
                     {registrationResult.companyName}
                   </span>
-                  . يمكنك الآن الدخول إلى لوحة التحكم.
+                  .
                 </>
               )}
             </DialogDescription>
@@ -624,26 +651,26 @@ export default function RegisterPage() {
           {registrationResult && (
             <div className="space-y-3 my-4">
               <div className="rounded-xl bg-muted p-3 text-sm">
-                <p className="text-muted-foreground mb-1">البريد الإلكتروني للمدير</p>
+                <p className="text-muted-foreground mb-1">{t("adminEmail")}</p>
                 <p className="font-medium text-foreground ltr" dir="ltr">
                   {registrationResult.adminEmail}
                 </p>
               </div>
               <div className="rounded-xl bg-muted p-3 text-sm">
-                <p className="text-muted-foreground mb-1">كلمة المرور المؤقتة</p>
+                <p className="text-muted-foreground mb-1">{t("temporaryPassword")}</p>
                 <p className="font-medium text-foreground ltr" dir="ltr">
                   {registrationResult.adminPassword}
                 </p>
               </div>
               <p className="text-xs text-[hsl(48_96%_53%)] bg-[hsl(48_96%_53%/0.1)] rounded-lg p-2">
-                احفظ هذه البيانات في مكان آمن. يمكنك تغيير كلمة المرور لاحقاً من الإعدادات.
+                {t("saveCredentials")}
               </p>
             </div>
           )}
 
           <DialogFooter>
             <Button onClick={handleGoToDashboard} className="w-full">
-              الذهاب إلى لوحة التحكم
+              {t("goToDashboard")}
             </Button>
           </DialogFooter>
         </DialogContent>

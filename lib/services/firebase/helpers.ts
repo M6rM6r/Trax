@@ -1,10 +1,16 @@
 import { onAuthStateChanged, type User } from "firebase/auth";
-import { doc, setDoc } from "firebase/firestore";
+import { collection, doc, getDocs, limit, query, setDoc, where } from "firebase/firestore";
 import { auth, db } from "@/lib/config/firebase";
 import { useAuthStore } from "@/stores/useAuthStore";
-import type { AttendanceRecord, Employee, Geofence } from "@/lib/types/trackingTypes";
+import type { AttendanceRecord, Employee, Geofence, WorkShift } from "@/lib/types/trackingTypes";
+
+let lastSyncAt = 0;
+const SYNC_INTERVAL_MS = 5 * 60 * 1000;
 
 async function syncUserDoc(user: User) {
+  const now = Date.now();
+  if (now - lastSyncAt < SYNC_INTERVAL_MS) return;
+  lastSyncAt = now;
   if (!db) return;
   const { companyId, role, user: storeUser } = useAuthStore.getState();
   const payload: Record<string, unknown> = {
@@ -24,6 +30,29 @@ async function syncUserDoc(user: User) {
 export function getCompanyId(): string | null {
   const companyId = useAuthStore.getState().companyId;
   return companyId === null ? null : String(companyId);
+}
+
+export async function queryByCompanyId<T>(
+  base: ReturnType<typeof collection>,
+  extraFilters: ReturnType<typeof where>[],
+  mapper: (id: string, data: Record<string, unknown>) => T
+): Promise<T[]> {
+  const cidStr = getCompanyId();
+  if (!cidStr) return [];
+  const cidNum = Number(cidStr);
+  const isNumeric = String(cidNum) === cidStr;
+
+  // Try string first
+  let snap = await getDocs(
+    query(base, where("company_id", "==", cidStr), ...extraFilters, limit(500))
+  );
+  if (snap.empty && isNumeric) {
+    // Try number
+    snap = await getDocs(
+      query(base, where("company_id", "==", cidNum), ...extraFilters, limit(500))
+    );
+  }
+  return snap.docs.map((item) => mapper(item.id, item.data() as Record<string, unknown>));
 }
 
 export function cleanPayload<T extends Record<string, unknown>>(payload: T): T {
@@ -109,6 +138,11 @@ export function mapEmployee(id: string, value: Record<string, unknown>): Employe
 }
 
 export function mapGeofence(id: string, value: Record<string, unknown>): Geofence {
+  const shifts =
+    (value.shifts as
+      | { defaultShift?: unknown; morningShift?: unknown; eveningShift?: unknown }
+      | null
+      | undefined) ?? null;
   return {
     id: String((value.id as string | number | undefined) ?? id),
     name: String(value.name ?? value.title ?? ""),
@@ -122,6 +156,36 @@ export function mapGeofence(id: string, value: Record<string, unknown>): Geofenc
       value.employeesCount === null || value.employeesCount === undefined
         ? undefined
         : toNumber(value.employeesCount),
+    shifts: shifts
+      ? {
+          defaultShift: mapShift(shifts.defaultShift) ?? defaultShift(),
+          morningShift: mapShift(shifts.morningShift) ?? defaultShift("08:00", "12:00"),
+          eveningShift: mapShift(shifts.eveningShift) ?? defaultShift("13:00", "17:00"),
+        }
+      : null,
+  };
+}
+
+function defaultShift(startTime = "08:00", endTime = "17:00"): WorkShift {
+  return {
+    startTime,
+    endTime,
+    gracePeriodMinutes: 15,
+    lateThresholdMinutes: 15,
+  };
+}
+
+function mapShift(value: unknown): WorkShift | null {
+  const s = value as Record<string, unknown> | null | undefined;
+  if (!s) return null;
+  const startTime = s.startTime ? String(s.startTime) : null;
+  const endTime = s.endTime ? String(s.endTime) : null;
+  if (!startTime || !endTime) return null;
+  return {
+    startTime,
+    endTime,
+    gracePeriodMinutes: toNumber(s.gracePeriodMinutes, 15),
+    lateThresholdMinutes: toNumber(s.lateThresholdMinutes, 15),
   };
 }
 
@@ -156,6 +220,19 @@ export function mapAttendance(id: string, value: Record<string, unknown>): Atten
     lateMinutes: toNumber(value.lateMinutes),
     workedHours: toNumber(value.workedHours),
     checkOutStatus: (value.checkOutStatus as AttendanceRecord["checkOutStatus"]) ?? null,
+    expectedCheckoutTime:
+      (value.expectedCheckoutTime as string | null | undefined) ??
+      (value.appliedShift as { endTime?: string } | null | undefined)?.endTime ??
+      null,
+    earlyCheckout: Boolean(
+      value.checkOutTime &&
+      ((value.expectedCheckoutTime as string | null | undefined) ??
+        (value.appliedShift as { endTime?: string } | null | undefined)?.endTime) &&
+      (value.checkOutTime as string) <
+        ((value.expectedCheckoutTime as string | null | undefined) ??
+          (value.appliedShift as { endTime?: string } | null | undefined)?.endTime ??
+          "")
+    ),
     attendanceMode: (value.attendanceMode as AttendanceRecord["attendanceMode"]) ?? null,
     appliedShift: (value.appliedShift as AttendanceRecord["appliedShift"]) ?? null,
     shiftSlot: (value.shiftSlot as AttendanceRecord["shiftSlot"]) ?? null,

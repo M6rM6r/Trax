@@ -32,6 +32,7 @@ import {
   type DateRange,
 } from "@/components/shared/DateRangePicker";
 import { toastSuccess } from "@/hooks/use-toast";
+import { useTranslations, useLocale } from "next-intl";
 
 const COLORS = {
   present: "#22c55e",
@@ -40,14 +41,11 @@ const COLORS = {
   checkedOut: "#6b7280",
 };
 
-const statusLabels: Record<string, string> = {
-  present: "حاضر",
-  late: "متأخر",
-  absent: "غائب",
-  checked_out: "منصرف",
-};
-
 export default function DashboardPage() {
+  const t = useTranslations("Dashboard");
+  const locale = useLocale();
+  const dateLocale = locale === "ar" ? "ar-SA-u-nu-latn" : "en-US";
+  const timeLocale = locale === "ar" ? "ar-SA-u-nu-latn" : "en-US";
   const { user, companyName } = useAuthStore();
   const queryClient = useQueryClient();
   const [dateRange, setDateRange] = useState<DateRange>(getDefaultDateRange());
@@ -74,15 +72,15 @@ export default function DashboardPage() {
 
   useEffect(() => {
     setLastUpdated(
-      new Date().toLocaleTimeString("ar-SA-u-nu-latn", { hour: "2-digit", minute: "2-digit" })
+      new Date().toLocaleTimeString(timeLocale, { hour: "2-digit", minute: "2-digit" })
     );
     const interval = setInterval(() => {
       setLastUpdated(
-        new Date().toLocaleTimeString("ar-SA-u-nu-latn", { hour: "2-digit", minute: "2-digit" })
+        new Date().toLocaleTimeString(timeLocale, { hour: "2-digit", minute: "2-digit" })
       );
     }, 30000);
     return () => clearInterval(interval);
-  }, []);
+  }, [timeLocale]);
 
   // Real-time WebSocket listener for attendance updates (optional; only when WS server configured)
   useEffect(() => {
@@ -111,7 +109,7 @@ export default function DashboardPage() {
 
           const now = Date.now();
           if (now - lastRealtimeToastAtRef.current > 10000) {
-            toastSuccess("تم تحديث بيانات الحضور");
+            toastSuccess(t("updated"));
             lastRealtimeToastAtRef.current = now;
           }
         });
@@ -125,30 +123,30 @@ export default function DashboardPage() {
         clearTimeout(realtimePulseTimeoutRef.current);
       }
     };
-  }, [queryClient]);
+  }, [queryClient, t]);
 
   const attendanceDistribution = useMemo(
     () => [
       {
-        name: statusLabels.present,
+        name: t("statusPresent"),
         value: stats?.presentToday ?? 0,
         icon: UserCheck,
         color: COLORS.present,
       },
       {
-        name: statusLabels.late,
+        name: t("statusLate"),
         value: stats?.lateToday ?? 0,
         icon: Clock,
         color: COLORS.late,
       },
       {
-        name: statusLabels.absent,
+        name: t("statusAbsent"),
         value: stats?.absentToday ?? 0,
         icon: UserX,
         color: COLORS.absent,
       },
     ],
-    [stats]
+    [stats, t]
   );
 
   const recentAttendance = useMemo(() => {
@@ -196,15 +194,15 @@ export default function DashboardPage() {
               <div className="relative flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
                   <p className="text-muted-foreground text-sm font-medium">
-                    {new Date().toLocaleDateString("ar-SA-u-nu-latn", {
+                    {new Date().toLocaleDateString(dateLocale, {
                       weekday: "long",
                       year: "numeric",
                       month: "long",
                       day: "numeric",
                     })}
                   </p>
-                  <h1 className="text-2xl sm:text-3xl font-black text-foreground mt-1" dir="rtl">
-                    مرحباً، <bdi>{user?.name?.split(" ")[0] ?? "مدير"}</bdi>
+                  <h1 className="text-2xl sm:text-3xl font-black text-foreground mt-1">
+                    {t("greeting", { name: user?.name?.split(" ")[0] ?? t("manager") })}
                     {companyName && (
                       <span className="text-primary text-xl font-semibold">
                         {" — "}
@@ -212,9 +210,7 @@ export default function DashboardPage() {
                       </span>
                     )}
                   </h1>
-                  <p className="text-muted-foreground/80 text-sm mt-1">
-                    نظرة شاملة على الحضور والمتابعة في الوقت الحقيقي
-                  </p>
+                  <p className="text-muted-foreground/80 text-sm mt-1">{t("overview")}</p>
                 </div>
               </div>
 
@@ -234,11 +230,11 @@ export default function DashboardPage() {
                           <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
                           <span className="relative inline-flex rounded-full h-2 w-2 bg-primary" />
                         </span>
-                        <span className="font-bold">مباشر</span>
+                        <span className="font-bold">{t("live")}</span>
                       </motion.span>
                     )}
                   </AnimatePresence>
-                  آخر تحديث: {lastUpdated}
+                  {t("lastUpdated")}: {lastUpdated}
                 </div>
               )}
             </div>
@@ -269,10 +265,10 @@ export default function DashboardPage() {
                       <UserCheck className="w-5 h-5 text-primary" />
                       <div>
                         <CardTitle className="text-base font-bold text-foreground">
-                          أحدث سجلات الحضور
+                          {t("recentAttendance")}
                         </CardTitle>
                         <p className="text-xs text-muted-foreground">
-                          آخر عمليات تسجيل الحضور اليوم
+                          {t("recentAttendanceSubtitle")}
                         </p>
                       </div>
                     </div>
@@ -283,7 +279,7 @@ export default function DashboardPage() {
                     columns={[
                       {
                         key: "employeeName",
-                        header: "الموظف",
+                        header: t("employee"),
                         sortable: true,
                         filterable: true,
                         sortValue: (r) => r.employeeName,
@@ -295,7 +291,7 @@ export default function DashboardPage() {
                       },
                       {
                         key: "department",
-                        header: "القسم",
+                        header: t("department"),
                         sortable: true,
                         filterable: true,
                         sortValue: (r) => {
@@ -309,14 +305,14 @@ export default function DashboardPage() {
                       },
                       {
                         key: "checkInTime",
-                        header: "وقت الحضور",
+                        header: t("checkInTime"),
                         sortable: true,
                         sortValue: (r) => r.checkInTime || "",
                         cell: (r) => r.checkInTime || "-",
                       },
                       {
                         key: "status",
-                        header: "الحالة",
+                        header: t("status"),
                         sortable: true,
                         sortValue: (r) => r.status,
                         cell: (r) => (
@@ -329,20 +325,28 @@ export default function DashboardPage() {
                                   : "bg-destructive/10 text-destructive ring-red-400/20"
                             }`}
                           >
-                            {statusLabels[r.status] || r.status}
+                            {(() => {
+                              const labels: Record<string, string> = {
+                                present: t("statusPresent"),
+                                late: t("statusLate"),
+                                absent: t("statusAbsent"),
+                                checked_out: t("statusCheckedOut"),
+                              };
+                              return labels[r.status] || r.status;
+                            })()}
                           </span>
                         ),
                       },
                       {
                         key: "geofenceName",
-                        header: "الموقع",
+                        header: t("location"),
                         filterable: true,
                         sortValue: (r) => r.geofenceName || "",
                         cell: (r) => r.geofenceName || "-",
                       },
                     ]}
                     data={recentAttendance}
-                    searchPlaceholder="بحث في السجلات..."
+                    searchPlaceholder={t("searchRecords")}
                     pageSize={5}
                   />
                 </CardContent>

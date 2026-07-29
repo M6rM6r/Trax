@@ -22,6 +22,7 @@ const demoRoleEmailMap: Record<string, UserRole> = {
 export function normalizeUserRole(raw: string | undefined | null): UserRole {
   if (!raw) return "employee";
   const normalized = String(raw).trim().toLowerCase();
+  if (normalized === "mastermind") return "mastermind";
   if (adminAliases.has(normalized)) return "company";
   return "employee";
 }
@@ -71,7 +72,7 @@ export function resolveUserRole(
     return normalizeUserRole(profileRole);
   }
   if (tokenRole && adminAliases.has(tokenRole)) {
-    return "company";
+    return tokenRole === "mastermind" ? "mastermind" : "company";
   }
   if (
     profile?.company_id !== null &&

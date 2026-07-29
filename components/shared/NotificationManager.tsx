@@ -5,6 +5,7 @@ import { useAuthStore } from "@/stores/useAuthStore";
 import { useNotificationStore } from "@/stores/useNotificationStore";
 import { useCompanySettingsStore } from "@/stores/useCompanySettingsStore";
 import { useAttendance, useEmployees } from "@/hooks/useApi";
+import { useTranslations } from "next-intl";
 
 const LAST_REMINDER_KEY = "trax_last_reminder_date";
 const LAST_LATE_CHECK_KEY = "trax_last_late_check_date";
@@ -15,6 +16,7 @@ function parseTimeToMinutes(timeStr: string): number {
 }
 
 export default function NotificationManager() {
+  const t = useTranslations("Notifications");
   const { user, role } = useAuthStore();
   const { addNotification } = useNotificationStore();
   const companySettings = useCompanySettingsStore();
@@ -57,8 +59,8 @@ export default function NotificationManager() {
 
       if (nowMinutes >= reminderMinutes && nowMinutes < lateMinutes + 30) {
         localStorage.setItem(LAST_REMINDER_KEY, today);
-        const title = "تذكير تسجيل الحضور";
-        const body = "لا تنسَ تسجيل حضورك لهذا اليوم";
+        const title = t("checkInReminderTitle");
+        const body = t("checkInReminderBody");
 
         if (companySettings.pushNotificationsEnabled && Notification.permission === "granted") {
           new Notification(title, { body, icon: "/images/icon-192.png", tag: "check-in-reminder" });
@@ -86,6 +88,7 @@ export default function NotificationManager() {
     companySettings.gracePeriodMinutes,
     companySettings.pushNotificationsEnabled,
     companySettings.weekendDays,
+    t,
   ]);
 
   // Late employee alerts for admins
@@ -120,11 +123,11 @@ export default function NotificationManager() {
       if (lateEmployees.length > 0) {
         localStorage.setItem(LAST_LATE_CHECK_KEY, today);
 
-        const title = `تأخر ${lateEmployees.length} موظف`;
+        const title = t("lateEmployeesTitle", { count: lateEmployees.length });
         const body =
           lateEmployees.length === 1
-            ? `الموظف ${lateEmployees[0].name} لم يسجل الحضور بعد`
-            : `${lateEmployees.length} موظف لم يسجلوا الحضور بعد`;
+            ? t("lateEmployeeBody", { name: lateEmployees[0].name })
+            : t("lateEmployeesBody", { count: lateEmployees.length });
 
         if (
           typeof window !== "undefined" &&
@@ -138,8 +141,8 @@ export default function NotificationManager() {
         lateEmployees.slice(0, 5).forEach((emp) => {
           addNotification({
             type: "late_arrival",
-            title: "تأخر عن الحضور",
-            message: `${emp.name} لم يسجل الحضور اليوم`,
+            title: t("lateArrivalTitle"),
+            message: t("lateArrivalMessage", { name: emp.name }),
             employeeId: String(emp.id),
             employeeName: emp.name,
           });
@@ -162,6 +165,7 @@ export default function NotificationManager() {
     companySettings.lateThresholdMinutes,
     companySettings.pushNotificationsEnabled,
     companySettings.weekendDays,
+    t,
   ]);
 
   return null;

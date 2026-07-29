@@ -3,7 +3,7 @@ import { Card, CardContent } from "@/components/ui/card";
 
 export default function EmployeeListSkeleton() {
   return (
-    <div className="space-y-4" role="status" aria-label="جاري تحميل الموظفين">
+    <div className="space-y-4" role="status" aria-label="Loading employees">
       {/* Filter bar skeleton */}
       <div className="flex items-center gap-3 flex-wrap">
         <Skeleton className="h-10 w-64 rounded-lg" />

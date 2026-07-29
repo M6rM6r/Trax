@@ -1,10 +1,12 @@
 "use client";
 
+import { useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { firebaseData } from "@/lib/services/firebaseData";
 import type { AttendanceRecord, Employee } from "@/lib/types/trackingTypes";
 import { useAuthStore } from "@/stores/useAuthStore";
-import { queryKeys } from "./queryKeys";
+import { useCompanySettingsStore } from "@/stores/useCompanySettingsStore";
+import { queryKeys, toApiDate } from "./queryKeys";
 
 export function useAttendance(options?: { enabled?: boolean }) {
   const companyId = useAuthStore((state) => state.companyId);
@@ -24,6 +26,26 @@ export function useAttendanceReports() {
   return useAttendance();
 }
 
+export function useMyAttendance(employeeId?: string | null) {
+  const companyId = useAuthStore((state) => state.companyId);
+  const today = useMemo(() => toApiDate(new Date()) ?? new Date().toISOString().split("T")[0], []);
+
+  return useQuery<AttendanceRecord[]>({
+    queryKey: [
+      ...queryKeys.attendance,
+      "my",
+      companyId ?? "unassigned",
+      employeeId ?? "none",
+      today,
+    ],
+    queryFn: async () =>
+      firebaseData.attendance.list(employeeId ?? undefined, { from: today, to: today }),
+    enabled: Boolean(companyId && employeeId),
+    staleTime: 30 * 1000,
+    refetchInterval: 60 * 1000,
+  });
+}
+
 export function useCheckIn() {
   const qc = useQueryClient();
   return useMutation({
@@ -35,6 +57,7 @@ export function useCheckIn() {
       geofenceId?: string | null;
       companySettings?: Record<string, unknown>;
       employee?: Pick<Employee, "attendanceMode" | "shiftOverride"> | null;
+      checkInTimestamp?: number;
     }) => {
       return firebaseData.attendance.checkIn(payload);
     },
@@ -47,9 +70,17 @@ export function useCheckIn() {
 
 export function useCheckOut() {
   const qc = useQueryClient();
+  const checkoutTimeRangeEnabled = useCompanySettingsStore(
+    (state) => state.checkoutTimeRangeEnabled
+  );
+  const checkoutStartTime = useCompanySettingsStore((state) => state.checkoutStartTime);
+  const companySettings = useMemo(
+    () => ({ checkoutTimeRangeEnabled, checkoutStartTime }),
+    [checkoutTimeRangeEnabled, checkoutStartTime]
+  );
   return useMutation({
     mutationFn: async (payload: { employeeId: string }) => {
-      return firebaseData.attendance.checkOut(payload.employeeId);
+      return firebaseData.attendance.checkOut(payload.employeeId, companySettings);
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: queryKeys.attendance });

@@ -10,11 +10,13 @@ import { useSearchParams } from "next/navigation";
 import { Link } from "@/i18n/navigation";
 import { useMemo, useState } from "react";
 import { useAuthStore } from "@/stores/useAuthStore";
+import { useTranslations } from "next-intl";
 import { hapticSuccess, hapticError } from "@/lib/utils/haptics";
 import {
   getIdTokenResult,
   signInWithEmailAndPassword,
   browserLocalPersistence,
+  browserSessionPersistence,
   setPersistence,
   signOut,
 } from "firebase/auth";
@@ -28,14 +30,14 @@ interface LoginValues {
   rememberMe: boolean;
 }
 
-const loginSchema = Yup.object({
-  identifier: Yup.string().email("البريد الإلكتروني غير صحيح").required("البريد الإلكتروني مطلوب"),
-  password: Yup.string()
-    .min(8, "كلمة المرور يجب أن تكون 8 أحرف على الأقل")
-    .required("كلمة المرور مطلوبة"),
-});
+const loginSchema = (t: ReturnType<typeof useTranslations>) =>
+  Yup.object({
+    identifier: Yup.string().email(t("emailInvalid")).required(t("emailRequired")),
+    password: Yup.string().min(8, t("passwordMin")).required(t("passwordRequired")),
+  });
 
 const Page = () => {
+  const t = useTranslations("Auth");
   const searchParams = useSearchParams();
   const initialIdentifier = useMemo(
     () => searchParams.get("identifier")?.trim() || "",
@@ -66,7 +68,7 @@ const Page = () => {
   ) => {
     if (!resp.success || !resp.data) {
       hapticError();
-      toastError("البريد الإلكتروني أو كلمة المرور غير صحيحة");
+      toastError(t("invalidCredentials"));
       return;
     }
 
@@ -101,7 +103,7 @@ const Page = () => {
     );
 
     hapticSuccess();
-    toastSuccess("تم تسجيل الدخول بنجاح");
+    toastSuccess(t("loginSuccess"));
     setShowSuccess(true);
 
     setTimeout(() => {
@@ -122,13 +124,14 @@ const Page = () => {
   ) => {
     if (!auth) {
       hapticError();
-      toastError("Firebase غير مكون. تواصل مع الإدارة.");
+      toastError(t("firebaseNotConfigured"));
       setSubmitting(false);
       return;
     }
 
     try {
-      await setPersistence(auth, browserLocalPersistence);
+      const persistence = values.rememberMe ? browserLocalPersistence : browserSessionPersistence;
+      await setPersistence(auth, persistence);
       const credential = await signInWithEmailAndPassword(auth, values.identifier, values.password);
       const idToken = await credential.user.getIdToken();
       setRememberMe(values.rememberMe);
@@ -198,17 +201,17 @@ const Page = () => {
     } catch (err) {
       hapticError();
       const firebaseErr = err as { code?: string; message?: string };
-      let msg = "البريد الإلكتروني أو كلمة المرور غير صحيحة";
+      let msg = t("invalidCredentials");
       if (firebaseErr?.code === "auth/unauthorized-domain") {
-        msg = "هذا النطاق غير مصرح به. تواصل مع الإدارة.";
+        msg = t("unauthorizedDomain");
       } else if (firebaseErr?.code === "auth/user-not-found") {
-        msg = "المستخدم غير موجود. تأكد من البريد الإلكتروني.";
+        msg = t("userNotFound");
       } else if (firebaseErr?.code === "auth/wrong-password") {
-        msg = "كلمة المرور غير صحيحة.";
+        msg = t("wrongPassword");
       } else if (firebaseErr?.code === "auth/invalid-credential") {
-        msg = "بيانات الدخول غير صحيحة.";
+        msg = t("invalidCredential");
       } else if (firebaseErr?.code === "auth/too-many-requests") {
-        msg = "محاولات كثيرة. حاول لاحقاً.";
+        msg = t("tooManyRequests");
       } else if (firebaseErr?.message) {
         msg = firebaseErr.message;
       }
@@ -223,7 +226,7 @@ const Page = () => {
   return (
     <section className="w-screen h-screen flex items-center justify-center bg-background">
       <div className="w-full max-w-[400px] px-6 flex flex-col items-center gap-8">
-        <div className="relative h-10 w-40">
+        <div className="relative h-14 w-56">
           <Image
             src="/images/logo.png"
             alt="Trax"
@@ -237,28 +240,28 @@ const Page = () => {
         <Formik
           initialValues={{ identifier: initialIdentifier, password: "", rememberMe: false }}
           enableReinitialize
-          validationSchema={loginSchema}
+          validationSchema={loginSchema(t)}
           onSubmit={handleSubmit}
         >
           {(props) => (
             <div className="w-full">
               <Form className="bg-card border border-border rounded-lg p-8 flex flex-col gap-5">
                 <div className="text-center mb-2">
-                  <h1 className="text-xl font-bold text-foreground">تسجيل الدخول</h1>
+                  <h1 className="text-xl font-bold text-foreground">{t("loginTitle")}</h1>
                 </div>
 
                 <CustomInput
                   type="email"
                   name="identifier"
                   placeholder="email@trax.com"
-                  label="البريد الإلكتروني"
+                  label={t("email")}
                 />
 
                 <CustomInput
                   type="password"
                   name="password"
                   placeholder="*********"
-                  label="كلمة المرور"
+                  label={t("password")}
                 />
 
                 <div className="flex items-center justify-between text-sm">
@@ -270,10 +273,10 @@ const Page = () => {
                       checked={props.values.rememberMe}
                       onChange={() => props.setFieldValue("rememberMe", !props.values.rememberMe)}
                     />
-                    تذكرني
+                    {t("rememberMe")}
                   </label>
                   <Link href="/forgot-password" className="text-primary hover:underline text-sm">
-                    نسيت كلمة المرور؟
+                    {t("forgotPassword")}
                   </Link>
                 </div>
 
@@ -286,7 +289,7 @@ const Page = () => {
                   {props.isSubmitting && (
                     <div className="w-4 h-4 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin" />
                   )}
-                  {props.isSubmitting ? "جاري التحميل..." : "دخول"}
+                  {props.isSubmitting ? t("loading") : t("login")}
                 </Button>
               </Form>
             </div>
@@ -296,7 +299,7 @@ const Page = () => {
         {showSuccess && (
           <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-background">
             <CheckCircle2 className="w-16 h-16 text-primary" />
-            <p className="mt-4 text-lg font-bold text-foreground">تم تسجيل الدخول</p>
+            <p className="mt-4 text-lg font-bold text-foreground">{t("loginSuccess")}</p>
           </div>
         )}
       </div>

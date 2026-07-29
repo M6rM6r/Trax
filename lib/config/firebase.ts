@@ -39,7 +39,7 @@ export const storage = app ? getStorage(app) : null;
 export const auth = app ? getAuth(app) : null;
 
 export const db = app ? getFirestore(app) : null;
-export const functions = app ? getFunctions(app) : null;
+export const functions = app ? getFunctions(app, "asia-southeast1") : null;
 
 export const appCheck = null;
 

@@ -60,6 +60,11 @@ export interface CompanySettings {
   autoSignOutEnabled: boolean;
   autoSignOutTime: string; // "18:00"
 
+  // Optional checkout time range (used to flag early checkouts). When not enabled, workEndTime/shift end is used as reference.
+  checkoutTimeRangeEnabled: boolean;
+  checkoutStartTime: string; // "17:00"
+  checkoutEndTime: string; // "17:00"
+
   // Geofence
   requireGeofenceForCheckIn: boolean; // default: true
   allowCheckInOutsideGeofence: boolean; // default: false
@@ -120,6 +125,10 @@ export const defaultCompanySettings: CompanySettings = {
   sessionTimeoutMinutes: 60,
   autoSignOutEnabled: false,
   autoSignOutTime: "18:00",
+
+  checkoutTimeRangeEnabled: false,
+  checkoutStartTime: "17:00",
+  checkoutEndTime: "17:00",
 
   requireGeofenceForCheckIn: true,
   allowCheckInOutsideGeofence: false,

@@ -7,16 +7,18 @@ import { useInactiveEmployees } from "@/hooks/useApi";
 import { LoadingSkeleton, EmptyState, ErrorState } from "@/components/shared/StateViews";
 import { DataTable } from "@/components/shared/DataTable/DataTable";
 import type { Employee } from "@/lib/types/trackingTypes";
+import { useTranslations } from "next-intl";
 
 export default function InactiveEmployeesPage() {
+  const t = useTranslations("Employees");
   const { data: inactiveEmployees = [], isLoading, isError, refetch } = useInactiveEmployees();
 
   return (
     <MainLayout>
       <div className="p-6 space-y-6 min-h-screen">
         <FullPageHead
-          head="الموظفون غير النشطين"
-          description="قائمة الموظفين غير النشطين في النظام"
+          head={t("inactiveEmployees")}
+          description={t("inactiveEmployeesDescription")}
           Icon={<Users className="w-7 h-7" />}
         />
 
@@ -25,8 +27,8 @@ export default function InactiveEmployeesPage() {
         {!isLoading && !isError && inactiveEmployees.length === 0 && (
           <EmptyState
             icon={Users}
-            title="لا يوجد موظفون غير نشطين"
-            description="جميع الموظفين نشطون حالياً"
+            title={t("noInactiveEmployees")}
+            description={t("allEmployeesActive")}
           />
         )}
         {!isLoading && !isError && inactiveEmployees.length > 0 && (
@@ -34,7 +36,7 @@ export default function InactiveEmployeesPage() {
             columns={[
               {
                 key: "name",
-                header: "الموظف",
+                header: t("employee"),
                 sortable: true,
                 filterable: true,
                 sortValue: (emp) => emp.name,
@@ -49,7 +51,7 @@ export default function InactiveEmployeesPage() {
               },
               {
                 key: "department",
-                header: "القسم",
+                header: t("department"),
                 sortable: true,
                 filterable: true,
                 sortValue: (emp) => emp.department,
@@ -57,7 +59,7 @@ export default function InactiveEmployeesPage() {
               },
               {
                 key: "contact",
-                header: "التواصل",
+                header: t("contact"),
                 cell: (emp) => (
                   <div className="flex flex-col gap-1 text-xs text-muted-foreground/70">
                     <span className="flex items-center gap-1">
@@ -77,7 +79,7 @@ export default function InactiveEmployeesPage() {
               },
             ]}
             data={inactiveEmployees}
-            searchPlaceholder="بحث بالاسم أو القسم..."
+            searchPlaceholder={t("searchByNameOrDepartment")}
           />
         )}
       </div>

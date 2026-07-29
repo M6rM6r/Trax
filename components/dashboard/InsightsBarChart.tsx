@@ -2,12 +2,14 @@
 
 import { memo, useMemo, useState } from "react";
 import { BarChart4 } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 interface InsightsBarChartProps {
   data: Array<{ name: string; value: number; color: string }>;
 }
 
 const InsightsBarChart = memo(({ data }: InsightsBarChartProps) => {
+  const t = useTranslations("Dashboard");
   const maxValue = useMemo(() => Math.max(...data.map((d) => d.value), 1), [data]);
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
 
@@ -18,8 +20,8 @@ const InsightsBarChart = memo(({ data }: InsightsBarChartProps) => {
           <BarChart4 className="w-5 h-5 text-primary-foreground" />
         </div>
         <div>
-          <h3 className="text-lg font-bold text-foreground">مقارنة الحضور</h3>
-          <p className="text-sm text-muted-foreground">مقارنة مرئية بين الحالات المختلفة</p>
+          <h3 className="text-lg font-bold text-foreground">{t("attendanceComparison")}</h3>
+          <p className="text-sm text-muted-foreground">{t("attendanceComparisonDescription")}</p>
         </div>
       </div>
 

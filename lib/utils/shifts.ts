@@ -64,29 +64,39 @@ export function resolveEmployeeShift(
   employee: Pick<Employee, "attendanceMode" | "shiftOverride">,
   settings: CompanySettings,
   date: Date = new Date(),
-  slot: "morning" | "evening" | null = null
+  slot: "morning" | "evening" | null = null,
+  geofenceShifts?: {
+    defaultShift: WorkShift;
+    morningShift: WorkShift;
+    eveningShift: WorkShift;
+  } | null
 ): { mode: AttendanceMode; shift: WorkShift; slot: "morning" | "evening" | null } {
   const mode = resolveEmployeeAttendanceMode(employee, settings.attendanceMode);
+  const shifts = geofenceShifts ?? {
+    defaultShift: settings.defaultShift,
+    morningShift: settings.morningShift,
+    eveningShift: settings.eveningShift,
+  };
 
   let baseShift: WorkShift;
   if (mode === "office_two_shift") {
-    baseShift = slot === "evening" ? settings.eveningShift : settings.morningShift;
+    baseShift = slot === "evening" ? shifts.eveningShift : shifts.morningShift;
     if (!slot) {
       // Decide slot by current time
       const nowMinutes = date.getHours() * 60 + date.getMinutes();
-      const morningEnd = parseTimeToMinutes(settings.morningShift.endTime);
-      const eveningStart = parseTimeToMinutes(settings.eveningShift.startTime);
+      const morningEnd = parseTimeToMinutes(shifts.morningShift.endTime);
+      const eveningStart = parseTimeToMinutes(shifts.eveningShift.startTime);
       // If before morning end or closer to morning, use morning; otherwise evening
       if (nowMinutes < morningEnd + (eveningStart - morningEnd) / 2) {
         slot = "morning";
-        baseShift = settings.morningShift;
+        baseShift = shifts.morningShift;
       } else {
         slot = "evening";
-        baseShift = settings.eveningShift;
+        baseShift = shifts.eveningShift;
       }
     }
   } else {
-    baseShift = getActiveShiftForDate(settings, date);
+    baseShift = geofenceShifts ? shifts.defaultShift : getActiveShiftForDate(settings, date);
     slot = null;
   }
 

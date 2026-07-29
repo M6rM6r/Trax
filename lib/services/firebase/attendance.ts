@@ -11,7 +11,7 @@ import {
   where,
 } from "firebase/firestore";
 import type { AttendanceRecord, Employee, Geofence } from "@/lib/types/trackingTypes";
-import { defaultCompanySettings } from "@/lib/types/companySettings";
+import { defaultCompanySettings, type CompanySettings } from "@/lib/types/companySettings";
 import { resolveEmployeeShift, evaluateCheckIn, calculateWorkedHours } from "@/lib/utils/shifts";
 import { calculateDistance, GEOFENCE_DISTANCE_BUFFER_METERS } from "@/lib/utils/geo";
 import {
@@ -21,6 +21,7 @@ import {
   requireDb,
   mapAttendance,
   mapGeofence,
+  queryByCompanyId,
 } from "./helpers";
 
 export const attendanceApi = {
@@ -36,14 +37,11 @@ export const attendanceApi = {
     const companyId = getCompanyId();
     if (!companyId) return [];
     const base = collection(requireDb(), "attendance");
-    const filters: ReturnType<typeof where>[] = [where("company_id", "==", companyId)];
-    if (employeeId !== null && employeeId !== undefined)
-      filters.push(where("employeeId", "==", employeeId));
-    if (dateRange?.from) filters.push(where("date", ">=", dateRange.from));
-    if (dateRange?.to) filters.push(where("date", "<=", dateRange.to));
-    const attendanceQuery = query(base, ...filters, limit(500));
-    const snapshot = await getDocs(attendanceQuery);
-    const records = snapshot.docs.map((item) => mapAttendance(item.id, item.data()));
+    const extraFilters: ReturnType<typeof where>[] = [];
+    if (employeeId) extraFilters.push(where("employeeId", "==", employeeId));
+    if (dateRange?.from) extraFilters.push(where("date", ">=", dateRange.from));
+    if (dateRange?.to) extraFilters.push(where("date", "<=", dateRange.to));
+    const records = await queryByCompanyId(base, extraFilters, mapAttendance);
     records.sort((a, b) => b.date.localeCompare(a.date));
     return records;
   },
@@ -56,6 +54,7 @@ export const attendanceApi = {
     geofenceId?: string | null;
     companySettings?: Record<string, unknown>;
     employee?: Pick<Employee, "attendanceMode" | "shiftOverride"> | null;
+    checkInTimestamp?: number;
   }): Promise<AttendanceRecord> {
     const currentUser = await ensureAuth();
     const companyId = requireCompanyId();
@@ -100,7 +99,7 @@ export const attendanceApi = {
       }
     }
 
-    const now = new Date();
+    const now = payload.checkInTimestamp ? new Date(payload.checkInTimestamp) : new Date();
     const date = now.toLocaleDateString("sv-SE");
     const checkInTime = now.toTimeString().slice(0, 5);
 
@@ -108,13 +107,15 @@ export const attendanceApi = {
       payload.employee ?? {},
       settings as typeof defaultCompanySettings,
       now,
-      null
+      null,
+      geofence?.shifts
     );
     const { status, lateMinutes } = evaluateCheckIn(checkInTime, shift);
 
     const existing = await getDocs(
       query(
         collection(requireDb(), "attendance"),
+        where("company_id", "==", companyId),
         where("employeeId", "==", payload.employeeId),
         where("date", "==", date),
         limit(1)
@@ -181,12 +182,19 @@ export const attendanceApi = {
     return mapAttendance(reference.id, record);
   },
 
-  async checkOut(employeeId: string): Promise<AttendanceRecord> {
+  async checkOut(
+    employeeId: string,
+    companySettings?: Partial<CompanySettings>,
+    checkOutTimestamp?: number
+  ): Promise<AttendanceRecord> {
     await ensureAuth();
-    const today = new Date().toLocaleDateString("sv-SE");
+    const checkoutCompanyId = requireCompanyId();
+    const checkoutNow = checkOutTimestamp ? new Date(checkOutTimestamp) : new Date();
+    const today = checkoutNow.toLocaleDateString("sv-SE");
     const snapshot = await getDocs(
       query(
         collection(requireDb(), "attendance"),
+        where("company_id", "==", checkoutCompanyId),
         where("employeeId", "==", employeeId),
         where("date", "==", today),
         limit(1)
@@ -195,15 +203,24 @@ export const attendanceApi = {
     const openDoc = snapshot.docs.find((d) => !d.data().checkOutTime);
     if (!openDoc) throw new Error("No open attendance record");
     const current = mapAttendance(openDoc.id, openDoc.data());
-    const checkOutTime = new Date().toTimeString().slice(0, 5);
+    const checkOutTime = checkoutNow.toTimeString().slice(0, 5);
     const workedHours = current.checkInTime
       ? calculateWorkedHours(current.checkInTime, checkOutTime)
       : 0;
+
+    const expectedCheckoutTime =
+      companySettings?.checkoutTimeRangeEnabled && companySettings?.checkoutStartTime
+        ? companySettings.checkoutStartTime
+        : (current.appliedShift?.endTime ?? null);
+    const earlyCheckout = Boolean(expectedCheckoutTime && checkOutTime < expectedCheckoutTime);
+
     await updateDoc(openDoc.ref, {
       checkOutTime,
       status: "checked_out",
       checkOutStatus: "present",
       workedHours,
+      expectedCheckoutTime,
+      earlyCheckout,
     });
     return {
       ...current,
@@ -211,6 +228,8 @@ export const attendanceApi = {
       status: "checked_out",
       checkOutStatus: "present",
       workedHours,
+      expectedCheckoutTime,
+      earlyCheckout,
     };
   },
 };

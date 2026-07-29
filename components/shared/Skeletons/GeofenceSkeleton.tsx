@@ -3,7 +3,7 @@ import { Card, CardContent } from "@/components/ui/card";
 
 export default function GeofenceSkeleton() {
   return (
-    <div className="space-y-6" role="status" aria-label="جاري تحميل النطاقات الجغرافية">
+    <div className="space-y-6" role="status" aria-label="Loading geofences">
       {/* Header skeleton */}
       <div className="flex items-center justify-between">
         <Skeleton className="h-8 w-48 rounded-lg" />

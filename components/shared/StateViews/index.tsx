@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { AlertCircle, Inbox, RefreshCw } from "lucide-react";
 import type { ComponentType } from "react";
 import { motion } from "framer-motion";
+import { useTranslations } from "next-intl";
 
 type SkeletonVariant = "cards" | "table" | "list" | "map" | "chart";
 
@@ -14,12 +15,11 @@ interface LoadingStateProps {
   icon?: ComponentType<{ className?: string }>;
 }
 
-export function LoadingState({
-  message = "جاري التحميل...",
-  icon: _Icon = RefreshCw,
-}: LoadingStateProps) {
+export function LoadingState({ message, icon: _Icon = RefreshCw }: LoadingStateProps) {
+  const t = useTranslations("Common.state");
+  const resolvedMessage = message ?? t("loading");
   return (
-    <Card className="border-0 shadow-lg bg-card" role="status" aria-label={message}>
+    <Card className="border-0 shadow-lg bg-card" role="status" aria-label={resolvedMessage}>
       <CardContent className="py-16 flex flex-col items-center justify-center text-center">
         <motion.div
           animate={{ rotate: 360 }}
@@ -28,18 +28,19 @@ export function LoadingState({
         >
           <_Icon className="w-8 h-8 text-primary" aria-hidden />
         </motion.div>
-        <h3 className="text-lg font-bold text-foreground mb-2">{message}</h3>
+        <h3 className="text-lg font-bold text-foreground mb-2">{resolvedMessage}</h3>
       </CardContent>
     </Card>
   );
 }
 
 export function LoadingSkeleton({ variant }: { variant: SkeletonVariant }) {
+  const t = useTranslations("Common.state");
   if (variant === "cards") {
     return (
       <div
         role="status"
-        aria-label="جاري التحميل"
+        aria-label={t("loadingAria")}
         className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3"
       >
         {Array.from({ length: 6 }).map((_, i) => (
@@ -66,7 +67,7 @@ export function LoadingSkeleton({ variant }: { variant: SkeletonVariant }) {
 
   if (variant === "table") {
     return (
-      <Card className="border-0 shadow-lg bg-card" role="status" aria-label="جاري التحميل">
+      <Card className="border-0 shadow-lg bg-card" role="status" aria-label={t("loadingAria")}>
         <CardContent className="p-0">
           <div className="overflow-x-auto">
             <table className="w-full">
@@ -99,7 +100,7 @@ export function LoadingSkeleton({ variant }: { variant: SkeletonVariant }) {
 
   if (variant === "list") {
     return (
-      <div className="space-y-3" role="status" aria-label="جاري التحميل">
+      <div className="space-y-3" role="status" aria-label={t("loadingAria")}>
         {Array.from({ length: 5 }).map((_, i) => (
           <div key={i} className="flex items-center gap-3 p-3 rounded-xl border border-border">
             <Skeleton className="w-10 h-10 rounded-full" />
@@ -119,7 +120,7 @@ export function LoadingSkeleton({ variant }: { variant: SkeletonVariant }) {
       <div
         className="grid grid-cols-1 lg:grid-cols-3 gap-6"
         role="status"
-        aria-label="جاري التحميل"
+        aria-label={t("loadingAria")}
       >
         <div className="lg:col-span-2">
           <Card className="border-0 shadow-lg overflow-hidden bg-card">
@@ -159,7 +160,7 @@ export function LoadingSkeleton({ variant }: { variant: SkeletonVariant }) {
 
   if (variant === "chart") {
     return (
-      <div className="space-y-6" role="status" aria-label="جاري التحميل">
+      <div className="space-y-6" role="status" aria-label={t("loadingAria")}>
         <Card className="border-0 shadow-lg bg-card">
           <CardHeader>
             <div className="flex items-center gap-3">
@@ -229,8 +230,8 @@ const illustrationConfig: Record<string, { gradient: string; emoji: string }> = 
 
 export function EmptyState({
   icon: _Icon = Inbox,
-  title = "لا توجد بيانات",
-  description = "لم يتم العثور على أي سجلات",
+  title,
+  description,
   actionLabel,
   onAction,
   secondaryActionLabel,
@@ -239,6 +240,7 @@ export function EmptyState({
   tips,
   illustration = "default",
 }: EmptyStateProps) {
+  const t = useTranslations("Common.state");
   const config = illustrationConfig[illustration] ?? illustrationConfig.default;
   const allTips = tips ?? (tip ? [tip] : []);
   return (
@@ -264,7 +266,7 @@ export function EmptyState({
           transition={{ delay: 0.1 }}
           className="text-lg font-bold text-foreground mb-2"
         >
-          {title}
+          {title ?? t("emptyTitle")}
         </motion.h3>
         <motion.p
           initial={{ y: 10, opacity: 0 }}
@@ -272,7 +274,7 @@ export function EmptyState({
           transition={{ delay: 0.2 }}
           className="text-sm text-muted-foreground mb-6 max-w-sm"
         >
-          {description}
+          {description ?? t("emptyDescription")}
         </motion.p>
         <motion.div
           initial={{ y: 10, opacity: 0 }}
@@ -333,6 +335,7 @@ export function ErrorState({
   retryCount?: number;
   isRetrying?: boolean;
 }) {
+  const t = useTranslations("Common.state");
   return (
     <Card className="border-0 shadow-lg animate-scale-in" role="alert">
       <CardContent className="py-16 flex flex-col items-center justify-center text-center">
@@ -344,12 +347,12 @@ export function ErrorState({
         >
           <AlertCircle className="w-8 h-8 text-destructive" aria-hidden />
         </motion.div>
-        <h3 className="text-lg font-bold text-foreground mb-2">
-          {message || "حدث خطأ أثناء تحميل البيانات"}
-        </h3>
-        <p className="text-sm text-muted-foreground mb-6">يرجى المحاولة مرة أخرى</p>
+        <h3 className="text-lg font-bold text-foreground mb-2">{message || t("errorTitle")}</h3>
+        <p className="text-sm text-muted-foreground mb-6">{t("errorDescription")}</p>
         {retryCount && retryCount > 0 && (
-          <p className="text-xs text-[hsl(48_96%_53%)] mb-3">المحاولة {retryCount} من 3</p>
+          <p className="text-xs text-[hsl(48_96%_53%)] mb-3">
+            {t("retryAttempt", { count: retryCount })}
+          </p>
         )}
         {onRetry && (
           <Button
@@ -357,10 +360,10 @@ export function ErrorState({
             onClick={onRetry}
             disabled={isRetrying}
             className="flex items-center gap-2"
-            aria-label="إعادة المحاولة"
+            aria-label={t("retry")}
           >
             <RefreshCw className={`w-4 h-4 ${isRetrying ? "animate-spin" : ""}`} aria-hidden />
-            {isRetrying ? "جاري إعادة المحاولة..." : "إعادة المحاولة"}
+            {isRetrying ? t("retrying") : t("retry")}
           </Button>
         )}
       </CardContent>

@@ -1,7 +1,8 @@
 import { NextIntlClientProvider } from "next-intl";
-import { getMessages } from "next-intl/server";
+import { getMessages, getTranslations } from "next-intl/server";
 import { notFound } from "next/navigation";
 import { routing } from "@/i18n/routing";
+import type { Metadata } from "next";
 import { Toaster } from "@/components/ui/toaster";
 import AppPreloader from "@/components/shared/AppPreloader";
 import ErrorBoundary from "@/components/shared/ErrorBoundary";
@@ -20,6 +21,36 @@ import InstallPrompt from "@/components/shared/InstallPrompt";
 import OfflineSyncManager from "@/components/shared/OfflineSyncManager";
 import NotificationManager from "@/components/shared/NotificationManager";
 
+export async function generateMetadata({
+  params,
+}: {
+  params: { locale: string };
+}): Promise<Metadata> {
+  const t = await getTranslations({ namespace: "Metadata", locale: params.locale });
+  return {
+    title: {
+      default: t("title"),
+      template: "%s | Trax",
+    },
+    description: t("description"),
+    keywords: t("keywords")
+      .split(",")
+      .map((k) => k.trim()),
+    openGraph: {
+      type: "website",
+      locale: params.locale === "ar" ? "ar_SA" : "en_US",
+      title: t("title"),
+      description: t("description"),
+      siteName: "Trax",
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: t("title"),
+      description: t("description"),
+    },
+  };
+}
+
 export default async function LocaleLayout({
   children,
   params,
@@ -33,6 +64,8 @@ export default async function LocaleLayout({
   if (!routing.locales.includes(locale as any)) {
     notFound();
   }
+
+  const t = await getTranslations({ namespace: "Navigation", locale });
 
   // Providing all messages to the client
   // side is the easiest way to get started
@@ -49,7 +82,7 @@ export default async function LocaleLayout({
         href="#main-content"
         className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-[9999] focus:px-4 focus:py-2 focus:bg-primary focus:text-primary-foreground focus:rounded-md"
       >
-        {locale === "ar" ? "تخطي إلى المحتوى" : "Skip to content"}
+        {t("skipToContent")}
       </a>
       <NextIntlClientProvider messages={messages}>
         <ThemeProvider attribute="class" forcedTheme="dark" enableSystem={false}>

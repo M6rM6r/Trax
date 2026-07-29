@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 
 export default function DashboardSkeleton() {
   return (
-    <div className="space-y-6" role="status" aria-label="جاري تحميل لوحة التحكم">
+    <div className="space-y-6" role="status" aria-label="Loading dashboard">
       {/* Hero banner skeleton */}
       <Skeleton className="h-32 w-full rounded-2xl" />
 

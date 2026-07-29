@@ -5,20 +5,25 @@ import { usePathname } from "next/navigation";
 import { Link } from "@/i18n/navigation";
 import { ChevronLeft, Home } from "lucide-react";
 import { useEmployees } from "@/hooks/useApi";
+import { useTranslations } from "next-intl";
 
-const routeLabels: Record<string, string> = {
-  "": "الرئيسية",
-  employees: "الموظفون",
-  inactive: "غير النشطين",
-  attendance: "الحضور والانصراف",
-  reports: "التقارير",
-  geofences: "النطاقات الجغرافية",
-  "live-map": "تتبع مباشر",
-  "check-in": "تسجيل الحضور",
-  settings: "الإعدادات",
-  securitySettings: "إعدادات الأمان",
-  notificationSettings: "إعدادات الإشعارات",
-};
+function useRouteLabel(segment: string): string {
+  const t = useTranslations("Navigation");
+  const labelMap: Record<string, string> = {
+    "": t("home"),
+    employees: t("employees"),
+    inactive: t("inactive"),
+    attendance: t("attendance"),
+    reports: t("reports"),
+    geofences: t("geofences"),
+    "live-map": t("liveMap"),
+    "check-in": t("checkIn"),
+    settings: t("settings"),
+    securitySettings: t("securitySettings"),
+    notificationSettings: t("notificationSettings"),
+  };
+  return labelMap[segment] ?? segment;
+}
 
 export default function Breadcrumb() {
   const pathname = usePathname();
@@ -35,9 +40,10 @@ export default function Breadcrumb() {
     return map;
   }, [employees]);
 
+  const getLabel = useRouteLabel;
   const crumbs = segments.map((seg, i) => {
     const path = `/${segments.slice(0, i + 1).join("/")}`;
-    const label = routeLabels[seg] ?? employeeNameById.get(seg) ?? seg;
+    const label = getLabel(seg) ?? employeeNameById.get(seg) ?? seg;
     return { label, path };
   });
 

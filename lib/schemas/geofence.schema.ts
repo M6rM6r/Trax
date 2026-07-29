@@ -1,5 +1,12 @@
 import { z } from "zod";
 
+const workShiftSchema = z.object({
+  startTime: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Invalid time format"),
+  endTime: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Invalid time format"),
+  gracePeriodMinutes: z.coerce.number().int().min(0).max(120),
+  lateThresholdMinutes: z.coerce.number().int().min(0).max(240),
+});
+
 export const geofenceSchema = z.object({
   id: z.coerce.string(),
   name: z.string().trim().min(2, "Name must be at least 2 characters"),
@@ -13,6 +20,14 @@ export const geofenceSchema = z.object({
   color: z.string().regex(/^#[0-9A-Fa-f]{6}$/, "Invalid hex color"),
   active: z.boolean().default(true),
   employeesCount: z.coerce.number().int().min(0).optional(),
+  shifts: z
+    .object({
+      defaultShift: workShiftSchema,
+      morningShift: workShiftSchema,
+      eveningShift: workShiftSchema,
+    })
+    .nullable()
+    .optional(),
 });
 
 export const createGeofenceSchema = z

@@ -51,7 +51,7 @@ export default function NotFound() {
 
         {/* Error Code Badge */}
         <div className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium mb-4 bg-[hsl(48_96%_53%/0.15)] dark:bg-[hsl(48_96%_53%/0.15)] text-[hsl(48_96%_53%)]">
-          خطأ 404 - {t("title")}
+          {t("errorCode", { title: t("title") })}
         </div>
 
         {/* Main Content */}

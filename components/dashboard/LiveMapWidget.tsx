@@ -15,6 +15,7 @@ import { boundingExtent, buffer } from "ol/extent";
 import "ol/ol.css";
 import type { LiveTrackingEmployee, Geofence } from "@/lib/types/trackingTypes";
 import { MAP_THEME } from "@/lib/utils/mapTheme";
+import { useTranslations } from "next-intl";
 
 interface LiveMapWidgetProps {
   liveTracking: LiveTrackingEmployee[];
@@ -22,6 +23,7 @@ interface LiveMapWidgetProps {
 }
 
 export default function LiveMapWidget({ liveTracking, geofences }: LiveMapWidgetProps) {
+  const t = useTranslations("Dashboard");
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<Map | null>(null);
   const vectorSourceRef = useRef<VectorSource | null>(null);
@@ -149,13 +151,13 @@ export default function LiveMapWidget({ liveTracking, geofences }: LiveMapWidget
       <div ref={mapRef} className="w-full h-full" />
       <div className="absolute top-2 left-2 flex gap-2 text-xs">
         <span className="flex items-center gap-1 px-2 py-1 rounded-md bg-background/90 text-foreground">
-          <span className="w-2 h-2 rounded-full bg-emerald-500" /> داخل
+          <span className="w-2 h-2 rounded-full bg-emerald-500" /> {t("inside")}
         </span>
         <span className="flex items-center gap-1 px-2 py-1 rounded-md bg-background/90 text-foreground">
-          <span className="w-2 h-2 rounded-full bg-amber-500" /> خارج
+          <span className="w-2 h-2 rounded-full bg-amber-500" /> {t("outside")}
         </span>
         <span className="flex items-center gap-1 px-2 py-1 rounded-md bg-background/90 text-foreground">
-          <span className="w-2 h-2 rounded-full bg-muted-foreground" /> غير متصل
+          <span className="w-2 h-2 rounded-full bg-muted-foreground" /> {t("offline")}
         </span>
       </div>
     </div>

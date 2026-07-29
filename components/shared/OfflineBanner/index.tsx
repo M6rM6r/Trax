@@ -3,8 +3,10 @@
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { WifiOff, Wifi } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 export default function OfflineBanner() {
+  const t = useTranslations("Common.state");
   const [isOnline, setIsOnline] = useState(true);
   const [showRestored, setShowRestored] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -52,12 +54,12 @@ export default function OfflineBanner() {
           {isOnline ? (
             <>
               <Wifi className="w-4 h-4" />
-              <span>تمت استعادة الاتصال بالإنترنت</span>
+              <span>{t("onlineRestored")}</span>
             </>
           ) : (
             <>
               <WifiOff className="w-4 h-4 animate-pulse" />
-              <span>لا يوجد اتصال بالإنترنت — يعمل في وضع عدم الاتصال</span>
+              <span>{t("offlineMode")}</span>
             </>
           )}
         </motion.div>

@@ -31,15 +31,23 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { motion, AnimatePresence } from "framer-motion";
 import type { AttendanceRecord } from "@/lib/types/trackingTypes";
 import { CountUp } from "@/components/shared/CountUp";
+import { useTranslations } from "next-intl";
 
-const statusLabels: Record<string, string> = {
-  present: "حاضر",
-  late: "متأخر",
-  absent: "غائب",
-  checked_out: "منصرف",
-};
+function useAttendanceStatusLabels() {
+  const t = useTranslations("Attendance");
+  return {
+    present: t("present"),
+    late: t("late"),
+    absent: t("absent"),
+    checked_out: t("statusCheckedOut"),
+  };
+}
 
-const dayHeaders = ["الأحد", "الإثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"];
+function useDayHeaders() {
+  const t = useTranslations("Attendance");
+  const raw = t("dayHeaders") as unknown as string[] | Record<string, string>;
+  return Array.isArray(raw) ? raw : Object.values(raw || {});
+}
 
 interface CalendarDay {
   date: Date;
@@ -97,10 +105,12 @@ const CalendarHeatmap = memo(function CalendarHeatmap({
   records: AttendanceRecord[];
   onDayClick: (day: CalendarDay) => void;
 }) {
+  const t = useTranslations("Attendance");
+  const dayHeaders = useDayHeaders();
   const [currentDate, setCurrentDate] = useState(new Date());
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
-  const monthName = currentDate.toLocaleDateString("ar-SA-u-nu-latn", {
+  const monthName = currentDate.toLocaleDateString(undefined, {
     month: "long",
     year: "numeric",
   });
@@ -115,15 +125,17 @@ const CalendarHeatmap = memo(function CalendarHeatmap({
               <Calendar className="w-5 h-5 text-primary-foreground" />
             </div>
             <div>
-              <CardTitle className="text-lg font-bold text-foreground">تقويم الحضور</CardTitle>
-              <p className="text-sm text-muted-foreground">عرض حراري لسجلات الحضور</p>
+              <CardTitle className="text-lg font-bold text-foreground">
+                {t("calendarTitle")}
+              </CardTitle>
+              <p className="text-sm text-muted-foreground">{t("calendarSubtitle")}</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
             <button
               onClick={() => setCurrentDate(new Date(year, month - 1, 1))}
               className="p-2 rounded-lg hover:bg-muted transition-colors"
-              aria-label="الشهر السابق"
+              aria-label={t("previousMonth")}
             >
               <ChevronRight className="w-5 h-5 text-muted-foreground" />
             </button>
@@ -133,7 +145,7 @@ const CalendarHeatmap = memo(function CalendarHeatmap({
             <button
               onClick={() => setCurrentDate(new Date(year, month + 1, 1))}
               className="p-2 rounded-lg hover:bg-muted transition-colors"
-              aria-label="الشهر التالي"
+              aria-label={t("nextMonth")}
             >
               <ChevronLeft className="w-5 h-5 text-muted-foreground" />
             </button>
@@ -161,7 +173,10 @@ const CalendarHeatmap = memo(function CalendarHeatmap({
               }`}
               title={
                 day.records.length > 0
-                  ? `${day.records.length} سجل — ${Math.round(day.attendanceRate)}% حضور`
+                  ? t("recordsCount", {
+                      count: day.records.length,
+                      rate: Math.round(day.attendanceRate),
+                    })
                   : ""
               }
             >
@@ -188,16 +203,16 @@ const CalendarHeatmap = memo(function CalendarHeatmap({
         {/* Legend */}
         <div className="flex items-center justify-center gap-4 mt-4 text-xs text-muted-foreground">
           <span className="flex items-center gap-1.5">
-            <span className="w-3 h-3 rounded bg-primary" /> حضور ممتاز
+            <span className="w-3 h-3 rounded bg-primary" /> {t("excellentAttendance")}
           </span>
           <span className="flex items-center gap-1.5">
-            <span className="w-3 h-3 rounded bg-[hsl(48_96%_53%/0.1)]0" /> حضور جزئي
+            <span className="w-3 h-3 rounded bg-[hsl(48_96%_53%/0.1)]0" /> {t("partialAttendance")}
           </span>
           <span className="flex items-center gap-1.5">
-            <span className="w-3 h-3 rounded bg-destructive" /> غياب مرتفع
+            <span className="w-3 h-3 rounded bg-destructive" /> {t("highAbsence")}
           </span>
           <span className="flex items-center gap-1.5">
-            <span className="w-3 h-3 rounded bg-muted-foreground/30 bg-muted" /> لا بيانات
+            <span className="w-3 h-3 rounded bg-muted-foreground/30 bg-muted" /> {t("noData")}
           </span>
         </div>
       </CardContent>
@@ -206,6 +221,8 @@ const CalendarHeatmap = memo(function CalendarHeatmap({
 });
 
 export default function AttendancePage() {
+  const t = useTranslations("Attendance");
+  const statusLabels = useAttendanceStatusLabels();
   const { data: attendance = [], isLoading, isError, refetch } = useAttendance();
   const { data: employees = [] } = useEmployees();
   const [viewMode, setViewMode] = useState<"table" | "calendar">("table");
@@ -246,8 +263,8 @@ export default function AttendancePage() {
     <MainLayout>
       <div className="p-6 space-y-6 min-h-screen">
         <FullPageHead
-          head="سجلات الحضور والانصراف"
-          description="سجلات حضور الموظفين لهذا اليوم"
+          head={t("title")}
+          description={t("description")}
           Icon={<Calendar className="w-7 h-7" />}
           LeftSection={
             <div className="flex items-center gap-2">
@@ -259,7 +276,7 @@ export default function AttendancePage() {
                     viewMode === "table" ? "bg-card shadow-sm font-medium" : "text-muted-foreground"
                   }`}
                 >
-                  جدول
+                  {t("table")}
                 </button>
                 <button
                   onClick={() => setViewMode("calendar")}
@@ -269,7 +286,7 @@ export default function AttendancePage() {
                       : "text-muted-foreground"
                   }`}
                 >
-                  تقويم
+                  {t("calendar")}
                 </button>
               </div>
 
@@ -278,10 +295,10 @@ export default function AttendancePage() {
                 <PopoverTrigger asChild>
                   <button
                     className="relative flex items-center gap-2 px-3 py-2 rounded-lg border border-input text-sm text-muted-foreground hover:bg-muted transition-colors"
-                    aria-label="تصفية"
+                    aria-label={t("filter")}
                   >
                     <Filter className="w-4 h-4" />
-                    تصفية
+                    {t("filter")}
                     {activeFilterCount > 0 && (
                       <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-primary/50 text-primary-foreground text-xs flex items-center justify-center font-bold">
                         {activeFilterCount}
@@ -293,14 +310,14 @@ export default function AttendancePage() {
                   <div className="space-y-4">
                     <div>
                       <label className="text-sm font-medium text-muted-foreground mb-1.5 block">
-                        الموظف
+                        {t("employee")}
                       </label>
                       <select
                         value={filters.employeeId}
                         onChange={(e) => setFilters({ ...filters, employeeId: e.target.value })}
                         className="w-full px-3 py-2 border border-input rounded-lg bg-transparent bg-background text-foreground text-sm"
                       >
-                        <option value="">الكل</option>
+                        <option value="">{t("all")}</option>
                         {employees.map((e) => (
                           <option key={e.id} value={e.id}>
                             {e.name}
@@ -310,14 +327,14 @@ export default function AttendancePage() {
                     </div>
                     <div>
                       <label className="text-sm font-medium text-muted-foreground mb-1.5 block">
-                        القسم
+                        {t("department")}
                       </label>
                       <select
                         value={filters.department}
                         onChange={(e) => setFilters({ ...filters, department: e.target.value })}
                         className="w-full px-3 py-2 border border-input rounded-lg bg-transparent bg-background text-foreground text-sm"
                       >
-                        <option value="">الكل</option>
+                        <option value="">{t("all")}</option>
                         {departments.map((d) => (
                           <option key={d} value={d}>
                             {d}
@@ -327,7 +344,7 @@ export default function AttendancePage() {
                     </div>
                     <div>
                       <label className="text-sm font-medium text-muted-foreground mb-1.5 block">
-                        الحالة
+                        {t("status")}
                       </label>
                       <div className="flex flex-wrap gap-2">
                         {Object.entries(statusLabels).map(([key, label]) => (
@@ -359,7 +376,7 @@ export default function AttendancePage() {
                         onClick={clearFilters}
                         className="w-full py-2 text-sm text-destructive hover:bg-destructive/5 dark:hover:bg-destructive/10 rounded-lg transition-colors"
                       >
-                        مسح الفلاتر
+                        {t("clearFilters")}
                       </button>
                     )}
                   </div>
@@ -370,23 +387,41 @@ export default function AttendancePage() {
                 variant="outline"
                 className="flex items-center gap-2"
                 onClick={() => {
-                  exportAttendanceToCSV(filteredAttendance);
-                  toastSuccess("تم تصدير CSV بنجاح");
+                  if (filteredAttendance.length === 0) {
+                    toastError(t("noRecords"));
+                    return;
+                  }
+                  try {
+                    exportAttendanceToCSV(filteredAttendance);
+                    toastSuccess(t("exportCsvSuccess"));
+                  } catch (err) {
+                    console.error("[exportCsv] failed:", err);
+                    toastError(err instanceof Error ? err.message : t("exportServerFailed"));
+                  }
                 }}
               >
                 <FileSpreadsheet className="w-4 h-4" />
-                CSV
+                {t("exportCsv")}
               </Button>
               <Button
                 variant="outline"
                 className="flex items-center gap-2"
                 onClick={async () => {
-                  await exportAttendanceToPDF(filteredAttendance);
-                  toastSuccess("تم تصدير PDF بنجاح");
+                  if (filteredAttendance.length === 0) {
+                    toastError(t("noRecords"));
+                    return;
+                  }
+                  try {
+                    await exportAttendanceToPDF(filteredAttendance);
+                    toastSuccess(t("exportPdfSuccess"));
+                  } catch (err) {
+                    console.error("[exportPdf] failed:", err);
+                    toastError(err instanceof Error ? err.message : t("exportServerFailed"));
+                  }
                 }}
               >
                 <FileText className="w-4 h-4" />
-                PDF
+                {t("exportPdf")}
               </Button>
               <Button
                 variant="outline"
@@ -409,14 +444,15 @@ export default function AttendancePage() {
                     link.download = `attendance_server_${today}.csv`;
                     link.click();
                     URL.revokeObjectURL(link.href);
-                    toastSuccess(`تم تصدير ${result.count} سجل من الخادم`);
-                  } catch {
-                    toastError("فشل التصدير من الخادم");
+                    toastSuccess(t("exportServerSuccess", { count: result.count }));
+                  } catch (err) {
+                    console.error("[exportAttendance] failed:", err);
+                    toastError(err instanceof Error ? err.message : t("exportServerFailed"));
                   }
                 }}
               >
                 <FileSpreadsheet className="w-4 h-4" />
-                تصدير الخادم
+                {t("exportServer")}
               </Button>
             </div>
           }
@@ -435,7 +471,7 @@ export default function AttendancePage() {
                 <div className="flex items-center justify-between mb-3">
                   <div>
                     <p className="text-xs font-semibold text-muted-foreground/70 uppercase tracking-wider">
-                      معدل الحضور الإجمالي
+                      {t("overallAttendanceRate")}
                     </p>
                     <p className="text-3xl font-black text-foreground mt-0.5">
                       {attendanceRate}
@@ -445,19 +481,19 @@ export default function AttendancePage() {
                   <div className="flex gap-4 text-sm">
                     <div className="text-center">
                       <p className="text-xl font-bold text-primary">{presentCount}</p>
-                      <p className="text-xs text-muted-foreground">حاضر</p>
+                      <p className="text-xs text-muted-foreground">{t("present")}</p>
                     </div>
                     <div className="text-center">
                       <p className="text-xl font-bold text-[hsl(48_96%_53%)]">{lateCount}</p>
-                      <p className="text-xs text-muted-foreground">متأخر</p>
+                      <p className="text-xs text-muted-foreground">{t("late")}</p>
                     </div>
                     <div className="text-center">
                       <p className="text-xl font-bold text-destructive">{absentCount}</p>
-                      <p className="text-xs text-muted-foreground">غائب</p>
+                      <p className="text-xs text-muted-foreground">{t("absent")}</p>
                     </div>
                     <div className="text-center">
                       <p className="text-xl font-bold text-primary">{total}</p>
-                      <p className="text-xs text-muted-foreground">الإجمالي</p>
+                      <p className="text-xs text-muted-foreground">{t("total")}</p>
                     </div>
                   </div>
                 </div>
@@ -479,15 +515,15 @@ export default function AttendancePage() {
                 <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground/70">
                   <span className="flex items-center gap-1">
                     <span className="w-2 h-2 rounded-full bg-primary" />
-                    حاضر
+                    {t("present")}
                   </span>
                   <span className="flex items-center gap-1">
                     <span className="w-2 h-2 rounded-full bg-[hsl(48_96%_53%)]" />
-                    متأخر
+                    {t("late")}
                   </span>
                   <span className="flex items-center gap-1">
                     <span className="w-2 h-2 rounded-full bg-destructive" />
-                    غائب
+                    {t("absent")}
                   </span>
                 </div>
               </div>
@@ -498,7 +534,7 @@ export default function AttendancePage() {
           {(
             [
               {
-                label: "حاضر",
+                label: t("present"),
                 count: attendance.filter((r) => r.status === "present").length,
                 Icon: UserCheck,
                 color: "text-primary",
@@ -507,7 +543,7 @@ export default function AttendancePage() {
                 stagger: "animate-stagger-1",
               },
               {
-                label: "متأخر",
+                label: t("late"),
                 count: attendance.filter((r) => r.status === "late").length,
                 Icon: Clock,
                 color: "text-[hsl(48_96%_53%)]",
@@ -516,7 +552,7 @@ export default function AttendancePage() {
                 stagger: "animate-stagger-2",
               },
               {
-                label: "غائب",
+                label: t("absent"),
                 count: attendance.filter((r) => r.status === "absent").length,
                 Icon: UserX,
                 color: "text-destructive",
@@ -525,7 +561,7 @@ export default function AttendancePage() {
                 stagger: "animate-stagger-3",
               },
               {
-                label: "الإجمالي",
+                label: t("total"),
                 count: attendance.length,
                 Icon: Users,
                 color: "text-primary",
@@ -561,9 +597,9 @@ export default function AttendancePage() {
           <EmptyState
             icon={Calendar}
             illustration="attendance"
-            title="لا توجد سجلات حضور"
-            description="لم يتم العثور على أي سجلات حضور مطابقة للفلاتر الحالية"
-            tip="جرب تغيير الفلاتر أو تحقق من تاريخ الحضور"
+            title={t("noRecords")}
+            description={t("noRecordsDescription")}
+            tip={t("tryChangingFilters")}
           />
         )}
         {!isLoading && !isError && (
@@ -586,7 +622,7 @@ export default function AttendancePage() {
                       <CardHeader>
                         <div className="flex items-center justify-between">
                           <CardTitle className="text-lg font-bold text-foreground">
-                            سجلات يوم {selectedDay.date.toLocaleDateString("ar-SA-u-nu-latn")}
+                            {t("dayRecords", { date: selectedDay.date.toLocaleDateString() })}
                           </CardTitle>
                           <button
                             onClick={() => setSelectedDay(null)}
@@ -632,15 +668,15 @@ export default function AttendancePage() {
                                 <div className="flex gap-3 mb-4 text-xs">
                                   <span className="flex items-center gap-1 text-primary">
                                     <span className="w-2 h-2 rounded-full bg-primary" />
-                                    {presentN} حاضر
+                                    {presentN} {t("present")}
                                   </span>
                                   <span className="flex items-center gap-1 text-[hsl(48_96%_53%)]">
                                     <span className="w-2 h-2 rounded-full bg-[hsl(48_96%_53%)]" />
-                                    {lateN} متأخر
+                                    {lateN} {t("late")}
                                   </span>
                                   <span className="flex items-center gap-1 text-destructive">
                                     <span className="w-2 h-2 rounded-full bg-destructive" />
-                                    {absentN} غائب
+                                    {absentN} {t("absent")}
                                   </span>
                                 </div>
                               </>
@@ -668,8 +704,15 @@ export default function AttendancePage() {
                                   </p>
                                   {r.checkInTime && (
                                     <p className="text-xs text-muted-foreground/70">
-                                      حضور: {r.checkInTime}
-                                      {r.checkOutTime ? ` • انصراف: ${r.checkOutTime}` : ""}
+                                      {t("checkIn")}: {r.checkInTime}
+                                      {r.checkOutTime
+                                        ? ` • ${t("checkOut")}: ${r.checkOutTime}`
+                                        : ""}
+                                      {r.earlyCheckout && (
+                                        <span className="mr-2 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300">
+                                          {t("earlyCheckout")}
+                                        </span>
+                                      )}
                                     </p>
                                   )}
                                 </div>
@@ -705,7 +748,7 @@ export default function AttendancePage() {
                     columns={[
                       {
                         key: "employeeName",
-                        header: "الموظف",
+                        header: t("employeeTable"),
                         sortable: true,
                         filterable: true,
                         sortValue: (r) => r.employeeName,
@@ -717,7 +760,7 @@ export default function AttendancePage() {
                       },
                       {
                         key: "department",
-                        header: "القسم",
+                        header: t("departmentTable"),
                         sortable: true,
                         filterable: true,
                         sortValue: (r) => {
@@ -731,21 +774,51 @@ export default function AttendancePage() {
                       },
                       {
                         key: "checkInTime",
-                        header: "وقت الحضور",
+                        header: t("checkInTime"),
                         sortable: true,
                         sortValue: (r) => r.checkInTime || "",
                         cell: (r) => r.checkInTime || "-",
                       },
                       {
                         key: "checkOutTime",
-                        header: "وقت الانصراف",
+                        header: t("checkOutTime"),
                         sortable: true,
                         sortValue: (r) => r.checkOutTime || "",
-                        cell: (r) => r.checkOutTime || "-",
+                        cell: (r) =>
+                          r.checkOutTime ? (
+                            <span className="inline-flex items-center gap-1.5">
+                              {r.checkOutTime}
+                              {r.earlyCheckout && (
+                                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300">
+                                  {t("earlyCheckoutShort")}
+                                </span>
+                              )}
+                            </span>
+                          ) : (
+                            "-"
+                          ),
+                      },
+                      {
+                        key: "earlyCheckout",
+                        header: t("checkoutStatus"),
+                        sortable: true,
+                        sortValue: (r) => (r.earlyCheckout ? "0" : "1"),
+                        cell: (r) =>
+                          r.earlyCheckout ? (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300">
+                              {t("earlyCheckout")}
+                            </span>
+                          ) : r.checkOutTime ? (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary">
+                              {t("normalCheckout")}
+                            </span>
+                          ) : (
+                            "-"
+                          ),
                       },
                       {
                         key: "lateMinutes",
-                        header: "التأخير (دقيقة)",
+                        header: t("lateMinutes"),
                         sortable: true,
                         sortValue: (r) => r.lateMinutes,
                         cell: (r) =>
@@ -759,14 +832,14 @@ export default function AttendancePage() {
                       },
                       {
                         key: "geofenceName",
-                        header: "الموقع",
+                        header: t("location"),
                         filterable: true,
                         sortValue: (r) => r.geofenceName || "",
                         cell: (r) => r.geofenceName || "-",
                       },
                       {
                         key: "status",
-                        header: "الحالة",
+                        header: t("status"),
                         sortable: true,
                         sortValue: (r) => r.status,
                         cell: (r) => (
@@ -785,7 +858,7 @@ export default function AttendancePage() {
                       },
                     ]}
                     data={filteredAttendance}
-                    searchPlaceholder="بحث بالاسم أو القسم أو الموقع..."
+                    searchPlaceholder={t("searchPlaceholder")}
                   />
                 )}
               </motion.div>

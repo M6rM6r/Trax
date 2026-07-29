@@ -28,7 +28,11 @@ async function requireCompanyAdmin(
   }
   const userDoc = await db.collection("users").doc(uid).get();
   const userData = userDoc.data();
-  if (!userData || userData.company_id !== companyId || userData.role !== "company") {
+  if (
+    !userData ||
+    String(userData.company_id) !== String(companyId) ||
+    userData.role !== "company"
+  ) {
     throw new functions.https.HttpsError(
       "permission-denied",
       "Only company admins can perform this action"
@@ -196,10 +200,11 @@ export const bulkCreateEmployees = functions.https.onCall(async (data, context) 
  * Send a notification to all employees of a company via FCM with token cleanup.
  */
 export const sendCompanyNotification = functions.https.onCall(async (data, context) => {
-  const { companyId, title, body } = data as {
+  const { companyId, title, body, targetRole } = data as {
     companyId: string;
     title: string;
     body: string;
+    targetRole?: "employee" | "company" | "all";
   };
 
   if (!companyId || !title?.trim() || !body?.trim()) {
@@ -211,10 +216,14 @@ export const sendCompanyNotification = functions.https.onCall(async (data, conte
 
   await requireCompanyAdmin(context, companyId);
 
-  const tokensSnapshot = await db
+  const role = targetRole ?? "employee";
+  let tokensQuery: FirebaseFirestore.Query = db
     .collection("fcm_tokens")
-    .where("company_id", "==", companyId)
-    .get();
+    .where("company_id", "==", companyId);
+  if (role !== "all") {
+    tokensQuery = tokensQuery.where("role", "==", role);
+  }
+  const tokensSnapshot = await tokensQuery.get();
 
   if (tokensSnapshot.empty) {
     return { success: true, data: { sent: 0, failed: 0 } };

@@ -19,32 +19,39 @@ export function useEmployees(options?: { enabled?: boolean }) {
   });
 }
 
-export function useInactiveEmployees() {
+export function useEmployee(employeeId?: string | null) {
   const companyId = useAuthStore((state) => state.companyId);
 
-  return useQuery<Employee[]>({
-    queryKey: [...queryKeys.employeesInactive, companyId ?? "unassigned"],
-    enabled: Boolean(companyId),
-    queryFn: async (): Promise<Employee[]> => {
-      const employees = await firebaseData.employees.list();
-      return employees.filter((employee) => employee.status === "inactive");
+  return useQuery<Employee | null>({
+    queryKey: [...queryKeys.employees, "byId", employeeId ?? "none", companyId ?? "unassigned"],
+    enabled: Boolean(companyId && employeeId),
+    staleTime: 30 * 1000,
+    queryFn: async (): Promise<Employee | null> => {
+      return firebaseData.employees.getById(employeeId!);
     },
+  });
+}
+
+export function useInactiveEmployees() {
+  const companyId = useAuthStore((state) => state.companyId);
+  const { data: employees = [] } = useEmployees();
+
+  return useQuery<Employee[]>({
+    queryKey: [...queryKeys.employeesInactive, companyId ?? "unassigned", employees.length],
+    enabled: Boolean(companyId),
+    queryFn: () => employees.filter((employee) => employee.status === "inactive"),
   });
 }
 
 export function useEmployeesByMode(mode: AttendanceMode) {
   const companyId = useAuthStore((state) => state.companyId);
+  const { data: employees = [] } = useEmployees();
 
   return useQuery<Employee[]>({
-    queryKey: [...queryKeys.employees, companyId ?? "unassigned", "mode", mode],
+    queryKey: [...queryKeys.employees, "mode", mode, companyId ?? "unassigned", employees.length],
     enabled: Boolean(companyId),
-    staleTime: 30 * 1000,
-    queryFn: async (): Promise<Employee[]> => {
-      const employees = await firebaseData.employees.list();
-      return employees.filter(
-        (e) => e.attendanceMode === mode || (!e.attendanceMode && mode === "field")
-      );
-    },
+    queryFn: () =>
+      employees.filter((e) => e.attendanceMode === mode || (!e.attendanceMode && mode === "field")),
   });
 }
 

@@ -1,54 +1,49 @@
-import { Category, Profile, ShieldTick, Location, CheckCircle } from "@/public/SVG";
-import { Settings as Setting2 } from "lucide-react";
+import { Category, Profile, ShieldTick, Location, CheckCircle, Setting2 } from "@/public/SVG";
+import { useTranslations } from "next-intl";
 
-export const useMainNavItems = ({
-  pathname,
-  role,
-}: {
-  pathname: string;
-  role?: string | null;
-}) => {
+export const useMainNavItems = ({ pathname, role }: { pathname: string; role?: string | null }) => {
+  const t = useTranslations("Navigation");
   const isEmployee = role === "employee";
 
   const navMain = [
     {
-      title: "لوحة التحكم",
+      title: t("dashboard"),
       url: "/",
       icon: Category,
       isActive: pathname === "/",
     },
     {
-      title: "الموظفون",
+      title: t("employees"),
       url: "/employees",
       icon: Profile,
       isActive: pathname.includes("/employees"),
     },
     {
-      title: "تتبع مباشر",
+      title: t("liveMap"),
       url: "/live-map",
       icon: Location,
       isActive: pathname.includes("/live-map"),
     },
     {
-      title: "الحضور والانصراف",
+      title: t("attendance"),
       url: "/attendance",
       icon: ShieldTick,
       isActive: pathname.includes("/attendance"),
     },
     {
-      title: "النطاقات الجغرافية",
+      title: t("geofences"),
       url: "/geofences",
       icon: Location,
       isActive: pathname.includes("/geofences"),
     },
     {
-      title: "تسجيل الحضور",
+      title: t("checkIn"),
       url: "/check-in",
       icon: CheckCircle,
       isActive: pathname.includes("/check-in"),
     },
     {
-      title: "الإعدادات",
+      title: t("settings"),
       url: "/settings",
       icon: Setting2,
       isActive: pathname.includes("/settings"),
@@ -56,7 +51,6 @@ export const useMainNavItems = ({
   ].filter((item) => {
     if (item.url === "/live-map") return false;
     if (item.url === "/check-in") return isEmployee;
-    if (item.url === "/settings") return !isEmployee;
     return true;
   });
 

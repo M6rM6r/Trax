@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 
 export default function AttendanceSkeleton() {
   return (
-    <div className="space-y-6" role="status" aria-label="جاري تحميل الحضور">
+    <div className="space-y-6" role="status" aria-label="Loading attendance">
       {/* Stats cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {Array.from({ length: 4 }).map((_, i) => (
