@@ -25,6 +25,7 @@ import { useAuthStore } from "@/stores/useAuthStore";
 import { useCompanySettingsStore } from "@/stores/useCompanySettingsStore";
 import AttendancePieChart from "@/components/dashboard/AttendancePieChart";
 const LiveMapWidget = dynamic(() => import("@/components/dashboard/LiveMapWidget"), { ssr: false });
+import { resolveAttendanceLocation } from "@/lib/utils/geo";
 import { getDefaultDateRange, type DateRange } from "@/components/shared/DateRangePicker";
 import { toastSuccess } from "@/hooks/use-toast";
 import { useTranslations, useLocale } from "next-intl";
@@ -49,6 +50,9 @@ export default function DashboardPage() {
   const { data: attendanceData } = useAttendance();
   const { data: employees = [] } = useEmployees();
   const { data: geofences = [] } = useGeofences();
+
+  const resolveLocationName = (record: AttendanceRecord) =>
+    resolveAttendanceLocation(record, geofences, employees);
   const { data: initialTracking = [] } = useLiveTracking();
   const { employees: liveTracking } = useLiveTrackingSocket(initialTracking);
 
@@ -370,16 +374,8 @@ export default function DashboardPage() {
                         key: "geofenceName",
                         header: t("location"),
                         filterable: true,
-                        sortValue: (r) =>
-                          r.geofenceName ||
-                          geofences.find((g) => String(g.id) === String(r.geofenceId))?.name ||
-                          "",
-                        cell: (r) => {
-                          const name =
-                            r.geofenceName ||
-                            geofences.find((g) => String(g.id) === String(r.geofenceId))?.name;
-                          return name || "-";
-                        },
+                        sortValue: (r) => resolveLocationName(r) || "",
+                        cell: (r) => resolveLocationName(r) || "-",
                       },
                     ]}
                     data={recentAttendance}

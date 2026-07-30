@@ -297,7 +297,7 @@
     "saveChanges": "حفظ التعديلات",
     "name": "الاسم",
     "employeeNamePlaceholder": "اسم الموظف",
-    "selectGeofence": "اختر النطاق الجغرافي"
+    "selectGeofence": "إختر"
   },
   "Attendance": {
     "title": "سجلات الحضور والانصراف",
@@ -988,9 +988,15 @@
     "notificationsAria": "الإشعارات",
     "unread": "({count}) غير مقروء",
     "markAllRead": "تحديد الكل كمقروء",
+    "remove": "حذف",
     "clearAll": "مسح الكل",
     "notificationList": "قائمة الإشعارات",
-    "noNotifications": "لا توجد إشعارات"
+    "noNotifications": "لا توجد إشعارات",
+    "all": "الكل",
+    "unreadTab": "غير المقروء",
+    "today": "اليوم",
+    "yesterday": "أمس",
+    "earlier": "سابق"
   },
   "NotificationSettings": {
     "title": "إعدادات الإشعارات",

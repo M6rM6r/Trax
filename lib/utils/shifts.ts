@@ -3,6 +3,19 @@
 import type { CompanySettings } from "@/lib/types/companySettings";
 import type { AttendanceMode, Employee, WorkShift } from "@/lib/types/trackingTypes";
 
+const HH_MM_REGEX = /^([01]\d|2[0-3]):([0-5]\d)$/;
+
+const FALLBACK_SHIFT: WorkShift = {
+  startTime: "08:00",
+  endTime: "17:00",
+  gracePeriodMinutes: 15,
+  lateThresholdMinutes: 15,
+};
+
+function isValidHhMm(time: string): boolean {
+  return HH_MM_REGEX.test(time);
+}
+
 /**
  * Minimal Hijri date approximation for Ramadan detection.
  * Uses the known astronomical cycle: Hijri year ≈ 354.36707 days.
@@ -86,14 +99,14 @@ export function resolveEmployeeShift(
       const nowMinutes = date.getHours() * 60 + date.getMinutes();
       const morningEnd = parseTimeToMinutes(shifts.morningShift.endTime);
       const eveningStart = parseTimeToMinutes(shifts.eveningShift.startTime);
-      // If before morning end or closer to morning, use morning; otherwise evening
-      if (nowMinutes < morningEnd + (eveningStart - morningEnd) / 2) {
-        slot = "morning";
-        baseShift = shifts.morningShift;
+      let threshold: number;
+      if (Number.isFinite(morningEnd) && Number.isFinite(eveningStart)) {
+        threshold = morningEnd + (eveningStart - morningEnd) / 2;
       } else {
-        slot = "evening";
-        baseShift = shifts.eveningShift;
+        threshold = 14 * 60; // 14:00 safe default midpoint
       }
+      slot = nowMinutes < threshold ? "morning" : "evening";
+      baseShift = slot === "morning" ? shifts.morningShift : shifts.eveningShift;
     }
   } else {
     baseShift = geofenceShifts ? shifts.defaultShift : getActiveShiftForDate(settings, date);
@@ -105,10 +118,24 @@ export function resolveEmployeeShift(
     ...(employee.shiftOverride ?? {}),
   };
 
+  if (!isValidHhMm(shift.startTime) || !isValidHhMm(shift.endTime)) {
+    return {
+      mode,
+      shift: {
+        ...FALLBACK_SHIFT,
+        ...shift,
+        startTime: FALLBACK_SHIFT.startTime,
+        endTime: FALLBACK_SHIFT.endTime,
+      },
+      slot,
+    };
+  }
+
   return { mode, shift, slot };
 }
 
 export function parseTimeToMinutes(time: string): number {
+  if (!isValidHhMm(time)) return NaN;
   const [h, m] = time.split(":").map(Number);
   return h * 60 + m;
 }
@@ -128,8 +155,15 @@ export function evaluateCheckIn(
 ): { status: "present" | "late"; lateMinutes: number } {
   const checkInMinutes = parseTimeToMinutes(checkInTime);
   const startMinutes = parseTimeToMinutes(shift.startTime);
-  const graceEnd = startMinutes + shift.gracePeriodMinutes;
-  const lateEnd = graceEnd + shift.lateThresholdMinutes;
+  const gracePeriod = shift.gracePeriodMinutes ?? 0;
+  const lateThreshold = shift.lateThresholdMinutes ?? 0;
+
+  if (!Number.isFinite(checkInMinutes) || !Number.isFinite(startMinutes)) {
+    return { status: "present", lateMinutes: 0 };
+  }
+
+  const graceEnd = startMinutes + gracePeriod;
+  const lateEnd = graceEnd + lateThreshold;
 
   if (checkInMinutes <= graceEnd) {
     return { status: "present", lateMinutes: 0 };
@@ -147,6 +181,7 @@ export function evaluateCheckIn(
 export function calculateWorkedHours(checkInTime: string, checkOutTime: string): number {
   const start = parseTimeToMinutes(checkInTime);
   const end = parseTimeToMinutes(checkOutTime);
+  if (!Number.isFinite(start) || !Number.isFinite(end)) return 0;
   let diff = end - start;
   if (diff < 0) diff += 24 * 60; // crossed midnight
   return Number((diff / 60).toFixed(2));

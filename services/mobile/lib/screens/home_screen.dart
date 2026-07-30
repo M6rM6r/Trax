@@ -4,6 +4,8 @@ import "package:provider/provider.dart";
 import "../providers/auth_provider.dart";
 import "../providers/attendance_provider.dart";
 import "../providers/location_provider.dart";
+import "../providers/notifications_provider.dart";
+import "../widgets/notification_initializer.dart";
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -18,6 +20,7 @@ class HomeScreen extends StatelessWidget {
       appBar: AppBar(
         title: const Text("Trax"),
         actions: [
+          _NotificationBell(),
           IconButton(
             icon: const Icon(Icons.logout),
             onPressed: () async {
@@ -34,6 +37,7 @@ class HomeScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            const NotificationInitializer(),
             Card(
               child: Padding(
                 padding: const EdgeInsets.all(20),
@@ -155,6 +159,43 @@ class HomeScreen extends StatelessWidget {
         trailing: const Icon(Icons.chevron_right),
         onTap: onTap,
       ),
+    );
+  }
+}
+
+class _NotificationBell extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final notifications = Provider.of<NotificationsProvider>(context);
+
+    return IconButton(
+      icon: Stack(
+        alignment: AlignmentDirectional.topEnd,
+        children: [
+          const Icon(Icons.notifications_outlined),
+          if (notifications.unreadCount > 0)
+            Positioned(
+              top: 0,
+              end: 0,
+              child: Container(
+                padding: const EdgeInsets.all(4),
+                decoration: const BoxDecoration(
+                  color: Colors.red,
+                  shape: BoxShape.circle,
+                ),
+                child: Text(
+                  notifications.unreadCount > 9 ? "9+" : notifications.unreadCount.toString(),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 9,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+      onPressed: () => Navigator.pushNamed(context, "/notifications"),
     );
   }
 }

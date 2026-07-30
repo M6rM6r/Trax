@@ -19,8 +19,9 @@ import {
   Check,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useAttendance, useEmployees } from "@/hooks/useApi";
-import { exportAttendanceToCSV, exportAttendanceToPDF } from "@/lib/utils/exportUtils";
+import { useAttendance, useEmployees, useGeofences } from "@/hooks/useApi";
+import { resolveAttendanceLocation } from "@/lib/utils/geo";
+import { exportToCSV, exportAttendanceToPDF } from "@/lib/utils/exportUtils";
 import { toastSuccess, toastError } from "@/hooks/use-toast";
 import { hapticTap } from "@/lib/utils/haptics";
 import { EmptyState, ErrorState } from "@/components/shared/StateViews";
@@ -231,6 +232,10 @@ export default function AttendancePage() {
   const statusLabels = useAttendanceStatusLabels();
   const { data: attendance = [], isLoading, isError, refetch } = useAttendance();
   const { data: employees = [] } = useEmployees();
+  const { data: geofences = [] } = useGeofences();
+
+  const resolveLocationName = (record: AttendanceRecord) =>
+    resolveAttendanceLocation(record, geofences, employees);
   const [viewMode, setViewMode] = useState<"table" | "calendar">("table");
   const [selectedDay, setSelectedDay] = useState<CalendarDay | null>(null);
   const [showFilters, setShowFilters] = useState(false);
@@ -398,7 +403,36 @@ export default function AttendancePage() {
                     return;
                   }
                   try {
-                    exportAttendanceToCSV(filteredAttendance);
+                    const rows = filteredAttendance.map((record) => {
+                      const emp = employees.find((e) => String(e.id) === String(record.employeeId));
+                      return {
+                        employeeName: record.employeeName || emp?.name || "-",
+                        employeeNumber: emp?.employeeNumber || "-",
+                        department: emp?.department || "-",
+                        date: "'" + record.date,
+                        checkInTime: record.checkInTime ?? "-",
+                        checkOutTime: record.checkOutTime ?? "-",
+                        status: statusLabels[record.status] || record.status,
+                        lateMinutes: record.lateMinutes ?? 0,
+                        workedHours:
+                          typeof record.workedHours === "number"
+                            ? record.workedHours.toFixed(2)
+                            : "-",
+                        geofenceName: resolveLocationName(record) || "-",
+                      };
+                    });
+                    exportToCSV(rows, "attendance_report", [
+                      { key: "employeeName", label: "Employee" },
+                      { key: "employeeNumber", label: "Employee No." },
+                      { key: "department", label: "Department" },
+                      { key: "date", label: "Date" },
+                      { key: "checkInTime", label: "Check In" },
+                      { key: "checkOutTime", label: "Check Out" },
+                      { key: "status", label: "Status" },
+                      { key: "lateMinutes", label: "Late (min)" },
+                      { key: "workedHours", label: "Worked (h)" },
+                      { key: "geofenceName", label: "Geofence" },
+                    ]);
                     toastSuccess(t("exportCsvSuccess"));
                   } catch (err) {
                     console.error("[exportCsv] failed:", err);
@@ -818,8 +852,8 @@ export default function AttendancePage() {
                         key: "geofenceName",
                         header: t("location"),
                         filterable: true,
-                        sortValue: (r) => r.geofenceName || "",
-                        cell: (r) => r.geofenceName || "-",
+                        sortValue: (r) => resolveLocationName(r) || "",
+                        cell: (r) => resolveLocationName(r) || "-",
                       },
                       {
                         key: "status",

@@ -17,9 +17,21 @@ function parseTimeToMinutes(timeStr: string): number {
 
 export default function NotificationManager() {
   const t = useTranslations("Notifications");
-  const { user, role } = useAuthStore();
-  const { addNotification } = useNotificationStore();
+  const { user, role, companyId } = useAuthStore();
+  const { addNotification, initialize } = useNotificationStore();
   const companySettings = useCompanySettingsStore();
+
+  useEffect(() => {
+    initialize({
+      companyId: companyId ?? null,
+      userId: user ? String(user.id) : null,
+      role: role ?? null,
+      employeeId: user?.employee_id ?? null,
+    });
+    return () => {
+      useNotificationStore.getState().stop();
+    };
+  }, [initialize, user, role, companyId]);
   const { data: attendance = [] } = useAttendance({ enabled: role === "company" });
   const { data: employees = [] } = useEmployees({ enabled: role === "company" });
   const permissionRequested = useRef(false);

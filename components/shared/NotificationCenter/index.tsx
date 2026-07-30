@@ -1,13 +1,17 @@
 "use client";
 
-import { useEffect } from "react";
+import { useMemo, useState } from "react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Separator } from "@/components/ui/separator";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { CheckCircle, Warning, AlertTriangle, Notepad, Notification } from "@/public/SVG";
-import { Trash2 } from "lucide-react";
-import { useNotificationStore, type NotificationType } from "@/stores/useNotificationStore";
-import { subscribeRealtimeEvents } from "@/lib/services/realtime";
-import { useToast } from "@/hooks/use-toast";
+import { Trash2, Check, X } from "lucide-react";
+import {
+  useNotificationStore,
+  type NotificationType,
+  type AppNotification,
+} from "@/stores/useNotificationStore";
 import { useTranslations } from "next-intl";
 
 const NOTIFICATION_ICONS: Record<NotificationType, React.ComponentType<{ className?: string }>> = {
@@ -15,6 +19,8 @@ const NOTIFICATION_ICONS: Record<NotificationType, React.ComponentType<{ classNa
   geofence_breach: AlertTriangle,
   anomaly_detected: AlertTriangle,
   attendance: CheckCircle,
+  check_out: CheckCircle,
+  reminder: Notepad,
   system: Notepad,
 };
 
@@ -23,6 +29,8 @@ const NOTIFICATION_COLORS: Record<NotificationType, string> = {
   geofence_breach: "text-destructive",
   anomaly_detected: "text-accent-foreground",
   attendance: "text-primary",
+  check_out: "text-primary",
+  reminder: "text-primary",
   system: "text-primary",
 };
 
@@ -45,58 +53,47 @@ function formatTimeAgo(
 
 export default function NotificationCenter() {
   const t = useTranslations("Notifications");
-  const { notifications, unreadCount, markAsRead, markAllAsRead, addNotification } =
-    useNotificationStore();
-  const { toast } = useToast();
+  const { notifications, markAsRead, markAllAsRead, removeNotification } = useNotificationStore();
 
-  useEffect(() => {
-    const unsubscribe = subscribeRealtimeEvents({
-      onAnomalyDetected: (data) => {
-        addNotification({
-          type: "anomaly_detected",
-          title: t("anomalyAlert"),
-          message: data.details,
-          employeeId: data.employeeId,
-        });
-        toast({
-          title: t("aiAlert"),
-          description: data.details,
-          variant: "destructive",
-        });
-      },
-      onGeofenceBreach: (data) => {
-        addNotification({
-          type: "geofence_breach",
-          title: t("geofenceBreach"),
-          message: t("geofenceBreachMessage", {
-            name: data.employeeName,
-            geofence: data.geofenceName,
-          }),
-          employeeId: data.employeeId,
-          employeeName: data.employeeName,
-        });
-        toast({
-          title: t("geofenceBreach"),
-          description: t("geofenceBreachMessage", {
-            name: data.employeeName,
-            geofence: data.geofenceName,
-          }),
-          variant: "destructive",
-        });
-      },
-      onAttendanceCheckIn: (data) => {
-        addNotification({
-          type: "attendance",
-          title: t("checkIn"),
-          message: t("checkInMessage", { name: data.employeeName, time: data.checkInTime }),
-          employeeId: data.employeeId,
-          employeeName: data.employeeName,
-        });
-      },
-    });
+  const [activeTab, setActiveTab] = useState<"all" | "unread">("all");
 
-    return () => unsubscribe();
-  }, [addNotification, toast, t]);
+  const visibleNotifications = useMemo<AppNotification[]>(() => {
+    const sorted = [...notifications].sort(
+      (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+    );
+    const deduped: AppNotification[] = [];
+    const seen = new Set<string>();
+    for (const n of sorted) {
+      const key = `${n.type}:${n.title}:${n.message}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      deduped.push(n);
+    }
+    if (activeTab === "unread") return deduped.filter((n) => !n.read);
+    return deduped;
+  }, [activeTab, notifications]);
+
+  const displayedUnreadCount = useMemo(
+    () => visibleNotifications.filter((n) => !n.read).length,
+    [visibleNotifications]
+  );
+
+  const grouped = useMemo(() => {
+    const today = new Date();
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const todayStr = today.toDateString();
+    const yesterdayStr = yesterday.toDateString();
+
+    const buckets: Record<string, AppNotification[]> = { today: [], yesterday: [], earlier: [] };
+    for (const n of visibleNotifications) {
+      const d = new Date(n.timestamp).toDateString();
+      if (d === todayStr) buckets.today.push(n);
+      else if (d === yesterdayStr) buckets.yesterday.push(n);
+      else buckets.earlier.push(n);
+    }
+    return buckets;
+  }, [visibleNotifications]);
 
   return (
     <Popover>
@@ -104,89 +101,155 @@ export default function NotificationCenter() {
         <button
           className="relative cursor-pointer"
           aria-label={
-            t("notificationsAria") + (unreadCount > 0 ? t("unread", { count: unreadCount }) : "")
+            t("notificationsAria") +
+            (displayedUnreadCount > 0 ? t("unread", { count: displayedUnreadCount }) : "")
           }
         >
-          {unreadCount > 0 && (
+          {displayedUnreadCount > 0 && (
             <span className="w-[12px] h-[12px] bg-destructive rounded-full border border-background absolute top-0 right-0 flex items-center justify-center text-[8px] text-destructive-foreground font-bold">
               <span className="absolute inset-0 rounded-full bg-destructive animate-ping opacity-75" />
-              <span className="relative">{unreadCount > 9 ? "9+" : unreadCount}</span>
+              <span className="relative">
+                {displayedUnreadCount > 9 ? "9+" : displayedUnreadCount}
+              </span>
             </span>
           )}
           <Notification />
         </button>
       </PopoverTrigger>
-      <PopoverContent className="max-w-[372px] max-h-[500px] rounded-12 p-0 overflow-auto hideScrollbar bg-popover border-border">
-        <div className="flex items-center justify-between gap-5 py-4 px-6">
-          <p className="text-16 text-foreground font-[600]">
-            {t("notificationsAria")} {unreadCount > 0 && `(${unreadCount})`}
-          </p>
-          <div className="flex items-center gap-3">
-            {unreadCount > 0 && (
-              <button onClick={markAllAsRead} className="text-14 text-primary hover:underline">
-                {t("markAllRead")}
-              </button>
-            )}
-            {notifications.length > 0 && (
-              <button
-                onClick={() => useNotificationStore.getState().clearAll()}
-                className="text-14 text-muted-foreground/70 hover:text-destructive"
-                aria-label={t("clearAll")}
+      <PopoverContent
+        className="w-[min(520px,95vw)] max-h-[80vh] rounded-2xl p-0 overflow-hidden bg-popover border-border shadow-xl"
+        align="end"
+      >
+        <div className="flex flex-col h-full max-h-[80vh]">
+          <div className="flex items-center justify-between gap-3 p-4 border-b border-border">
+            <div className="flex items-center gap-3">
+              <p className="text-base font-semibold text-foreground">{t("title")}</p>
+              {displayedUnreadCount > 0 && (
+                <Badge variant="secondary" className="h-5 px-2 text-xs">
+                  {displayedUnreadCount}
+                </Badge>
+              )}
+            </div>
+            <div className="flex items-center gap-1">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                onClick={markAllAsRead}
+                disabled={displayedUnreadCount === 0}
+                aria-label={t("markAllRead")}
+                title={t("markAllRead")}
               >
-                <Trash2 className="w-3.5 h-3.5" />
-              </button>
+                <Check className="w-4 h-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                onClick={() => useNotificationStore.getState().clearAll()}
+                disabled={notifications.length === 0}
+                aria-label={t("clearAll")}
+                title={t("clearAll")}
+              >
+                <Trash2 className="w-4 h-4" />
+              </Button>
+            </div>
+          </div>
+
+          <Tabs
+            value={activeTab}
+            onValueChange={(v) => setActiveTab(v as "all" | "unread")}
+            className="px-4 pt-4"
+          >
+            <TabsList className="w-full grid grid-cols-2 h-9">
+              <TabsTrigger value="all" className="text-sm">
+                {t("all")}
+              </TabsTrigger>
+              <TabsTrigger value="unread" className="text-sm">
+                {t("unreadTab")}
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+
+          <div
+            className="flex-1 overflow-y-auto p-4 space-y-6"
+            role="list"
+            aria-live="polite"
+            aria-label={t("notificationList")}
+          >
+            {visibleNotifications.length === 0 ? (
+              <div className="py-12 text-center">
+                <p className="text-sm text-muted-foreground/70">{t("noNotifications")}</p>
+              </div>
+            ) : (
+              (["today", "yesterday", "earlier"] as const).map((group) => {
+                const items = grouped[group];
+                if (items.length === 0) return null;
+                return (
+                  <div key={group}>
+                    <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 px-1">
+                      {t(group)}
+                    </h3>
+                    <div className="flex flex-col gap-2">
+                      {items.map((notif) => {
+                        const Icon = NOTIFICATION_ICONS[notif.type] ?? Notepad;
+                        const colorClass =
+                          NOTIFICATION_COLORS[notif.type] ?? "text-muted-foreground";
+                        return (
+                          <div
+                            key={notif.id}
+                            onClick={() => markAsRead(notif.id)}
+                            role="listitem"
+                            tabIndex={0}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter" || e.key === " ") {
+                                e.preventDefault();
+                                markAsRead(notif.id);
+                              }
+                            }}
+                            aria-label={`${notif.title}: ${notif.message}`}
+                            className="group flex items-start gap-3 p-3 rounded-xl border border-border/60 bg-card hover:bg-accent/50 cursor-pointer transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                          >
+                            <div
+                              className={`shrink-0 p-2 rounded-full bg-primary/10 ${colorClass}`}
+                            >
+                              <Icon className="w-4 h-4" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium text-foreground leading-tight">
+                                {notif.title}
+                              </p>
+                              <p className="text-sm text-muted-foreground mt-0.5 line-clamp-2">
+                                {notif.message}
+                              </p>
+                              <p className="text-xs text-muted-foreground/70 mt-1.5">
+                                {formatTimeAgo(notif.timestamp, t)}
+                              </p>
+                            </div>
+                            <div className="flex flex-col items-end gap-1.5 shrink-0">
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  removeNotification(notif.id);
+                                }}
+                                className="p-1 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition"
+                                aria-label={t("remove")}
+                                title={t("remove")}
+                              >
+                                <X className="w-3.5 h-3.5" />
+                              </button>
+                              {!notif.read && <span className="w-2 h-2 rounded-full bg-primary" />}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })
             )}
           </div>
-        </div>
-        <Separator className="h-[1px]" />
-        <div
-          className="py-4 px-6 flex flex-col gap-3"
-          role="list"
-          aria-live="polite"
-          aria-label={t("notificationList")}
-        >
-          {notifications.length === 0 ? (
-            <div className="py-8 text-center">
-              <p className="text-sm text-muted-foreground/70">{t("noNotifications")}</p>
-            </div>
-          ) : (
-            notifications.map((notif) => {
-              const Icon = NOTIFICATION_ICONS[notif.type] ?? Notepad;
-              const colorClass = NOTIFICATION_COLORS[notif.type] ?? "text-muted-foreground";
-              return (
-                <div
-                  key={notif.id}
-                  onClick={() => markAsRead(notif.id)}
-                  role="listitem"
-                  tabIndex={0}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === " ") {
-                      e.preventDefault();
-                      markAsRead(notif.id);
-                    }
-                  }}
-                  aria-label={`${notif.title}: ${notif.message}`}
-                  className={`flex items-start gap-4 p-3 rounded-xl cursor-pointer transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring animate-slide-in-right ${
-                    notif.read ? "bg-transparent" : "bg-primary/5 hover:bg-primary/10"
-                  }`}
-                >
-                  <div className={`shrink-0 ${colorClass}`}>
-                    <Icon className="w-5 h-5" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-14 text-foreground font-medium">{notif.title}</p>
-                    <p className="text-13 text-muted-foreground mt-0.5">{notif.message}</p>
-                    <p className="text-11 text-muted-foreground/70 mt-1">
-                      {formatTimeAgo(notif.timestamp, t)}
-                    </p>
-                  </div>
-                  {!notif.read && (
-                    <span className="w-2 h-2 rounded-full bg-primary shrink-0 mt-1.5" />
-                  )}
-                </div>
-              );
-            })
-          )}
         </div>
       </PopoverContent>
     </Popover>

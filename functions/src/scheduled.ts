@@ -1,5 +1,6 @@
 import * as functions from "firebase-functions";
 import * as admin from "firebase-admin";
+import { createNotification } from "./notifications";
 
 const db = admin.firestore();
 const messaging = admin.messaging();
@@ -128,6 +129,23 @@ export const dailyAttendanceSummary = functions.pubsub
         late,
         absent,
         updated_at: admin.firestore.FieldValue.serverTimestamp(),
+      });
+
+      // Notify admins about the daily summary
+      const companyName = companyDoc.data()?.name ?? "";
+      await createNotification({
+        companyId,
+        targetRole: "company",
+        type: "system",
+        title: "تقرير الحضور اليومي",
+        message: `${companyName ? companyName + " — " : ""}الحضور: ${present}، التأخير: ${late}، الغياب: ${absent} من ${total} موظف`,
+        data: {
+          date: today,
+          total: String(total),
+          present: String(present),
+          late: String(late),
+          absent: String(absent),
+        },
       });
     }
 
@@ -269,6 +287,14 @@ export const checkInReminders = functions.pubsub.schedule("every 15 minutes").on
     if (currentTime < reminderTime || currentTime > addMinutes(reminderTime, 15)) continue;
 
     await sendToEmployeeTokens(companyId, "تذكير الحضور", "حان وقت تسجيل الحضور");
+    await createNotification({
+      companyId,
+      targetRole: "employee",
+      type: "reminder",
+      title: "تذكير الحضور",
+      message: "حان وقت تسجيل الحضور",
+      data: { time: currentTime },
+    });
     functions.logger.info(`Sent check-in reminders for ${companyId}`);
   }
 });

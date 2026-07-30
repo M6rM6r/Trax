@@ -291,7 +291,7 @@
     "saveChanges": "Save Changes",
     "name": "Name",
     "employeeNamePlaceholder": "Employee name",
-    "selectGeofence": "Select geofence"
+    "selectGeofence": "Choose"
   },
   "Attendance": {
     "title": "Attendance Records",
@@ -982,9 +982,15 @@
     "notificationsAria": "Notifications",
     "unread": "({count}) unread",
     "markAllRead": "Mark all as read",
+    "remove": "Delete",
     "clearAll": "Clear all",
     "notificationList": "Notification list",
-    "noNotifications": "No notifications"
+    "noNotifications": "No notifications",
+    "all": "All",
+    "unreadTab": "Unread",
+    "today": "Today",
+    "yesterday": "Yesterday",
+    "earlier": "Earlier"
   },
   "NotificationSettings": {
     "title": "Notification Settings",

@@ -477,6 +477,7 @@ export default function EmployeesPage() {
                 label={t("geofenceLabel")}
                 value={newEmployee.geofenceId}
                 onChange={(v) => setNewEmployee({ ...newEmployee, geofenceId: v })}
+                placeholder={t("selectGeofence")}
               >
                 {geofenceOptions}
               </FormSelect>
@@ -982,6 +983,7 @@ export default function EmployeesPage() {
               label={t("geofenceLabel")}
               value={editEmployee.geofenceId}
               onChange={(v) => setEditEmployee({ ...editEmployee, geofenceId: v })}
+              placeholder={t("selectGeofence")}
             >
               {geofenceOptions}
             </FormSelect>

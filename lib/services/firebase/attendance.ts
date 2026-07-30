@@ -90,12 +90,18 @@ export const attendanceApi = {
           [where("active", "==", true)],
           mapGeofence
         );
-        geofence =
-          companyGeofences.find(
-            (g) =>
-              calculateDistance(payload.lat, payload.lng, g.lat, g.lng) <=
-              g.radius + GEOFENCE_DISTANCE_BUFFER_METERS
-          ) ?? null;
+        if (payload.geofenceId) {
+          geofence =
+            companyGeofences.find((g) => String(g.id) === String(payload.geofenceId)) ?? null;
+        }
+        if (!geofence) {
+          geofence =
+            companyGeofences.find(
+              (g) =>
+                calculateDistance(payload.lat, payload.lng, g.lat, g.lng) <=
+                g.radius + GEOFENCE_DISTANCE_BUFFER_METERS
+            ) ?? null;
+        }
       } catch {
         // proceed without geofence
       }

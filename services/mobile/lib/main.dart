@@ -8,6 +8,8 @@ import "providers/auth_provider.dart";
 import "providers/attendance_provider.dart";
 import "providers/location_provider.dart";
 import "providers/theme_provider.dart";
+import "providers/notifications_provider.dart";
+import "widgets/notification_initializer.dart";
 import "package:flutter_background_geolocation/flutter_background_geolocation.dart" as bg;
 
 import "services/api_service.dart";
@@ -20,6 +22,7 @@ import "screens/history_screen.dart";
 import "screens/profile_screen.dart";
 import "screens/onboarding_screen.dart";
 import "screens/notification_settings_screen.dart";
+import "screens/notifications_screen.dart";
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -67,6 +70,7 @@ class TraxEmployeeApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => AttendanceProvider()),
         ChangeNotifierProvider(create: (_) => LocationProvider()),
         ChangeNotifierProvider(create: (_) => ThemeProvider()),
+        ChangeNotifierProvider(create: (_) => NotificationsProvider()),
         Provider(create: (_) => ApiService()),
       ],
       child: Consumer<ThemeProvider>(
@@ -125,6 +129,7 @@ class TraxEmployeeApp extends StatelessWidget {
             "/check-in": (ctx) => const CheckInScreen(),
             "/history": (ctx) => const HistoryScreen(),
             "/profile": (ctx) => const ProfileScreen(),
+            "/notifications": (ctx) => const NotificationsScreen(),
             "/notification-settings": (ctx) => const NotificationSettingsScreen(),
           },
         ),

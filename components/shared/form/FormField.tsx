@@ -72,6 +72,7 @@ interface FormSelectProps {
   onChange: (value: string) => void;
   disabled?: boolean;
   className?: string;
+  placeholder?: string;
   children: React.ReactNode;
 }
 
@@ -81,6 +82,7 @@ export function FormSelect({
   onChange,
   disabled = false,
   className = "",
+  placeholder,
   children,
 }: FormSelectProps) {
   return (
@@ -92,6 +94,11 @@ export function FormSelect({
         disabled={disabled}
         className={`w-full px-3 py-2 border border-input rounded-lg outline-none focus:ring-2 focus:ring-ring bg-card text-foreground ${className}`}
       >
+        {placeholder && (
+          <option value="" disabled>
+            {placeholder}
+          </option>
+        )}
         {children}
       </select>
     </div>

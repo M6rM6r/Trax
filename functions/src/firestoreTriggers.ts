@@ -1,5 +1,6 @@
 import * as functions from "firebase-functions";
 import * as admin from "firebase-admin";
+import { createNotification } from "./notifications";
 
 const db = admin.firestore();
 const messaging = admin.messaging();
@@ -115,18 +116,58 @@ export const onAttendanceWritten = functions.firestore
         const time = checkInTime || "";
 
         if (settings.attendanceAlertsEnabled) {
-          await notifyAdmins(companyId, "تسجيل حضور", `${employeeName} سجل حضوراً عند ${time}`);
+          const title = "تسجيل حضور";
+          const body = `${employeeName} سجل حضوراً عند ${time}`;
+          await Promise.all([
+            notifyAdmins(companyId, title, body),
+            createNotification({
+              companyId,
+              targetRole: "company",
+              employeeId: String(after.employeeId ?? ""),
+              type: "attendance",
+              title,
+              message: body,
+              data: { employeeId: String(after.employeeId ?? ""), employeeName, checkInTime: time },
+            }),
+          ]);
         }
 
         if (
           settings.lateAlertsEnabled &&
           (after.status === "late" || (after.lateMinutes ?? 0) > 0)
         ) {
-          await notifyAdmins(
+          const title = "تأخر عن الحضور";
+          const body = `${employeeName} تأخر ${after.lateMinutes ?? 0} دقيقة`;
+          await Promise.all([
+            notifyAdmins(companyId, title, body),
+            createNotification({
+              companyId,
+              targetRole: "company",
+              employeeId: String(after.employeeId ?? ""),
+              type: "late_arrival",
+              title,
+              message: body,
+              data: {
+                employeeId: String(after.employeeId ?? ""),
+                employeeName,
+                lateMinutes: String(after.lateMinutes ?? 0),
+              },
+              priority: "high",
+            }),
+          ]);
+        }
+
+        // Confirm check-in to the employee as well
+        if (after.employeeId) {
+          await createNotification({
             companyId,
-            "تأخر عن الحضور",
-            `${employeeName} تأخر ${after.lateMinutes ?? 0} دقيقة`
-          );
+            targetRole: "employee",
+            employeeId: String(after.employeeId),
+            type: "attendance",
+            title: "تم تسجيل الحضور",
+            message: `تم تسجيل حضورك عند ${time}`,
+            data: { checkInTime: time },
+          });
         }
       }
 
@@ -139,7 +180,32 @@ export const onAttendanceWritten = functions.firestore
       ) {
         const employeeName = after.employeeName || "موظف";
         const time = after.checkOutTime || "";
-        await notifyAdmins(companyId, "تسجيل انصراف", `${employeeName} سجل انصرافاً عند ${time}`);
+        const title = "تسجيل انصراف";
+        const body = `${employeeName} سجل انصرافاً عند ${time}`;
+        await Promise.all([
+          notifyAdmins(companyId, title, body),
+          createNotification({
+            companyId,
+            targetRole: "company",
+            employeeId: String(after.employeeId ?? ""),
+            type: "check_out",
+            title,
+            message: body,
+            data: { employeeId: String(after.employeeId ?? ""), employeeName, checkOutTime: time },
+          }),
+        ]);
+
+        if (after.employeeId) {
+          await createNotification({
+            companyId,
+            targetRole: "employee",
+            employeeId: String(after.employeeId),
+            type: "check_out",
+            title: "تم تسجيل الانصراف",
+            message: `تم تسجيل انصرافك عند ${time}`,
+            data: { checkOutTime: time },
+          });
+        }
       }
     } catch (err) {
       functions.logger.error(`Failed to process attendance ${attendanceId}:`, err);
@@ -210,11 +276,25 @@ export const onLocationWritten = functions.firestore
       const locationRef = db.collection("locations").doc(context.params.locationId);
       if (isOutside && !wasOutside) {
         await locationRef.update({ outsideGeofence: true });
-        await notifyAdmins(
-          companyId,
-          "خروج من النطاق الجغرافي",
-          `${after.name || employeeId} خرج من ${geofence.name || "النطاق المخصص"}`
-        );
+        const title = "خروج من النطاق الجغرافي";
+        const body = `${after.name || employeeId} خرج من ${geofence.name || "النطاق المخصص"}`;
+        await Promise.all([
+          notifyAdmins(companyId, title, body),
+          createNotification({
+            companyId,
+            targetRole: "company",
+            employeeId: String(employeeId),
+            type: "geofence_breach",
+            title,
+            message: body,
+            data: {
+              employeeId: String(employeeId),
+              employeeName: String(after.name ?? ""),
+              geofenceName: String(geofence.name ?? ""),
+            },
+            priority: "high",
+          }),
+        ]);
       } else if (!isOutside && wasOutside) {
         await locationRef.update({ outsideGeofence: false });
       }

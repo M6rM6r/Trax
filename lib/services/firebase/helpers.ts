@@ -13,14 +13,9 @@ import {
 import { auth, db } from "@/lib/config/firebase";
 import { useAuthStore } from "@/stores/useAuthStore";
 import type { AttendanceRecord, Employee, Geofence, WorkShift } from "@/lib/types/trackingTypes";
-
-let lastSyncAt = 0;
-const SYNC_INTERVAL_MS = 5 * 60 * 1000;
+import { evaluateCheckIn } from "@/lib/utils/shifts";
 
 async function syncUserDoc(user: User) {
-  const now = Date.now();
-  if (now - lastSyncAt < SYNC_INTERVAL_MS) return;
-  lastSyncAt = now;
   if (!db) return;
   const { companyId, role, user: storeUser } = useAuthStore.getState();
   const payload: Record<string, unknown> = {
@@ -253,7 +248,18 @@ export function mapAttendance(id: string, value: Record<string, unknown>): Atten
     geofenceId:
       value.geofenceId === null || value.geofenceId === undefined ? null : String(value.geofenceId),
     geofenceName: (value.geofenceName as string | null | undefined) ?? null,
-    lateMinutes: toNumber(value.lateMinutes),
+    lateMinutes: (() => {
+      const raw = value.lateMinutes;
+      const numeric = toNumber(raw);
+      const status = (value.status as AttendanceRecord["status"]) ?? "absent";
+      const checkInTime = (value.checkInTime as string | null | undefined) ?? null;
+      const appliedShift = (value.appliedShift as AttendanceRecord["appliedShift"]) ?? null;
+      if (status !== "present" && numeric <= 0 && checkInTime && appliedShift) {
+        const evalResult = evaluateCheckIn(checkInTime, appliedShift);
+        if (evalResult.lateMinutes > 0) return evalResult.lateMinutes;
+      }
+      return numeric;
+    })(),
     workedHours: toNumber(value.workedHours),
     checkOutStatus: (value.checkOutStatus as AttendanceRecord["checkOutStatus"]) ?? null,
     expectedCheckoutTime:
