@@ -153,13 +153,26 @@ export function evaluateCheckIn(
   checkInTime: string, // HH:mm
   shift: WorkShift
 ): { status: "present" | "late"; lateMinutes: number } {
-  const checkInMinutes = parseTimeToMinutes(checkInTime);
+  let checkInMinutes = parseTimeToMinutes(checkInTime);
   const startMinutes = parseTimeToMinutes(shift.startTime);
+  const endMinutes = parseTimeToMinutes(shift.endTime);
   const gracePeriod = shift.gracePeriodMinutes ?? 0;
   const lateThreshold = shift.lateThresholdMinutes ?? 0;
 
-  if (!Number.isFinite(checkInMinutes) || !Number.isFinite(startMinutes)) {
+  if (
+    !Number.isFinite(checkInMinutes) ||
+    !Number.isFinite(startMinutes) ||
+    !Number.isFinite(endMinutes)
+  ) {
     return { status: "present", lateMinutes: 0 };
+  }
+
+  // Handle night shifts that cross midnight (e.g. 22:00 - 06:00).
+  // A check-in after midnight (e.g. 01:58) needs to be compared to the
+  // previous day's start time.
+  const shiftSpansMidnight = startMinutes > endMinutes;
+  if (shiftSpansMidnight && checkInMinutes <= endMinutes) {
+    checkInMinutes += 24 * 60;
   }
 
   const graceEnd = startMinutes + gracePeriod;
