@@ -14,6 +14,11 @@ export default function Error({
 
   useEffect(() => {
     console.error("Page error:", error);
+    console.error("Page error details:", {
+      message: error?.message,
+      stack: error?.stack,
+      stringified: JSON.stringify(error, Object.getOwnPropertyNames(error ?? {})),
+    });
   }, [error]);
 
   return (

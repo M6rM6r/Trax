@@ -6,9 +6,9 @@ import { ChevronLeft, Home } from "lucide-react";
 import { useEmployee } from "@/hooks/useApi";
 import { useTranslations } from "next-intl";
 
-function useRouteLabel(segment: string): string {
+function useRouteLabels(): Record<string, string> {
   const t = useTranslations("Navigation");
-  const labelMap: Record<string, string> = {
+  return {
     "": t("home"),
     employees: t("employees"),
     inactive: t("inactive"),
@@ -21,7 +21,6 @@ function useRouteLabel(segment: string): string {
     securitySettings: t("securitySettings"),
     notificationSettings: t("notificationSettings"),
   };
-  return labelMap[segment] ?? segment;
 }
 
 export default function Breadcrumb() {
@@ -35,12 +34,13 @@ export default function Breadcrumb() {
   const employeeId = isEmployeeProfile ? segments[lastIndex] : null;
   const { data: activeEmployee } = useEmployee(employeeId);
 
-  const getLabel = useRouteLabel;
+  const labelMap = useRouteLabels();
+
   const crumbs = segments.map((seg, i) => {
     const path = `/${segments.slice(0, i + 1).join("/")}`;
     const isLast = i === lastIndex;
     const employeeName = isEmployeeProfile && isLast ? activeEmployee?.name : undefined;
-    const label = getLabel(seg) ?? employeeName ?? (isEmployeeProfile && isLast ? "..." : seg);
+    const label = employeeName ?? labelMap[seg] ?? seg;
     return { label, path };
   });
 

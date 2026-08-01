@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -75,6 +75,14 @@ export function BulkImportDrawer({ open, onOpenChange, existingEmployees }: Bulk
   const fileRef = useRef<HTMLInputElement>(null);
   const qc = useQueryClient();
 
+  useEffect(() => {
+    if (!open) {
+      setRaw("");
+      setFileName("");
+      if (fileRef.current) fileRef.current.value = "";
+    }
+  }, [open]);
+
   const existingEmails = useMemo(
     () => new Set(existingEmployees.map((e) => e.email.toLowerCase())),
     [existingEmployees]
@@ -92,7 +100,9 @@ export function BulkImportDrawer({ open, onOpenChange, existingEmployees }: Bulk
     const emailIdx = lowerHeader.findIndex((h) =>
       ["email", t("emailHeader").toLowerCase(), "email address"].includes(h)
     );
-    const phoneIdx = lowerHeader.findIndex((h) => ["phone", "mobile"].includes(h));
+    const phoneIdx = lowerHeader.findIndex((h) =>
+      ["phone", t("phoneHeader").toLowerCase(), "mobile"].includes(h)
+    );
     const deptIdx = lowerHeader.findIndex((h) =>
       ["department", t("departmentHeader").toLowerCase(), "dept"].includes(h)
     );
@@ -117,7 +127,7 @@ export function BulkImportDrawer({ open, onOpenChange, existingEmployees }: Bulk
     setFileName(file.name);
     const reader = new FileReader();
     reader.onload = (ev) => {
-      setRaw(String(ev.target?.result ?? ""));
+      setRaw(String(ev.target?.result ?? "").replace(/^\uFEFF/, ""));
     };
     reader.readAsText(file);
   };

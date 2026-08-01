@@ -13,8 +13,10 @@ export function useAttendance(options?: { enabled?: boolean }) {
 
   return useQuery<AttendanceRecord[]>({
     queryKey: [...queryKeys.attendance, companyId ?? "unassigned"],
-    staleTime: 30 * 1000,
+    staleTime: 60 * 1000,
     refetchInterval: 60 * 1000,
+    refetchOnWindowFocus: false,
+    refetchIntervalInBackground: false,
     enabled: Boolean(companyId) && (options?.enabled ?? true),
     queryFn: async (): Promise<AttendanceRecord[]> => {
       return firebaseData.attendance.list();
@@ -41,8 +43,10 @@ export function useMyAttendance(employeeId?: string | null) {
     queryFn: async () =>
       firebaseData.attendance.list(employeeId ?? undefined, { from: today, to: today }),
     enabled: Boolean(companyId && employeeId),
-    staleTime: 30 * 1000,
+    staleTime: 60 * 1000,
     refetchInterval: 60 * 1000,
+    refetchOnWindowFocus: false,
+    refetchIntervalInBackground: false,
   });
 }
 

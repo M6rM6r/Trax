@@ -1,4 +1,4 @@
-const CACHE_NAME = "trax-v4";
+const CACHE_NAME = "trax-v5";
 const STATIC_ASSETS = ["/", "/manifest.json", "/ar/check-in", "/en/check-in"];
 
 self.addEventListener("install", (event) => {
@@ -32,7 +32,16 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // Navigational requests: network-first with offline fallback to cached page
+  // Navigational requests: network-first with offline fallback to cached page.
+  // Login/register pages should never be served from cache because they change
+  // frequently and the credentials are not real email addresses.
+  if (
+    url.pathname.includes("/login") ||
+    url.pathname.includes("/register")
+  ) {
+    return;
+  }
+
   if (request.mode === "navigate") {
     event.respondWith(
       fetch(request)

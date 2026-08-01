@@ -4,12 +4,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
   const baseUrl = "https://naf--trax-ae.asia-southeast1.hosted.app";
   const locales = ["ar", "en"];
 
-  const routes = [
-    "",
-    "/login",
-    "/register",
-    "/forgot-password",
-  ];
+  const routes = ["", "/login", "/register"];
 
   const entries: MetadataRoute.Sitemap = [];
 

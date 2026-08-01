@@ -2,7 +2,7 @@ import { NextIntlClientProvider } from "next-intl";
 import { getMessages, getTranslations } from "next-intl/server";
 import { notFound } from "next/navigation";
 import { routing } from "@/i18n/routing";
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Toaster } from "@/components/ui/toaster";
 import AppPreloader from "@/components/shared/AppPreloader";
 import ErrorBoundary from "@/components/shared/ErrorBoundary";
@@ -48,13 +48,16 @@ export async function generateMetadata({
       title: t("title"),
       description: t("description"),
     },
-    themeColor: "#0F172A",
     appleWebApp: {
       capable: true,
       statusBarStyle: "black-translucent",
     },
   };
 }
+
+export const viewport: Viewport = {
+  themeColor: "#0F172A",
+};
 
 export default async function LocaleLayout({
   children,
@@ -75,6 +78,7 @@ export default async function LocaleLayout({
   // Providing all messages to the client
   // side is the easiest way to get started
   const messages = await getMessages();
+  const timeZone = "Asia/Riyadh";
 
   return (
     <div
@@ -89,7 +93,12 @@ export default async function LocaleLayout({
       >
         {t("skipToContent")}
       </a>
-      <NextIntlClientProvider messages={messages}>
+      <NextIntlClientProvider
+        locale={locale}
+        messages={messages}
+        timeZone={timeZone}
+        now={new Date()}
+      >
         <ThemeProvider attribute="class" forcedTheme="dark" enableSystem={false}>
           <QueryProvider>
             <AuthProvider>

@@ -20,7 +20,10 @@ class ErrorMonitor {
     if (this.initialized || typeof window === "undefined") return;
     this.initialized = true;
 
+    const IGNORED_ERRORS = ["NEXT_REDIRECT", "NEXT_NOT_FOUND", "NEXT_HTTP_ERROR_FALLBACK"];
+
     window.addEventListener("error", (event) => {
+      if (IGNORED_ERRORS.some((e) => event.message?.includes(e))) return;
       this.capture(event.message, {
         stack: event.error?.stack,
         context: { filename: event.filename, lineno: event.lineno, colno: event.colno },
@@ -29,7 +32,9 @@ class ErrorMonitor {
 
     window.addEventListener("unhandledrejection", (event) => {
       const reason = event.reason;
-      this.capture(reason instanceof Error ? reason.message : String(reason), {
+      const message = reason instanceof Error ? reason.message : String(reason);
+      if (IGNORED_ERRORS.some((e) => message.includes(e))) return;
+      this.capture(message, {
         stack: reason instanceof Error ? reason.stack : undefined,
       });
     });

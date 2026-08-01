@@ -1,9 +1,8 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useMemo } from "react";
 import MainLayout from "@/components/shared/MainLayout";
 import FullPageHead from "@/components/shared/FullPageHead";
-import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import {
@@ -17,9 +16,6 @@ import {
   Eye,
   X,
   Check,
-  LayoutGrid,
-  LayoutList,
-  Search,
   Upload,
 } from "lucide-react";
 import {
@@ -76,20 +72,9 @@ export default function EmployeesPage() {
   const [showResetPassword, setShowResetPassword] = useState(false);
   const locale = useLocale();
   const { role } = useAuthStore();
-  const [viewMode, setViewMode] = useState<"table" | "grid">("table");
   const [showAddForm, setShowAddForm] = useState(false);
   const [showBulkImport, setShowBulkImport] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<Employee | null>(null);
-
-  useEffect(() => {
-    const stored = localStorage.getItem("trax_employees_view") as "table" | "grid" | null;
-    if (stored) setViewMode(stored);
-  }, []);
-
-  const handleViewMode = (mode: "table" | "grid") => {
-    setViewMode(mode);
-    localStorage.setItem("trax_employees_view", mode);
-  };
   const [editTarget, setEditTarget] = useState<Employee | null>(null);
   const [selectedIds, setSelectedIds] = useState<Array<number | string>>([]);
   const [createdCredentials, setCreatedCredentials] = useState<{
@@ -271,7 +256,13 @@ export default function EmployeesPage() {
       return;
     }
     hapticSuccess();
-    const headers = t("csvHeaders") as unknown as string[];
+    const headers = [
+      t("csvHeaderName"),
+      t("csvHeaderEmail"),
+      t("csvHeaderPhone"),
+      t("csvHeaderDepartment"),
+      t("csvHeaderStatus"),
+    ];
     const rows = selected.map((e) => [
       e.name,
       e.email,
@@ -279,13 +270,17 @@ export default function EmployeesPage() {
       e.department,
       e.status === "active" ? t("active") : t("inactiveStatus"),
     ]);
-    const csv = [headers, ...rows].map((r) => r.map((c) => `"${c}"`).join(",")).join("\n");
+    const csv = [headers, ...rows]
+      .map((r) => r.map((c) => `"${(c ?? "").replace(/"/g, '""')}"`).join(","))
+      .join("\n");
     const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
     a.download = `employees_export_${Date.now()}.csv`;
+    document.body.appendChild(a);
     a.click();
+    document.body.removeChild(a);
     URL.revokeObjectURL(url);
     toastSuccess(t("exportSuccess", { count: selected.length }));
   };
@@ -327,10 +322,6 @@ export default function EmployeesPage() {
     [geofences]
   );
 
-  const [search, setSearch] = useState("");
-  const [filterDept, setFilterDept] = useState("");
-  const [filterStatus, setFilterStatus] = useState("");
-
   const staffLoginUrl = useMemo(() => {
     const envBase = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_BASE_URL || "";
 
@@ -357,26 +348,6 @@ export default function EmployeesPage() {
     return `${normalizedBase}/${locale}/login${withIdentifier}`;
   }, [locale, createdCredentials?.email, createdCredentials?.username]);
 
-  const departments = useMemo(() => {
-    const depts = new Set(employees.map((e) => e.department).filter(Boolean));
-    return Array.from(depts);
-  }, [employees]);
-
-  const filteredEmployees = useMemo(() => {
-    return employees.filter((e) => {
-      if (
-        search &&
-        !e.name.toLowerCase().includes(search.toLowerCase()) &&
-        !e.email.toLowerCase().includes(search.toLowerCase()) &&
-        !e.department.toLowerCase().includes(search.toLowerCase())
-      )
-        return false;
-      if (filterDept && e.department !== filterDept) return false;
-      if (filterStatus && e.status !== filterStatus) return false;
-      return true;
-    });
-  }, [employees, search, filterDept, filterStatus]);
-
   const inactiveCount = employees.filter((e) => e.status !== "active").length;
 
   if (role === "employee") {
@@ -398,30 +369,6 @@ export default function EmployeesPage() {
           Icon={<Users className="w-7 h-7" />}
           LeftSection={
             <div className="flex flex-wrap items-center gap-2">
-              <div className="flex items-center bg-muted rounded-lg p-1">
-                <button
-                  onClick={() => handleViewMode("table")}
-                  className={`p-1.5 rounded-md transition-all ${
-                    viewMode === "table"
-                      ? "bg-card shadow-sm text-primary"
-                      : "text-muted-foreground hover:text-muted-foreground dark:hover:text-foreground"
-                  }`}
-                  aria-label={t("tableView")}
-                >
-                  <LayoutList className="w-4 h-4" />
-                </button>
-                <button
-                  onClick={() => handleViewMode("grid")}
-                  className={`p-1.5 rounded-md transition-all ${
-                    viewMode === "grid"
-                      ? "bg-card shadow-sm text-primary"
-                      : "text-muted-foreground hover:text-muted-foreground dark:hover:text-foreground"
-                  }`}
-                  aria-label={t("cardView")}
-                >
-                  <LayoutGrid className="w-4 h-4" />
-                </button>
-              </div>
               <Button
                 variant="outline"
                 onClick={() => setShowBulkImport(true)}
@@ -587,12 +534,6 @@ export default function EmployeesPage() {
         {/* Stats strip */}
         {!isLoading && !isError && employees.length > 0 && (
           <div className="flex items-center gap-4 flex-wrap">
-            <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-primary/5 border border-primary/30">
-              <Users className="w-4 h-4 text-primary" />
-              <span className="text-sm font-semibold text-primary/70">
-                {employees.length} {t("employees")}
-              </span>
-            </div>
             {inactiveCount > 0 && (
               <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-muted border border-input">
                 <span className="w-2 h-2 rounded-full bg-muted-foreground/50" />
@@ -601,65 +542,6 @@ export default function EmployeesPage() {
                 </span>
               </div>
             )}
-          </div>
-        )}
-
-        {/* Search + filter bar */}
-        {!isLoading && !isError && employees.length > 0 && (
-          <div className="flex flex-col sm:flex-row gap-3">
-            <div className="relative flex-1">
-              <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/70" />
-              <input
-                type="text"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder={t("searchPlaceholder")}
-                className="w-full pr-9 pl-3 py-2 rounded-xl border border-input bg-card text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring shadow-sm"
-              />
-              {search && (
-                <button
-                  onClick={() => setSearch("")}
-                  className="absolute left-3 top-1/2 -translate-y-1/2"
-                >
-                  <X className="w-3.5 h-3.5 text-muted-foreground/70 hover:text-muted-foreground" />
-                </button>
-              )}
-            </div>
-            <div className="flex items-center gap-2">
-              <select
-                value={filterDept}
-                onChange={(e) => setFilterDept(e.target.value)}
-                className="px-3 py-2 rounded-xl border border-input bg-card text-sm text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring shadow-sm"
-              >
-                <option value="">{t("allDepartments")}</option>
-                {departments.map((d) => (
-                  <option key={d} value={d}>
-                    {d}
-                  </option>
-                ))}
-              </select>
-              <select
-                value={filterStatus}
-                onChange={(e) => setFilterStatus(e.target.value)}
-                className="px-3 py-2 rounded-xl border border-input bg-card text-sm text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring shadow-sm"
-              >
-                <option value="">{t("allStatuses")}</option>
-                <option value="active">{t("active")}</option>
-                <option value="inactive">{t("inactiveStatus")}</option>
-              </select>
-              {(search || filterDept || filterStatus) && (
-                <button
-                  onClick={() => {
-                    setSearch("");
-                    setFilterDept("");
-                    setFilterStatus("");
-                  }}
-                  className="px-3 py-2 rounded-xl text-sm text-destructive hover:bg-destructive/5 dark:hover:bg-destructive/10 border border-destructive/20 border-destructive/30 transition-colors"
-                >
-                  {t("clear")}
-                </button>
-              )}
-            </div>
           </div>
         )}
 
@@ -690,99 +572,7 @@ export default function EmployeesPage() {
             tip={t("addEmployeeTip")}
           />
         )}
-        {!isLoading && !isError && employees.length > 0 && viewMode === "grid" && (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            <AnimatePresence>
-              {filteredEmployees.map((emp, index) => (
-                <motion.div
-                  key={emp.id}
-                  initial={{ opacity: 0, y: 16 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.95 }}
-                  transition={{ delay: Math.min(index * 0.05, 0.3), duration: 0.3 }}
-                >
-                  <Card className="border-0 shadow-md bg-card hover:shadow-xl group transition-all duration-300 hover:-translate-y-1 cursor-pointer">
-                    <CardContent className="p-4">
-                      {/* Avatar + name row */}
-                      <div className="flex items-center gap-3 mb-3">
-                        <motion.div
-                          transition={{ type: "spring", stiffness: 300 }}
-                          className={`relative w-14 h-14 shrink-0 rounded-2xl bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center text-primary-foreground font-bold text-lg overflow-hidden shadow-md ring-2 ${
-                            emp.status === "active" ? "ring-primary/40" : "ring-border"
-                          }`}
-                        >
-                          {emp.name.charAt(0)}
-                          {emp.status === "active" && (
-                            <span className="absolute bottom-0.5 right-0.5 w-3 h-3 rounded-full bg-primary ring-2 ring-background ring-card">
-                              <span className="animate-ping absolute inset-0 rounded-full bg-primary opacity-75" />
-                            </span>
-                          )}
-                        </motion.div>
-                        <div className="min-w-0 flex-1">
-                          <p className="font-bold text-foreground truncate">{emp.name}</p>
-                          <p className="text-xs text-muted-foreground truncate">{emp.department}</p>
-                          <div className="flex items-center gap-1.5 mt-1">
-                            {emp.geofenceId && (
-                              <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary">
-                                <MapPin className="w-2.5 h-2.5" />
-                                {getGeofenceName(emp.geofenceId)}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Contact info */}
-                      <div className="text-xs text-muted-foreground space-y-1 mb-3 px-1">
-                        <div className="flex items-center gap-1.5">
-                          <Mail className="w-3 h-3 shrink-0" />
-                          <span
-                            dir="ltr"
-                            lang="en"
-                            style={{ unicodeBidi: "plaintext" }}
-                            className="truncate"
-                          >
-                            {emp.email}
-                          </span>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-1 pt-3 border-t border-border">
-                        <Link
-                          href={`/employees/${emp.id}`}
-                          className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg text-xs font-medium text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors"
-                          title={t("viewProfile")}
-                        >
-                          <Eye className="w-3.5 h-3.5" />
-                          {t("view")}
-                        </Link>
-                        <div className="w-px h-5 bg-muted" />
-                        <button
-                          onClick={() => handleEdit(emp)}
-                          className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg text-xs font-medium text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors"
-                          title={t("edit")}
-                        >
-                          <Edit className="w-3.5 h-3.5" />
-                          {t("edit")}
-                        </button>
-                        <div className="w-px h-5 bg-muted" />
-                        <button
-                          onClick={() => handleDelete(emp)}
-                          className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg text-xs font-medium text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
-                          title={t("delete")}
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                          {t("delete")}
-                        </button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </motion.div>
-              ))}
-            </AnimatePresence>
-          </div>
-        )}
-        {!isLoading && !isError && employees.length > 0 && viewMode === "table" && (
+        {!isLoading && !isError && employees.length > 0 && (
           <>
             <DataTable<Employee>
               columns={[
@@ -793,13 +583,7 @@ export default function EmployeesPage() {
                   filterable: true,
                   sortValue: (emp) => emp.name,
                   cell: (emp) => (
-                    <Link
-                      href={`/employees/${emp.id}`}
-                      className="flex items-center gap-3 hover:underline"
-                    >
-                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center text-primary-foreground font-bold text-sm overflow-hidden">
-                        {emp.name.charAt(0)}
-                      </div>
+                    <Link href={`/employees/${emp.id}`} className="hover:underline">
                       <span className="text-sm font-medium text-foreground">{emp.name}</span>
                     </Link>
                   ),

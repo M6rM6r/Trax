@@ -12,7 +12,7 @@ export function useGeofences() {
   return useQuery<Geofence[]>({
     queryKey: [...queryKeys.geofences, companyId ?? "unassigned"],
     enabled: Boolean(companyId),
-    staleTime: 0,
+    staleTime: 60 * 1000,
     queryFn: async (): Promise<Geofence[]> => {
       return firebaseData.geofences.list();
     },

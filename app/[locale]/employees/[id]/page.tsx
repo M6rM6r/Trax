@@ -9,6 +9,7 @@ import {
   ArrowLeft,
   Mail,
   MapPin,
+  Phone,
   Edit,
   Trash2,
   Calendar,
@@ -27,7 +28,6 @@ import {
   useGeofences,
   useDeleteEmployee,
   useUpdateEmployee,
-  useResetEmployeePassword,
 } from "@/hooks/useApi";
 import { FormDrawer } from "@/components/shared/FormDrawer";
 import { FormField, FormSelect } from "@/components/shared/form/FormField";
@@ -58,8 +58,6 @@ export default function EmployeeProfilePage({ params }: { params: { id: string }
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showEditForm, setShowEditForm] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [newPassword, setNewPassword] = useState("");
-  const resetEmployeePassword = useResetEmployeePassword();
   const [editEmployee, setEditEmployee] = useState<{
     name: string;
     email: string;
@@ -190,9 +188,6 @@ export default function EmployeeProfilePage({ params }: { params: { id: string }
             <div className="h-24 bg-gradient-to-br from-primary via-primary/90 to-primary/70" />
             <CardContent className="pb-6">
               <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 -mt-12">
-                <div className="w-24 h-24 rounded-2xl bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center text-primary-foreground text-3xl font-bold shadow-xl border-4 border-border">
-                  {employee.name.charAt(0)}
-                </div>
                 <div className="flex-1 mt-4 sm:mt-0">
                   <h1 className="text-2xl font-bold text-foreground">{employee.name}</h1>
                   <div className="flex items-center gap-2 mt-1">
@@ -232,7 +227,7 @@ export default function EmployeeProfilePage({ params }: { params: { id: string }
               {/* Contact Info Grid */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-6">
                 <div className="flex items-center gap-3 p-3 rounded-xl bg-muted/50">
-                  <div className="w-10 h-10 rounded-lg bg-primary/10 bg-primary/10 flex items-center justify-center">
+                  <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
                     <Mail className="w-5 h-5 text-primary" />
                   </div>
                   <div>
@@ -251,6 +246,17 @@ export default function EmployeeProfilePage({ params }: { params: { id: string }
                   <div>
                     <p className="text-xs text-muted-foreground">{t("geofence")}</p>
                     <p className="text-sm font-medium text-foreground">{geofenceName}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 p-3 rounded-xl bg-muted/50">
+                  <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                    <Phone className="w-5 h-5 text-primary" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">{t("phone")}</p>
+                    <p className="text-sm font-medium text-foreground" dir="ltr">
+                      {employee.phone || "-"}
+                    </p>
                   </div>
                 </div>
                 <div className="flex items-center gap-3 p-3 rounded-xl bg-muted/50">
@@ -284,47 +290,6 @@ export default function EmployeeProfilePage({ params }: { params: { id: string }
                     ) : (
                       <p className="text-sm font-medium text-foreground">-</p>
                     )}
-                  </div>
-                </div>
-                <div className="flex items-center gap-3 p-3 rounded-xl bg-muted/50">
-                  <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                    <Key className="w-5 h-5 text-primary" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs text-muted-foreground">{t("employeePassword")}</p>
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="password"
-                        value={newPassword}
-                        onChange={(e) => setNewPassword(e.target.value)}
-                        placeholder={t("employeePassword")}
-                        className="bg-transparent text-sm font-medium text-foreground outline-none w-full"
-                        dir="ltr"
-                      />
-                      <Button
-                        variant="primary"
-                        size="sm"
-                        onClick={() => {
-                          if (newPassword.length < 8) {
-                            toastError("Password must be at least 8 characters");
-                            return;
-                          }
-                          if (!employee) return;
-                          resetEmployeePassword.mutate(
-                            { id: employee.id, password: newPassword, email: employee.email },
-                            {
-                              onSuccess: () => {
-                                setNewPassword("");
-                                toastSuccess("Password set");
-                              },
-                            }
-                          );
-                        }}
-                        disabled={!newPassword || resetEmployeePassword.isPending}
-                      >
-                        Set
-                      </Button>
-                    </div>
                   </div>
                 </div>
               </div>
@@ -411,16 +376,20 @@ export default function EmployeeProfilePage({ params }: { params: { id: string }
                         : status === "absent"
                           ? "bg-destructive/60"
                           : "bg-muted/40";
-                  const label = status
-                    ? t(statusLabels[status as keyof typeof statusLabels])
-                    : t("noRecord");
+                  const label =
+                    status && status in statusLabels
+                      ? t(statusLabels[status as keyof typeof statusLabels])
+                      : t("noRecord");
                   const dateLocale = locale === "ar" ? "ar-SA-u-nu-latn" : "en-US";
                   const dayLabel = d.toLocaleDateString(dateLocale, {
                     weekday: "short",
                     day: "numeric",
                   });
                   const hasStatus =
-                    status === "present" || status === "checked_out" || status === "late";
+                    status === "present" ||
+                    status === "checked_out" ||
+                    status === "late" ||
+                    status === "absent";
                   return (
                     <div
                       key={i}
@@ -544,7 +513,12 @@ export default function EmployeeProfilePage({ params }: { params: { id: string }
                     {
                       key: "geofenceName",
                       header: t("location"),
-                      cell: (r) => r.geofenceName || "-",
+                      cell: (r) => {
+                        const name =
+                          r.geofenceName ||
+                          geofences.find((g) => String(g.id) === String(r.geofenceId))?.name;
+                        return name || "-";
+                      },
                     },
                   ]}
                   data={empAttendance}
@@ -589,6 +563,19 @@ export default function EmployeeProfilePage({ params }: { params: { id: string }
               onChange={(v) => setEditEmployee({ ...editEmployee, email: v })}
               placeholder="email@trax.com"
               ltr
+            />
+            <FormField
+              label={t("phone")}
+              value={editEmployee.phone}
+              onChange={(v) => setEditEmployee({ ...editEmployee, phone: v })}
+              placeholder="0500000000"
+              ltr
+            />
+            <FormField
+              label={t("department")}
+              value={editEmployee.department}
+              onChange={(v) => setEditEmployee({ ...editEmployee, department: v })}
+              placeholder={t("department")}
             />
             <FormSelect
               label={t("geofence")}

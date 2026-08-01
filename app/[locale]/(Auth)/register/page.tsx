@@ -70,11 +70,7 @@ function useTranslatedPlans() {
       employees: 10,
       color: "border-input",
       badge: "",
-      features: [
-        t("plans.trialFeatures.0"),
-        t("plans.trialFeatures.1"),
-        t("plans.trialFeatures.2"),
-      ],
+      features: [t("plans.trialFeature1"), t("plans.trialFeature2"), t("plans.trialFeature3")],
     },
     {
       key: "starter",
@@ -85,9 +81,9 @@ function useTranslatedPlans() {
       color: "border-primary",
       badge: t("plans.starterBadge"),
       features: [
-        t("plans.starterFeatures.0"),
-        t("plans.starterFeatures.1"),
-        t("plans.starterFeatures.2"),
+        t("plans.starterFeature1"),
+        t("plans.starterFeature2"),
+        t("plans.starterFeature3"),
       ],
     },
     {
@@ -98,7 +94,7 @@ function useTranslatedPlans() {
       employees: 100,
       color: "border-purple-500",
       badge: "",
-      features: [t("plans.proFeatures.0"), t("plans.proFeatures.1"), t("plans.proFeatures.2")],
+      features: [t("plans.proFeature1"), t("plans.proFeature2"), t("plans.proFeature3")],
     },
   ];
 }

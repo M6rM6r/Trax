@@ -15,8 +15,16 @@ import { useAuthStore } from "@/stores/useAuthStore";
 import type { AttendanceRecord, Employee, Geofence, WorkShift } from "@/lib/types/trackingTypes";
 import { evaluateCheckIn } from "@/lib/utils/shifts";
 
+let lastSyncUid: string | null = null;
+let lastSyncTime = 0;
+const SYNC_THROTTLE_MS = 60_000;
+
 async function syncUserDoc(user: User) {
   if (!db) return;
+  const now = Date.now();
+  if (lastSyncUid === user.uid && now - lastSyncTime < SYNC_THROTTLE_MS) return;
+  lastSyncUid = user.uid;
+  lastSyncTime = now;
   const { companyId, role, user: storeUser } = useAuthStore.getState();
   const payload: Record<string, unknown> = {
     name: storeUser?.name || user.displayName || null,
@@ -110,14 +118,14 @@ export function requireDb() {
 export async function ensureAuth(): Promise<User> {
   if (!auth) throw new Error("Firebase Auth is not configured");
   if (auth.currentUser) {
-    await syncUserDoc(auth.currentUser);
+    syncUserDoc(auth.currentUser);
     return auth.currentUser;
   }
   return new Promise((resolve, reject) => {
     const unsubscribe = onAuthStateChanged(auth!, async (user) => {
       unsubscribe();
       if (user) {
-        await syncUserDoc(user);
+        syncUserDoc(user);
         resolve(user);
       } else reject(new Error("AUTH_EXPIRED"));
     });

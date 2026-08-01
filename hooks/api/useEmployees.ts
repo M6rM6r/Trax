@@ -12,7 +12,7 @@ export function useEmployees(options?: { enabled?: boolean }) {
   return useQuery<Employee[]>({
     queryKey: [...queryKeys.employees, companyId ?? "unassigned"],
     enabled: Boolean(companyId) && (options?.enabled ?? true),
-    staleTime: 0,
+    staleTime: 60 * 1000,
     queryFn: async (): Promise<Employee[]> => {
       return firebaseData.employees.list();
     },
@@ -25,7 +25,7 @@ export function useEmployee(employeeId?: string | null) {
   return useQuery<Employee | null>({
     queryKey: [...queryKeys.employees, "byId", employeeId ?? "none", companyId ?? "unassigned"],
     enabled: Boolean(companyId && employeeId),
-    staleTime: 0,
+    staleTime: 60 * 1000,
     queryFn: async (): Promise<Employee | null> => {
       return firebaseData.employees.getById(employeeId!);
     },

@@ -919,8 +919,7 @@ export default function GeofencesPage() {
                       <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-muted text-muted-foreground">
                         <span className="text-muted-foreground">{t("radius")}</span>
                         <span className="font-bold text-foreground">
-                          {geo.radius}
-                          {t("meters")}
+                          {formatRadius(geo.radius, t)}
                         </span>
                       </span>
                       <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-muted text-muted-foreground">
@@ -1161,8 +1160,7 @@ export default function GeofencesPage() {
                   <div className="text-center p-2 rounded-lg bg-muted text-muted-foreground">
                     <p className="text-xs text-muted-foreground">{t("radius")}</p>
                     <p className="font-bold text-foreground">
-                      {previewGeofence.radius}
-                      {t("meters")}
+                      {formatRadius(previewGeofence.radius, t)}
                     </p>
                   </div>
                   <div className="text-center p-2 rounded-lg bg-muted text-muted-foreground">

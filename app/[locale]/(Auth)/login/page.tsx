@@ -7,7 +7,6 @@ import { CheckCircle2 } from "lucide-react";
 import * as Yup from "yup";
 import { toastSuccess, toastError } from "@/hooks/use-toast";
 import { useSearchParams, useRouter } from "next/navigation";
-import { Link } from "@/i18n/navigation";
 import { useMemo, useState } from "react";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useTranslations } from "next-intl";
@@ -263,21 +262,16 @@ const Page = () => {
                   label={t("password")}
                 />
 
-                <div className="flex items-center justify-between text-sm">
-                  <label className="flex items-center gap-2 cursor-pointer text-muted-foreground">
-                    <input
-                      type="checkbox"
-                      name="rememberMe"
-                      className="w-4 h-4 rounded border-input text-primary focus:ring-ring"
-                      checked={props.values.rememberMe}
-                      onChange={() => props.setFieldValue("rememberMe", !props.values.rememberMe)}
-                    />
-                    {t("rememberMe")}
-                  </label>
-                  <Link href="/forgot-password" className="text-primary hover:underline text-sm">
-                    {t("forgotPassword")}
-                  </Link>
-                </div>
+                <label className="flex items-center gap-2 cursor-pointer text-sm text-muted-foreground">
+                  <input
+                    type="checkbox"
+                    name="rememberMe"
+                    className="w-4 h-4 rounded border-input text-primary focus:ring-ring"
+                    checked={props.values.rememberMe}
+                    onChange={() => props.setFieldValue("rememberMe", !props.values.rememberMe)}
+                  />
+                  {t("rememberMe")}
+                </label>
 
                 <Button
                   type="submit"

@@ -34,13 +34,15 @@ interface DataTableProps<T> {
   onSelectionChange?: (ids: Array<number | string>) => void;
 }
 
+const emptySelection: Array<number | string> = [];
+
 export function DataTable<T extends { id: number | string }>({
   columns,
   data,
   searchPlaceholder,
   pageSize = 10,
   selectable = false,
-  selectedIds = [],
+  selectedIds = emptySelection,
   onSelectionChange,
 }: DataTableProps<T>) {
   const [search, setSearch] = useState("");
@@ -63,22 +65,19 @@ export function DataTable<T extends { id: number | string }>({
     };
   }, [search]);
 
-  const filterableKeys = columns.filter((c) => c.filterable).map((c) => c.key);
-
   const filteredData = useMemo(() => {
     if (!debouncedSearch) return data;
     const lower = debouncedSearch.toLowerCase();
     return data.filter((row) =>
-      filterableKeys.some((key) => {
-        const col = columns.find((c) => c.key === key);
-        if (!col) return false;
+      columns.some((col) => {
+        if (!col.filterable) return false;
         const val = col.sortValue
           ? col.sortValue(row)
-          : String((row as Record<string, unknown>)[key] ?? "");
+          : String((row as Record<string, unknown>)[col.key] ?? "");
         return String(val).toLowerCase().includes(lower);
       })
     );
-  }, [data, debouncedSearch, filterableKeys, columns]);
+  }, [data, debouncedSearch, columns]);
 
   const sortedData = useMemo(() => {
     if (!sortKey) return filteredData;
@@ -135,7 +134,7 @@ export function DataTable<T extends { id: number | string }>({
   const allOnPageSelected =
     paginatedData.length > 0 && paginatedData.every((r) => selectedIds.includes(r.id));
 
-  const hasFilterable = filterableKeys.length > 0;
+  const hasFilterable = columns.some((c) => c.filterable);
 
   return (
     <Card className="border border-border bg-card">
