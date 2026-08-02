@@ -61,6 +61,8 @@ export function useRetentionInsights(attendance: AttendanceRecord[], employees: 
     },
     enabled: Boolean(companyId) && attendance.length > 0,
     staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    refetchIntervalInBackground: false,
     retry: 0,
   });
 }

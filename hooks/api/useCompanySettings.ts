@@ -15,6 +15,8 @@ export function useCompanySettings(options?: { enabled?: boolean }) {
       return firebaseData.companies.getSettings();
     },
     staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    refetchIntervalInBackground: false,
   });
 }
 
