@@ -32,6 +32,8 @@ export function useDashboardData(dateRange?: DashboardDateRange) {
     ],
     staleTime: 30 * 1000,
     refetchInterval: 30 * 1000,
+    refetchOnWindowFocus: false,
+    refetchIntervalInBackground: false,
     enabled: Boolean(companyId),
     queryFn: async () => firebaseData.dashboard.getDashboardData({ from, to }, companySettings),
   });

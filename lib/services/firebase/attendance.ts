@@ -64,6 +64,7 @@ export const attendanceApi = {
     employeeName?: string;
     lat: number;
     lng: number;
+    accuracy?: number;
     geofenceId?: string | null;
     companySettings?: Record<string, unknown>;
     employee?: Pick<Employee, "attendanceMode" | "shiftOverride"> | null;
@@ -117,7 +118,8 @@ export const attendanceApi = {
 
     if (geofence) {
       const dist = calculateDistance(payload.lat, payload.lng, geofence.lat, geofence.lng);
-      const within = dist <= geofence.radius + GEOFENCE_DISTANCE_BUFFER_METERS;
+      const gpsAccuracy = payload.accuracy ?? 0;
+      const within = dist <= geofence.radius + GEOFENCE_DISTANCE_BUFFER_METERS + gpsAccuracy;
       if (!within && requireGeofence && !allowOutside) {
         throw new Error("Check-in location is outside the allowed geofence area");
       }

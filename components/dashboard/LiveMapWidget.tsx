@@ -24,6 +24,7 @@ export default function LiveMapWidget({ liveTracking, geofences }: LiveMapWidget
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<Map | null>(null);
   const vectorSourceRef = useRef<VectorSource | null>(null);
+  const initialGeofenceRef = useRef<Geofence | undefined>(geofences[0]);
 
   useEffect(() => {
     if (!mapRef.current || mapInstanceRef.current) return;
@@ -31,7 +32,7 @@ export default function LiveMapWidget({ liveTracking, geofences }: LiveMapWidget
     const vectorSource = new VectorSource();
     vectorSourceRef.current = vectorSource;
 
-    const initialGeofence = geofences[0];
+    const initialGeofence = initialGeofenceRef.current;
     const initialCenter = initialGeofence
       ? fromLonLat([initialGeofence.lng, initialGeofence.lat])
       : fromLonLat([46.6753, 24.7136]);
@@ -52,7 +53,7 @@ export default function LiveMapWidget({ liveTracking, geofences }: LiveMapWidget
       mapInstanceRef.current = null;
       vectorSourceRef.current = null;
     };
-  }, [geofences]);
+  }, []);
 
   useEffect(() => {
     const vectorSource = vectorSourceRef.current;

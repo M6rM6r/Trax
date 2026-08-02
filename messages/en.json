@@ -526,6 +526,7 @@
     "recentAttendanceSubtitle": "Latest check-ins today",
     "employee": "Employee",
     "department": "Department",
+    "date": "Date",
     "checkInTime": "Check-in Time",
     "status": "Status",
     "location": "Location",

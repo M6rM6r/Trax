@@ -3,12 +3,11 @@
 // Inspired by react-hot-toast library
 import * as React from "react";
 
-import { type ToastActionElement, type ToastProps, ToastAction } from "@/components/ui/toast";
+import { ToastAction, type ToastActionElement, type ToastProps } from "@/components/ui/toast";
 import { hapticSuccess, hapticError } from "@/lib/utils/haptics";
 
 const TOAST_LIMIT = 3;
 const TOAST_REMOVE_DELAY = 5000;
-const TOAST_UNDO_DELAY = 8000;
 
 type ToasterToast = ToastProps & {
   id: string;
@@ -17,12 +16,12 @@ type ToasterToast = ToastProps & {
   action?: ToastActionElement;
 };
 
-const actionTypes = {
-  ADD_TOAST: "ADD_TOAST",
-  UPDATE_TOAST: "UPDATE_TOAST",
-  DISMISS_TOAST: "DISMISS_TOAST",
-  REMOVE_TOAST: "REMOVE_TOAST",
-} as const;
+type ActionType = {
+  ADD_TOAST: "ADD_TOAST";
+  UPDATE_TOAST: "UPDATE_TOAST";
+  DISMISS_TOAST: "DISMISS_TOAST";
+  REMOVE_TOAST: "REMOVE_TOAST";
+};
 
 let count = 0;
 
@@ -30,8 +29,6 @@ function genId() {
   count = (count + 1) % Number.MAX_SAFE_INTEGER;
   return count.toString();
 }
-
-type ActionType = typeof actionTypes;
 
 type Action =
   | {

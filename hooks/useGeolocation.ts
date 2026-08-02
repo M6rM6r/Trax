@@ -46,7 +46,8 @@ function isWithinAnyGeofence(
   lat: number,
   lng: number,
   geofences: Geofence[],
-  bufferMeters: number
+  bufferMeters: number,
+  gpsAccuracy: number = 0
 ): { nearestGeofence: { geofence: Geofence; distance: number } | null; isWithinRange: boolean } {
   let closest: { geofence: Geofence; distance: number } | null = null;
   let withinRange = false;
@@ -55,7 +56,7 @@ function isWithinAnyGeofence(
     if (!closest || dist < closest.distance) {
       closest = { geofence: geo, distance: dist };
     }
-    if (dist <= geo.radius + bufferMeters) {
+    if (dist <= geo.radius + bufferMeters + gpsAccuracy) {
       withinRange = true;
     }
   }
@@ -86,6 +87,7 @@ export function useGeolocation(options: UseGeolocationOptions): GeolocationState
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const locatingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hasPositionRef = useRef(false);
+  const positionRef = useRef<{ lat: number; lng: number; accuracy: number } | null>(null);
   const geofencesRef = useRef(geofences);
   const bufferMetersRef = useRef(bufferMeters);
   const accuracyThresholdRef = useRef(accuracyThreshold);
@@ -103,12 +105,16 @@ export function useGeolocation(options: UseGeolocationOptions): GeolocationState
   const updatePosition = useCallback((pos: GeolocationPosition) => {
     const { latitude, longitude, accuracy } = pos.coords;
 
-    // Ignore low-accuracy positions unless we have nothing yet
-    if (accuracy > accuracyThresholdRef.current && hasPositionRef.current) {
-      return;
+    // Accept if we have no position yet, or if this fix is more accurate than what we have
+    if (hasPositionRef.current && accuracy > accuracyThresholdRef.current) {
+      const currentPos = positionRef.current;
+      if (currentPos && accuracy >= currentPos.accuracy) {
+        return;
+      }
     }
 
     const newPosition = { lat: latitude, lng: longitude, accuracy };
+    positionRef.current = newPosition;
     setPosition(newPosition);
     hasPositionRef.current = true;
     setIsLocating(false);
@@ -128,7 +134,8 @@ export function useGeolocation(options: UseGeolocationOptions): GeolocationState
       latitude,
       longitude,
       geofencesRef.current,
-      bufferMetersRef.current
+      bufferMetersRef.current,
+      accuracy
     );
     setNearestGeofence(nearest);
     setIsWithinRange(within);
@@ -236,7 +243,8 @@ export function useGeolocation(options: UseGeolocationOptions): GeolocationState
       position.lat,
       position.lng,
       geofences,
-      bufferMeters
+      bufferMeters,
+      position.accuracy
     );
     setNearestGeofence(nearest);
     setIsWithinRange(within);

@@ -13,6 +13,8 @@ export function useGeofences() {
     queryKey: [...queryKeys.geofences, companyId ?? "unassigned"],
     enabled: Boolean(companyId),
     staleTime: 60 * 1000,
+    refetchOnWindowFocus: false,
+    refetchIntervalInBackground: false,
     queryFn: async (): Promise<Geofence[]> => {
       return firebaseData.geofences.list();
     },

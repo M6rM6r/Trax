@@ -285,7 +285,7 @@ export function useCheckInPage() {
 
   const createOfflineCheckInRecord = useCallback(
     (
-      location: { lat: number; lng: number },
+      location: { lat: number; lng: number; accuracy: number },
       geofence: { id: string; name: string } | null,
       timestamp: number
     ): QueuedCheckIn => ({
@@ -397,6 +397,7 @@ export function useCheckInPage() {
           employeeName,
           lat: currentLocation.lat,
           lng: currentLocation.lng,
+          accuracy: currentLocation.accuracy,
           geofenceId: geofence?.id ?? null,
           companySettings: companySettings as Record<string, unknown>,
           employee: employeeForApi,
@@ -568,7 +569,6 @@ export function useCheckInPage() {
     todayRecord,
     todayCacheKey,
     qc,
-    companySettings,
     t,
     createOfflineCheckOutRecord,
   ]);

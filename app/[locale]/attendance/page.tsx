@@ -111,7 +111,6 @@ export default function AttendancePage() {
   const t = useTranslations("Attendance");
   const locale = useLocale();
   const statusLabels = useAttendanceStatusLabels();
-  const { data: attendance = [], isLoading, isError, refetch } = useAttendance();
   const { data: employees = [] } = useEmployees();
   const { data: geofences = [] } = useGeofences();
 
@@ -146,13 +145,25 @@ export default function AttendancePage() {
     dateRange: "month" as DateRange,
   });
 
-  const filteredAttendance = useMemo(() => {
+  const attendanceDateRange = useMemo(() => {
     const range = getDateRange(filters.dateRange, today);
+    return range ? { from: range.start, to: range.end } : undefined;
+  }, [filters.dateRange, today]);
+
+  const {
+    data: attendance = [],
+    isLoading,
+    isError,
+    refetch,
+  } = useAttendance({
+    dateRange: attendanceDateRange,
+  });
+
+  const filteredAttendance = useMemo(() => {
     return attendance
       .filter((r) => {
         if (filters.employeeId && String(r.employeeId) !== String(filters.employeeId)) return false;
         if (filters.statuses.length > 0 && !filters.statuses.includes(r.status)) return false;
-        if (range && (r.date < range.start || r.date > range.end)) return false;
         return true;
       })
       .map((r) => ({ ...r, geofenceName: resolveLocationName(r) || "-" }))
@@ -160,7 +171,7 @@ export default function AttendancePage() {
         (a, b) =>
           b.date.localeCompare(a.date) || (b.checkInTime ?? "").localeCompare(a.checkInTime ?? "")
       );
-  }, [attendance, filters, today, resolveLocationName]);
+  }, [attendance, filters, resolveLocationName]);
 
   const stats = useMemo(() => {
     let present = 0,

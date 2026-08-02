@@ -52,7 +52,18 @@ export function DataTable<T extends { id: number | string }>({
   const [currentPage, setCurrentPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(pageSize);
   const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const columnsRef = useRef(columns);
   const t = useTranslations("Common.dataTable");
+
+  columnsRef.current = columns;
+
+  const columnSignature = useMemo(
+    () =>
+      columns
+        .map((c) => `${c.key}:${c.filterable ? 1 : 0}:${c.sortable ? 1 : 0}:${c.sortValue ? 1 : 0}`)
+        .join("|"),
+    [columns]
+  );
 
   useEffect(() => {
     if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
@@ -68,8 +79,9 @@ export function DataTable<T extends { id: number | string }>({
   const filteredData = useMemo(() => {
     if (!debouncedSearch) return data;
     const lower = debouncedSearch.toLowerCase();
+    const currentColumns = columnsRef.current;
     return data.filter((row) =>
-      columns.some((col) => {
+      currentColumns.some((col) => {
         if (!col.filterable) return false;
         const val = col.sortValue
           ? col.sortValue(row)
@@ -77,11 +89,12 @@ export function DataTable<T extends { id: number | string }>({
         return String(val).toLowerCase().includes(lower);
       })
     );
-  }, [data, debouncedSearch, columns]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data, debouncedSearch, columnSignature]);
 
   const sortedData = useMemo(() => {
     if (!sortKey) return filteredData;
-    const col = columns.find((c) => c.key === sortKey);
+    const col = columnsRef.current.find((c) => c.key === sortKey);
     if (!col || !col.sortValue) return filteredData;
     const sorted = [...filteredData].sort((a, b) => {
       const aVal = col.sortValue!(a);
@@ -91,7 +104,8 @@ export function DataTable<T extends { id: number | string }>({
       return 0;
     });
     return sorted;
-  }, [filteredData, sortKey, sortDir, columns]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filteredData, sortKey, sortDir, columnSignature]);
 
   const totalPages = Math.max(1, Math.ceil(sortedData.length / rowsPerPage));
 

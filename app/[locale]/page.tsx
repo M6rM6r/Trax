@@ -1,9 +1,9 @@
 "use client";
 
-import { useMemo, useState, useEffect, useRef } from "react";
+import { useMemo, useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Card, CardHeader, CardContent, CardTitle } from "@/components/ui/card";
-import { UserCheck, UserX, Clock } from "lucide-react";
+import { UserCheck, UserX, Clock, Calendar } from "lucide-react";
 import { useRouter } from "@/i18n/navigation";
 import MainLayout from "@/components/shared/MainLayout";
 import {
@@ -51,8 +51,24 @@ export default function DashboardPage() {
   const { data: employees = [] } = useEmployees();
   const { data: geofences = [] } = useGeofences();
 
-  const resolveLocationName = (record: AttendanceRecord) =>
-    resolveAttendanceLocation(record, geofences, employees);
+  const resolveLocationName = useCallback(
+    (record: AttendanceRecord) => resolveAttendanceLocation(record, geofences, employees),
+    [geofences, employees]
+  );
+
+  const formatDate = useCallback(
+    (dateStr: string | null | undefined) => {
+      if (!dateStr) return "-";
+      const d = new Date(`${dateStr}T00:00:00`);
+      if (Number.isNaN(d.getTime())) return dateStr;
+      return d.toLocaleDateString(locale, {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+      });
+    },
+    [locale]
+  );
   const { data: initialTracking = [] } = useLiveTracking();
   const { employees: liveTracking } = useLiveTrackingSocket(initialTracking);
 
@@ -126,7 +142,7 @@ export default function DashboardPage() {
   const liveStats: DashboardStats = useMemo(() => {
     const active = (employees ?? []).filter((e) => e.status === "active");
     const inactive = (employees ?? []).filter((e) => e.status !== "active");
-    const today = new Date().toLocaleDateString("sv-SE");
+    const today = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Riyadh" });
     const todayRecords = (attendanceData ?? []).filter((r) => r.date === today);
     const presentToday = todayRecords.filter(
       (r) => r.status === "present" || (r.status === "checked_out" && !((r.lateMinutes ?? 0) > 0))
@@ -157,7 +173,7 @@ export default function DashboardPage() {
         : 0;
     const checkInTimes = todayRecords
       .map((r) => r.checkInTime)
-      .filter((t): t is string => typeof t === "string" && t !== "");
+      .filter((v): v is string => typeof v === "string" && v !== "");
     const avgCheckInTime =
       checkInTimes.length > 0 ? checkInTimes[Math.floor(checkInTimes.length / 2)] : "N/A";
     return {
@@ -224,8 +240,13 @@ export default function DashboardPage() {
         const value = date.getTime();
         return value >= fromMs && value <= toMs;
       })
+      .map((r) => ({ ...r, geofenceName: resolveLocationName(r) || "-" }))
+      .sort(
+        (a, b) =>
+          b.date.localeCompare(a.date) || (b.checkInTime ?? "").localeCompare(a.checkInTime ?? "")
+      )
       .slice(0, 5);
-  }, [attendanceData, dateRange]);
+  }, [attendanceData, dateRange, resolveLocationName]);
 
   // Don't render dashboard chrome while auth is not confirmed
   if (!user) {
@@ -332,6 +353,19 @@ export default function DashboardPage() {
                         ),
                       },
                       {
+                        key: "date",
+                        header: t("date"),
+                        sortable: true,
+                        filterable: true,
+                        sortValue: (r) => r.date || "",
+                        cell: (r) => (
+                          <span className="inline-flex items-center gap-1 text-sm font-medium text-foreground">
+                            <Calendar className="w-3 h-3 text-muted-foreground/70" />
+                            {formatDate(r.date)}
+                          </span>
+                        ),
+                      },
+                      {
                         key: "checkInTime",
                         header: t("checkInTime"),
                         sortable: true,
@@ -374,8 +408,8 @@ export default function DashboardPage() {
                         key: "geofenceName",
                         header: t("location"),
                         filterable: true,
-                        sortValue: (r) => resolveLocationName(r) || "",
-                        cell: (r) => resolveLocationName(r) || "-",
+                        sortValue: (r) => r.geofenceName || "",
+                        cell: (r) => r.geofenceName || "-",
                       },
                     ]}
                     data={recentAttendance}

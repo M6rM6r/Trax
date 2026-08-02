@@ -10,6 +10,7 @@ export interface QueuedCheckIn {
   employeeSnapshot?: Pick<Employee, "attendanceMode" | "shiftOverride"> | null;
   lat: number;
   lng: number;
+  accuracy?: number;
   geofenceId?: string | null;
   geofenceName?: string | null;
   timestamp: number;
@@ -110,6 +111,7 @@ export async function processOfflineQueue(): Promise<{
         employeeName: item.employeeName,
         lat: item.lat,
         lng: item.lng,
+        accuracy: item.accuracy,
         geofenceId: item.geofenceId,
         companySettings: item.settings,
         employee: item.employeeSnapshot ?? null,

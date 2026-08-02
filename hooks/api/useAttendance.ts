@@ -8,18 +8,22 @@ import { useAuthStore } from "@/stores/useAuthStore";
 import { useCompanySettingsStore } from "@/stores/useCompanySettingsStore";
 import { queryKeys, toApiDate } from "./queryKeys";
 
-export function useAttendance(options?: { enabled?: boolean }) {
+export function useAttendance(options?: {
+  enabled?: boolean;
+  dateRange?: { from?: string; to?: string };
+}) {
   const companyId = useAuthStore((state) => state.companyId);
+  const from = options?.dateRange?.from;
+  const to = options?.dateRange?.to;
 
   return useQuery<AttendanceRecord[]>({
-    queryKey: [...queryKeys.attendance, companyId ?? "unassigned"],
+    queryKey: [...queryKeys.attendance, companyId ?? "unassigned", from ?? "all", to ?? "all"],
     staleTime: 60 * 1000,
-    refetchInterval: 60 * 1000,
     refetchOnWindowFocus: false,
     refetchIntervalInBackground: false,
     enabled: Boolean(companyId) && (options?.enabled ?? true),
     queryFn: async (): Promise<AttendanceRecord[]> => {
-      return firebaseData.attendance.list();
+      return firebaseData.attendance.list(undefined, options?.dateRange);
     },
   });
 }
@@ -44,7 +48,6 @@ export function useMyAttendance(employeeId?: string | null) {
       firebaseData.attendance.list(employeeId ?? undefined, { from: today, to: today }),
     enabled: Boolean(companyId && employeeId),
     staleTime: 60 * 1000,
-    refetchInterval: 60 * 1000,
     refetchOnWindowFocus: false,
     refetchIntervalInBackground: false,
   });
@@ -58,6 +61,7 @@ export function useCheckIn() {
       employeeName?: string;
       lat: number;
       lng: number;
+      accuracy?: number;
       geofenceId?: string | null;
       companySettings?: Record<string, unknown>;
       employee?: Pick<Employee, "attendanceMode" | "shiftOverride"> | null;

@@ -100,7 +100,9 @@ export const dashboardApi = {
     ).length;
     const checkedOutToday = todayRecords.filter((record) => record.status === "checked_out").length;
     const earlyCheckoutsToday = todayRecords.filter((record) => record.earlyCheckout).length;
-    const worked = todayRecords.map((record) => record.workedHours).filter((hours) => hours > 0);
+    const worked = todayRecords
+      .map((record) => record.workedHours)
+      .filter((hours): hours is number => hours !== null && hours > 0);
     const punctualBase = presentToday + lateToday;
     const checkInTimes = todayRecords
       .map((r) => r.checkInTime)
@@ -152,7 +154,9 @@ export const dashboardApi = {
         (r) => r.status === "late" || (r.status === "checked_out" && r.lateMinutes > 0)
       ).length;
       const absent = Math.max(0, activeEmployees.length - dayRecords.length);
-      const dayWorked = dayRecords.map((r) => r.workedHours).filter((h) => h > 0);
+      const dayWorked = dayRecords
+        .map((r) => r.workedHours)
+        .filter((h): h is number => h !== null && h > 0);
       weeklyData.push({
         day: dayNames[d.getDay()],
         present,

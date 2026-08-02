@@ -72,7 +72,7 @@ export interface AttendanceRecord {
   geofenceId?: string | null;
   geofenceName?: string | null;
   lateMinutes: number;
-  workedHours: number;
+  workedHours: number | null;
   checkOutStatus?: "present" | "late" | "absent" | null;
   /** The expected checkout time used to flag early checkout. */
   expectedCheckoutTime?: string | null;

@@ -108,7 +108,7 @@ export function exportAttendanceToCSV(
     checkOutTime?: string | null;
     status: string;
     lateMinutes: number;
-    workedHours: number;
+    workedHours: number | null;
     geofenceName?: string | null;
   }>
 ): void {
@@ -132,7 +132,7 @@ export async function exportAttendanceToPDF(
     checkOutTime?: string | null;
     status: string;
     lateMinutes: number;
-    workedHours: number;
+    workedHours: number | null;
     geofenceName?: string | null;
   }>
 ): Promise<void> {

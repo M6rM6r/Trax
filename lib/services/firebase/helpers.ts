@@ -268,7 +268,10 @@ export function mapAttendance(id: string, value: Record<string, unknown>): Atten
       }
       return numeric;
     })(),
-    workedHours: toNumber(value.workedHours),
+    workedHours:
+      value.workedHours === null || value.workedHours === undefined
+        ? null
+        : toNumber(value.workedHours),
     checkOutStatus: (value.checkOutStatus as AttendanceRecord["checkOutStatus"]) ?? null,
     expectedCheckoutTime:
       (value.expectedCheckoutTime as string | null | undefined) ??
