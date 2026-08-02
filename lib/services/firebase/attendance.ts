@@ -84,23 +84,31 @@ export const attendanceApi = {
       }
     }
 
+    const gpsAccuracy =
+      typeof payload.accuracy === "number" && Number.isFinite(payload.accuracy)
+        ? Math.max(0, payload.accuracy)
+        : 0;
+
     if (!geofence) {
       try {
         const companyGeofences = await queryByCompanyId(
           collection(requireDb(), "geofences"),
-          [where("active", "==", true)],
+          [],
           mapGeofence
         );
         if (payload.geofenceId) {
           geofence =
-            companyGeofences.find((g) => String(g.id) === String(payload.geofenceId)) ?? null;
+            companyGeofences.find(
+              (g) => g.active !== false && String(g.id) === String(payload.geofenceId)
+            ) ?? null;
         }
         if (!geofence) {
           geofence =
             companyGeofences.find(
               (g) =>
+                g.active !== false &&
                 calculateDistance(payload.lat, payload.lng, g.lat, g.lng) <=
-                g.radius + GEOFENCE_DISTANCE_BUFFER_METERS
+                  g.radius + GEOFENCE_DISTANCE_BUFFER_METERS + gpsAccuracy
             ) ?? null;
         }
       } catch {
@@ -118,7 +126,6 @@ export const attendanceApi = {
 
     if (geofence) {
       const dist = calculateDistance(payload.lat, payload.lng, geofence.lat, geofence.lng);
-      const gpsAccuracy = payload.accuracy ?? 0;
       const within = dist <= geofence.radius + GEOFENCE_DISTANCE_BUFFER_METERS + gpsAccuracy;
       if (!within && requireGeofence && !allowOutside) {
         throw new Error("Check-in location is outside the allowed geofence area");

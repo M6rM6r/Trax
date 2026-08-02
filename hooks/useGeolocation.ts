@@ -7,7 +7,7 @@ import { calculateDistance, GEOFENCE_DISTANCE_BUFFER_METERS } from "@/lib/utils/
 export const LOCATION_ACCURACY_THRESHOLD_METERS = 100;
 export const LOCATION_DEBOUNCE_MS = 500;
 export const LOCATION_TIMEOUT_MS = 15000;
-export const POSITION_MAX_AGE_MS = 30000;
+export const POSITION_MAX_AGE_MS = 0; // force a fresh fix; don't reuse cached positions
 
 export type GeolocationPermission = "prompt" | "granted" | "denied" | "unknown";
 
@@ -23,7 +23,6 @@ export interface GeolocationState {
 interface UseGeolocationOptions {
   geofences: Geofence[];
   bufferMeters?: number;
-  accuracyThreshold?: number;
   enabled?: boolean;
 }
 
@@ -42,34 +41,42 @@ function findNearestGeofence(
   return closest;
 }
 
+function normalizeAccuracy(value: unknown): number {
+  if (typeof value === "number" && Number.isFinite(value) && value >= 0) {
+    return value;
+  }
+  return LOCATION_ACCURACY_THRESHOLD_METERS;
+}
+
 function isWithinAnyGeofence(
   lat: number,
   lng: number,
   geofences: Geofence[],
   bufferMeters: number,
-  gpsAccuracy: number = 0
+  gpsAccuracy: number = LOCATION_ACCURACY_THRESHOLD_METERS
 ): { nearestGeofence: { geofence: Geofence; distance: number } | null; isWithinRange: boolean } {
-  let closest: { geofence: Geofence; distance: number } | null = null;
-  let withinRange = false;
+  const accuracy = normalizeAccuracy(gpsAccuracy);
+  let closestOverall: { geofence: Geofence; distance: number } | null = null;
+  let closestWithin: { geofence: Geofence; distance: number } | null = null;
   for (const geo of geofences) {
     const dist = calculateDistance(lat, lng, geo.lat, geo.lng);
-    if (!closest || dist < closest.distance) {
-      closest = { geofence: geo, distance: dist };
+    if (!closestOverall || dist < closestOverall.distance) {
+      closestOverall = { geofence: geo, distance: dist };
     }
-    if (dist <= geo.radius + bufferMeters + gpsAccuracy) {
-      withinRange = true;
+    if (dist <= geo.radius + bufferMeters + accuracy) {
+      if (!closestWithin || dist < closestWithin.distance) {
+        closestWithin = { geofence: geo, distance: dist };
+      }
     }
   }
-  return { nearestGeofence: closest, isWithinRange: withinRange };
+  return {
+    nearestGeofence: closestWithin ?? closestOverall,
+    isWithinRange: closestWithin !== null,
+  };
 }
 
 export function useGeolocation(options: UseGeolocationOptions): GeolocationState {
-  const {
-    geofences,
-    bufferMeters = GEOFENCE_DISTANCE_BUFFER_METERS,
-    accuracyThreshold = LOCATION_ACCURACY_THRESHOLD_METERS,
-    enabled = true,
-  } = options;
+  const { geofences, bufferMeters = GEOFENCE_DISTANCE_BUFFER_METERS, enabled = true } = options;
 
   const [position, setPosition] = useState<{ lat: number; lng: number; accuracy: number } | null>(
     null
@@ -90,7 +97,6 @@ export function useGeolocation(options: UseGeolocationOptions): GeolocationState
   const positionRef = useRef<{ lat: number; lng: number; accuracy: number } | null>(null);
   const geofencesRef = useRef(geofences);
   const bufferMetersRef = useRef(bufferMeters);
-  const accuracyThresholdRef = useRef(accuracyThreshold);
 
   useEffect(() => {
     geofencesRef.current = geofences;
@@ -98,26 +104,17 @@ export function useGeolocation(options: UseGeolocationOptions): GeolocationState
   useEffect(() => {
     bufferMetersRef.current = bufferMeters;
   }, [bufferMeters]);
-  useEffect(() => {
-    accuracyThresholdRef.current = accuracyThreshold;
-  }, [accuracyThreshold]);
 
   const updatePosition = useCallback((pos: GeolocationPosition) => {
-    const { latitude, longitude, accuracy } = pos.coords;
-
-    // Accept if we have no position yet, or if this fix is more accurate than what we have
-    if (hasPositionRef.current && accuracy > accuracyThresholdRef.current) {
-      const currentPos = positionRef.current;
-      if (currentPos && accuracy >= currentPos.accuracy) {
-        return;
-      }
-    }
+    const { latitude, longitude } = pos.coords;
+    const accuracy = normalizeAccuracy(pos.coords.accuracy);
 
     const newPosition = { lat: latitude, lng: longitude, accuracy };
     positionRef.current = newPosition;
     setPosition(newPosition);
     hasPositionRef.current = true;
     setIsLocating(false);
+    setError(null);
 
     if (locatingTimerRef.current) {
       clearTimeout(locatingTimerRef.current);
@@ -149,7 +146,7 @@ export function useGeolocation(options: UseGeolocationOptions): GeolocationState
         clearTimeout(debounceTimerRef.current);
       }
 
-      // Immediate update for first position or high accuracy jump; debounce subsequent noisy updates
+      // First fix updates immediately; subsequent fixes are debounced to avoid jitter
       const isFirst = !hasPositionRef.current;
       const delay = isFirst ? 0 : LOCATION_DEBOUNCE_MS;
 
