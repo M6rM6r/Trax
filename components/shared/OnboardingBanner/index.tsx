@@ -21,7 +21,8 @@ export default function OnboardingBanner({
 }: OnboardingBannerProps) {
   const t = useTranslations("Onboarding");
   const router = useRouter();
-  const { companyName, companyId } = useAuthStore();
+  const companyName = useAuthStore((s) => s.companyName);
+  const companyId = useAuthStore((s) => s.companyId);
   const [dismissed, setDismissed] = useState(true);
 
   const DISMISS_KEY = `trax_onboarding_dismissed_${companyId ?? "default"}`;

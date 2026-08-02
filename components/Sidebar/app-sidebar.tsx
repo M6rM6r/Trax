@@ -25,7 +25,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const t = useTranslations("Navigation");
   const pathname = usePathname();
   const router = useRouter();
-  const { user, clearUser } = useAuthStore();
+  const user = useAuthStore((s) => s.user);
+  const clearUser = useAuthStore((s) => s.clearUser);
   const mainNavItems = useMainNavItems({ pathname, role: user?.role });
   const sidebar = useSidebar();
 

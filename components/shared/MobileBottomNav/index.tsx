@@ -31,7 +31,7 @@ function useEmployeeNavItems() {
 export default function MobileBottomNav() {
   const t = useTranslations("Navigation");
   const pathname = usePathname();
-  const { role } = useAuthStore();
+  const role = useAuthStore((s) => s.role);
   const primaryItems = usePrimaryItems();
   const companyItem = useCompanyItem();
   const employeeItems = useEmployeeNavItems();

@@ -83,6 +83,17 @@ export const dashboardApi = {
     const fromStr = typeof from === "string" ? from : undefined;
     const referenceDate = toStr ? new Date(`${toStr}T00:00:00`) : new Date();
     const todayStr = toStr || referenceDate.toLocaleDateString("sv-SE");
+
+    const now = new Date();
+    const isToday = todayStr === now.toLocaleDateString("sv-SE");
+    const deadlineDate = isToday
+      ? now
+      : (() => {
+          const d = new Date(referenceDate);
+          d.setHours(23, 59, 59, 999);
+          return d;
+        })();
+
     const todayRecords = attendance.filter((record) => record.date === todayStr);
     const rangeRecords =
       fromStr && toStr
@@ -116,7 +127,7 @@ export const dashboardApi = {
       activeEmployees: employees.filter((employee) => employee.status === "active").length,
       inactiveEmployees: employees.filter((employee) => employee.status === "inactive").length,
       presentToday,
-      absentToday: isPastCheckInDeadline(companySettings, referenceDate)
+      absentToday: isPastCheckInDeadline(companySettings, deadlineDate)
         ? Math.max(0, activeEmployees.length - todayRecords.length)
         : 0,
       lateToday,

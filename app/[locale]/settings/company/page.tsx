@@ -90,8 +90,9 @@ const fontSizeMap: Record<string, string> = {
 
 export default function CompanySettingsPage() {
   const t = useTranslations("CompanySettings");
-  const { role } = useAuthStore();
-  const settings = useCompanySettingsStore();
+  const role = useAuthStore((s) => s.role);
+  const loaded = useCompanySettingsStore((s) => s.loaded);
+  const setSettings = useCompanySettingsStore((s) => s.setSettings);
   const saveMutation = useSaveCompanySettings();
   const [activeTab, setActiveTab] = useState<TabId>("work");
   const [local, setLocal] = useState<CompanySettings | null>(null);
@@ -102,15 +103,16 @@ export default function CompanySettingsPage() {
   const [fontSize, setFontSize] = useState("medium");
 
   useEffect(() => {
-    if (settings.loaded) {
-      const { loaded, setSettings, resetSettings, setLoaded, ...rest } = settings;
-      void loaded;
-      void setSettings;
-      void resetSettings;
-      void setLoaded;
+    if (loaded) {
+      const snap = useCompanySettingsStore.getState();
+      const { loaded: _l, setSettings: _ss, resetSettings: _rs, setLoaded: _sl, ...rest } = snap;
+      void _l;
+      void _ss;
+      void _rs;
+      void _sl;
       setLocal(rest as CompanySettings);
     }
-  }, [settings.loaded]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [loaded]);
 
   useEffect(() => {
     const saved = localStorage.getItem("trax_settings");
@@ -153,7 +155,7 @@ export default function CompanySettingsPage() {
     hapticTap();
     try {
       await saveMutation.mutateAsync(local);
-      settings.setSettings(local);
+      setSettings(local);
       hapticSuccess();
       toastSuccess(t("saveSuccess"));
     } catch (err) {

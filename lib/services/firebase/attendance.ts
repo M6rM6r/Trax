@@ -72,12 +72,16 @@ export const attendanceApi = {
   }): Promise<AttendanceRecord> {
     const currentUser = await ensureAuth();
     const companyId = requireCompanyId();
+    const gpsAccuracy = payload.accuracy ?? 0;
     let geofence: Geofence | null = null;
     if (payload.geofenceId) {
       try {
         const geofenceDoc = await getDoc(doc(requireDb(), "geofences", String(payload.geofenceId)));
         if (geofenceDoc.exists()) {
-          geofence = mapGeofence(geofenceDoc.id, geofenceDoc.data());
+          const candidate = mapGeofence(geofenceDoc.id, geofenceDoc.data());
+          if (candidate.active !== false) {
+            geofence = candidate;
+          }
         }
       } catch {
         // Geofence lookup failed — proceed without geofence name
@@ -100,7 +104,7 @@ export const attendanceApi = {
             companyGeofences.find(
               (g) =>
                 calculateDistance(payload.lat, payload.lng, g.lat, g.lng) <=
-                g.radius + GEOFENCE_DISTANCE_BUFFER_METERS
+                g.radius + GEOFENCE_DISTANCE_BUFFER_METERS + gpsAccuracy
             ) ?? null;
         }
       } catch {
@@ -118,7 +122,6 @@ export const attendanceApi = {
 
     if (geofence) {
       const dist = calculateDistance(payload.lat, payload.lng, geofence.lat, geofence.lng);
-      const gpsAccuracy = payload.accuracy ?? 0;
       const within = dist <= geofence.radius + GEOFENCE_DISTANCE_BUFFER_METERS + gpsAccuracy;
       if (!within && requireGeofence && !allowOutside) {
         throw new Error("Check-in location is outside the allowed geofence area");
@@ -130,7 +133,12 @@ export const attendanceApi = {
         }
       } else if (requireGeofence && !allowOutside) {
         const active = await getDocs(
-          query(collection(requireDb(), "geofences"), where("active", "==", true), limit(1))
+          query(
+            collection(requireDb(), "geofences"),
+            where("company_id", "==", companyId),
+            where("active", "==", true),
+            limit(1)
+          )
         );
         if (!active.empty) {
           throw new Error("Check-in requires a geofence and none was provided");

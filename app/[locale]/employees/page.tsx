@@ -71,7 +71,7 @@ export default function EmployeesPage() {
   const [resetPasswordValue, setResetPasswordValue] = useState("");
   const [showResetPassword, setShowResetPassword] = useState(false);
   const locale = useLocale();
-  const { role } = useAuthStore();
+  const role = useAuthStore((s) => s.role);
   const [showAddForm, setShowAddForm] = useState(false);
   const [showBulkImport, setShowBulkImport] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<Employee | null>(null);

@@ -15,30 +15,35 @@ export function useLiveTracking() {
   const refetch = useCallback(() => setRefetchKey((k) => k + 1), []);
 
   useEffect(() => {
+    let mounted = true;
     if (!companyId) {
       setData([]);
       setIsLoading(false);
+      setIsError(false);
       return;
     }
 
     setIsLoading(true);
     setIsError(false);
 
-    const unsubscribe = firebaseData.tracking.onSnapshotLive(
-      (items) => {
+    // One-time fetch for initial snapshot. Live updates are handled by useLiveTrackingSocket via subscribeRealtimeEvents.
+    // This avoids duplicating the locations onSnapshot listener.
+    (async () => {
+      try {
+        const items = await firebaseData.tracking.live();
+        if (!mounted) return;
         setData(items);
         setIsLoading(false);
-      },
-      (error) => {
-        console.error("[useLiveTracking] onSnapshot error:", error);
+      } catch (error) {
+        if (!mounted) return;
+        console.error("[useLiveTracking] fetch error:", error);
         setIsError(true);
         setIsLoading(false);
       }
-    );
+    })();
 
     return () => {
-      unsubscribe();
-      setData([]);
+      mounted = false;
     };
   }, [companyId, refetchKey]);
 

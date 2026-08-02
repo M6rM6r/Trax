@@ -79,7 +79,7 @@ export default function AttendanceReportsPage() {
     isLoading: isRetentionLoading,
     isError: isRetentionError,
   } = useRetentionInsights(attendance, employees);
-  const { role } = useAuthStore();
+  const role = useAuthStore((s) => s.role);
   const { toast } = useToast();
   const t = useTranslations("AttendanceReports");
 

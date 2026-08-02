@@ -67,7 +67,8 @@ export function subscribeRealtimeEvents(callbacks: RealtimeCallbacks): () => voi
     return () => undefined;
   }
 
-  connectionCount++;
+  // Only count as a live connection if we attach at least one listener
+  let attached = 0;
 
   if (callbacks.onLocationUpdate) {
     const base = collection(db, "locations");
@@ -97,6 +98,7 @@ export function subscribeRealtimeEvents(callbacks: RealtimeCallbacks): () => voi
       }
     );
     unsubscribers.push(unsubLocations);
+    attached++;
   }
 
   if (callbacks.onAttendanceCheckIn) {
@@ -127,6 +129,7 @@ export function subscribeRealtimeEvents(callbacks: RealtimeCallbacks): () => voi
       }
     );
     unsubscribers.push(unsubAttendance);
+    attached++;
   }
 
   if (callbacks.onAnomalyDetected || callbacks.onGeofenceBreach) {
@@ -163,10 +166,11 @@ export function subscribeRealtimeEvents(callbacks: RealtimeCallbacks): () => voi
       }
     );
     unsubscribers.push(unsubNotifications);
+    attached++;
   }
 
   return () => {
     unsubscribers.forEach((unsubscribe) => unsubscribe());
-    connectionCount = Math.max(0, connectionCount - 1);
+    if (attached > 0) connectionCount = Math.max(0, connectionCount - 1);
   };
 }

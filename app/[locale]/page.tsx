@@ -13,6 +13,7 @@ import {
   useGeofences,
   useLiveTracking,
   queryKeys,
+  toApiDate,
 } from "@/hooks/useApi";
 import { useLiveTrackingSocket } from "@/hooks/useLiveTrackingSocket";
 import dynamic from "next/dynamic";
@@ -22,7 +23,6 @@ import DashboardSkeleton from "@/components/shared/Skeletons/DashboardSkeleton";
 import { DataTable } from "@/components/shared/DataTable/DataTable";
 import type { AttendanceRecord, DashboardStats } from "@/lib/types/trackingTypes";
 import { useAuthStore } from "@/stores/useAuthStore";
-import { useCompanySettingsStore } from "@/stores/useCompanySettingsStore";
 import AttendancePieChart from "@/components/dashboard/AttendancePieChart";
 const LiveMapWidget = dynamic(() => import("@/components/dashboard/LiveMapWidget"), { ssr: false });
 import { resolveAttendanceLocation } from "@/lib/utils/geo";
@@ -42,14 +42,36 @@ export default function DashboardPage() {
   const locale = useLocale();
   const dateLocale = locale === "ar" ? "ar-SA-u-nu-latn" : "en-US";
   const timeLocale = locale === "ar" ? "ar-SA-u-nu-latn" : "en-US";
-  const { user, companyName, role } = useAuthStore();
-  const { workStartTime, gracePeriodMinutes, loaded: settingsLoaded } = useCompanySettingsStore();
+  const user = useAuthStore((s) => s.user);
+  const companyName = useAuthStore((s) => s.companyName);
+  const role = useAuthStore((s) => s.role);
   const queryClient = useQueryClient();
   const [dateRange] = useState<DateRange>(getDefaultDateRange());
-  const { isLoading, isError, refetch } = useDashboardData(dateRange);
-  const { data: attendanceData } = useAttendance();
+  const attendanceDateRange = useMemo(
+    () => ({ from: toApiDate(dateRange.from), to: toApiDate(dateRange.to) }),
+    [dateRange.from, dateRange.to]
+  );
+  const { data: dashboardData, isLoading, isError, refetch } = useDashboardData(dateRange);
+  const { data: attendanceData } = useAttendance({ dateRange: attendanceDateRange });
   const { data: employees = [] } = useEmployees();
   const { data: geofences = [] } = useGeofences();
+  const stats: DashboardStats = dashboardData?.stats ?? {
+    totalEmployees: employees.length,
+    activeEmployees: 0,
+    inactiveEmployees: 0,
+    presentToday: 0,
+    absentToday: 0,
+    lateToday: 0,
+    checkedOutToday: 0,
+    earlyCheckoutsToday: 0,
+    onTimeRate: 0,
+    avgCheckInTime: "N/A",
+    avgWorkedHours: 0,
+    totalGeofences: geofences.length,
+    fieldToday: 0,
+    officeToday: 0,
+    hourlyToday: 0,
+  };
 
   const resolveLocationName = useCallback(
     (record: AttendanceRecord) => resolveAttendanceLocation(record, geofences, employees),
@@ -139,84 +161,28 @@ export default function DashboardPage() {
     };
   }, [queryClient, t]);
 
-  const liveStats: DashboardStats = useMemo(() => {
-    const active = (employees ?? []).filter((e) => e.status === "active");
-    const inactive = (employees ?? []).filter((e) => e.status !== "active");
-    const today = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Riyadh" });
-    const todayRecords = (attendanceData ?? []).filter((r) => r.date === today);
-    const presentToday = todayRecords.filter(
-      (r) => r.status === "present" || (r.status === "checked_out" && !((r.lateMinutes ?? 0) > 0))
-    ).length;
-    const lateToday = todayRecords.filter(
-      (r) => r.status === "late" || (r.status === "checked_out" && (r.lateMinutes ?? 0) > 0)
-    ).length;
-    const checkedOutToday = todayRecords.filter((r) => r.status === "checked_out").length;
-    const earlyCheckoutsToday = todayRecords.filter((r) => r.earlyCheckout).length;
-    const isPastDeadline = (() => {
-      if (!settingsLoaded || !workStartTime) return false;
-      const [h, m] = workStartTime.split(":").map(Number);
-      if (Number.isNaN(h) || Number.isNaN(m)) return false;
-      const deadline = new Date();
-      deadline.setHours(h, m + (gracePeriodMinutes ?? 0), 0, 0);
-      return new Date() >= deadline;
-    })();
-    const absentToday = isPastDeadline ? Math.max(0, active.length - todayRecords.length) : 0;
-    const punctualBase = presentToday + lateToday;
-    const onTimeRate =
-      punctualBase > 0 ? Number(((presentToday / punctualBase) * 100).toFixed(1)) : 0;
-    const worked = todayRecords
-      .map((r) => r.workedHours)
-      .filter((h): h is number => typeof h === "number" && h > 0);
-    const avgWorkedHours =
-      worked.length > 0
-        ? Number((worked.reduce((a, b) => a + b, 0) / worked.length).toFixed(1))
-        : 0;
-    const checkInTimes = todayRecords
-      .map((r) => r.checkInTime)
-      .filter((v): v is string => typeof v === "string" && v !== "");
-    const avgCheckInTime =
-      checkInTimes.length > 0 ? checkInTimes[Math.floor(checkInTimes.length / 2)] : "N/A";
-    return {
-      totalEmployees: (employees ?? []).length,
-      activeEmployees: active.length,
-      inactiveEmployees: inactive.length,
-      presentToday,
-      lateToday,
-      absentToday,
-      checkedOutToday,
-      earlyCheckoutsToday,
-      onTimeRate,
-      avgCheckInTime,
-      avgWorkedHours,
-      totalGeofences: (geofences ?? []).length,
-      fieldToday: todayRecords.filter((r) => r.attendanceMode === "field").length,
-      officeToday: todayRecords.filter((r) => r.attendanceMode === "office_two_shift").length,
-      hourlyToday: todayRecords.filter((r) => r.attendanceMode === "hourly").length,
-    };
-  }, [attendanceData, employees, geofences, settingsLoaded, workStartTime, gracePeriodMinutes]);
-
   const attendanceDistribution = useMemo(
     () => [
       {
         name: t("statusPresent"),
-        value: liveStats.presentToday,
+        value: stats.presentToday,
         icon: UserCheck,
         color: COLORS.present,
       },
       {
         name: t("statusLate"),
-        value: liveStats.lateToday,
+        value: stats.lateToday,
         icon: Clock,
         color: COLORS.late,
       },
       {
         name: t("statusAbsent"),
-        value: liveStats.absentToday,
+        value: stats.absentToday,
         icon: UserX,
         color: COLORS.absent,
       },
     ],
-    [liveStats, t]
+    [stats, t]
   );
 
   const recentAttendance = useMemo(() => {

@@ -42,7 +42,9 @@ const Page = () => {
     () => searchParams.get("identifier")?.trim() || "",
     [searchParams]
   );
-  const { setUser, setRememberMe, clearUser } = useAuthStore();
+  const setUser = useAuthStore((s) => s.setUser);
+  const setRememberMe = useAuthStore((s) => s.setRememberMe);
+  const clearUser = useAuthStore((s) => s.clearUser);
   const router = useRouter();
   const [showSuccess, setShowSuccess] = useState(false);
 

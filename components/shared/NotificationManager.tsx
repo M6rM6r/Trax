@@ -17,9 +17,20 @@ function parseTimeToMinutes(timeStr: string): number {
 
 export default function NotificationManager() {
   const t = useTranslations("Notifications");
-  const { user, role, companyId } = useAuthStore();
-  const { addNotification, initialize } = useNotificationStore();
-  const companySettings = useCompanySettingsStore();
+  const user = useAuthStore((s) => s.user);
+  const role = useAuthStore((s) => s.role);
+  const companyId = useAuthStore((s) => s.companyId);
+  const addNotification = useNotificationStore((s) => s.addNotification);
+  const initialize = useNotificationStore((s) => s.initialize);
+  const pushNotificationsEnabled = useCompanySettingsStore((s) => s.pushNotificationsEnabled);
+  const notificationsEnabled = useCompanySettingsStore((s) => s.notificationsEnabled);
+  const checkInReminderEnabled = useCompanySettingsStore((s) => s.checkInReminderEnabled);
+  const checkInReminderTime = useCompanySettingsStore((s) => s.checkInReminderTime);
+  const workStartTime = useCompanySettingsStore((s) => s.workStartTime);
+  const gracePeriodMinutes = useCompanySettingsStore((s) => s.gracePeriodMinutes);
+  const weekendDays = useCompanySettingsStore((s) => s.weekendDays);
+  const lateAlertsEnabled = useCompanySettingsStore((s) => s.lateAlertsEnabled);
+  const lateThresholdMinutes = useCompanySettingsStore((s) => s.lateThresholdMinutes);
 
   useEffect(() => {
     initialize({
@@ -40,7 +51,7 @@ export default function NotificationManager() {
   useEffect(() => {
     if (permissionRequested.current) return;
     if (typeof window === "undefined" || !("Notification" in window)) return;
-    if (!companySettings.pushNotificationsEnabled) return;
+    if (!pushNotificationsEnabled) return;
     if (Notification.permission === "default") {
       permissionRequested.current = true;
       const timer = setTimeout(() => {
@@ -48,17 +59,16 @@ export default function NotificationManager() {
       }, 5000);
       return () => clearTimeout(timer);
     }
-  }, [companySettings.pushNotificationsEnabled]);
+  }, [pushNotificationsEnabled]);
 
   // Check-in reminder for employees
   useEffect(() => {
     if (!user || role === "company") return;
-    if (!companySettings.notificationsEnabled || !companySettings.checkInReminderEnabled) return;
+    if (!notificationsEnabled || !checkInReminderEnabled) return;
     if (typeof window === "undefined" || !("Notification" in window)) return;
 
-    const reminderMinutes = parseTimeToMinutes(companySettings.checkInReminderTime);
-    const lateMinutes =
-      parseTimeToMinutes(companySettings.workStartTime) + companySettings.gracePeriodMinutes;
+    const reminderMinutes = parseTimeToMinutes(checkInReminderTime);
+    const lateMinutes = parseTimeToMinutes(workStartTime) + gracePeriodMinutes;
 
     const checkReminder = () => {
       const now = new Date();
@@ -67,14 +77,14 @@ export default function NotificationManager() {
       const lastReminder = localStorage.getItem(LAST_REMINDER_KEY);
 
       if (lastReminder === today) return;
-      if (companySettings.weekendDays.includes(now.getDay())) return;
+      if (weekendDays.includes(now.getDay())) return;
 
       if (nowMinutes >= reminderMinutes && nowMinutes < lateMinutes + 30) {
         localStorage.setItem(LAST_REMINDER_KEY, today);
         const title = t("checkInReminderTitle");
         const body = t("checkInReminderBody");
 
-        if (companySettings.pushNotificationsEnabled && Notification.permission === "granted") {
+        if (pushNotificationsEnabled && Notification.permission === "granted") {
           new Notification(title, { body, icon: "/images/icon-192.png", tag: "check-in-reminder" });
         }
 
@@ -93,26 +103,24 @@ export default function NotificationManager() {
     user,
     role,
     addNotification,
-    companySettings.notificationsEnabled,
-    companySettings.checkInReminderEnabled,
-    companySettings.checkInReminderTime,
-    companySettings.workStartTime,
-    companySettings.gracePeriodMinutes,
-    companySettings.pushNotificationsEnabled,
-    companySettings.weekendDays,
+    notificationsEnabled,
+    checkInReminderEnabled,
+    checkInReminderTime,
+    workStartTime,
+    gracePeriodMinutes,
+    pushNotificationsEnabled,
+    weekendDays,
     t,
   ]);
 
   // Late employee alerts for admins
   useEffect(() => {
     if (role !== "company") return;
-    if (!companySettings.notificationsEnabled || !companySettings.lateAlertsEnabled) return;
+    if (!notificationsEnabled || !lateAlertsEnabled) return;
     if (!employees.length || !attendance.length) return;
 
-    const lateThresholdMinutes =
-      parseTimeToMinutes(companySettings.workStartTime) +
-      companySettings.gracePeriodMinutes +
-      companySettings.lateThresholdMinutes;
+    const lateThresholdComputed =
+      parseTimeToMinutes(workStartTime) + gracePeriodMinutes + lateThresholdMinutes;
 
     const checkLateEmployees = () => {
       const now = new Date();
@@ -120,8 +128,8 @@ export default function NotificationManager() {
       const today = now.toLocaleDateString("sv-SE");
       const lastCheck = localStorage.getItem(LAST_LATE_CHECK_KEY);
 
-      if (companySettings.weekendDays.includes(now.getDay())) return;
-      if (nowMinutes < lateThresholdMinutes) return;
+      if (weekendDays.includes(now.getDay())) return;
+      if (nowMinutes < lateThresholdComputed) return;
       if (lastCheck === today) return;
 
       const checkedInToday = new Set(
@@ -144,7 +152,7 @@ export default function NotificationManager() {
         if (
           typeof window !== "undefined" &&
           "Notification" in window &&
-          companySettings.pushNotificationsEnabled &&
+          pushNotificationsEnabled &&
           Notification.permission === "granted"
         ) {
           new Notification(title, { body, icon: "/images/icon-192.png", tag: "late-alert" });
@@ -170,13 +178,13 @@ export default function NotificationManager() {
     employees,
     attendance,
     addNotification,
-    companySettings.notificationsEnabled,
-    companySettings.lateAlertsEnabled,
-    companySettings.workStartTime,
-    companySettings.gracePeriodMinutes,
-    companySettings.lateThresholdMinutes,
-    companySettings.pushNotificationsEnabled,
-    companySettings.weekendDays,
+    notificationsEnabled,
+    lateAlertsEnabled,
+    workStartTime,
+    gracePeriodMinutes,
+    lateThresholdMinutes,
+    pushNotificationsEnabled,
+    weekendDays,
     t,
   ]);
 

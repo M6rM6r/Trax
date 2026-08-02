@@ -73,6 +73,7 @@ export const companiesApi = {
   },
 
   async getSettings(): Promise<Record<string, unknown> | null> {
+    await ensureAuth();
     const cid = requireCompanyId();
     const ref = doc(requireDb(), "company_settings", String(cid));
     const snapshot = await getDoc(ref);
@@ -80,6 +81,7 @@ export const companiesApi = {
   },
 
   async saveSettings(settings: Record<string, unknown>): Promise<void> {
+    await ensureAuth();
     const cid = requireCompanyId();
     const ref = doc(requireDb(), "company_settings", String(cid));
     await setDoc(ref, { ...cleanPayload(settings), updatedAt: serverTimestamp() }, { merge: true });

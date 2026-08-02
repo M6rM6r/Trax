@@ -30,7 +30,7 @@ interface CompanyResult {
 
 export default function MastermindCompaniesPage() {
   const t = useTranslations("MasterMind");
-  const { user } = useAuthStore();
+  const user = useAuthStore((s) => s.user);
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [created, setCreated] = useState<{

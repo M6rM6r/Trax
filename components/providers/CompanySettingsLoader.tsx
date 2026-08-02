@@ -7,8 +7,9 @@ import { useCompanySettings } from "@/hooks/useApi";
 import { defaultCompanySettings } from "@/lib/types/companySettings";
 
 export default function CompanySettingsLoader() {
-  const { user } = useAuthStore();
-  const { setSettings, setLoaded } = useCompanySettingsStore();
+  const user = useAuthStore((s) => s.user);
+  const setSettings = useCompanySettingsStore((s) => s.setSettings);
+  const setLoaded = useCompanySettingsStore((s) => s.setLoaded);
   const { data: firestoreSettings } = useCompanySettings({ enabled: !!user });
 
   useEffect(() => {

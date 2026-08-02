@@ -17,18 +17,44 @@ function ToggleSwitch({ enabled, onChange }: { enabled: boolean; onChange: () =>
 
 export default function NotificationSettingsPage() {
   const t = useTranslations("NotificationSettings");
-  const settings = useCompanySettingsStore();
+  const attendanceAlertsEnabled = useCompanySettingsStore((s) => s.attendanceAlertsEnabled);
+  const lateAlertsEnabled = useCompanySettingsStore((s) => s.lateAlertsEnabled);
+  const geofenceBreachAlertsEnabled = useCompanySettingsStore((s) => s.geofenceBreachAlertsEnabled);
+  const emailNotificationsEnabled = useCompanySettingsStore((s) => s.emailNotificationsEnabled);
+  const pushNotificationsEnabled = useCompanySettingsStore((s) => s.pushNotificationsEnabled);
+  const setSettings = useCompanySettingsStore((s) => s.setSettings);
   const saveSettings = useSaveCompanySettings();
 
-  const toggleSetting = (key: keyof typeof settings, label: string) => {
-    const next = !settings[key];
-    settings.setSettings({ [key]: next } as Partial<typeof settings>);
-    saveSettings.mutate({ [key]: next } as Partial<typeof settings>, {
-      onSuccess: () => toastSuccess(label),
-      onError: () => {
-        settings.setSettings({ [key]: !next } as Partial<typeof settings>);
-      },
-    });
+  const toggleSetting = (
+    key:
+      | "attendanceAlertsEnabled"
+      | "lateAlertsEnabled"
+      | "geofenceBreachAlertsEnabled"
+      | "emailNotificationsEnabled"
+      | "pushNotificationsEnabled",
+    label: string
+  ) => {
+    const current =
+      key === "attendanceAlertsEnabled"
+        ? attendanceAlertsEnabled
+        : key === "lateAlertsEnabled"
+          ? lateAlertsEnabled
+          : key === "geofenceBreachAlertsEnabled"
+            ? geofenceBreachAlertsEnabled
+            : key === "emailNotificationsEnabled"
+              ? emailNotificationsEnabled
+              : pushNotificationsEnabled;
+    const next = !current;
+    setSettings({ [key]: next });
+    saveSettings.mutate(
+      { [key]: next },
+      {
+        onSuccess: () => toastSuccess(label),
+        onError: () => {
+          setSettings({ [key]: !next });
+        },
+      }
+    );
   };
 
   const notificationItems = [
@@ -36,35 +62,35 @@ export default function NotificationSettingsPage() {
       icon: UserCheck,
       title: t("attendanceAlerts"),
       description: t("attendanceAlertsDescription"),
-      enabled: settings.attendanceAlertsEnabled,
+      enabled: attendanceAlertsEnabled,
       onToggle: () => toggleSetting("attendanceAlertsEnabled", t("attendanceAlerts")),
     },
     {
       icon: Clock,
       title: t("lateAlerts"),
       description: t("lateAlertsDescription"),
-      enabled: settings.lateAlertsEnabled,
+      enabled: lateAlertsEnabled,
       onToggle: () => toggleSetting("lateAlertsEnabled", t("lateAlerts")),
     },
     {
       icon: MapPin,
       title: t("geofenceExitAlerts"),
       description: t("geofenceExitAlertsDescription"),
-      enabled: settings.geofenceBreachAlertsEnabled,
+      enabled: geofenceBreachAlertsEnabled,
       onToggle: () => toggleSetting("geofenceBreachAlertsEnabled", t("geofenceExitAlerts")),
     },
     {
       icon: Mail,
       title: t("emailNotifications"),
       description: t("emailNotificationsDescription"),
-      enabled: settings.emailNotificationsEnabled,
+      enabled: emailNotificationsEnabled,
       onToggle: () => toggleSetting("emailNotificationsEnabled", t("emailNotifications")),
     },
     {
       icon: Smartphone,
       title: t("pushNotifications"),
       description: t("pushNotificationsDescription"),
-      enabled: settings.pushNotificationsEnabled,
+      enabled: pushNotificationsEnabled,
       onToggle: () => toggleSetting("pushNotificationsEnabled", t("pushNotifications")),
     },
   ];
