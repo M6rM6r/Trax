@@ -57,6 +57,9 @@ export default function MastermindCompaniesPage() {
     queryKey: ["mastermind", "companies"],
     queryFn: () => firebaseData.companies.list(),
     enabled: user?.role === "mastermind",
+    staleTime: 60 * 1000,
+    refetchOnWindowFocus: false,
+    refetchIntervalInBackground: false,
   });
 
   if (user?.role !== "mastermind") {
