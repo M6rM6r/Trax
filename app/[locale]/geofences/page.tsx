@@ -416,6 +416,9 @@ export default function GeofencesPage() {
       drawSourceRef.current = null;
       map?.setTarget(undefined);
     };
+    // Intentionally only depends on showAddForm to init the map once when the drawer opens.
+    // Live value sync (lat/lng/radius/color) is handled by the follow-up effect below.
+    // We intentionally avoid re-creating the entire OL map on every value change.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showAddForm]);
 
