@@ -15,6 +15,7 @@ import { queryKeys, toApiDate } from "@/hooks/api/queryKeys";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useCompanySettingsStore } from "@/stores/useCompanySettingsStore";
 import { useGeolocation } from "@/hooks/useGeolocation";
+import { GEOFENCE_DISTANCE_BUFFER_METERS } from "@/lib/utils/geo";
 import { calculateWorkedHours, resolveEmployeeShift, evaluateCheckIn } from "@/lib/utils/shifts";
 import { hapticSuccess, hapticError, hapticTap } from "@/lib/utils/haptics";
 import { toastSuccess, toastError } from "@/hooks/use-toast";
@@ -294,6 +295,7 @@ export function useCheckInPage() {
       employeeName,
       lat: location.lat,
       lng: location.lng,
+      accuracy: location.accuracy,
       geofenceId: geofence?.id ?? null,
       geofenceName: geofence?.name ?? null,
       timestamp,
@@ -463,7 +465,10 @@ export function useCheckInPage() {
 
     const isWithinAutoRange =
       nearestGeofence.distance <=
-      nearestGeofence.geofence.radius + (companySettings.autoCheckInRadiusOffset ?? 0);
+      nearestGeofence.geofence.radius +
+        GEOFENCE_DISTANCE_BUFFER_METERS +
+        (currentLocation?.accuracy ?? 0) +
+        (companySettings.autoCheckInRadiusOffset ?? 0);
 
     if (isWithinAutoRange) {
       if (autoCheckInTimerRef.current) return;

@@ -73,11 +73,15 @@ export const attendanceApi = {
     const currentUser = await ensureAuth();
     const companyId = requireCompanyId();
     let geofence: Geofence | null = null;
+    let companyGeofences: Geofence[] = [];
     if (payload.geofenceId) {
       try {
         const geofenceDoc = await getDoc(doc(requireDb(), "geofences", String(payload.geofenceId)));
         if (geofenceDoc.exists()) {
-          geofence = mapGeofence(geofenceDoc.id, geofenceDoc.data());
+          const parsed = mapGeofence(geofenceDoc.id, geofenceDoc.data());
+          if (parsed.active !== false) {
+            geofence = parsed;
+          }
         }
       } catch {
         // Geofence lookup failed — proceed without geofence name
@@ -91,7 +95,7 @@ export const attendanceApi = {
 
     if (!geofence) {
       try {
-        const companyGeofences = await queryByCompanyId(
+        companyGeofences = await queryByCompanyId(
           collection(requireDb(), "geofences"),
           [],
           mapGeofence
@@ -135,13 +139,12 @@ export const attendanceApi = {
         if (requireGeofence && !allowOutside) {
           throw new Error("Geofence not found or inactive");
         }
-      } else if (requireGeofence && !allowOutside) {
-        const active = await getDocs(
-          query(collection(requireDb(), "geofences"), where("active", "==", true), limit(1))
-        );
-        if (!active.empty) {
-          throw new Error("Check-in requires a geofence and none was provided");
-        }
+      } else if (
+        requireGeofence &&
+        !allowOutside &&
+        companyGeofences.some((g) => g.active !== false)
+      ) {
+        throw new Error("Check-in requires a geofence and none was provided");
       }
     }
 

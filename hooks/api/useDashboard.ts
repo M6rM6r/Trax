@@ -31,7 +31,6 @@ export function useDashboardData(dateRange?: DashboardDateRange) {
       String(gracePeriodMinutes ?? ""),
     ],
     staleTime: 30 * 1000,
-    refetchInterval: 30 * 1000,
     refetchOnWindowFocus: false,
     refetchIntervalInBackground: false,
     enabled: Boolean(companyId),
