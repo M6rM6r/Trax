@@ -49,7 +49,7 @@ export default function LiveMapPage() {
   const mapRef = useRef<HTMLDivElement>(null);
   const { data: initialTracking = [], isLoading, isError, refetch } = useLiveTracking();
   const { data: geofences = [] } = useGeofences();
-  const { role } = useAuthStore();
+  const role = useAuthStore((s) => s.role);
   const {
     employees: liveTracking,
     isConnected: socketConnected,

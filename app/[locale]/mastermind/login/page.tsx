@@ -27,7 +27,7 @@ export default function MastermindLoginPage() {
   const t = useTranslations("MasterMind");
   const locale = useLocale();
   const router = useRouter();
-  const { setUser } = useAuthStore();
+  const setUser = useAuthStore((s) => s.setUser);
 
   const [email, setEmail] = useState(MASTERMIND_EMAIL);
   const [password, setPassword] = useState("");

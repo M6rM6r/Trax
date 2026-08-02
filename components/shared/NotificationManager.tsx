@@ -17,8 +17,11 @@ function parseTimeToMinutes(timeStr: string): number {
 
 export default function NotificationManager() {
   const t = useTranslations("Notifications");
-  const { user, role, companyId } = useAuthStore();
-  const { addNotification, initialize } = useNotificationStore();
+  const user = useAuthStore((s) => s.user);
+  const role = useAuthStore((s) => s.role);
+  const companyId = useAuthStore((s) => s.companyId);
+  const addNotification = useNotificationStore((s) => s.addNotification);
+  const initialize = useNotificationStore((s) => s.initialize);
   const notificationsEnabled = useCompanySettingsStore((s) => s.notificationsEnabled);
   const checkInReminderEnabled = useCompanySettingsStore((s) => s.checkInReminderEnabled);
   const checkInReminderTime = useCompanySettingsStore((s) => s.checkInReminderTime);

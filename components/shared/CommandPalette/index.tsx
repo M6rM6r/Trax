@@ -37,7 +37,8 @@ export function CommandPalette() {
   const t = useTranslations("Navigation");
   const [open, setOpen] = useState(false);
   const router = useRouter();
-  const { clearUser, token } = useAuthStore();
+  const clearUser = useAuthStore((s) => s.clearUser);
+  const token = useAuthStore((s) => s.token);
   const { data: employees = [] } = useEmployees({ enabled: open && !!token });
 
   const handleLogout = useCallback(async () => {

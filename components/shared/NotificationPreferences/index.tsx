@@ -79,7 +79,7 @@ export default function NotificationPreferences() {
   const t = useTranslations("Notifications");
   const items = useNotificationItems();
   const { permission, supported, requestPermission, revokePermission } = useFCM();
-  const { user } = useAuthStore();
+  const user = useAuthStore((s) => s.user);
   const [settings, setSettings] = useState<NotificationSettings>(defaults);
   const [saving, setSaving] = useState(false);
 

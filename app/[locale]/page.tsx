@@ -42,8 +42,12 @@ export default function DashboardPage() {
   const locale = useLocale();
   const dateLocale = locale === "ar" ? "ar-SA-u-nu-latn" : "en-US";
   const timeLocale = locale === "ar" ? "ar-SA-u-nu-latn" : "en-US";
-  const { user, companyName, role } = useAuthStore();
-  const { workStartTime, gracePeriodMinutes, loaded: settingsLoaded } = useCompanySettingsStore();
+  const user = useAuthStore((s) => s.user);
+  const companyName = useAuthStore((s) => s.companyName);
+  const role = useAuthStore((s) => s.role);
+  const workStartTime = useCompanySettingsStore((s) => s.workStartTime);
+  const gracePeriodMinutes = useCompanySettingsStore((s) => s.gracePeriodMinutes);
+  const settingsLoaded = useCompanySettingsStore((s) => s.loaded);
   const queryClient = useQueryClient();
   const [dateRange] = useState<DateRange>(getDefaultDateRange());
   const { isLoading, isError, refetch } = useDashboardData(dateRange);

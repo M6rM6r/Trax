@@ -122,7 +122,7 @@ function useRegisterSchema(step: number) {
 export default function RegisterPage() {
   const t = useTranslations("Auth");
   const router = useRouter();
-  const { setUser } = useAuthStore();
+  const setUser = useAuthStore((s) => s.setUser);
   const [step, setStep] = useState(0);
   const INDUSTRIES = useTranslatedIndustries();
   const PLANS = useTranslatedPlans();

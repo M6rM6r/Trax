@@ -47,7 +47,9 @@ const Index = ({
   const { toast } = useToast();
   const router = useRouter();
 
-  const { user, role, clearUser } = useAuthStore();
+  const user = useAuthStore((s) => s.user);
+  const role = useAuthStore((s) => s.role);
+  const clearUser = useAuthStore((s) => s.clearUser);
   const t = useTranslations("Navigation");
   const locale = useLocale();
   const mainNavItems = useMainNavItems({ pathname, role });

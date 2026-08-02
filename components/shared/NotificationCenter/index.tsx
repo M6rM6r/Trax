@@ -53,7 +53,10 @@ function formatTimeAgo(
 
 export default function NotificationCenter() {
   const t = useTranslations("Notifications");
-  const { notifications, markAsRead, markAllAsRead, removeNotification } = useNotificationStore();
+  const notifications = useNotificationStore((s) => s.notifications);
+  const markAsRead = useNotificationStore((s) => s.markAsRead);
+  const markAllAsRead = useNotificationStore((s) => s.markAllAsRead);
+  const removeNotification = useNotificationStore((s) => s.removeNotification);
 
   const [activeTab, setActiveTab] = useState<"all" | "unread">("all");
 

@@ -34,6 +34,7 @@ export default function OfflineSyncManager() {
             employeeName: item.employeeName,
             lat: item.lat,
             lng: item.lng,
+            accuracy: item.accuracy,
             geofenceId: item.geofenceId,
             companySettings: item.settings,
             employee: item.employeeSnapshot ?? null,
