@@ -81,21 +81,38 @@ export default function AttendanceReportsPage() {
   } = useRetentionInsights(attendance, employees);
   const { role } = useAuthStore();
   const { toast } = useToast();
-  const presentCount = attendance.filter(
-    (r) => r.status === "present" || (r.status === "checked_out" && !(r.lateMinutes > 0))
-  ).length;
-  const lateCount = attendance.filter(
-    (r) => r.status === "late" || (r.status === "checked_out" && r.lateMinutes > 0)
-  ).length;
-  const absentCount = attendance.filter((r) => r.status === "absent").length;
-  const onTimeRate =
-    attendance.length > 0 ? ((presentCount / attendance.length) * 100).toFixed(1) : "0";
-  const avgLateMinutes = Math.round(
-    attendance.filter((r) => r.lateMinutes > 0).reduce((sum, r) => sum + r.lateMinutes, 0) /
-      Math.max(attendance.filter((r) => r.lateMinutes > 0).length, 1)
-  );
-
   const t = useTranslations("AttendanceReports");
+
+  const { presentCount, lateCount, absentCount, onTimeRate, avgLateMinutes } = useMemo(() => {
+    let present = 0,
+      late = 0,
+      absent = 0,
+      lateSum = 0,
+      lateCountInner = 0;
+    for (const r of attendance) {
+      const isLate = r.lateMinutes > 0;
+      if (r.status === "absent") {
+        absent++;
+        continue;
+      }
+      if (r.status === "late" || (r.status === "checked_out" && isLate)) {
+        late++;
+        lateSum += r.lateMinutes;
+        lateCountInner++;
+      } else if (r.status === "present" || (r.status === "checked_out" && !isLate)) {
+        present++;
+      }
+    }
+    const rate = attendance.length > 0 ? ((present / attendance.length) * 100).toFixed(1) : "0";
+    const avg = Math.round(lateSum / Math.max(lateCountInner, 1));
+    return {
+      presentCount: present,
+      lateCount: late,
+      absentCount: absent,
+      onTimeRate: rate,
+      avgLateMinutes: avg,
+    };
+  }, [attendance]);
 
   const chartData = useMemo(
     () => [
