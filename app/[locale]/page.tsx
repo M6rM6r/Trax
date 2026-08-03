@@ -55,23 +55,27 @@ export default function DashboardPage() {
   const { data: attendanceData } = useAttendance({ dateRange: attendanceDateRange });
   const { data: employees = [] } = useEmployees();
   const { data: geofences = [] } = useGeofences();
-  const stats: DashboardStats = dashboardData?.stats ?? {
-    totalEmployees: employees.length,
-    activeEmployees: 0,
-    inactiveEmployees: 0,
-    presentToday: 0,
-    absentToday: 0,
-    lateToday: 0,
-    checkedOutToday: 0,
-    earlyCheckoutsToday: 0,
-    onTimeRate: 0,
-    avgCheckInTime: "N/A",
-    avgWorkedHours: 0,
-    totalGeofences: geofences.length,
-    fieldToday: 0,
-    officeToday: 0,
-    hourlyToday: 0,
-  };
+  const stats: DashboardStats = useMemo(
+    () =>
+      dashboardData?.stats ?? {
+        totalEmployees: employees.length,
+        activeEmployees: 0,
+        inactiveEmployees: 0,
+        presentToday: 0,
+        absentToday: 0,
+        lateToday: 0,
+        checkedOutToday: 0,
+        earlyCheckoutsToday: 0,
+        onTimeRate: 0,
+        avgCheckInTime: "N/A",
+        avgWorkedHours: 0,
+        totalGeofences: geofences.length,
+        fieldToday: 0,
+        officeToday: 0,
+        hourlyToday: 0,
+      },
+    [dashboardData?.stats, employees.length, geofences.length]
+  );
 
   const resolveLocationName = useCallback(
     (record: AttendanceRecord) => resolveAttendanceLocation(record, geofences, employees),

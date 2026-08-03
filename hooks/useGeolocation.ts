@@ -52,6 +52,18 @@ function isWithinAnyGeofence(
   let closest: { geofence: Geofence; distance: number } | null = null;
   let withinRange = false;
   for (const geo of geofences) {
+    if (
+      !Number.isFinite(geo.lat) ||
+      !Number.isFinite(geo.lng) ||
+      !Number.isFinite(geo.radius) ||
+      geo.radius <= 0 ||
+      geo.lat < -90 ||
+      geo.lat > 90 ||
+      geo.lng < -180 ||
+      geo.lng > 180
+    ) {
+      continue; // skip invalid geofence data
+    }
     const dist = calculateDistance(lat, lng, geo.lat, geo.lng);
     if (!closest || dist < closest.distance) {
       closest = { geofence: geo, distance: dist };
@@ -59,6 +71,11 @@ function isWithinAnyGeofence(
     if (dist <= geo.radius + bufferMeters + gpsAccuracy) {
       withinRange = true;
     }
+  }
+  // If no valid geofences were present, do not force outside
+  if (geofences.length > 0 && closest === null) {
+    // All were invalid; treat as no geofence configured for within purposes
+    return { nearestGeofence: null, isWithinRange: true };
   }
   return { nearestGeofence: closest, isWithinRange: withinRange };
 }
@@ -103,17 +120,25 @@ export function useGeolocation(options: UseGeolocationOptions): GeolocationState
   }, [accuracyThreshold]);
 
   const updatePosition = useCallback((pos: GeolocationPosition) => {
-    const { latitude, longitude, accuracy } = pos.coords;
+    const { latitude, longitude, accuracy: accRaw } = pos.coords;
+    const accuracy = Number.isFinite(accRaw) && accRaw > 0 ? accRaw : 0;
 
-    // Accept if we have no position yet, or if this fix is more accurate than what we have
-    if (hasPositionRef.current && accuracy > accuracyThresholdRef.current) {
-      const currentPos = positionRef.current;
-      if (currentPos && accuracy >= currentPos.accuracy) {
-        return;
+    const newPosition = { lat: latitude, lng: longitude, accuracy };
+
+    if (hasPositionRef.current) {
+      const current = positionRef.current;
+      if (current) {
+        const better = accuracy > 0 && accuracy < current.accuracy;
+        const moved =
+          calculateDistance(current.lat, current.lng, latitude, longitude) >
+          current.accuracy + accuracy;
+        if (!better && !moved) {
+          // Ignore micro-jitter that is not a clear movement
+          return;
+        }
       }
     }
 
-    const newPosition = { lat: latitude, lng: longitude, accuracy };
     positionRef.current = newPosition;
     setPosition(newPosition);
     hasPositionRef.current = true;

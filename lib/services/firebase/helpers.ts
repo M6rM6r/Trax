@@ -188,7 +188,10 @@ export function mapGeofence(id: string, value: Record<string, unknown>): Geofenc
     address: String(value.address ?? value.location ?? ""),
     lat: toNumber(value.lat ?? value.latitude ?? value.centerLat),
     lng: toNumber(value.lng ?? value.longitude ?? value.centerLng),
-    radius: toNumber(value.radius ?? value.radiusMeters, 100),
+    radius: (() => {
+      const r = toNumber(value.radius ?? value.radiusMeters, 100);
+      return Number.isFinite(r) && r > 0 ? r : 100;
+    })(),
     color: String(value.color ?? "#10b981"),
     active: value.active !== false,
     employeesCount:

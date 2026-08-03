@@ -23,6 +23,10 @@ export const geofencesApi = {
     return geofences.filter(
       (geofence) =>
         geofence.active &&
+        Number.isFinite(geofence.lat) &&
+        Number.isFinite(geofence.lng) &&
+        Number.isFinite(geofence.radius) &&
+        geofence.radius > 0 &&
         geofence.lat >= -90 &&
         geofence.lat <= 90 &&
         geofence.lng >= -180 &&

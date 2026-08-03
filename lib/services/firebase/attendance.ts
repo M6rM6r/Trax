@@ -90,10 +90,13 @@ export const attendanceApi = {
 
     if (!geofence) {
       try {
-        const companyGeofences = await queryByCompanyId(
+        const companyGeofencesRaw = await queryByCompanyId(
           collection(requireDb(), "geofences"),
           [where("active", "==", true)],
           mapGeofence
+        );
+        const companyGeofences = companyGeofencesRaw.filter(
+          (g) => Number.isFinite(g.radius) && g.radius > 0
         );
         if (payload.geofenceId) {
           geofence =
@@ -132,15 +135,20 @@ export const attendanceApi = {
           throw new Error("Geofence not found or inactive");
         }
       } else if (requireGeofence && !allowOutside) {
-        const active = await getDocs(
+        const activeSnap = await getDocs(
           query(
             collection(requireDb(), "geofences"),
             where("company_id", "==", companyId),
             where("active", "==", true),
-            limit(1)
+            limit(50)
           )
         );
-        if (!active.empty) {
+        const hasValid = activeSnap.docs.some((d) => {
+          const r = d.get("radius") ?? d.get("radiusMeters");
+          const n = typeof r === "number" ? r : Number(r);
+          return Number.isFinite(n) && n > 0;
+        });
+        if (hasValid) {
           throw new Error("Check-in requires a geofence and none was provided");
         }
       }

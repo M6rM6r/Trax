@@ -89,9 +89,15 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
               0
             );
             const companyIdValue = profileData.company_id ?? companyProfile?.id ?? null;
-            const resolvedCompanyId: string | undefined =
+            const resolvedCompanyIdRaw =
               typeof companyIdValue === "string" || typeof companyIdValue === "number"
                 ? String(companyIdValue)
+                : undefined;
+            const resolvedCompanyId: string | undefined =
+              resolvedCompanyIdRaw &&
+              resolvedCompanyIdRaw !== "null" &&
+              resolvedCompanyIdRaw !== "undefined"
+                ? resolvedCompanyIdRaw
                 : undefined;
             const resolvedCompanyName = String(
               profileData.company_name ?? companyProfile?.name ?? ""

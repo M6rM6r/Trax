@@ -43,11 +43,19 @@ export const useAuthStore = create<AuthState>()(
               : role
                 ? "company"
                 : null;
+        const cid =
+          companyId === null ||
+          companyId === undefined ||
+          companyId === "" ||
+          companyId === "null" ||
+          companyId === "undefined"
+            ? null
+            : String(companyId);
         set({
           user,
           token,
           role: normalizedRole,
-          companyId: companyId ?? null,
+          companyId: cid,
           companyName: companyName ?? null,
         });
       },
