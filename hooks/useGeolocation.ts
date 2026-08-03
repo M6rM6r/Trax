@@ -34,6 +34,18 @@ function findNearestGeofence(
 ): { geofence: Geofence; distance: number } | null {
   let closest: { geofence: Geofence; distance: number } | null = null;
   for (const geo of geofences) {
+    if (
+      !Number.isFinite(geo.lat) ||
+      !Number.isFinite(geo.lng) ||
+      !Number.isFinite(geo.radius) ||
+      geo.radius <= 0 ||
+      geo.lat < -90 ||
+      geo.lat > 90 ||
+      geo.lng < -180 ||
+      geo.lng > 180
+    ) {
+      continue;
+    }
     const dist = calculateDistance(lat, lng, geo.lat, geo.lng);
     if (!closest || dist < closest.distance) {
       closest = { geofence: geo, distance: dist };
@@ -121,6 +133,7 @@ export function useGeolocation(options: UseGeolocationOptions): GeolocationState
 
   const updatePosition = useCallback((pos: GeolocationPosition) => {
     const { latitude, longitude, accuracy: accRaw } = pos.coords;
+    if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return;
     const accuracy = Number.isFinite(accRaw) && accRaw > 0 ? accRaw : 0;
 
     const newPosition = { lat: latitude, lng: longitude, accuracy };

@@ -118,7 +118,10 @@ export function useCheckInPage() {
   );
 
   const { data: currentEmployee } = useEmployee(employeeId ? String(employeeId) : null);
-  const { data: geofences = [] } = useGeofences();
+  const geofencesQuery = useGeofences();
+  const geofences = geofencesQuery.data ?? [];
+  const geofencesLoading = !!(geofencesQuery.isLoading || geofencesQuery.isFetching);
+  const geofencesReady = !geofencesLoading;
   const { data: todayRecords = [] } = useMyAttendance(employeeId ? String(employeeId) : null);
   const todayRecord = todayRecords[0] ?? null;
 
@@ -213,21 +216,27 @@ export function useCheckInPage() {
     [todayRecord?.checkInTime, todayRecord?.checkOutTime]
   );
 
+  // Do not trust isWithinRange derived from a transient empty geofences list while loading under enforcement.
+  const trustedIsWithinRange = geofencesReady ? isWithinRange : false;
+
   const canCheckIn = useMemo(() => {
     if (!currentLocation) return false;
-    const noGeofencesConfigured = geofences.length === 0;
-    return Boolean(
-      isWithinRange ||
-      companySettings.allowCheckInOutsideGeofence ||
-      !companySettings.requireGeofenceForCheckIn ||
-      noGeofencesConfigured
-    );
+    if (companySettings.allowCheckInOutsideGeofence || !companySettings.requireGeofenceForCheckIn) {
+      return true;
+    }
+    if (trustedIsWithinRange) return true;
+    if (geofences.length === 0) {
+      // Only treat "no geofences configured" as allowed after we have settled the query
+      return geofencesReady;
+    }
+    return false;
   }, [
     currentLocation,
-    isWithinRange,
+    trustedIsWithinRange,
     companySettings.allowCheckInOutsideGeofence,
     companySettings.requireGeofenceForCheckIn,
     geofences.length,
+    geofencesReady,
   ]);
 
   const statusMeta = useMemo(() => {
@@ -331,11 +340,19 @@ export function useCheckInPage() {
       checkInGuardRef.current = true;
 
       const geofence = nearestGeofence?.geofence ?? null;
-      const allowed =
-        isWithinRange ||
+      let allowed: boolean;
+      if (
         companySettings.allowCheckInOutsideGeofence ||
-        !companySettings.requireGeofenceForCheckIn ||
-        geofences.length === 0;
+        !companySettings.requireGeofenceForCheckIn
+      ) {
+        allowed = true;
+      } else if (trustedIsWithinRange) {
+        allowed = true;
+      } else if (geofences.length === 0) {
+        allowed = geofencesReady;
+      } else {
+        allowed = false;
+      }
 
       if (!allowed) {
         checkInGuardRef.current = false;
@@ -445,6 +462,7 @@ export function useCheckInPage() {
       checkInMutation,
       companySettings,
       geofences.length,
+      geofencesReady,
       today,
       qc,
       todayCacheKey,
@@ -596,6 +614,7 @@ export function useCheckInPage() {
     locationPermissionDenied,
     nearestGeofence,
     canCheckIn,
+    isLoadingGeofences: geofencesLoading,
     dayComplete,
     checkedIn,
     checkInTime: todayRecord?.checkInTime ?? null,

@@ -53,6 +53,7 @@ export default function CheckInPage() {
     isOnline,
     isLocating,
     canCheckIn,
+    isLoadingGeofences,
     dayComplete,
     checkedIn,
     checkInTime,
@@ -216,7 +217,7 @@ export default function CheckInPage() {
                   <CheckCircle className="w-4 h-4 text-primary" />
                   <span className="text-sm font-semibold text-primary">{t("readyToCheckIn")}</span>
                 </>
-              ) : isLocating ? (
+              ) : isLocating || isLoadingGeofences ? (
                 <>
                   <RefreshCw className="w-4 h-4 text-muted-foreground animate-spin" />
                   <span className="text-sm font-semibold text-muted-foreground">
