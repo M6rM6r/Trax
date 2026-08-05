@@ -59,7 +59,14 @@ export const attendanceApi = {
       });
     }
 
-    records.sort((a, b) => b.date.localeCompare(a.date));
+    // Most recent first: day desc, then latest punch (checkout beats check-in).
+    records.sort((a, b) => {
+      const byDate = b.date.localeCompare(a.date);
+      if (byDate !== 0) return byDate;
+      const aAct = a.checkOutTime || a.checkInTime || "";
+      const bAct = b.checkOutTime || b.checkInTime || "";
+      return bAct.localeCompare(aAct);
+    });
     return records;
   },
 
@@ -171,11 +178,13 @@ export const attendanceApi = {
       }
     }
 
+    // Always write company_id as string so rules match stringified profile ids
+    // and dual-type legacy docs (see firestore.rules companyIdsMatch).
     const record = {
       id: docId,
       ownerUid: currentUser.uid,
-      company_id: companyId,
-      employeeId: payload.employeeId,
+      company_id: String(companyId),
+      employeeId: String(payload.employeeId),
       employeeName: payload.employeeName || currentUser.displayName || currentUser.email || "",
       date,
       checkInTime,
@@ -205,46 +214,85 @@ export const attendanceApi = {
     companySettings?: Partial<CompanySettings>,
     checkOutTimestamp?: number
   ): Promise<AttendanceRecord> {
-    await ensureAuth();
+    const currentUser = await ensureAuth();
     const checkoutCompanyId = requireCompanyId();
     const checkoutNow = checkOutTimestamp ? new Date(checkOutTimestamp) : new Date();
-    const { formatCompanyDate, formatCompanyTime, DEFAULT_COMPANY_TIMEZONE } =
+    const { formatCompanyDate, formatCompanyTime, DEFAULT_COMPANY_TIMEZONE, attendanceDocId } =
       await import("@/lib/utils/companyDate");
-    const { attendanceDocId } = await import("@/lib/utils/companyDate");
     const checkoutTz =
       (companySettings as { timezone?: string } | null | undefined)?.timezone ||
       DEFAULT_COMPANY_TIMEZONE;
     const today = formatCompanyDate(checkoutNow, checkoutTz);
     const checkOutTime = formatCompanyTime(checkoutNow, checkoutTz);
+    const empId = String(employeeId);
+    const db = requireDb();
 
-    // Prefer deterministic doc; fall back to legacy random-id rows.
-    const preferredRef = doc(
-      requireDb(),
-      "attendance",
-      attendanceDocId(checkoutCompanyId, employeeId, today)
-    );
-    let targetRef = preferredRef;
+    // Resolve open attendance doc with multiple strategies (legacy + rules-safe).
+    let targetRef = doc(db, "attendance", attendanceDocId(checkoutCompanyId, empId, today));
     let currentData: Record<string, unknown> | null = null;
-    const preferredSnap = await getDoc(preferredRef);
-    if (preferredSnap.exists()) {
-      currentData = preferredSnap.data() as Record<string, unknown>;
-    } else {
-      const snapshot = await getDocs(
-        query(
-          collection(requireDb(), "attendance"),
-          where("company_id", "==", checkoutCompanyId),
-          where("employeeId", "==", employeeId),
-          where("date", "==", today),
-          limit(5)
-        )
-      );
-      const openDoc = snapshot.docs.find((d) => !d.data().checkOutTime && d.data().checkInTime);
-      if (!openDoc) throw new Error("No open attendance record");
-      targetRef = openDoc.ref;
-      currentData = openDoc.data() as Record<string, unknown>;
+
+    try {
+      const preferredSnap = await getDoc(targetRef);
+      if (preferredSnap.exists()) {
+        currentData = preferredSnap.data() as Record<string, unknown>;
+      }
+    } catch (e) {
+      console.warn("[checkOut] preferred getDoc failed, trying queries:", e);
     }
 
-    if (!currentData?.checkInTime) throw new Error("No open attendance record");
+    const isOpen = (d: Record<string, unknown>) => Boolean(d.checkInTime) && !d.checkOutTime;
+
+    if (!currentData || !isOpen(currentData)) {
+      // 1) ownerUid (works even when company_id filter is denied for staff)
+      try {
+        const byOwner = await getDocs(
+          query(
+            collection(db, "attendance"),
+            where("ownerUid", "==", currentUser.uid),
+            where("date", "==", today),
+            limit(10)
+          )
+        );
+        const open = byOwner.docs.find((d) => isOpen(d.data() as Record<string, unknown>));
+        if (open) {
+          targetRef = open.ref;
+          currentData = open.data() as Record<string, unknown>;
+        }
+      } catch (e) {
+        console.warn("[checkOut] ownerUid query failed:", e);
+      }
+    }
+
+    if (!currentData || !isOpen(currentData)) {
+      // 2) employeeId + company (string then number legacy)
+      for (const cid of [checkoutCompanyId, Number(checkoutCompanyId)] as const) {
+        if (cid === null || cid === undefined || (typeof cid === "number" && Number.isNaN(cid))) {
+          continue;
+        }
+        if (typeof cid === "number" && String(cid) !== checkoutCompanyId) continue;
+        try {
+          const snap = await getDocs(
+            query(
+              collection(db, "attendance"),
+              where("company_id", "==", cid),
+              where("employeeId", "==", empId),
+              where("date", "==", today),
+              limit(10)
+            )
+          );
+          const open = snap.docs.find((d) => isOpen(d.data() as Record<string, unknown>));
+          if (open) {
+            targetRef = open.ref;
+            currentData = open.data() as Record<string, unknown>;
+            break;
+          }
+        } catch (e) {
+          console.warn("[checkOut] company+employee query failed:", e);
+        }
+      }
+    }
+
+    if (!currentData || !currentData.checkInTime) throw new Error("No open attendance record");
     if (currentData.checkOutTime) throw new Error("ALREADY_CHECKED_OUT");
 
     const current = mapAttendance(targetRef.id, currentData);
@@ -256,7 +304,6 @@ export const attendanceApi = {
       companySettings?.checkoutTimeRangeEnabled && companySettings?.checkoutStartTime
         ? companySettings.checkoutStartTime
         : (current.appliedShift?.endTime ?? null);
-    // Compare via minutes so overnight shifts don't lie on string compare.
     const { parseTimeToMinutes } = await import("@/lib/utils/shifts");
     const earlyCheckout = Boolean(
       expectedCheckoutTime &&
@@ -265,15 +312,83 @@ export const attendanceApi = {
       parseTimeToMinutes(checkOutTime) < parseTimeToMinutes(expectedCheckoutTime)
     );
 
-    await updateDoc(targetRef, {
+    // Checkout fields + ensure company roster can still query this row.
+    const patch: {
+      checkOutTime: string;
+      status: string;
+      checkOutStatus: string;
+      workedHours: number;
+      expectedCheckoutTime: string | null;
+      earlyCheckout: boolean;
+      ownerUid?: string;
+      company_id?: string;
+      employeeId?: string;
+      date?: string;
+    } = {
       checkOutTime,
       status: "checked_out",
       checkOutStatus: "present",
       workedHours,
       expectedCheckoutTime,
       earlyCheckout,
-    });
-    const updatedRecord: AttendanceRecord = {
+    };
+    if (
+      currentData.ownerUid === null ||
+      currentData.ownerUid === undefined ||
+      currentData.ownerUid === ""
+    ) {
+      patch.ownerUid = currentUser.uid;
+    }
+    // Normalize identity so company list (where company_id == …) always finds the punch.
+    const existingCid = currentData.company_id;
+    if (
+      existingCid === null ||
+      existingCid === undefined ||
+      existingCid === "" ||
+      String(existingCid) !== String(checkoutCompanyId)
+    ) {
+      patch.company_id = String(checkoutCompanyId);
+    }
+    if (
+      currentData.employeeId === null ||
+      currentData.employeeId === undefined ||
+      String(currentData.employeeId) !== empId
+    ) {
+      patch.employeeId = empId;
+    }
+    if (
+      currentData.date === null ||
+      currentData.date === undefined ||
+      String(currentData.date) !== today
+    ) {
+      patch.date = today;
+    }
+
+    try {
+      await updateDoc(targetRef, patch);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      // Last resort: setDoc merge (same security evaluation, sometimes clearer for rules).
+      if (
+        msg.includes("permission") ||
+        msg.includes("PERMISSION") ||
+        msg.includes("Missing or insufficient")
+      ) {
+        console.warn("[checkOut] updateDoc denied, retrying setDoc merge:", msg);
+        await setDoc(
+          targetRef,
+          {
+            ...patch,
+            ownerUid: currentUser.uid,
+          },
+          { merge: true }
+        );
+      } else {
+        throw err;
+      }
+    }
+
+    return {
       ...current,
       checkOutTime,
       status: "checked_out",
@@ -282,6 +397,5 @@ export const attendanceApi = {
       expectedCheckoutTime,
       earlyCheckout,
     };
-    return updatedRecord;
   },
 };

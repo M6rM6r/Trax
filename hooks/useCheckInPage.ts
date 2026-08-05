@@ -550,7 +550,8 @@ export function useCheckInPage() {
           errMsg.includes("Missing or insufficient permissions") ||
           errMsg.includes("permission-denied")
         ) {
-          toastError(t("noPermission"));
+          // Usually company_id type mismatch or rules — not "unlinked account".
+          toastError(t("checkInPermissionDenied"));
         } else {
           toastError(t("checkInFailed"));
         }
@@ -697,7 +698,7 @@ export function useCheckInPage() {
         errMsg.includes("Missing or insufficient permissions") ||
         errMsg.includes("permission-denied")
       ) {
-        toastError(t("noPermission"));
+        toastError(t("checkOutPermissionDenied"));
       } else if (errMsg === "No open attendance record") {
         toastError(t("noCheckInToday"));
       } else if (errMsg === "ALREADY_CHECKED_OUT") {

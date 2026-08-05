@@ -39,7 +39,13 @@ export function CommandPalette() {
   const router = useRouter();
   const clearUser = useAuthStore((s) => s.clearUser);
   const token = useAuthStore((s) => s.token);
-  const { data: employees = [] } = useEmployees({ enabled: open && !!token });
+  const role = useAuthStore((s) => s.role);
+  const isEmployee = role === "employee";
+  const isCompany = role === "company";
+  const isMastermind = role === "mastermind";
+  const { data: employees = [] } = useEmployees({
+    enabled: open && !!token && isCompany,
+  });
 
   const handleLogout = useCallback(async () => {
     if (auth) {
@@ -60,84 +66,111 @@ export function CommandPalette() {
     [router]
   );
 
+  // Commands are role-scoped: mastermind | company | employee only.
   const commands: CommandItem[] = [
-    ...employees.slice(0, 10).map((emp) => ({
-      id: `emp-${emp.id}`,
-      label: emp.name,
-      icon: UserCircle,
-      action: () => navigate(`/employees`),
-      group: t("employees"),
-    })),
-    {
-      id: "dashboard",
-      label: t("dashboard"),
-      icon: LayoutDashboard,
-      action: () => navigate("/"),
-      group: t("navigation"),
-    },
-    {
-      id: "employees",
-      label: t("employees"),
-      icon: Users,
-      action: () => navigate(`/employees`),
-      group: t("navigation"),
-    },
-    {
-      id: "employees-inactive",
-      label: t("employeeInactive"),
-      icon: UserX,
-      action: () => navigate(`/employees/inactive`),
-      group: t("navigation"),
-    },
-    {
-      id: "live-map",
-      label: t("liveMap"),
-      icon: MapPin,
-      action: () => navigate(`/live-map`),
-      group: t("navigation"),
-    },
-    {
-      id: "attendance",
-      label: t("attendance"),
-      icon: Calendar,
-      action: () => navigate(`/attendance`),
-      group: t("navigation"),
-    },
-    {
-      id: "attendance-reports",
-      label: t("attendanceReports"),
-      icon: FileText,
-      action: () => navigate(`/attendance/reports`),
-      group: t("navigation"),
-    },
-    {
-      id: "geofences",
-      label: t("geofences"),
-      icon: MapPin,
-      action: () => navigate(`/geofences`),
-      group: t("navigation"),
-    },
-    {
-      id: "check-in",
-      label: t("checkIn"),
-      icon: CheckCircle,
-      action: () => navigate(`/check-in`),
-      group: t("navigation"),
-    },
-    {
-      id: "settings-security",
-      label: t("securitySettings"),
-      icon: Shield,
-      action: () => navigate(`/settings/securitySettings`),
-      group: t("settings"),
-    },
-    {
-      id: "settings-notifications",
-      label: t("notificationSettings"),
-      icon: Bell,
-      action: () => navigate(`/settings/notificationSettings`),
-      group: t("settings"),
-    },
+    ...(isCompany
+      ? [
+          ...employees.slice(0, 10).map((emp) => ({
+            id: `emp-${emp.id}`,
+            label: emp.name,
+            icon: UserCircle,
+            action: () => navigate(`/employees`),
+            group: t("employees"),
+          })),
+          {
+            id: "dashboard",
+            label: t("dashboard"),
+            icon: LayoutDashboard,
+            action: () => navigate("/"),
+            group: t("navigation"),
+          },
+          {
+            id: "employees",
+            label: t("employees"),
+            icon: Users,
+            action: () => navigate(`/employees`),
+            group: t("navigation"),
+          },
+          {
+            id: "employees-inactive",
+            label: t("employeeInactive"),
+            icon: UserX,
+            action: () => navigate(`/employees/inactive`),
+            group: t("navigation"),
+          },
+          {
+            id: "live-map",
+            label: t("liveMap"),
+            icon: MapPin,
+            action: () => navigate(`/live-map`),
+            group: t("navigation"),
+          },
+          {
+            id: "attendance",
+            label: t("attendance"),
+            icon: Calendar,
+            action: () => navigate(`/attendance`),
+            group: t("navigation"),
+          },
+          {
+            id: "attendance-reports",
+            label: t("attendanceReports"),
+            icon: FileText,
+            action: () => navigate(`/attendance/reports`),
+            group: t("navigation"),
+          },
+          {
+            id: "geofences",
+            label: t("geofences"),
+            icon: MapPin,
+            action: () => navigate(`/geofences`),
+            group: t("navigation"),
+          },
+          {
+            id: "settings-security",
+            label: t("securitySettings"),
+            icon: Shield,
+            action: () => navigate(`/settings/securitySettings`),
+            group: t("settings"),
+          },
+          {
+            id: "settings-notifications",
+            label: t("notificationSettings"),
+            icon: Bell,
+            action: () => navigate(`/settings/notificationSettings`),
+            group: t("settings"),
+          },
+        ]
+      : []),
+    ...(isEmployee
+      ? [
+          {
+            id: "check-in",
+            label: t("checkIn"),
+            icon: CheckCircle,
+            action: () => navigate(`/check-in`),
+            group: t("navigation"),
+          } satisfies CommandItem,
+          {
+            id: "settings-security",
+            label: t("securitySettings"),
+            icon: Shield,
+            action: () => navigate(`/settings/securitySettings`),
+            group: t("settings"),
+          },
+        ]
+      : []),
+    ...(isMastermind
+      ? [
+          {
+            id: "mm-companies",
+            label: t("companies"),
+            icon: LayoutDashboard,
+            action: () => navigate(`/mastermind/companies`),
+            group: t("navigation"),
+          } satisfies CommandItem,
+        ]
+      : []),
     {
       id: "logout",
       label: t("logout"),

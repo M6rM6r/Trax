@@ -11,12 +11,14 @@ import { queryKeys, toApiDate, type DashboardDateRange } from "./queryKeys";
 
 export function useDashboardData(dateRange?: DashboardDateRange) {
   const companyId = useAuthStore((state) => state.companyId);
+  const role = useAuthStore((state) => state.role);
   const workStartTime = useCompanySettingsStore((state) => state.workStartTime);
   const gracePeriodMinutes = useCompanySettingsStore((state) => state.gracePeriodMinutes);
   const timezone = useCompanySettingsStore((state) => state.timezone);
   const weekendDays = useCompanySettingsStore((state) => state.weekendDays);
-  const from = toApiDate(dateRange?.from);
-  const to = toApiDate(dateRange?.to);
+  // Company wall-clock range — never browser-local midnight edge bugs.
+  const from = toApiDate(dateRange?.from, timezone);
+  const to = toApiDate(dateRange?.to, timezone);
 
   const companySettings = useMemo(
     () => ({ workStartTime, gracePeriodMinutes, timezone, weekendDays }),
@@ -39,7 +41,8 @@ export function useDashboardData(dateRange?: DashboardDateRange) {
     refetchInterval: 60 * 1000,
     refetchOnWindowFocus: false,
     refetchIntervalInBackground: false,
-    enabled: Boolean(companyId),
+    // Company admin pipeline only — employees/mastermind must not stampede Firestore.
+    enabled: Boolean(companyId) && role === "company",
     queryFn: async () => firebaseData.dashboard.getDashboardData({ from, to }, companySettings),
   });
 }

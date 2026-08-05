@@ -25,14 +25,15 @@ async function syncUserDoc(user: User) {
   if (lastSyncUid === user.uid && now - lastSyncTime < SYNC_THROTTLE_MS) return;
   lastSyncUid = user.uid;
   lastSyncTime = now;
-  const { companyId, role, user: storeUser } = useAuthStore.getState();
+  const { companyId, user: storeUser } = useAuthStore.getState();
+  // Never merge role here — role is immutable under rules and must not race company→employee.
+  // Only touch non-privileged presence fields + company_id when already known in the store.
   const payload: Record<string, unknown> = {
     name: storeUser?.name || user.displayName || null,
     email: storeUser?.email || user.email || null,
     lastSignIn: new Date().toISOString(),
   };
   if (companyId) payload.company_id = String(companyId);
-  if (role) payload.role = role;
   try {
     await setDoc(doc(db, "users", user.uid), cleanPayload(payload), { merge: true });
   } catch (e) {

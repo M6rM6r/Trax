@@ -17,6 +17,7 @@ import { useTranslations } from "next-intl";
 const NOTIFICATION_ICONS: Record<NotificationType, React.ComponentType<{ className?: string }>> = {
   check_in: CheckCircle,
   late_arrival: Warning,
+  missing_check_in: AlertTriangle,
   check_out: CheckCircle,
   check_out_early: Warning,
   overtime: Warning,
@@ -48,6 +49,7 @@ const NOTIFICATION_ICONS: Record<NotificationType, React.ComponentType<{ classNa
 const NOTIFICATION_COLORS: Record<NotificationType, string> = {
   check_in: "text-primary",
   late_arrival: "text-[hsl(48_96%_53%)]",
+  missing_check_in: "text-destructive",
   check_out: "text-primary",
   check_out_early: "text-[hsl(48_96%_53%)]",
   overtime: "text-[hsl(48_96%_53%)]",

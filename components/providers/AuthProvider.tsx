@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { getIdTokenResult, onAuthStateChanged } from "firebase/auth";
+import { useQueryClient } from "@tanstack/react-query";
 import { auth } from "@/lib/config/firebase";
 import { getFirebaseUserProfile } from "@/lib/services/firebaseData";
 import { useAuthStore, type UserRole } from "@/stores/useAuthStore";
@@ -16,6 +17,7 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
   const companyName = useAuthStore((state) => state.companyName);
   const setUser = useAuthStore((state) => state.setUser);
   const clearUser = useAuthStore((state) => state.clearUser);
+  const queryClient = useQueryClient();
   const hasRedirected = useRef(false);
   const userRef = useRef(user);
   userRef.current = user;
@@ -35,8 +37,9 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
       if (!firebaseUser) {
         if (userRef.current) {
           clearUser();
-          // Prevent cross-tenant settings bleed after logout/session expiry.
+          // Prevent cross-tenant settings + React Query cache bleed after logout.
           useCompanySettingsStore.getState().resetSettings();
+          queryClient.clear();
           console.warn("[auth] Firebase session expired");
         }
 
@@ -138,7 +141,7 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
     });
 
     return () => unsubscribe();
-  }, [clearUser, setUser]);
+  }, [clearUser, setUser, queryClient]);
 
   useEffect(() => {
     if (!auth) return;

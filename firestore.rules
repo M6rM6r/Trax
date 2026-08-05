@@ -6,18 +6,110 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    function userCompanyId() {
+    function userProfile() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function userProfileExists() {
       return signedIn()
-        ? (exists(/databases/$(database)/documents/users/$(request.auth.uid))
-           ? get(/databases/$(database)/documents/users/$(request.auth.uid)).data.company_id
-           : null)
-        : null;
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
+    // Prefer users.company_id; if null (auth bootstrap race), fall back to linked employee doc.
+    function userCompanyId() {
+      return !userProfileExists()
+        ? null
+        : (
+            userProfile().company_id != null
+              ? userProfile().company_id
+              : (
+                  'employee_id' in userProfile()
+                  && userProfile().employee_id != null
+                  && exists(/databases/$(database)/documents/employees/$(string(userProfile().employee_id)))
+                    ? get(/databases/$(database)/documents/employees/$(string(userProfile().employee_id))).data.company_id
+                    : null
+                )
+          );
+    }
+
+    // Legacy docs mixed string/number company_id. Strict == breaks employee check-in
+    // when the user profile is "abc"/123 and the write uses the other shape.
+    function companyIdsMatch(a, b) {
+      return a != null
+        && b != null
+        && (
+          a == b
+          || string(a) == string(b)
+        );
     }
 
     function sameCompany(doc) {
       return signedIn()
         && 'company_id' in doc.data
-        && doc.data.company_id == userCompanyId();
+        && companyIdsMatch(doc.data.company_id, userCompanyId());
+    }
+
+    // Auth user is this employee row (authUid on employees/* OR users.employee_id link).
+    function isLinkedEmployeeId(employeeId) {
+      return signedIn()
+        && employeeId != null
+        && (
+          (
+            userProfileExists()
+            && 'employee_id' in userProfile()
+            && userProfile().employee_id != null
+            && companyIdsMatch(userProfile().employee_id, employeeId)
+          )
+          || (
+            exists(/databases/$(database)/documents/employees/$(string(employeeId)))
+            && get(/databases/$(database)/documents/employees/$(string(employeeId))).data.authUid == request.auth.uid
+          )
+        );
+    }
+
+    // Employee owns an attendance punch (linked staff + company consistent when known).
+    function employeeOwnsAttendance(att) {
+      return signedIn()
+        && 'employeeId' in att.data
+        && att.data.employeeId != null
+        && isLinkedEmployeeId(att.data.employeeId)
+        && (
+          // Prefer company match when we can resolve it; do not hard-fail checkout if users.company_id lags.
+          userCompanyId() == null
+          || !('company_id' in att.data)
+          || companyIdsMatch(att.data.company_id, userCompanyId())
+          || (
+            exists(/databases/$(database)/documents/employees/$(string(att.data.employeeId)))
+            && companyIdsMatch(
+                 att.data.company_id,
+                 get(/databases/$(database)/documents/employees/$(string(att.data.employeeId))).data.company_id
+               )
+          )
+        );
+    }
+
+    // One-time link: empty company/employee on users may be filled from the employee row the auth user owns.
+    function isSelfLinkingEmployeeFields() {
+      return userProfileExists()
+        && request.auth.uid == request.auth.uid
+        && request.resource.data.employee_id != null
+        && request.resource.data.company_id != null
+        && (
+          !('employee_id' in resource.data)
+          || resource.data.employee_id == null
+          || companyIdsMatch(resource.data.employee_id, request.resource.data.employee_id)
+        )
+        && (
+          !('company_id' in resource.data)
+          || resource.data.company_id == null
+          || companyIdsMatch(resource.data.company_id, request.resource.data.company_id)
+        )
+        && exists(/databases/$(database)/documents/employees/$(string(request.resource.data.employee_id)))
+        && get(/databases/$(database)/documents/employees/$(string(request.resource.data.employee_id))).data.authUid == request.auth.uid
+        && companyIdsMatch(
+             request.resource.data.company_id,
+             get(/databases/$(database)/documents/employees/$(string(request.resource.data.employee_id))).data.company_id
+           );
     }
 
     function owns(resource) {
@@ -26,8 +118,9 @@ service cloud.firestore {
 
     function isCompanyOwner(companyId) {
       return signedIn()
-        && exists(/databases/$(database)/documents/companies/$(companyId))
-        && get(/databases/$(database)/documents/companies/$(companyId)).data.ownerId == request.auth.uid;
+        && companyId != null
+        && exists(/databases/$(database)/documents/companies/$(string(companyId)))
+        && get(/databases/$(database)/documents/companies/$(string(companyId))).data.ownerId == request.auth.uid;
     }
 
     function isMastermind(uid) {
@@ -43,25 +136,31 @@ service cloud.firestore {
       );
       // Self-create only. Cross-user user docs are written by Admin SDK / Cloud Functions.
       allow create: if signedIn() && uid == request.auth.uid;
-      // Self may update non-privileged fields only. Role / company / employee linkage are immutable from clients.
+      // Self may update non-privileged fields only. Role stays immutable.
+      // company_id / employee_id: immutable once set, OR one-time link from owned employee row.
       allow update: if signedIn() && uid == request.auth.uid
         && (!('role' in request.resource.data) || request.resource.data.role == resource.data.role)
         && (!('admin_role' in request.resource.data) || request.resource.data.admin_role == resource.data.get('admin_role', null))
-        && (!('company_id' in request.resource.data) || request.resource.data.company_id == resource.data.get('company_id', null))
-        && (!('employee_id' in request.resource.data) || request.resource.data.employee_id == resource.data.get('employee_id', null));
+        && (
+          (
+            (!('company_id' in request.resource.data) || request.resource.data.company_id == resource.data.get('company_id', null))
+            && (!('employee_id' in request.resource.data) || request.resource.data.employee_id == resource.data.get('employee_id', null))
+          )
+          || isSelfLinkingEmployeeFields()
+        );
       allow delete: if signedIn() && uid == request.auth.uid;
     }
 
     match /companies/{companyId} {
-      allow read: if signedIn() && (companyId == userCompanyId() || resource.data.ownerId == request.auth.uid || isMastermind(request.auth.uid));
+      allow read: if signedIn() && (companyIdsMatch(companyId, userCompanyId()) || resource.data.ownerId == request.auth.uid || isMastermind(request.auth.uid));
       allow create: if signedIn() && (request.resource.data.ownerId == request.auth.uid || isMastermind(request.auth.uid));
-      allow update, delete: if signedIn() && (companyId == userCompanyId() || resource.data.ownerId == request.auth.uid || isMastermind(request.auth.uid));
+      allow update, delete: if signedIn() && (companyIdsMatch(companyId, userCompanyId()) || resource.data.ownerId == request.auth.uid || isMastermind(request.auth.uid));
     }
 
     match /company_settings/{settingsId} {
-      allow read: if signedIn() && (settingsId == userCompanyId() || sameCompany(resource));
-      allow create: if signedIn() && (settingsId == userCompanyId() || sameCompany(request.resource));
-      allow update, delete: if signedIn() && (settingsId == userCompanyId() || sameCompany(resource));
+      allow read: if signedIn() && (companyIdsMatch(settingsId, userCompanyId()) || sameCompany(resource));
+      allow create: if signedIn() && (companyIdsMatch(settingsId, userCompanyId()) || sameCompany(request.resource));
+      allow update, delete: if signedIn() && (companyIdsMatch(settingsId, userCompanyId()) || sameCompany(resource));
     }
 
     match /employees/{employeeId} {
@@ -86,11 +185,51 @@ service cloud.firestore {
     }
 
     match /attendance/{attendanceId} {
-      allow read: if signedIn() && (sameCompany(resource) || ('company_id' in resource.data && isCompanyOwner(resource.data.company_id)) || isMastermind(request.auth.uid));
+      // resource == null: get/list of missing docs must not permission-denied
+      // (checkout probes preferred id before fallback lookup).
+      allow read: if signedIn() && (
+        resource == null
+        || sameCompany(resource)
+        || employeeOwnsAttendance(resource)
+        || owns(resource)
+        || ('company_id' in resource.data && isCompanyOwner(resource.data.company_id))
+        || isMastermind(request.auth.uid)
+      );
+      // Create: staff must stamp ownerUid; company match OR linked employee row.
       allow create: if signedIn()
         && request.resource.data.ownerUid == request.auth.uid
-        && sameCompany(request.resource);
-      allow update, delete: if sameCompany(resource);
+        && (sameCompany(request.resource) || employeeOwnsAttendance(request.resource));
+      // Update (check-out): ownerUid OR linked employee OR same company.
+      // Identity fields immutable. Checkout fields (times/status) free for owner.
+      allow update: if signedIn() && (
+        sameCompany(resource)
+        || employeeOwnsAttendance(resource)
+        || owns(resource)
+        // Legacy punches without ownerUid: still allow if users.employee_id matches.
+        || (
+          'employeeId' in resource.data
+          && isLinkedEmployeeId(resource.data.employeeId)
+        )
+      )
+        && (
+          !('company_id' in request.resource.data)
+          || companyIdsMatch(request.resource.data.company_id, resource.data.get('company_id', request.resource.data.company_id))
+        )
+        && (
+          !('employeeId' in request.resource.data)
+          || string(request.resource.data.employeeId) == string(resource.data.get('employeeId', request.resource.data.employeeId))
+        )
+        && (
+          !('ownerUid' in request.resource.data)
+          || resource.data.get('ownerUid', null) == null
+          || request.resource.data.ownerUid == resource.data.ownerUid
+          || request.resource.data.ownerUid == request.auth.uid
+        );
+      allow delete: if signedIn() && (
+        sameCompany(resource)
+        || ('company_id' in resource.data && isCompanyOwner(resource.data.company_id))
+        || isMastermind(request.auth.uid)
+      );
     }
 
     match /locations/{employeeId} {
@@ -136,8 +275,8 @@ service cloud.firestore {
     }
 
     match /company_cache/{companyId} {
-      allow read: if signedIn() && companyId == userCompanyId();
-      allow write: if signedIn() && companyId == userCompanyId();
+      allow read: if signedIn() && companyIdsMatch(companyId, userCompanyId());
+      allow write: if signedIn() && companyIdsMatch(companyId, userCompanyId());
     }
 
     match /function_metrics/{metricId} {

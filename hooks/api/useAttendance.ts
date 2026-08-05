@@ -14,15 +14,19 @@ export function useAttendance(options?: {
   dateRange?: { from?: string; to?: string };
 }) {
   const companyId = useAuthStore((state) => state.companyId);
+  const role = useAuthStore((state) => state.role);
   const from = options?.dateRange?.from;
   const to = options?.dateRange?.to;
 
   return useQuery<AttendanceRecord[]>({
     queryKey: [...queryKeys.attendance, companyId ?? "unassigned", from ?? "all", to ?? "all"],
-    staleTime: 60 * 1000,
-    refetchOnWindowFocus: false,
+    // Keep company roster fresh so employee check-out appears without a hard reload.
+    staleTime: 15 * 1000,
+    refetchOnWindowFocus: true,
+    refetchInterval: 45 * 1000,
     refetchIntervalInBackground: false,
-    enabled: Boolean(companyId) && (options?.enabled ?? true),
+    // Company-admin roster list. Employees use useMyAttendance only.
+    enabled: Boolean(companyId) && role === "company" && (options?.enabled ?? true),
     queryFn: async (): Promise<AttendanceRecord[]> => {
       return firebaseData.attendance.list(undefined, options?.dateRange);
     },
@@ -102,6 +106,7 @@ export function useCheckIn() {
 
 export function useCheckOut() {
   const qc = useQueryClient();
+  const companyId = useAuthStore((s) => s.companyId);
   const settingsState = useCompanySettingsStore();
   const companySettings = useMemo(
     () => ({
@@ -117,9 +122,38 @@ export function useCheckOut() {
     mutationFn: async (payload: { employeeId: string }) => {
       return firebaseData.attendance.checkOut(payload.employeeId, companySettings);
     },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: queryKeys.attendance });
-      qc.invalidateQueries({ queryKey: queryKeys.dashboard });
+    onSuccess: (record) => {
+      // Patch every cached attendance list so company UI updates immediately.
+      if (record) {
+        qc.setQueriesData<AttendanceRecord[]>({ queryKey: queryKeys.attendance }, (old) => {
+          if (!old) return old;
+          const idx = old.findIndex(
+            (r) =>
+              r.id === record.id ||
+              (String(r.employeeId) === String(record.employeeId) && r.date === record.date)
+          );
+          if (idx === -1) return [record, ...old];
+          const next = old.slice();
+          next[idx] = { ...next[idx], ...record };
+          return next;
+        });
+        if (companyId && record.employeeId) {
+          const day = record.date;
+          qc.setQueryData<AttendanceRecord[]>(
+            myAttendanceQueryKey(companyId, String(record.employeeId), day),
+            (old) => {
+              if (!old?.length) return [record];
+              const idx = old.findIndex((r) => r.id === record.id || r.date === day);
+              if (idx === -1) return [record, ...old];
+              const next = old.slice();
+              next[idx] = { ...next[idx], ...record };
+              return next;
+            }
+          );
+        }
+      }
+      void qc.invalidateQueries({ queryKey: queryKeys.attendance, refetchType: "all" });
+      void qc.invalidateQueries({ queryKey: queryKeys.dashboard, refetchType: "all" });
     },
   });
 }

@@ -23,12 +23,14 @@ import DashboardSkeleton from "@/components/shared/Skeletons/DashboardSkeleton";
 import { DataTable } from "@/components/shared/DataTable/DataTable";
 import type { AttendanceRecord, DashboardStats } from "@/lib/types/trackingTypes";
 import { useAuthStore } from "@/stores/useAuthStore";
+import { useCompanySettingsStore } from "@/stores/useCompanySettingsStore";
 import AttendancePieChart from "@/components/dashboard/AttendancePieChart";
 const LiveMapWidget = dynamic(() => import("@/components/dashboard/LiveMapWidget"), { ssr: false });
 import { resolveAttendanceLocation } from "@/lib/utils/geo";
 import { getDefaultDateRange, type DateRange } from "@/components/shared/DateRangePicker";
 import { toastSuccess } from "@/hooks/use-toast";
 import { useTranslations, useLocale } from "next-intl";
+import { homePathForRole, isCompanyRole } from "@/lib/utils/roleAccess";
 
 const COLORS = {
   present: "#22c55e",
@@ -45,16 +47,33 @@ export default function DashboardPage() {
   const user = useAuthStore((s) => s.user);
   const companyName = useAuthStore((s) => s.companyName);
   const role = useAuthStore((s) => s.role);
+  const router = useRouter();
   const queryClient = useQueryClient();
+
+  // Company dashboard only — employee → check-in, mastermind → companies.
+  useEffect(() => {
+    if (role && !isCompanyRole(role)) {
+      router.replace(homePathForRole(role));
+    }
+  }, [role, router]);
   const [dateRange] = useState<DateRange>(getDefaultDateRange());
+  const companyTz = useCompanySettingsStore((s) => s.timezone);
   const attendanceDateRange = useMemo(
-    () => ({ from: toApiDate(dateRange.from), to: toApiDate(dateRange.to) }),
-    [dateRange.from, dateRange.to]
+    () => ({
+      from: toApiDate(dateRange.from, companyTz),
+      to: toApiDate(dateRange.to, companyTz),
+    }),
+    [dateRange.from, dateRange.to, companyTz]
   );
+  // Company-only dashboard pipeline (hooks also gate on role).
+  const companyDashEnabled = isCompanyRole(role);
   const { data: dashboardData, isLoading, isError, refetch } = useDashboardData(dateRange);
-  const { data: attendanceData } = useAttendance({ dateRange: attendanceDateRange });
-  const { data: employees = [] } = useEmployees();
-  const { data: geofences = [] } = useGeofences();
+  const { data: attendanceData } = useAttendance({
+    dateRange: attendanceDateRange,
+    enabled: companyDashEnabled,
+  });
+  const { data: employees = [] } = useEmployees({ enabled: companyDashEnabled });
+  const { data: geofences = [] } = useGeofences({ enabled: companyDashEnabled });
   const stats: DashboardStats = useMemo(
     () =>
       dashboardData?.stats ?? {

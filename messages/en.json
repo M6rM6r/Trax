@@ -356,6 +356,8 @@
     "searchPlaceholder": "Search by name, department, or location..."
   },
   "CheckIn": {
+    "companyAccountNoCheckIn": "Check-in is for employees only. Company accounts manage attendance from the dashboard.",
+    "checkInPermissionDenied": "Could not save check-in (security rules). If you are linked to a company, try again or contact support.",
     "synced": "Synced {count} attendance records",
     "syncFailed": "Failed to sync {count} records",
     "autoCheckInOffline": "Auto check-in saved (offline)",
@@ -378,7 +380,8 @@
     "checkInSuccess": "Check-in recorded successfully",
     "sessionExpired": "Session expired — please log in again",
     "noCompany": "Could not determine company — please log in again",
-    "noPermission": "No permission to check in — make sure your account is linked to a company",
+    "noPermission": "No permission to check out — make sure your account is linked to a company",
+    "checkOutPermissionDenied": "Could not save check-out. Wait a moment and try again, or sign out and back in.",
     "checkInFailed": "Check-in failed — check your internet connection and try again",
     "noEmployeeIdCheckOut": "No employee ID linked to your account",
     "checkOutOffline": "Check-out saved offline — will sync when internet returns",
@@ -644,6 +647,7 @@
     "checkIn": "Check In",
     "settings": "Settings",
     "company": "Company",
+    "companies": "Companies",
     "mobileNavigation": "Mobile navigation",
     "search": "Search...",
     "quickSearch": "Quick search — Ctrl+K",
@@ -1095,7 +1099,7 @@
       },
       "type": {
         "check_in": "Check-in",
-        "late_arrival": "Late Arrival",
+        "late_arrival": "Late check-in",
         "check_out": "Check-out",
         "check_out_early": "Early Check-out",
         "overtime": "Overtime",
@@ -1121,7 +1125,8 @@
         "schedule_change": "Schedule Change",
         "location_change": "Location Change",
         "device_change": "Device Change",
-        "reminder": "Reminder"
+        "reminder": "Reminder",
+        "missing_check_in": "Missing check-in"
       },
       "priority": {
         "low": "Low",
@@ -1130,7 +1135,14 @@
       },
       "search": "Search notifications...",
       "empty": "No notifications"
-    }
+    },
+    "missingCheckInTitle": "Missing check-in",
+    "missingCheckInMessage": "{name} has not checked in yet",
+    "lateCheckInTitle": "Late check-in",
+    "lateCheckInMessage": "{name} checked in late at {time}",
+    "needsAttention": "Needs attention",
+    "showAll": "Show all",
+    "markRead": "Mark as read"
   },
   "NotificationSettings": {
     "title": "Notification Settings",

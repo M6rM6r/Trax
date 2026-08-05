@@ -23,6 +23,7 @@ import {
 import { auth } from "@/lib/config/firebase";
 import { getFirebaseUserProfile } from "@/lib/services/firebaseData";
 import { resolveUserRole } from "@/lib/utils/auth";
+import { homePathForRole } from "@/lib/utils/roleAccess";
 
 interface LoginValues {
   identifier: string;
@@ -115,8 +116,9 @@ const Page = () => {
         typeof window !== "undefined" && window.location.pathname.split("/")[1] === "en"
           ? "en"
           : "ar";
-      const targetPath = role === "employee" ? `/${currentLocale}/check-in` : `/${currentLocale}`;
-      router.push(targetPath);
+      // Exactly 3 homes: mastermind → /mastermind/companies, company → /, employee → /check-in
+      const home = homePathForRole(role);
+      router.push(`/${currentLocale}${home === "/" ? "" : home}` || `/${currentLocale}`);
     }, 800);
   };
 

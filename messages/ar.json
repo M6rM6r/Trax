@@ -356,6 +356,8 @@
     "searchPlaceholder": "بحث بالاسم أو القسم أو الموقع..."
   },
   "CheckIn": {
+    "companyAccountNoCheckIn": "تسجيل الحضور للموظفين فقط. حسابات الشركة تدير الحضور من لوحة التحكم.",
+    "checkInPermissionDenied": "تعذر حفظ الحضور (قواعد الأمان). إذا كان حسابك مربوطاً بشركة، أعد المحاولة أو تواصل مع الدعم.",
     "synced": "تمت مزامنة {count} سجل حضور/انصراف",
     "syncFailed": "فشل مزامنة {count} سجل",
     "autoCheckInOffline": "تم تسجيل الحضور تلقائياً (بدون اتصال)",
@@ -378,7 +380,8 @@
     "checkInSuccess": "تم تسجيل الحضور بنجاح",
     "sessionExpired": "انتهت الجلسة — يرجى تسجيل الدخول مرة أخرى",
     "noCompany": "تعذر تحديد الشركة — يرجى تسجيل الدخول مرة أخرى",
-    "noPermission": "لا يوجد صلاحية لتسجيل الحضور — تأكد من ربط حسابك بالشركة",
+    "noPermission": "لا توجد صلاحية لتسجيل الانصراف — تأكد من ربط حسابك بالشركة",
+    "checkOutPermissionDenied": "تعذر حفظ الانصراف. أعد المحاولة بعد ثوانٍ أو سجّل الخروج ثم الدخول.",
     "checkInFailed": "فشل تسجيل الحضور — تأكد من اتصال الإنترنت وحاول مرة أخرى",
     "noEmployeeIdCheckOut": "لا يوجد معرف موظف مرتبط بحسابك",
     "checkOutOffline": "تم تسجيل الانصراف بدون اتصال — سيتم المزامنة عند عودة الإنترنت",
@@ -644,6 +647,7 @@
     "checkIn": "تسجيل الحضور",
     "settings": "الإعدادات",
     "company": "الشركة",
+    "companies": "الشركات",
     "mobileNavigation": "التنقل السفلي",
     "search": "بحث...",
     "quickSearch": "بحث سريع — Ctrl+K",
@@ -1095,7 +1099,7 @@
       },
       "type": {
         "check_in": "تسجيل حضور",
-        "late_arrival": "تأخر",
+        "late_arrival": "حضور متأخر",
         "check_out": "تسجيل انصراف",
         "check_out_early": "انصراف مبكر",
         "overtime": "عمل إضافي",
@@ -1121,7 +1125,8 @@
         "schedule_change": "تغيير الجدول",
         "location_change": "تغيير الموقع",
         "device_change": "جهاز جديد",
-        "reminder": "تذكير"
+        "reminder": "تذكير",
+        "missing_check_in": "غياب عن التسجيل"
       },
       "priority": {
         "low": "منخفض",
@@ -1130,7 +1135,14 @@
       },
       "search": "البحث في الإشعارات...",
       "empty": "لا توجد إشعارات"
-    }
+    },
+    "missingCheckInTitle": "لم يسجل الحضور",
+    "missingCheckInMessage": "{name} لم يسجل الحضور بعد",
+    "lateCheckInTitle": "حضور متأخر",
+    "lateCheckInMessage": "{name} سجل الحضور متأخراً في {time}",
+    "needsAttention": "يتطلب متابعة",
+    "showAll": "عرض الكل",
+    "markRead": "تعيين كمقروء"
   },
   "NotificationSettings": {
     "title": "إعدادات الإشعارات",

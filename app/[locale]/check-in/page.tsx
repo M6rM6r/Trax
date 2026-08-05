@@ -11,6 +11,9 @@ import { useCheckInPage } from "@/hooks/useCheckInPage";
 import { useCompanySettingsStore } from "@/stores/useCompanySettingsStore";
 import { DEFAULT_COMPANY_TIMEZONE } from "@/lib/utils/companyDate";
 import { cn } from "@/lib/utils";
+import { useAuthStore } from "@/stores/useAuthStore";
+import { useRouter } from "@/i18n/navigation";
+import { homePathForRole, isEmployeeRole } from "@/lib/utils/roleAccess";
 
 function LiveClock() {
   const locale = useLocale();
@@ -58,6 +61,18 @@ function LiveClock() {
 
 export default function CheckInPage() {
   const t = useTranslations("CheckIn");
+  const router = useRouter();
+  const role = useAuthStore((s) => s.role);
+  // Only the employee role uses check-in. Company + MasterMind never do.
+  const allowed = isEmployeeRole(role);
+
+  useEffect(() => {
+    if (role && !allowed) {
+      router.replace(homePathForRole(role));
+    }
+  }, [allowed, role, router]);
+
+  const checkIn = useCheckInPage();
   const {
     employeeName,
     companyName,
@@ -82,7 +97,17 @@ export default function CheckInPage() {
     confirmCheckOut,
     handleSignOut,
     showBurst,
-  } = useCheckInPage();
+  } = checkIn;
+
+  if (role && !allowed) {
+    return (
+      <MainLayout>
+        <div className="flex min-h-[50vh] items-center justify-center p-6 text-sm text-muted-foreground">
+          {t("companyAccountNoCheckIn")}
+        </div>
+      </MainLayout>
+    );
+  }
 
   const isBusyLoading = checkInBlockReason === "loading" || isLocating || isLoadingGeofences;
 

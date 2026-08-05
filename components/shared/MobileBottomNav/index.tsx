@@ -1,12 +1,21 @@
 "use client";
 
 import { usePathname, Link } from "@/i18n/navigation";
-import { LayoutDashboard, Users, Calendar, CheckCircle, Target, Building2 } from "lucide-react";
+import {
+  LayoutDashboard,
+  Users,
+  Calendar,
+  CheckCircle,
+  Target,
+  Building2,
+  Building,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
 import { hapticTap } from "@/lib/utils/haptics";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useTranslations } from "next-intl";
+import { isCompanyRole, isEmployeeRole, isMastermindRole } from "@/lib/utils/roleAccess";
 
 function usePrimaryItems() {
   const t = useTranslations("Navigation");
@@ -28,6 +37,17 @@ function useEmployeeNavItems() {
   return [{ icon: CheckCircle, label: t("checkIn"), path: "/check-in" }];
 }
 
+function useMastermindNavItems() {
+  const t = useTranslations("Navigation");
+  return [
+    {
+      icon: Building,
+      label: t("companies"),
+      path: "/mastermind/companies",
+    },
+  ];
+}
+
 export default function MobileBottomNav() {
   const t = useTranslations("Navigation");
   const pathname = usePathname();
@@ -35,8 +55,48 @@ export default function MobileBottomNav() {
   const primaryItems = usePrimaryItems();
   const companyItem = useCompanyItem();
   const employeeItems = useEmployeeNavItems();
+  const mastermindItems = useMastermindNavItems();
 
-  if (role === "employee") {
+  if (isMastermindRole(role)) {
+    return (
+      <nav
+        className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-background/95 backdrop-blur-lg border-t border-border"
+        style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+        aria-label={t("mobileNavigation")}
+      >
+        <div className="flex items-center justify-around px-1 py-1.5">
+          {mastermindItems.map((item) => {
+            const isActive = pathname.startsWith(item.path);
+            const Icon = item.icon;
+            return (
+              <Link
+                key={item.path}
+                href={item.path}
+                onClick={() => hapticTap()}
+                className={cn(
+                  "relative flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-xl transition-all duration-200 min-w-[56px]",
+                  isActive ? "text-primary bg-primary/10" : "text-muted-foreground/70"
+                )}
+                aria-current={isActive ? "page" : undefined}
+                aria-label={item.label}
+              >
+                {isActive && (
+                  <motion.div
+                    layoutId="activeNavMastermind"
+                    className="absolute -top-0.5 left-1/2 -translate-x-1/2 w-6 h-1 bg-primary rounded-full"
+                  />
+                )}
+                <Icon className="w-[20px] h-[20px]" />
+                <span className="text-[10px] font-medium leading-tight">{item.label}</span>
+              </Link>
+            );
+          })}
+        </div>
+      </nav>
+    );
+  }
+
+  if (isEmployeeRole(role)) {
     return (
       <nav
         className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-background/95 bg-background/95 backdrop-blur-lg border-t border-border"
@@ -82,7 +142,7 @@ export default function MobileBottomNav() {
       aria-label={t("mobileNavigation")}
     >
       <div className="flex items-center justify-around px-1 py-1.5">
-        {(role === "company"
+        {(isCompanyRole(role)
           ? [...primaryItems.slice(0, 4), companyItem, ...primaryItems.slice(4)]
           : primaryItems
         ).map((item) => {

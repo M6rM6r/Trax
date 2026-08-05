@@ -166,10 +166,14 @@ export default function AttendancePage() {
         return true;
       })
       .map((r) => ({ ...r, geofenceName: resolveLocationName(r) || "-" }))
-      .sort(
-        (a, b) =>
-          b.date.localeCompare(a.date) || (b.checkInTime ?? "").localeCompare(a.checkInTime ?? "")
-      );
+      .sort((a, b) => {
+        // Newest company-day first, then most recent punch (checkout > check-in).
+        const byDate = b.date.localeCompare(a.date);
+        if (byDate !== 0) return byDate;
+        const aAct = a.checkOutTime || a.checkInTime || "";
+        const bAct = b.checkOutTime || b.checkInTime || "";
+        return bAct.localeCompare(aAct);
+      });
   }, [attendance, filters, resolveLocationName]);
 
   const stats = useMemo(() => {
@@ -539,22 +543,34 @@ export default function AttendancePage() {
                 sortable: true,
                 sortValue: (r) => r.status,
                 cell: (r) => {
-                  const isLate = r.status !== "absent" && (r.lateMinutes ?? 0) > 0;
-                  const isPresent = r.status !== "absent" && !isLate;
-                  const label = isLate
-                    ? statusLabels.late
-                    : statusLabels[r.status as keyof typeof statusLabels] || r.status;
+                  const isCheckedOut = r.status === "checked_out" || Boolean(r.checkOutTime);
+                  const isLate =
+                    !isCheckedOut &&
+                    r.status !== "absent" &&
+                    ((r.lateMinutes ?? 0) > 0 || r.status === "late");
+                  const isPresent = !isCheckedOut && r.status !== "absent" && !isLate;
+                  // Checkout is the terminal state — do not hide it behind "late".
+                  const label = isCheckedOut
+                    ? statusLabels.checked_out
+                    : isLate
+                      ? statusLabels.late
+                      : statusLabels[r.status as keyof typeof statusLabels] || r.status;
                   return (
                     <span
-                      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                        isPresent
-                          ? "bg-primary/10 text-primary"
-                          : isLate
-                            ? "bg-[hsl(48_96%_53%/0.15)] text-[hsl(48_96%_53%)]"
-                            : "bg-destructive/10 text-destructive"
+                      className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                        isCheckedOut
+                          ? "bg-slate-500/15 text-slate-700 dark:text-slate-200"
+                          : isPresent
+                            ? "bg-primary/10 text-primary"
+                            : isLate
+                              ? "bg-[hsl(48_96%_53%/0.15)] text-[hsl(48_96%_53%)]"
+                              : "bg-destructive/10 text-destructive"
                       }`}
                     >
                       {label}
+                      {isCheckedOut && ((r.lateMinutes ?? 0) > 0 || r.status === "late") && (
+                        <span className="opacity-80">· {statusLabels.late}</span>
+                      )}
                     </span>
                   );
                 },

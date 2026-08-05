@@ -9,10 +9,12 @@ import { queryKeys } from "./queryKeys";
 
 export function useEmployees(options?: { enabled?: boolean }) {
   const companyId = useAuthStore((state) => state.companyId);
+  const role = useAuthStore((state) => state.role);
 
   return useQuery<Employee[]>({
     queryKey: [...queryKeys.employees, companyId ?? "unassigned"],
-    enabled: Boolean(companyId) && (options?.enabled ?? true),
+    // Company admin roster only (command palette / dashboards). Staff use useEmployee(id).
+    enabled: Boolean(companyId) && role === "company" && (options?.enabled ?? true),
     staleTime: 60 * 1000,
     refetchOnWindowFocus: false,
     refetchIntervalInBackground: false,

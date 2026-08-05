@@ -6,12 +6,17 @@ import type { Geofence } from "@/lib/types/trackingTypes";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { queryKeys } from "./queryKeys";
 
-export function useGeofences() {
+export function useGeofences(options?: { enabled?: boolean }) {
   const companyId = useAuthStore((state) => state.companyId);
+  const role = useAuthStore((state) => state.role);
 
   return useQuery<Geofence[]>({
     queryKey: [...queryKeys.geofences, companyId ?? "unassigned"],
-    enabled: Boolean(companyId),
+    // Company manages geofences; employees need list for assigned check-in gate.
+    enabled:
+      Boolean(companyId) &&
+      (options?.enabled ?? true) &&
+      (role === "company" || role === "employee"),
     staleTime: 60 * 1000,
     refetchOnWindowFocus: false,
     refetchIntervalInBackground: false,

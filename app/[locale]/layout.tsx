@@ -20,6 +20,7 @@ import MotionProvider from "@/components/providers/MotionProvider";
 import InstallPrompt from "@/components/shared/InstallPrompt";
 import OfflineSyncManager from "@/components/shared/OfflineSyncManager";
 import NotificationManager from "@/components/shared/NotificationManager";
+import RoleGate from "@/components/providers/RoleGate";
 
 export async function generateMetadata({
   params,
@@ -102,24 +103,26 @@ export default async function LocaleLayout({
         <ThemeProvider attribute="class" forcedTheme="dark" enableSystem={false}>
           <QueryProvider>
             <AuthProvider>
-              <CompanySettingsLoader />
-              <ErrorBoundary>
-                <MonitoringProvider>
-                  <MotionProvider>
-                    <SettingsApplier />
-                    <PWARegistrar />
-                    <AppPreloader />
-                    <TopLoadingBar />
-                    {children}
-                    <CommandPalette />
-                    <OfflineIndicator />
-                    <OfflineSyncManager />
-                    <NotificationManager />
-                    <InstallPrompt />
-                    <Toaster />
-                  </MotionProvider>
-                </MonitoringProvider>
-              </ErrorBoundary>
+              <RoleGate>
+                <CompanySettingsLoader />
+                <ErrorBoundary>
+                  <MonitoringProvider>
+                    <MotionProvider>
+                      <SettingsApplier />
+                      <PWARegistrar />
+                      <AppPreloader />
+                      <TopLoadingBar />
+                      {children}
+                      <CommandPalette />
+                      <OfflineIndicator />
+                      <OfflineSyncManager />
+                      <NotificationManager />
+                      <InstallPrompt />
+                      <Toaster />
+                    </MotionProvider>
+                  </MonitoringProvider>
+                </ErrorBoundary>
+              </RoleGate>
             </AuthProvider>
           </QueryProvider>
         </ThemeProvider>

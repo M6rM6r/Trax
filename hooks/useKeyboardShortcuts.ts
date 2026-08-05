@@ -2,10 +2,18 @@
 
 import { useEffect } from "react";
 import { usePathname, useRouter } from "@/i18n/navigation";
+import { useAuthStore } from "@/stores/useAuthStore";
+import {
+  canRoleAccessPath,
+  isCompanyRole,
+  isEmployeeRole,
+  isMastermindRole,
+} from "@/lib/utils/roleAccess";
 
 export function useKeyboardShortcuts() {
   const router = useRouter();
   const pathname = usePathname();
+  const role = useAuthStore((s) => s.role);
 
   useEffect(() => {
     let gPressed = false;
@@ -41,17 +49,22 @@ export function useKeyboardShortcuts() {
       }
 
       if (gPressed) {
-        const routes: Record<string, string> = {
-          d: "/",
-          e: "/employees",
-          a: "/attendance",
-          m: "/live-map",
-          s: "/settings",
-          g: "/geofences",
-          c: "/check-in",
-        };
+        const routes: Record<string, string> = {};
+        if (isEmployeeRole(role)) {
+          routes.c = "/check-in";
+        } else if (isMastermindRole(role)) {
+          routes.d = "/mastermind/companies";
+          routes.c = "/mastermind/companies";
+        } else if (isCompanyRole(role)) {
+          routes.d = "/";
+          routes.e = "/employees";
+          routes.a = "/attendance";
+          routes.m = "/live-map";
+          routes.s = "/settings";
+          routes.g = "/geofences";
+        }
         const route = routes[e.key.toLowerCase()];
-        if (route) {
+        if (route && canRoleAccessPath(role, route)) {
           e.preventDefault();
           router.push(route);
         }
@@ -64,5 +77,5 @@ export function useKeyboardShortcuts() {
       window.removeEventListener("keydown", handler);
       if (gTimer) clearTimeout(gTimer);
     };
-  }, [router, pathname]);
+  }, [router, pathname, role]);
 }

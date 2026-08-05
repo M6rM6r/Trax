@@ -20,6 +20,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { useAuthStore } from "@/stores/useAuthStore";
+import { useCompanySettingsStore } from "@/stores/useCompanySettingsStore";
+import { useQueryClient } from "@tanstack/react-query";
 import Image from "next/image";
 import UserAvatar from "../Avatar";
 import Breadcrumb from "../Breadcrumb";
@@ -50,6 +52,7 @@ const Index = ({
   const user = useAuthStore((s) => s.user);
   const role = useAuthStore((s) => s.role);
   const clearUser = useAuthStore((s) => s.clearUser);
+  const queryClient = useQueryClient();
   const t = useTranslations("Navigation");
   const locale = useLocale();
   const mainNavItems = useMainNavItems({ pathname, role });
@@ -109,12 +112,14 @@ const Index = ({
       }
     }
     clearUser();
+    useCompanySettingsStore.getState().resetSettings();
+    queryClient.clear();
     toast({
       description: t("logoutSuccess"),
       variant: "default",
     });
     router.push("/login");
-  }, [router, toast, clearUser, t]);
+  }, [router, toast, clearUser, t, queryClient]);
 
   const toggleLocale = useCallback(() => {
     const next = locale === "ar" ? "en" : "ar";
