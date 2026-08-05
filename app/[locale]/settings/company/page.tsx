@@ -23,7 +23,7 @@ import { toastSuccess, toastError } from "@/hooks/use-toast";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useCompanySettingsStore } from "@/stores/useCompanySettingsStore";
 import { useSaveCompanySettings } from "@/hooks/useApi";
-import type { CompanySettings } from "@/lib/types/companySettings";
+import { type CompanySettings, defaultCompanySettings } from "@/lib/types/companySettings";
 import {
   getEffectiveDefaultShift,
   parseTimeToMinutes,
@@ -93,9 +93,15 @@ export default function CompanySettingsPage() {
   const setSettings = useCompanySettingsStore((s) => s.setSettings);
   const saveMutation = useSaveCompanySettings();
   const [activeTab, setActiveTab] = useState<TabId>("work");
-  const [local, setLocal] = useState<CompanySettings | null>(null);
+  const [local, setLocal] = useState<CompanySettings>(defaultCompanySettings);
   const [accentColor, setAccentColor] = useState("blue");
   const [fontSize, setFontSize] = useState("medium");
+  const [isClient, setIsClient] = useState(false);
+
+  // Mark as client-side after hydration
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   // Initialize local state from store on mount and when loaded changes
   useEffect(() => {
@@ -105,7 +111,7 @@ export default function CompanySettingsPage() {
     void _ss;
     void _rs;
     void _sl;
-    setLocal(rest as CompanySettings);
+    setLocal({ ...defaultCompanySettings, ...(rest as Partial<CompanySettings>) });
   }, []); // Run once on mount
 
   useEffect(() => {
@@ -116,11 +122,13 @@ export default function CompanySettingsPage() {
       void _ss;
       void _rs;
       void _sl;
-      setLocal(rest as CompanySettings);
+      setLocal({ ...defaultCompanySettings, ...(rest as Partial<CompanySettings>) });
     }
   }, [loaded]);
 
+  // Load client-only settings (localStorage, apply styles) after hydration
   useEffect(() => {
+    if (!isClient) return;
     const saved = localStorage.getItem("trax_settings");
     if (saved) {
       const parsed = JSON.parse(saved);
@@ -131,23 +139,13 @@ export default function CompanySettingsPage() {
       applyAccentColor(ac);
       document.documentElement.style.setProperty("--base-font-size", fontSizeMap[fs] || "16px");
     }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [isClient]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (role !== "company") {
     return (
       <MainLayout>
         <div className="p-6 text-center">
           <p className="text-muted-foreground">{t("adminOnly")}</p>
-        </div>
-      </MainLayout>
-    );
-  }
-
-  if (!local) {
-    return (
-      <MainLayout>
-        <div className="p-6 text-center">
-          <p className="text-muted-foreground">{t("loading")}</p>
         </div>
       </MainLayout>
     );

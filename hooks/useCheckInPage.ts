@@ -228,11 +228,11 @@ export function useCheckInPage() {
     ) {
       return true;
     }
-    if (trustedIsWithinRange) return true;
+    // If geofence is required but none are configured, deny check-in
     if (geofences.length === 0) {
-      // Only treat "no geofences configured" as allowed after we have settled the query
-      return geofencesReady;
+      return false;
     }
+    if (trustedIsWithinRange) return true;
     return false;
   }, [
     currentLocation,
@@ -240,7 +240,6 @@ export function useCheckInPage() {
     effectiveCompanySettings.allowCheckInOutsideGeofence,
     effectiveCompanySettings.requireGeofenceForCheckIn,
     geofences.length,
-    geofencesReady,
   ]);
 
   const statusMeta = useMemo(() => {
@@ -350,10 +349,11 @@ export function useCheckInPage() {
         !effectiveCompanySettings.requireGeofenceForCheckIn
       ) {
         allowed = true;
+      } else if (geofences.length === 0) {
+        // Geofence required but none configured - deny
+        allowed = false;
       } else if (trustedIsWithinRange) {
         allowed = true;
-      } else if (geofences.length === 0) {
-        allowed = geofencesReady;
       } else {
         allowed = false;
       }
