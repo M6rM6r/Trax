@@ -24,6 +24,9 @@ import {
   mapGeofence,
   queryByCompanyId,
 } from "./helpers";
+import { companiesApi } from "./companies";
+import { employeesApi } from "./employees";
+import { geofencesApi } from "./geofences";
 
 export const attendanceApi = {
   async list(
@@ -46,6 +49,61 @@ export const attendanceApi = {
       mapAttendance,
       orderBy("date", "desc")
     );
+
+    // Recompute status/late/worked from the latest company settings + employee + geofence,
+    // so the dashboard and notifications always reflect the current rules rather than
+    // whatever shift was cached on the record at check-in time.
+    try {
+      const [settingsRaw, employees, geofences] = await Promise.all([
+        companiesApi.getSettings(),
+        employeesApi.list(),
+        geofencesApi.list(),
+      ]);
+      const settings = { ...defaultCompanySettings, ...(settingsRaw ?? {}) } as CompanySettings;
+      const employeeMap = new Map(employees.map((e) => [String(e.id), e]));
+      const geofenceMap = new Map(geofences.map((g) => [String(g.id), g]));
+
+      records = records.map((record) => {
+        if (!record.checkInTime) return record;
+
+        const employee = employeeMap.get(record.employeeId) ?? {
+          attendanceMode: record.attendanceMode,
+          shiftOverride: null,
+        };
+        const geofence = record.geofenceId ? geofenceMap.get(record.geofenceId) : null;
+        const recordDate = new Date(`${record.date}T${record.checkInTime}`);
+        const { shift } = resolveEmployeeShift(
+          employee,
+          settings,
+          recordDate,
+          record.shiftSlot,
+          geofence?.shifts ?? null
+        );
+
+        const evalResult = evaluateCheckIn(record.checkInTime, shift);
+        const next: AttendanceRecord = {
+          ...record,
+          status: evalResult.status,
+          lateMinutes: evalResult.lateMinutes,
+          appliedShift: shift,
+        };
+
+        if (record.checkOutTime) {
+          next.expectedCheckoutTime =
+            settings.checkoutTimeRangeEnabled && settings.checkoutStartTime
+              ? settings.checkoutStartTime
+              : (shift.endTime ?? null);
+          next.workedHours = calculateWorkedHours(record.checkInTime, record.checkOutTime);
+          next.earlyCheckout = Boolean(
+            next.expectedCheckoutTime && record.checkOutTime < next.expectedCheckoutTime
+          );
+        }
+
+        return next;
+      });
+    } catch (err) {
+      console.warn("[attendance.list] failed to recompute records:", err);
+    }
 
     if (dateRange?.from || dateRange?.to) {
       records = records.filter((record) => {
@@ -196,7 +254,7 @@ export const attendanceApi = {
           checkOutStatus: null,
           workedHours: 0,
         });
-        return mapAttendance(existingDoc.id, {
+        const record = mapAttendance(existingDoc.id, {
           ...existingData,
           checkInTime,
           checkInLat: payload.lat,
@@ -208,6 +266,7 @@ export const attendanceApi = {
           checkOutTime: null,
           workedHours: 0,
         });
+        return record;
       }
       return mapAttendance(existingDoc.id, existingData);
     }
@@ -238,7 +297,8 @@ export const attendanceApi = {
       createdAt: serverTimestamp(),
     } satisfies Record<string, unknown>;
     await setDoc(reference, record);
-    return mapAttendance(reference.id, record);
+    const mappedRecord = mapAttendance(reference.id, record);
+    return mappedRecord;
   },
 
   async checkOut(
@@ -281,7 +341,7 @@ export const attendanceApi = {
       expectedCheckoutTime,
       earlyCheckout,
     });
-    return {
+    const updatedRecord: AttendanceRecord = {
       ...current,
       checkOutTime,
       status: "checked_out",
@@ -290,5 +350,6 @@ export const attendanceApi = {
       expectedCheckoutTime,
       earlyCheckout,
     };
+    return updatedRecord;
   },
 };

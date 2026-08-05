@@ -544,6 +544,7 @@
     "dragToReorder": "سحب لإعادة الترتيب",
     "increase": "زيادة",
     "decrease": "انخفاض",
+    "export": "تصدير",
     "greeting": "مرحباً، {name}",
     "onTimeRate": "معدل الحضور",
     "outsideGeofence": "خارج النطاق",
@@ -723,6 +724,7 @@
       "work": "ساعات العمل",
       "auto": "الحضور التلقائي",
       "notifications": "الإشعارات",
+      "preferences": "التفضيلات",
       "session": "الجلسة",
       "geofence": "النطاق الجغرافي",
       "appearance": "المظهر"
@@ -745,11 +747,11 @@
       "startTime": "وقت بدء العمل",
       "endTime": "وقت انتهاء العمل",
       "gracePeriod": "فترة السماح (دقائق)",
-      "gracePeriodHelper": "عدد الدقائق بعد وقت بدء العمل قبل تسجيل التأخير",
+      "gracePeriodHelper": "عدد الدقائق قبل تسجيل التأخير",
       "lateThreshold": "حد التأخير (دقائق)",
       "lateThresholdHelper": "بعد هذا الحد يُعتبر الموظف متأخراً بشكل كبير",
-      "checkoutReference": "تحديد وقت انصراف مرجعي",
-      "checkoutReferenceHelper": "عند التفعيل، يُعتبر أي انصراف قبل الوقت المحدد انصرافاً مبكراً",
+      "checkoutReference": "تحديد وقت انصراف مرجعي (دقائق)",
+      "checkoutReferenceHelper": "عدد الدقائق قبل اعتبار الإنصراف مبكراً",
       "checkoutStart": "بداية وقت الانصراف",
       "checkoutStartHelper": "أي انصراف قبل هذا الوقت يُحسب مبكراً",
       "checkoutEnd": "نهاية وقت الانصراف",
@@ -786,6 +788,8 @@
       "geofenceBreachHelper": "تنبيه عند خروج الموظف من النطاق الجغرافي",
       "checkInReminder": "تذكير الحضور",
       "checkInReminderHelper": "إرسال تذكير للموظفين قبل وقت الحضور",
+      "checkoutAlerts": "إشعارات الانصراف",
+      "checkoutAlertsHelper": "تنبيه عند انصراف الموظفين",
       "reminderTime": "وقت تذكير الحضور",
       "sendTitle": "إرسال إشعار للموظفين",
       "sendTitlePlaceholder": "عنوان الإشعار",
@@ -804,6 +808,50 @@
       "autoSignOutHelper": "تسجيل انصراف تلقائي للموظفين بعد وقت محدد",
       "autoSignOutTime": "وقت تسجيل الانصراف التلقائي"
     },
+    "preferences": {
+      "title": "تفضيلات الإشعارات",
+      "globalEnable": "تفعيل الإشعارات",
+      "globalEnableHelper": "مفتاح رئيسي لجميع الإشعارات",
+      "pushEnable": "إشعارات الدفع (Push)",
+      "pushEnableHelper": "استقبال إشعارات على الجهاز حتى عند إغلاق التطبيق",
+      "emailEnable": "إشعارات البريد الإلكتروني",
+      "emailEnableHelper": "إرسال نسخة من الإشعارات إلى البريد الإلكتروني",
+      "quietHoursStart": "بداية ساعات الهدوء",
+      "quietHoursStartHelper": "لا ترسل إشعارات Push بعد هذا الوقت",
+      "quietHoursEnd": "نهاية ساعات الهدوء",
+      "quietHoursEndHelper": "استئناف إرسال إشعارات Push من هذا الوقت",
+      "byType": "حسب نوع الإشعار",
+      "types": {
+        "attendance": "الحضور",
+        "check_in": "تسجيل الحضور",
+        "late_arrival": "التأخير",
+        "check_out": "تسجيل الانصراف",
+        "check_out_early": "الانصراف المبكر",
+        "overtime": "ساعات إضافية",
+        "absence": "الغياب",
+        "geofence_breach": "خرق النطاق الجغرافي",
+        "anomaly_detected": "اكتشاف شذوذ",
+        "device_change": "تغيير الجهاز",
+        "location_change": "تغيير الموقع",
+        "shift_change": "تغيير الوردية",
+        "schedule_change": "تغيير الجدول",
+        "leave_request": "طلب إجازة",
+        "leave_approved": "إجازة موافقة",
+        "leave_rejected": "إجازة مرفوضة",
+        "payroll": "الرواتب",
+        "document": "المستندات",
+        "meeting": "الاجتماعات",
+        "training": "التدريب",
+        "emergency": "الطوارئ",
+        "maintenance": "الصيانة",
+        "policy_update": "تحديث السياسة",
+        "birthday": "أعياد الميلاد",
+        "work_anniversary": "ذكرى العمل",
+        "performance_review": "مراجعة الأداء",
+        "reminder": "التذكيرات",
+        "announcement": "الإعلانات"
+      }
+    },
     "geofence": {
       "title": "إعدادات النطاق الجغرافي",
       "require": "اشتراط النطاق للحضور",
@@ -818,6 +866,9 @@
     "theme": {
       "color": "لون التمييز",
       "fontSize": "حجم الخط",
+      "language": "اللغة",
+      "english": "الإنجليزية",
+      "arabic": "العربية",
       "small": "صغير",
       "medium": "متوسط",
       "large": "كبير",
@@ -990,6 +1041,11 @@
     "geofenceBreachMessage": "{name} غادر نطاق {geofence}",
     "checkIn": "تسجيل حضور",
     "checkInMessage": "{name} سجل الحضور في {time}",
+    "employee": "موظف",
+    "checkOutTitle": "تسجيل انصراف",
+    "checkOutMessage": "{name} سجل الانصراف في {time}",
+    "checkOutEarlyTitle": "انصراف مبكر",
+    "checkOutEarlyMessage": "{name} سجل انصراف مبكر في {time}",
     "notificationsAria": "الإشعارات",
     "unread": "({count}) غير مقروء",
     "markAllRead": "تحديد الكل كمقروء",
@@ -1001,7 +1057,63 @@
     "unreadTab": "غير المقروء",
     "today": "اليوم",
     "yesterday": "أمس",
-    "earlier": "سابق"
+    "earlier": "سابق",
+    "center": {
+      "title": "الإشعارات",
+      "unread": "غير مقروء",
+      "filter": {
+        "all": "الكل",
+        "unread": "غير مقروء",
+        "read": "مقروء"
+      },
+      "category": {
+        "all": "جميع الفئات",
+        "attendance": "الحضور",
+        "leave": "الإجازات",
+        "payroll": "الرواتب",
+        "system": "النظام",
+        "social": "اجتماعي",
+        "security": "الأمان",
+        "schedule": "الجدولة"
+      },
+      "type": {
+        "check_in": "تسجيل حضور",
+        "late_arrival": "تأخر",
+        "check_out": "تسجيل انصراف",
+        "check_out_early": "انصراف مبكر",
+        "overtime": "عمل إضافي",
+        "absence": "غياب",
+        "geofence_breach": "تجاوز النطاق",
+        "anomaly_detected": "سلوك غير طبيعي",
+        "system": "النظام",
+        "announcement": "إعلان",
+        "shift_change": "تغيير الوردية",
+        "leave_request": "طلب إجازة",
+        "leave_approved": "إجازة مقبولة",
+        "leave_rejected": "إجازة مرفوضة",
+        "payroll": "الرواتب",
+        "document": "مستند",
+        "meeting": "اجتماع",
+        "training": "تدريب",
+        "emergency": "طوارئ",
+        "maintenance": "صيانة",
+        "policy_update": "تحديث سياسة",
+        "birthday": "عيد ميلاد",
+        "work_anniversary": "ذكرى عمل",
+        "performance_review": "تقييم الأداء",
+        "schedule_change": "تغيير الجدول",
+        "location_change": "تغيير الموقع",
+        "device_change": "جهاز جديد",
+        "reminder": "تذكير"
+      },
+      "priority": {
+        "low": "منخفض",
+        "normal": "عادي",
+        "high": "عالي"
+      },
+      "search": "البحث في الإشعارات...",
+      "empty": "لا توجد إشعارات"
+    }
   },
   "NotificationSettings": {
     "title": "إعدادات الإشعارات",
@@ -1073,5 +1185,34 @@
       "large": "كبير"
     },
     "saved": "تم حفظ الإعدادات"
+  },
+  "Common": {
+    "state": {
+      "installApp": "تثبيت Trax",
+      "installAppDescription": "أضف التطبيق إلى شاشتك الرئيسية للوصول السريع",
+      "installAppDescriptionIOS": "اضغط على زر المشاركة، ثم 'إضافة إلى الشاشة الرئيسية'",
+      "install": "تثبيت",
+      "gotIt": "فهمت",
+      "close": "إغلاق"
+    },
+    "dataTable": {
+      "searchPlaceholder": "بحث...",
+      "search": "بحث",
+      "clearSearch": "مسح البحث",
+      "showing": "عرض {count} من {total}",
+      "selectAll": "تحديد الكل",
+      "selectRow": "تحديد الصف {id}",
+      "noResults": "لا توجد نتائج",
+      "show": "عرض",
+      "ofTotal": "من {total}",
+      "rowsPerPage": "صفوف في الصفحة",
+      "previousPage": "الصفحة السابقة",
+      "nextPage": "الصفحة التالية"
+    }
+  },
+  "Error": {
+    "pageError": "حدث خطأ غير متوقع",
+    "retry": "إعادة المحاولة",
+    "reloadPage": "إعادة تحميل الصفحة"
   }
 }

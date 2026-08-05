@@ -23,6 +23,21 @@ function applyArabicFont(doc: jsPDF, fontBase64: string): void {
   doc.setFont("Amiri");
 }
 
+function formatWorkedHours(hours: number | null | undefined): string {
+  if (hours === null || hours === undefined) return "";
+  const totalMinutes = Math.round(hours * 60);
+  const h = Math.floor(totalMinutes / 60);
+  const m = totalMinutes % 60;
+  return h > 0 ? `${h}h ${m}m` : `${m}m`;
+}
+
+function formatLateMinutes(minutes: number | null | undefined): string {
+  if (minutes === null || minutes === undefined || minutes <= 0) return "";
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  return h > 0 ? `${h}h ${m}m` : `${m}m`;
+}
+
 export function exportToCSV<T extends Record<string, unknown>>(
   data: T[],
   filename: string,
@@ -40,7 +55,15 @@ export function exportToCSV<T extends Record<string, unknown>>(
     const values = keys.map((key) => {
       const val = row[key];
       if (val === null || val === undefined) return "";
-      const str = String(val).replace(/"/g, '""');
+      let str: string;
+      if (key === "workedHours") {
+        str = formatWorkedHours(val as number);
+      } else if (key === "lateMinutes") {
+        str = formatLateMinutes(val as number);
+      } else {
+        str = String(val);
+      }
+      str = str.replace(/"/g, '""');
       return `"${str}"`;
     });
     csvRows.push(values.join(","));

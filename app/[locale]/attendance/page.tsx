@@ -6,7 +6,6 @@ import FullPageHead from "@/components/shared/FullPageHead";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   Calendar,
-  FileText,
   FileSpreadsheet,
   Filter,
   UserCheck,
@@ -19,7 +18,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { useAttendance, useEmployees, useGeofences } from "@/hooks/useApi";
 import { resolveAttendanceLocation } from "@/lib/utils/geo";
-import { exportToCSV, exportAttendanceToPDF } from "@/lib/utils/exportUtils";
+import { exportToCSV } from "@/lib/utils/exportUtils";
 import { toastSuccess, toastError } from "@/hooks/use-toast";
 import { hapticTap } from "@/lib/utils/haptics";
 import { EmptyState, ErrorState } from "@/components/shared/StateViews";
@@ -344,26 +343,6 @@ export default function AttendancePage() {
                 <FileSpreadsheet className="w-4 h-4" />
                 {t("exportCsv")}
               </Button>
-              <Button
-                variant="outline"
-                className="flex items-center gap-2"
-                onClick={async () => {
-                  if (filteredAttendance.length === 0) {
-                    toastError(t("noRecords"));
-                    return;
-                  }
-                  try {
-                    await exportAttendanceToPDF(filteredAttendance);
-                    toastSuccess(t("exportPdfSuccess"));
-                  } catch (err) {
-                    console.error("[exportPdf] failed:", err);
-                    toastError(err instanceof Error ? err.message : t("exportServerFailed"));
-                  }
-                }}
-              >
-                <FileText className="w-4 h-4" />
-                {t("exportPdf")}
-              </Button>
             </div>
           }
         />
@@ -502,25 +481,39 @@ export default function AttendancePage() {
                 header: t("workedHours"),
                 sortable: true,
                 sortValue: (r) => r.workedHours ?? -1,
-                cell: (r) => (
-                  <span className="text-sm font-medium text-foreground">
-                    {r.workedHours !== null && r.workedHours !== undefined
-                      ? `${r.workedHours.toFixed(1)} ${t("hours")}`
-                      : "-"}
-                  </span>
-                ),
+                cell: (r) => {
+                  const hours = r.workedHours;
+                  if (hours === null || hours === undefined) return "-";
+                  const totalMinutes = Math.round(hours * 60);
+                  const h = Math.floor(totalMinutes / 60);
+                  const m = totalMinutes % 60;
+                  return h > 0 ? (
+                    <span className="text-sm font-medium text-foreground">
+                      {h}h {m}m
+                    </span>
+                  ) : (
+                    <span className="text-sm font-medium text-foreground">{m}m</span>
+                  );
+                },
               },
               {
                 key: "lateMinutes",
                 header: t("lateMinutes"),
                 sortable: true,
                 sortValue: (r) => r.lateMinutes,
-                cell: (r) =>
-                  (r.lateMinutes ?? 0) > 0 ? (
-                    <span className="text-[hsl(48_96%_53%)] font-medium">{r.lateMinutes}</span>
+                cell: (r) => {
+                  const minutes = r.lateMinutes ?? 0;
+                  if (minutes <= 0) return "-";
+                  const hours = Math.floor(minutes / 60);
+                  const mins = minutes % 60;
+                  return hours > 0 ? (
+                    <span className="text-[hsl(48_96%_53%)] font-medium">
+                      {hours}h {mins}m
+                    </span>
                   ) : (
-                    "-"
-                  ),
+                    <span className="text-[hsl(48_96%_53%)] font-medium">{mins}m</span>
+                  );
+                },
               },
               {
                 key: "geofenceName",

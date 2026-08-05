@@ -78,13 +78,15 @@ export function useCheckIn() {
 
 export function useCheckOut() {
   const qc = useQueryClient();
-  const checkoutTimeRangeEnabled = useCompanySettingsStore(
-    (state) => state.checkoutTimeRangeEnabled
-  );
-  const checkoutStartTime = useCompanySettingsStore((state) => state.checkoutStartTime);
+  const settingsState = useCompanySettingsStore();
   const companySettings = useMemo(
-    () => ({ checkoutTimeRangeEnabled, checkoutStartTime }),
-    [checkoutTimeRangeEnabled, checkoutStartTime]
+    () => ({
+      notificationsEnabled: settingsState.notificationsEnabled,
+      checkoutAlertsEnabled: settingsState.checkoutAlertsEnabled,
+      checkoutTimeRangeEnabled: settingsState.checkoutTimeRangeEnabled,
+      checkoutStartTime: settingsState.checkoutStartTime,
+    }),
+    [settingsState]
   );
   return useMutation({
     mutationFn: async (payload: { employeeId: string }) => {

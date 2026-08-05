@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useParams } from "next/navigation";
 import { firebaseData } from "@/lib/services/firebaseData";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useToast } from "@/hooks/use-toast";
@@ -29,6 +30,8 @@ interface CompanyResult {
 }
 
 export default function MastermindCompaniesPage() {
+  const params = useParams<{ locale: string }>();
+  const locale = params?.locale ?? "ar";
   const t = useTranslations("MasterMind");
   const user = useAuthStore((s) => s.user);
   const { toast } = useToast();
@@ -225,13 +228,24 @@ export default function MastermindCompaniesPage() {
           </form>
 
           {created && (
-            <div className="mt-6 p-4 rounded-lg bg-green-50 text-green-900 border border-green-200">
-              <p className="font-semibold">{t("companyCreatedSuccess")}</p>
-              <p className="text-sm mt-1">{t("companyIdLabel", { id: created.companyId })}</p>
-              <p className="text-sm">{t("companyEmailLabel", { email: created.email })}</p>
-              <p className="text-sm">
-                {t("companyPasswordLabel", { password: created.adminPassword })}
-              </p>
+            <div className="mt-6 p-4 rounded-lg bg-green-50 text-green-900 border border-green-200 text-sm">
+              {locale === "ar" ? (
+                <>
+                  <p>مرحبًا، تم إنشاء حسابك في Trax</p>
+                  <p>البريد الإلكتروني: {created.email}</p>
+                  <p>كلمة المرور المؤقتة: {created.adminPassword}</p>
+                  <p>
+                    رابط تسجيل الدخول: https://naf--trax-ae.asia-southeast1.hosted.app/{locale}/
+                  </p>
+                </>
+              ) : (
+                <>
+                  <p>Hello, your Trax account has been created</p>
+                  <p>Email: {created.email}</p>
+                  <p>Temporary password: {created.adminPassword}</p>
+                  <p>Login link: https://naf--trax-ae.asia-southeast1.hosted.app/{locale}/</p>
+                </>
+              )}
             </div>
           )}
         </CardContent>

@@ -45,6 +45,7 @@ const settings: CompanySettings = {
   pushNotificationsEnabled: true,
   checkInReminderEnabled: true,
   checkInReminderTime: "08:00",
+  checkoutAlertsEnabled: true,
   sessionTimeoutMinutes: 60,
   autoSignOutEnabled: false,
   autoSignOutTime: "18:00",
@@ -56,6 +57,7 @@ const settings: CompanySettings = {
   companyName: "Trax",
   timezone: "Asia/Riyadh",
   weekendDays: [5, 6],
+  language: "en",
 };
 
 describe("shift utilities", () => {

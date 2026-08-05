@@ -30,7 +30,7 @@ export const APP_CONFIG = {
   APP_NAME: "Trax",
   APP_VERSION: "0.1.0",
   DEFAULT_LOCALE: "ar",
-  LOCALES: ["ar", "en"] as const,
+  LOCALES: ["en", "ar"] as const,
   TOAST_DURATION: 3000,
   DEBOUNCE_DELAY: 300,
   MAP_DEFAULT_CENTER: [46.6753, 24.7136] as [number, number],

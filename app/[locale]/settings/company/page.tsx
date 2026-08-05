@@ -10,12 +10,8 @@ import { Switch } from "@/components/ui/switch";
 import {
   Bell,
   Clock,
-  MapPin,
-  Zap,
   Save,
-  Send,
   Navigation,
-  Timer,
   Palette,
   Type,
   Check,
@@ -27,10 +23,12 @@ import { toastSuccess, toastError } from "@/hooks/use-toast";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useCompanySettingsStore } from "@/stores/useCompanySettingsStore";
 import { useSaveCompanySettings } from "@/hooks/useApi";
-import { firebaseData } from "@/lib/services/firebase";
 import type { CompanySettings } from "@/lib/types/companySettings";
-
-type TabId = "work" | "auto" | "notifications" | "session" | "geofence" | "appearance";
+import {
+  getEffectiveDefaultShift,
+  parseTimeToMinutes,
+  formatMinutesAsTime,
+} from "@/lib/utils/shifts";
 
 function getThemeColors(t: (key: string) => string) {
   return [
@@ -96,11 +94,19 @@ export default function CompanySettingsPage() {
   const saveMutation = useSaveCompanySettings();
   const [activeTab, setActiveTab] = useState<TabId>("work");
   const [local, setLocal] = useState<CompanySettings | null>(null);
-  const [notifTitle, setNotifTitle] = useState("");
-  const [notifBody, setNotifBody] = useState("");
-  const [sendingNotif, setSendingNotif] = useState(false);
   const [accentColor, setAccentColor] = useState("blue");
   const [fontSize, setFontSize] = useState("medium");
+
+  // Initialize local state from store on mount and when loaded changes
+  useEffect(() => {
+    const snap = useCompanySettingsStore.getState();
+    const { loaded: _l, setSettings: _ss, resetSettings: _rs, setLoaded: _sl, ...rest } = snap;
+    void _l;
+    void _ss;
+    void _rs;
+    void _sl;
+    setLocal(rest as CompanySettings);
+  }, []); // Run once on mount
 
   useEffect(() => {
     if (loaded) {
@@ -154,8 +160,9 @@ export default function CompanySettingsPage() {
   const handleSave = async () => {
     hapticTap();
     try {
-      await saveMutation.mutateAsync(local);
-      setSettings(local);
+      const toSave = { ...local, defaultShift: getEffectiveDefaultShift(local) };
+      await saveMutation.mutateAsync(toSave);
+      setSettings(toSave);
       hapticSuccess();
       toastSuccess(t("saveSuccess"));
     } catch (err) {
@@ -167,25 +174,6 @@ export default function CompanySettingsPage() {
       } else {
         toastError(t("saveFailed"));
       }
-    }
-  };
-
-  const handleSendNotification = async () => {
-    if (!notifTitle.trim() || !notifBody.trim()) return;
-    setSendingNotif(true);
-    try {
-      const result = await firebaseData.cloudFunctions.sendCompanyNotification(
-        notifTitle.trim(),
-        notifBody.trim()
-      );
-      toastSuccess(t("notifications.sent", { count: result.sent }));
-      setNotifTitle("");
-      setNotifBody("");
-    } catch {
-      hapticError();
-      toastError(t("notifications.sendFailed"));
-    } finally {
-      setSendingNotif(false);
     }
   };
 
@@ -204,12 +192,27 @@ export default function CompanySettingsPage() {
     toastSuccess(t("saved"));
   };
 
+  const checkoutReferenceMinutes = (() => {
+    const start = parseTimeToMinutes(local.workStartTime);
+    const checkout = parseTimeToMinutes(local.checkoutStartTime);
+    return Number.isFinite(start) && Number.isFinite(checkout) && checkout >= start
+      ? checkout - start
+      : 0;
+  })();
+
+  const handleCheckoutReferenceChange = (minutes: number) => {
+    const start = parseTimeToMinutes(local.workStartTime);
+    if (Number.isFinite(start)) {
+      update("checkoutStartTime", formatMinutesAsTime(start + Math.max(0, minutes)));
+    }
+  };
+
+  type TabId = "work" | "auto" | "notifications" | "appearance";
+
   const tabs: Array<{ id: TabId; label: string; icon: typeof Clock }> = [
     { id: "work", label: t("tabs.work"), icon: Clock },
     { id: "auto", label: t("tabs.auto"), icon: Navigation },
     { id: "notifications", label: t("tabs.notifications"), icon: Bell },
-    { id: "session", label: t("tabs.session"), icon: Timer },
-    { id: "geofence", label: t("tabs.geofence"), icon: MapPin },
     { id: "appearance", label: t("tabs.appearance"), icon: Palette },
   ];
 
@@ -291,91 +294,39 @@ export default function CompanySettingsPage() {
                       />
                     </div>
                   </div>
-                  <div>
-                    <label className="text-sm font-medium text-muted-foreground mb-2 block">
-                      {t("work.gracePeriod")}
-                    </label>
-                    <input
-                      type="number"
-                      min={0}
-                      max={60}
-                      value={local.gracePeriodMinutes}
-                      onChange={(e) => update("gracePeriodMinutes", Number(e.target.value))}
-                      className="w-full px-3 py-2.5 rounded-xl border border-input bg-background text-foreground"
-                    />
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {t("work.gracePeriodHelper")}
-                    </p>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-muted-foreground mb-2 block">
-                      {t("work.lateThreshold")}
-                    </label>
-                    <input
-                      type="number"
-                      min={1}
-                      max={120}
-                      value={local.lateThresholdMinutes}
-                      onChange={(e) => update("lateThresholdMinutes", Number(e.target.value))}
-                      className="w-full px-3 py-2.5 rounded-xl border border-input bg-background text-foreground"
-                    />
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {t("work.lateThresholdHelper")}
-                    </p>
-                  </div>
-                  <div className="p-4 rounded-xl bg-muted/50 space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm font-medium text-foreground">
-                          {t("work.checkoutReference")}
-                        </p>
-                        <p className="text-xs text-muted-foreground mt-0.5">
-                          {t("work.checkoutReferenceHelper")}
-                        </p>
-                      </div>
-                      <Switch
-                        checked={local.checkoutTimeRangeEnabled}
-                        onCheckedChange={() => {
-                          hapticTap();
-                          update("checkoutTimeRangeEnabled", !local.checkoutTimeRangeEnabled);
-                        }}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-sm font-medium text-muted-foreground mb-2 block">
+                        {t("work.gracePeriod")}
+                      </label>
+                      <input
+                        type="number"
+                        min={0}
+                        max={120}
+                        value={local.gracePeriodMinutes}
+                        onChange={(e) => update("gracePeriodMinutes", Number(e.target.value))}
+                        className="w-full px-3 py-2.5 rounded-xl border border-input bg-background text-foreground"
                       />
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {t("work.gracePeriodHelper")}
+                      </p>
                     </div>
-                    {local.checkoutTimeRangeEnabled && (
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <label className="text-sm font-medium text-muted-foreground mb-2 block">
-                            {t("work.checkoutStart")}
-                          </label>
-                          <input
-                            type="time"
-                            value={local.checkoutStartTime}
-                            onChange={(e) => update("checkoutStartTime", e.target.value)}
-                            className="w-full px-3 py-2.5 rounded-xl border border-input bg-background text-foreground"
-                          />
-                          <p className="text-xs text-muted-foreground mt-1">
-                            {t("work.checkoutStartHelper")}
-                          </p>
-                        </div>
-                        <div>
-                          <label className="text-sm font-medium text-muted-foreground mb-2 block">
-                            {t("work.checkoutEnd")}
-                          </label>
-                          <input
-                            type="time"
-                            value={local.checkoutEndTime}
-                            onChange={(e) => update("checkoutEndTime", e.target.value)}
-                            className="w-full px-3 py-2.5 rounded-xl border border-input bg-background text-foreground"
-                          />
-                          <p className="text-xs text-muted-foreground mt-1">
-                            {t("work.checkoutEndHelper")}
-                          </p>
-                        </div>
-                      </div>
-                    )}
-                    {!local.checkoutTimeRangeEnabled && (
-                      <p className="text-xs text-muted-foreground">{t("work.checkoutDefault")}</p>
-                    )}
+                    <div>
+                      <label className="text-sm font-medium text-muted-foreground mb-2 block">
+                        {t("work.checkoutReference")}
+                      </label>
+                      <input
+                        type="number"
+                        min={0}
+                        max={1440}
+                        value={checkoutReferenceMinutes}
+                        onChange={(e) => handleCheckoutReferenceChange(Number(e.target.value))}
+                        className="w-full px-3 py-2.5 rounded-xl border border-input bg-background text-foreground"
+                      />
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {t("work.checkoutReferenceHelper")}
+                      </p>
+                    </div>
                   </div>
                   <div>
                     <label className="text-sm font-medium text-muted-foreground mb-2 block">
@@ -443,30 +394,6 @@ export default function CompanySettingsPage() {
                     }}
                   />
                 </div>
-                {local.autoCheckInEnabled && (
-                  <div className="p-4 rounded-xl bg-primary/10 space-y-4">
-                    <div>
-                      <label className="text-sm font-medium text-muted-foreground mb-2 block">
-                        {t("auto.radiusOffset")}
-                      </label>
-                      <input
-                        type="number"
-                        min={0}
-                        max={500}
-                        value={local.autoCheckInRadiusOffset}
-                        onChange={(e) => update("autoCheckInRadiusOffset", Number(e.target.value))}
-                        className="w-full px-3 py-2.5 rounded-xl border border-input bg-background text-foreground"
-                      />
-                      <p className="text-xs text-muted-foreground mt-1">
-                        {t("auto.radiusOffsetHelper")}
-                      </p>
-                    </div>
-                    <div className="flex items-start gap-2 p-3 rounded-lg bg-primary/5">
-                      <Zap className="w-4 h-4 text-primary mt-0.5 shrink-0" />
-                      <p className="text-xs text-primary/70">{t("auto.info")}</p>
-                    </div>
-                  </div>
-                )}
               </CardContent>
             </Card>
           )}
@@ -517,14 +444,9 @@ export default function CompanySettingsPage() {
                           desc: t("notifications.attendanceAlertsHelper"),
                         },
                         {
-                          key: "geofenceBreachAlertsEnabled" as const,
-                          title: t("notifications.geofenceBreach"),
-                          desc: t("notifications.geofenceBreachHelper"),
-                        },
-                        {
-                          key: "checkInReminderEnabled" as const,
-                          title: t("notifications.checkInReminder"),
-                          desc: t("notifications.checkInReminderHelper"),
+                          key: "checkoutAlertsEnabled" as const,
+                          title: t("notifications.checkoutAlerts"),
+                          desc: t("notifications.checkoutAlertsHelper"),
                         },
                       ].map((item) => (
                         <div
@@ -544,182 +466,11 @@ export default function CompanySettingsPage() {
                           />
                         </div>
                       ))}
-                      {local.checkInReminderEnabled && (
-                        <div className="p-4 rounded-xl bg-muted/50">
-                          <label className="text-sm font-medium text-muted-foreground mb-2 block">
-                            {t("notifications.reminderTime")}
-                          </label>
-                          <input
-                            type="time"
-                            value={local.checkInReminderTime}
-                            onChange={(e) => update("checkInReminderTime", e.target.value)}
-                            className="w-full px-3 py-2.5 rounded-xl border border-input bg-background text-foreground"
-                          />
-                        </div>
-                      )}
                     </>
                   )}
                 </CardContent>
               </Card>
-              <Card className="border-0 shadow-lg bg-card mt-6">
-                <CardHeader>
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-                      <Send className="w-5 h-5 text-primary" />
-                    </div>
-                    <CardTitle className="text-lg font-bold text-foreground">
-                      {t("notifications.sendTitle")}
-                    </CardTitle>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <input
-                    type="text"
-                    value={notifTitle}
-                    onChange={(e) => setNotifTitle(e.target.value)}
-                    placeholder={t("notifications.sendTitlePlaceholder")}
-                    className="w-full px-3 py-2 text-sm border border-input rounded-lg outline-none focus:ring-2 focus:ring-ring bg-transparent text-foreground"
-                  />
-                  <textarea
-                    value={notifBody}
-                    onChange={(e) => setNotifBody(e.target.value)}
-                    placeholder={t("notifications.sendBodyPlaceholder")}
-                    rows={3}
-                    className="w-full px-3 py-2 text-sm border border-input rounded-lg outline-none focus:ring-2 focus:ring-ring bg-transparent text-foreground resize-none"
-                  />
-                  <button
-                    type="button"
-                    onClick={handleSendNotification}
-                    disabled={
-                      !local.notificationsEnabled ||
-                      !notifTitle.trim() ||
-                      !notifBody.trim() ||
-                      sendingNotif
-                    }
-                    className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors disabled:cursor-not-allowed disabled:opacity-60"
-                  >
-                    {sendingNotif ? t("notifications.sending") : t("notifications.send")}
-                  </button>
-                  {!local.notificationsEnabled && (
-                    <p className="text-xs text-muted-foreground">
-                      {t("notifications.enableFirst")}
-                    </p>
-                  )}
-                </CardContent>
-              </Card>
             </>
-          )}
-
-          {/* Session Tab */}
-          {activeTab === "session" && (
-            <Card className="border-0 shadow-lg bg-card">
-              <CardHeader>
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-accent flex items-center justify-center">
-                    <Timer className="w-5 h-5 text-primary-foreground" />
-                  </div>
-                  <CardTitle className="text-lg font-bold text-foreground">
-                    {t("session.title")}
-                  </CardTitle>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <label className="text-sm font-medium text-muted-foreground mb-2 block">
-                    {t("session.timeout")}
-                  </label>
-                  <input
-                    type="number"
-                    min={5}
-                    max={480}
-                    value={local.sessionTimeoutMinutes}
-                    onChange={(e) => update("sessionTimeoutMinutes", Number(e.target.value))}
-                    className="w-full px-3 py-2.5 rounded-xl border border-input bg-background text-foreground"
-                  />
-                  <p className="text-xs text-muted-foreground mt-1">{t("session.timeoutHelper")}</p>
-                </div>
-                <div className="flex items-center justify-between p-4 rounded-xl bg-muted/50">
-                  <div>
-                    <p className="text-sm font-medium text-foreground">
-                      {t("session.autoSignOut")}
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      {t("session.autoSignOutHelper")}
-                    </p>
-                  </div>
-                  <Switch
-                    checked={local.autoSignOutEnabled}
-                    onCheckedChange={() => {
-                      hapticTap();
-                      update("autoSignOutEnabled", !local.autoSignOutEnabled);
-                    }}
-                  />
-                </div>
-                {local.autoSignOutEnabled && (
-                  <div className="p-4 rounded-xl bg-muted/50">
-                    <label className="text-sm font-medium text-muted-foreground mb-2 block">
-                      {t("session.autoSignOutTime")}
-                    </label>
-                    <input
-                      type="time"
-                      value={local.autoSignOutTime}
-                      onChange={(e) => update("autoSignOutTime", e.target.value)}
-                      className="w-full px-3 py-2.5 rounded-xl border border-input bg-background text-foreground"
-                    />
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Geofence Tab */}
-          {activeTab === "geofence" && (
-            <Card className="border-0 shadow-lg bg-card">
-              <CardHeader>
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center">
-                    <MapPin className="w-5 h-5 text-primary-foreground" />
-                  </div>
-                  <CardTitle className="text-lg font-bold text-foreground">
-                    {t("geofence.title")}
-                  </CardTitle>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-center justify-between p-4 rounded-xl bg-muted/50">
-                  <div>
-                    <p className="text-sm font-medium text-foreground">{t("geofence.require")}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      {t("geofence.requireHelper")}
-                    </p>
-                  </div>
-                  <Switch
-                    checked={local.requireGeofenceForCheckIn}
-                    onCheckedChange={() => {
-                      hapticTap();
-                      update("requireGeofenceForCheckIn", !local.requireGeofenceForCheckIn);
-                    }}
-                  />
-                </div>
-                <div className="flex items-center justify-between p-4 rounded-xl bg-muted/50">
-                  <div>
-                    <p className="text-sm font-medium text-foreground">
-                      {t("geofence.allowOutside")}
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      {t("geofence.allowOutsideHelper")}
-                    </p>
-                  </div>
-                  <Switch
-                    checked={local.allowCheckInOutsideGeofence}
-                    onCheckedChange={() => {
-                      hapticTap();
-                      update("allowCheckInOutsideGeofence", !local.allowCheckInOutsideGeofence);
-                    }}
-                  />
-                </div>
-              </CardContent>
-            </Card>
           )}
 
           {/* Appearance Tab */}

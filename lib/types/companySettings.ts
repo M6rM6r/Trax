@@ -7,7 +7,7 @@ export interface CompanySettings {
 
   // Attendance modes & shifts
   attendanceMode: "field" | "office_two_shift" | "hourly";
-  /** Start/end/grace/late for the default single shift (field / hourly). */
+  /** Start/end/grace for the default single shift (field / hourly). */
   defaultShift: {
     startTime: string;
     endTime: string;
@@ -54,6 +54,7 @@ export interface CompanySettings {
   pushNotificationsEnabled: boolean;
   checkInReminderEnabled: boolean;
   checkInReminderTime: string; // "08:00"
+  checkoutAlertsEnabled: boolean;
 
   // Session
   sessionTimeoutMinutes: number; // 60
@@ -73,40 +74,41 @@ export interface CompanySettings {
   companyName: string;
   timezone: string;
   weekendDays: number[]; // [5, 6] = Friday, Saturday
+  language: "en" | "ar"; // Company language preference
 }
 
 export const defaultCompanySettings: CompanySettings = {
   workStartTime: "08:00",
   workEndTime: "17:00",
-  gracePeriodMinutes: 15,
-  lateThresholdMinutes: 15,
+  gracePeriodMinutes: 30,
+  lateThresholdMinutes: 30,
 
   attendanceMode: "field",
   defaultShift: {
     startTime: "08:00",
     endTime: "17:00",
-    gracePeriodMinutes: 15,
-    lateThresholdMinutes: 15,
+    gracePeriodMinutes: 30,
+    lateThresholdMinutes: 30,
   },
   morningShift: {
     startTime: "08:00",
     endTime: "12:00",
-    gracePeriodMinutes: 15,
-    lateThresholdMinutes: 15,
+    gracePeriodMinutes: 30,
+    lateThresholdMinutes: 30,
   },
   eveningShift: {
     startTime: "13:00",
     endTime: "17:00",
-    gracePeriodMinutes: 15,
-    lateThresholdMinutes: 15,
+    gracePeriodMinutes: 30,
+    lateThresholdMinutes: 30,
   },
   seasonalAttendanceEnabled: false,
   seasonalMonths: [9], // Ramadan is the 9th Hijri month
   seasonalShift: {
     startTime: "09:00",
     endTime: "15:00",
-    gracePeriodMinutes: 15,
-    lateThresholdMinutes: 15,
+    gracePeriodMinutes: 30,
+    lateThresholdMinutes: 30,
   },
 
   autoCheckInEnabled: false,
@@ -121,13 +123,14 @@ export const defaultCompanySettings: CompanySettings = {
   pushNotificationsEnabled: true,
   checkInReminderEnabled: true,
   checkInReminderTime: "08:00",
+  checkoutAlertsEnabled: true,
 
   sessionTimeoutMinutes: 60,
   autoSignOutEnabled: false,
   autoSignOutTime: "18:00",
 
   checkoutTimeRangeEnabled: false,
-  checkoutStartTime: "17:00",
+  checkoutStartTime: "08:30",
   checkoutEndTime: "17:00",
 
   requireGeofenceForCheckIn: true,
@@ -136,4 +139,5 @@ export const defaultCompanySettings: CompanySettings = {
   companyName: "",
   timezone: "Asia/Riyadh",
   weekendDays: [5, 6],
+  language: "en",
 };

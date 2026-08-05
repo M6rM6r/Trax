@@ -27,24 +27,26 @@ export function buildStaffCredentialsMessage(input: {
   loginUrl?: string | null;
 }): string {
   const company = input.companyName?.trim() || "Trax";
-  const loginUrl = input.loginUrl?.trim();
+  const locale = input.loginUrl?.includes("/en/") ? "en" : "ar";
+  const baseUrl = "https://naf--trax-ae.asia-southeast1.hosted.app";
 
-  const lines = [`مرحبًا، تم إنشاء حسابك في ${company}`, `البريد الإلكتروني: ${input.email}`];
-
-  if (input.username?.trim()) {
-    lines.push(`اسم المستخدم: ${input.username.trim()}`);
+  if (locale === "ar") {
+    return [
+      `مرحبًا، تم إنشاء حسابك في ${company}`,
+      `اسم المستخدم: ${input.username ?? input.email}`,
+      `البريد الإلكتروني: ${input.email}`,
+      `كلمة المرور المؤقتة: ${input.password}`,
+      `رابط تسجيل الدخول: ${baseUrl}/ar/`,
+    ].join("\n");
   }
 
-  lines.push(
-    `كلمة المرور المؤقتة: ${input.password}`,
-    "يرجى تسجيل الدخول وتغيير كلمة المرور فورًا."
-  );
-
-  if (loginUrl) {
-    lines.push(`رابط تسجيل الدخول: ${loginUrl}`);
-  }
-
-  return lines.join("\n");
+  return [
+    `Hello, your ${company} account has been created`,
+    `Username: ${input.username ?? input.email}`,
+    `Email: ${input.email}`,
+    `Temporary password: ${input.password}`,
+    `Login link: ${baseUrl}/en/`,
+  ].join("\n");
 }
 
 export function buildStaffCredentialsEmail(input: {

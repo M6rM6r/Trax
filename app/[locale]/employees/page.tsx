@@ -256,19 +256,13 @@ export default function EmployeesPage() {
       return;
     }
     hapticSuccess();
-    const headers = [
-      t("csvHeaderName"),
-      t("csvHeaderEmail"),
-      t("csvHeaderPhone"),
-      t("csvHeaderDepartment"),
-      t("csvHeaderStatus"),
-    ];
+    const headers = ["Name", "Email", "Phone", "Department", "Status"];
     const rows = selected.map((e) => [
       e.name,
       e.email,
       e.phone,
       e.department,
-      e.status === "active" ? t("active") : t("inactiveStatus"),
+      e.status === "active" ? "Active" : "Inactive",
     ]);
     const csv = [headers, ...rows]
       .map((r) => r.map((c) => `"${(c ?? "").replace(/"/g, '""')}"`).join(","))

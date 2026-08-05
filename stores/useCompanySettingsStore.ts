@@ -4,7 +4,7 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { defaultCompanySettings, type CompanySettings } from "@/lib/types/companySettings";
 
-interface CompanySettingsState extends CompanySettings {
+export interface CompanySettingsState extends CompanySettings {
   loaded: boolean;
   setSettings: (settings: Partial<CompanySettings>) => void;
   resetSettings: () => void;
@@ -24,7 +24,10 @@ export const useCompanySettingsStore = create<CompanySettingsState>()(
       name: "company-settings",
       partialize: (state) => {
         const { loaded, setSettings, resetSettings, setLoaded, ...rest } = state;
-        void loaded; void setSettings; void resetSettings; void setLoaded;
+        void loaded;
+        void setSettings;
+        void resetSettings;
+        void setLoaded;
         return rest;
       },
     }

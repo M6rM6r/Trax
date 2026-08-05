@@ -32,7 +32,7 @@ import { useResourcePreload } from "@/hooks/useResourcePreload";
 import type { AdminUser } from "@/lib/types/responseTypes";
 import { TopLoadingBar } from "../TopLoadingBar";
 import OfflineBanner from "../OfflineBanner";
-import NotificationCenter from "../NotificationCenter";
+import { NotificationBell } from "@/components/notifications/NotificationCenter";
 
 const Index = ({
   children,
@@ -187,7 +187,7 @@ const Index = ({
                 {locale}
               </Button>
               <div className="flex items-center gap-2 md:gap-3 md:border-l md:border-border md:ps-4">
-                <NotificationCenter />
+                <NotificationBell />
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <button

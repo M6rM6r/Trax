@@ -1,19 +1,28 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useCompanySettingsStore } from "@/stores/useCompanySettingsStore";
 import { useCompanySettings } from "@/hooks/useApi";
 import { defaultCompanySettings } from "@/lib/types/companySettings";
+import { getEffectiveDefaultShift } from "@/lib/utils/shifts";
 
 export default function CompanySettingsLoader() {
   const user = useAuthStore((s) => s.user);
-  const setSettings = useCompanySettingsStore((s) => s.setSettings);
-  const setLoaded = useCompanySettingsStore((s) => s.setLoaded);
   const { data: firestoreSettings } = useCompanySettings({ enabled: !!user });
+  const setOnce = useRef(false);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || setOnce.current) return;
+
+    const store = useCompanySettingsStore.getState();
+    if (store.loaded) {
+      setOnce.current = true;
+      return;
+    }
+
+    const setSettings = store.setSettings;
+    const setLoaded = store.setLoaded;
 
     if (firestoreSettings) {
       const merged = { ...defaultCompanySettings };
@@ -24,12 +33,14 @@ export default function CompanySettingsLoader() {
           (merged as Record<string, unknown>)[key] = firestoreSettings[key];
         }
       }
+      merged.defaultShift = getEffectiveDefaultShift(merged);
       setSettings(merged);
     } else {
       setSettings(defaultCompanySettings);
     }
     setLoaded();
-  }, [user, firestoreSettings, setSettings, setLoaded]);
+    setOnce.current = true;
+  }, [user, firestoreSettings]);
 
   return null;
 }

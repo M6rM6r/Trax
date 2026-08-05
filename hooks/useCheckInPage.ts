@@ -31,7 +31,7 @@ import {
   type QueuedCheckOut,
 } from "@/lib/utils/offlineQueue";
 import type { AttendanceRecord } from "@/lib/types/trackingTypes";
-import type { CompanySettings } from "@/lib/types/companySettings";
+import { type CompanySettings, defaultCompanySettings } from "@/lib/types/companySettings";
 
 const AUTO_CHECKIN_DEBOUNCE_MS = 1500;
 const BURST_DURATION_MS = 600;
@@ -70,56 +70,57 @@ export function useCheckInPage() {
   const employeeId = useAuthStore((state) => state.user?.employee_id ?? null);
   const employeeNameFromAuth = useAuthStore((state) => state.user?.name ?? "");
 
-  const autoCheckInEnabled = useCompanySettingsStore((s) => s.autoCheckInEnabled);
-  const autoCheckInRadiusOffset = useCompanySettingsStore((s) => s.autoCheckInRadiusOffset);
-  const requireGeofenceForCheckIn = useCompanySettingsStore((s) => s.requireGeofenceForCheckIn);
-  const allowCheckInOutsideGeofence = useCompanySettingsStore((s) => s.allowCheckInOutsideGeofence);
-  const attendanceMode = useCompanySettingsStore((s) => s.attendanceMode);
-  const defaultShift = useCompanySettingsStore((s) => s.defaultShift);
-  const morningShift = useCompanySettingsStore((s) => s.morningShift);
-  const eveningShift = useCompanySettingsStore((s) => s.eveningShift);
-  const seasonalAttendanceEnabled = useCompanySettingsStore((s) => s.seasonalAttendanceEnabled);
-  const seasonalMonths = useCompanySettingsStore((s) => s.seasonalMonths);
-  const seasonalShift = useCompanySettingsStore((s) => s.seasonalShift);
-  const checkoutTimeRangeEnabled = useCompanySettingsStore((s) => s.checkoutTimeRangeEnabled);
-  const checkoutStartTime = useCompanySettingsStore((s) => s.checkoutStartTime);
-
+  const settingsState = useCompanySettingsStore();
   const companySettings = useMemo<Partial<CompanySettings>>(
     () => ({
-      autoCheckInEnabled,
-      autoCheckInRadiusOffset,
-      requireGeofenceForCheckIn,
-      allowCheckInOutsideGeofence,
-      attendanceMode,
-      defaultShift,
-      morningShift,
-      eveningShift,
-      seasonalAttendanceEnabled,
-      seasonalMonths,
-      seasonalShift,
-      checkoutTimeRangeEnabled,
-      checkoutStartTime,
+      workStartTime: settingsState.workStartTime,
+      workEndTime: settingsState.workEndTime,
+      gracePeriodMinutes: settingsState.gracePeriodMinutes,
+      lateThresholdMinutes: settingsState.lateThresholdMinutes,
+      attendanceMode: settingsState.attendanceMode,
+      defaultShift: settingsState.defaultShift,
+      morningShift: settingsState.morningShift,
+      eveningShift: settingsState.eveningShift,
+      seasonalAttendanceEnabled: settingsState.seasonalAttendanceEnabled,
+      seasonalMonths: settingsState.seasonalMonths,
+      seasonalShift: settingsState.seasonalShift,
+      autoCheckInEnabled: settingsState.autoCheckInEnabled,
+      autoCheckInRadiusOffset: settingsState.autoCheckInRadiusOffset,
+      requireGeofenceForCheckIn: settingsState.requireGeofenceForCheckIn,
+      allowCheckInOutsideGeofence: settingsState.allowCheckInOutsideGeofence,
+      checkoutTimeRangeEnabled: settingsState.checkoutTimeRangeEnabled,
+      checkoutStartTime: settingsState.checkoutStartTime,
+      checkoutEndTime: settingsState.checkoutEndTime,
+      notificationsEnabled: settingsState.notificationsEnabled,
+      lateAlertsEnabled: settingsState.lateAlertsEnabled,
+      attendanceAlertsEnabled: settingsState.attendanceAlertsEnabled,
+      checkoutAlertsEnabled: settingsState.checkoutAlertsEnabled,
+      pushNotificationsEnabled: settingsState.pushNotificationsEnabled,
+      emailNotificationsEnabled: settingsState.emailNotificationsEnabled,
+      checkInReminderEnabled: settingsState.checkInReminderEnabled,
+      checkInReminderTime: settingsState.checkInReminderTime,
+      weekendDays: settingsState.weekendDays,
+      companyName: settingsState.companyName,
+      timezone: settingsState.timezone,
+      language: settingsState.language,
+      sessionTimeoutMinutes: settingsState.sessionTimeoutMinutes,
+      autoSignOutEnabled: settingsState.autoSignOutEnabled,
+      autoSignOutTime: settingsState.autoSignOutTime,
+      geofenceBreachAlertsEnabled: settingsState.geofenceBreachAlertsEnabled,
+      anomalyAlertsEnabled: settingsState.anomalyAlertsEnabled,
     }),
-    [
-      autoCheckInEnabled,
-      autoCheckInRadiusOffset,
-      requireGeofenceForCheckIn,
-      allowCheckInOutsideGeofence,
-      attendanceMode,
-      defaultShift,
-      morningShift,
-      eveningShift,
-      seasonalAttendanceEnabled,
-      seasonalMonths,
-      seasonalShift,
-      checkoutTimeRangeEnabled,
-      checkoutStartTime,
-    ]
+    [settingsState]
+  );
+
+  // Merge with defaults to ensure complete CompanySettings for shift resolution
+  const effectiveCompanySettings = useMemo(
+    () => ({ ...defaultCompanySettings, ...companySettings }) as CompanySettings,
+    [companySettings]
   );
 
   const { data: currentEmployee } = useEmployee(employeeId ? String(employeeId) : null);
   const geofencesQuery = useGeofences();
-  const geofences = geofencesQuery.data ?? [];
+  const geofences = useMemo(() => geofencesQuery.data ?? [], [geofencesQuery.data]);
   const geofencesLoading = !!(geofencesQuery.isLoading || geofencesQuery.isFetching);
   const geofencesReady = !geofencesLoading;
   const { data: todayRecords = [] } = useMyAttendance(employeeId ? String(employeeId) : null);
@@ -221,7 +222,10 @@ export function useCheckInPage() {
 
   const canCheckIn = useMemo(() => {
     if (!currentLocation) return false;
-    if (companySettings.allowCheckInOutsideGeofence || !companySettings.requireGeofenceForCheckIn) {
+    if (
+      effectiveCompanySettings.allowCheckInOutsideGeofence ||
+      !effectiveCompanySettings.requireGeofenceForCheckIn
+    ) {
       return true;
     }
     if (trustedIsWithinRange) return true;
@@ -233,8 +237,8 @@ export function useCheckInPage() {
   }, [
     currentLocation,
     trustedIsWithinRange,
-    companySettings.allowCheckInOutsideGeofence,
-    companySettings.requireGeofenceForCheckIn,
+    effectiveCompanySettings.allowCheckInOutsideGeofence,
+    effectiveCompanySettings.requireGeofenceForCheckIn,
     geofences.length,
     geofencesReady,
   ]);
@@ -306,10 +310,10 @@ export function useCheckInPage() {
       geofenceId: geofence?.id ?? null,
       geofenceName: geofence?.name ?? null,
       timestamp,
-      settings: companySettings as CompanySettings,
+      settings: effectiveCompanySettings,
       employeeSnapshot: employeeForApi,
     }),
-    [employeeId, employeeName, companySettings, employeeForApi]
+    [employeeId, employeeName, effectiveCompanySettings, employeeForApi]
   );
 
   const createOfflineCheckOutRecord = useCallback(
@@ -317,9 +321,9 @@ export function useCheckInPage() {
       id: buildOfflineCheckOutId(),
       employeeId: String(employeeId),
       timestamp,
-      settings: companySettings,
+      settings: effectiveCompanySettings,
     }),
-    [employeeId, companySettings]
+    [employeeId, effectiveCompanySettings]
   );
 
   const handleCheckIn = useCallback(
@@ -342,8 +346,8 @@ export function useCheckInPage() {
       const geofence = nearestGeofence?.geofence ?? null;
       let allowed: boolean;
       if (
-        companySettings.allowCheckInOutsideGeofence ||
-        !companySettings.requireGeofenceForCheckIn
+        effectiveCompanySettings.allowCheckInOutsideGeofence ||
+        !effectiveCompanySettings.requireGeofenceForCheckIn
       ) {
         allowed = true;
       } else if (trustedIsWithinRange) {
@@ -367,7 +371,7 @@ export function useCheckInPage() {
 
       const { mode, shift, slot } = resolveEmployeeShift(
         employeeForApi ?? {},
-        companySettings as CompanySettings,
+        effectiveCompanySettings,
         nowDate,
         null,
         geofence?.shifts ?? null
@@ -416,7 +420,7 @@ export function useCheckInPage() {
           lng: currentLocation.lng,
           accuracy: currentLocation.accuracy,
           geofenceId: geofence?.id ?? null,
-          companySettings: companySettings as Record<string, unknown>,
+          companySettings: effectiveCompanySettings as unknown as Record<string, unknown>,
           employee: employeeForApi,
         });
 
@@ -456,11 +460,11 @@ export function useCheckInPage() {
       employeeName,
       employeeForApi,
       currentLocation,
-      isWithinRange,
+      trustedIsWithinRange,
       nearestGeofence,
       todayRecord?.checkInTime,
       checkInMutation,
-      companySettings,
+      effectiveCompanySettings,
       geofences.length,
       geofencesReady,
       today,

@@ -232,6 +232,18 @@ function mapShift(value: unknown): WorkShift | null {
 }
 
 export function mapAttendance(id: string, value: Record<string, unknown>): AttendanceRecord {
+  const derived = (() => {
+    const checkInTime = (value.checkInTime as string | null | undefined) ?? null;
+    const appliedShift = (value.appliedShift as AttendanceRecord["appliedShift"]) ?? null;
+    if (checkInTime && appliedShift) {
+      return evaluateCheckIn(checkInTime, appliedShift);
+    }
+    return {
+      status: (value.status as AttendanceRecord["status"]) ?? "absent",
+      lateMinutes: toNumber(value.lateMinutes),
+    };
+  })();
+
   return {
     id: String((value.id as string | number | undefined) ?? id),
     employeeId: String((value.employeeId as string | number | undefined) ?? ""),
@@ -239,7 +251,7 @@ export function mapAttendance(id: string, value: Record<string, unknown>): Atten
     date: String(value.date ?? ""),
     checkInTime: (value.checkInTime as string | null | undefined) ?? null,
     checkOutTime: (value.checkOutTime as string | null | undefined) ?? null,
-    status: (value.status as AttendanceRecord["status"]) ?? "absent",
+    status: derived.status,
     checkInLat:
       value.checkInLat === null || value.checkInLat === undefined
         ? null
@@ -259,18 +271,7 @@ export function mapAttendance(id: string, value: Record<string, unknown>): Atten
     geofenceId:
       value.geofenceId === null || value.geofenceId === undefined ? null : String(value.geofenceId),
     geofenceName: (value.geofenceName as string | null | undefined) ?? null,
-    lateMinutes: (() => {
-      const raw = value.lateMinutes;
-      const numeric = toNumber(raw);
-      const status = (value.status as AttendanceRecord["status"]) ?? "absent";
-      const checkInTime = (value.checkInTime as string | null | undefined) ?? null;
-      const appliedShift = (value.appliedShift as AttendanceRecord["appliedShift"]) ?? null;
-      if (status !== "present" && numeric <= 0 && checkInTime && appliedShift) {
-        const evalResult = evaluateCheckIn(checkInTime, appliedShift);
-        if (evalResult.lateMinutes > 0) return evalResult.lateMinutes;
-      }
-      return numeric;
-    })(),
+    lateMinutes: derived.lateMinutes,
     workedHours:
       value.workedHours === null || value.workedHours === undefined
         ? null

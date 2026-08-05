@@ -21,7 +21,29 @@ export type NotificationType =
   | "attendance"
   | "check_out"
   | "reminder"
-  | "system";
+  | "system"
+  | "announcement"
+  | "check_in"
+  | "check_out_early"
+  | "shift_change"
+  | "overtime"
+  | "absence"
+  | "leave_request"
+  | "leave_approved"
+  | "leave_rejected"
+  | "payroll"
+  | "document"
+  | "meeting"
+  | "training"
+  | "emergency"
+  | "maintenance"
+  | "policy_update"
+  | "birthday"
+  | "work_anniversary"
+  | "performance_review"
+  | "schedule_change"
+  | "location_change"
+  | "device_change";
 
 export interface AppNotification {
   id: string;

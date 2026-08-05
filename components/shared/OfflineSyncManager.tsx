@@ -12,9 +12,12 @@ import {
 } from "@/lib/utils/offlineQueue";
 import { firebaseData } from "@/lib/services/firebaseData";
 import { useTranslations } from "next-intl";
+import { useQueryClient } from "@tanstack/react-query";
+import { queryKeys } from "@/hooks/api/queryKeys";
 
 export default function OfflineSyncManager() {
   const t = useTranslations("CheckIn");
+  const qc = useQueryClient();
   const syncingRef = useRef(false);
 
   useEffect(() => {
@@ -62,6 +65,7 @@ export default function OfflineSyncManager() {
         }
       }
 
+      qc.invalidateQueries({ queryKey: queryKeys.attendance });
       syncingRef.current = false;
     };
 
@@ -69,7 +73,7 @@ export default function OfflineSyncManager() {
 
     window.addEventListener("online", syncQueue);
     return () => window.removeEventListener("online", syncQueue);
-  }, [t]);
+  }, [t, qc]);
 
   return null;
 }

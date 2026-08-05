@@ -63,19 +63,23 @@ function isWithinAnyGeofence(
 ): { nearestGeofence: { geofence: Geofence; distance: number } | null; isWithinRange: boolean } {
   let closest: { geofence: Geofence; distance: number } | null = null;
   let withinRange = false;
+  let hasConfiguredGeofence = false;
+
   for (const geo of geofences) {
-    if (
-      !Number.isFinite(geo.lat) ||
-      !Number.isFinite(geo.lng) ||
-      !Number.isFinite(geo.radius) ||
-      geo.radius <= 0 ||
-      geo.lat < -90 ||
-      geo.lat > 90 ||
-      geo.lng < -180 ||
-      geo.lng > 180
-    ) {
-      continue; // skip invalid geofence data
-    }
+    const hasValidCoordinates =
+      Number.isFinite(geo.lat) &&
+      Number.isFinite(geo.lng) &&
+      geo.lat >= -90 &&
+      geo.lat <= 90 &&
+      geo.lng >= -180 &&
+      geo.lng <= 180;
+
+    if (!hasValidCoordinates) continue; // skip malformed data
+
+    hasConfiguredGeofence = true;
+
+    if (!Number.isFinite(geo.radius) || geo.radius <= 0) continue; // markers, not zones
+
     const dist = calculateDistance(lat, lng, geo.lat, geo.lng);
     if (!closest || dist < closest.distance) {
       closest = { geofence: geo, distance: dist };
@@ -84,11 +88,12 @@ function isWithinAnyGeofence(
       withinRange = true;
     }
   }
-  // If no valid geofences were present, do not force outside
-  if (geofences.length > 0 && closest === null) {
-    // All were invalid; treat as no geofence configured for within purposes
+
+  if (geofences.length > 0 && !hasConfiguredGeofence) {
+    // All geofences were malformed; treat as if no geofence is configured
     return { nearestGeofence: null, isWithinRange: true };
   }
+
   return { nearestGeofence: closest, isWithinRange: withinRange };
 }
 

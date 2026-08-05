@@ -1,6 +1,6 @@
 "use client";
 
-import type { CompanySettings } from "@/lib/types/companySettings";
+import { defaultCompanySettings, type CompanySettings } from "@/lib/types/companySettings";
 import type { AttendanceMode, Employee, WorkShift } from "@/lib/types/trackingTypes";
 
 const HH_MM_REGEX = /^([01]\d|2[0-3]):([0-5]\d)$/;
@@ -12,8 +12,8 @@ const FALLBACK_SHIFT: WorkShift = {
   lateThresholdMinutes: 15,
 };
 
-function isValidHhMm(time: string): boolean {
-  return HH_MM_REGEX.test(time);
+function isValidHhMm(time: string | null | undefined): time is string {
+  return typeof time === "string" && HH_MM_REGEX.test(time);
 }
 
 /**
@@ -56,6 +56,26 @@ export function isSeasonalDate(
   return settings.seasonalMonths.includes(hijri.month);
 }
 
+export function getEffectiveDefaultShift(settings: Partial<CompanySettings>): WorkShift {
+  const fallback = defaultCompanySettings.defaultShift;
+  const startTime = settings.workStartTime;
+  const endTime = settings.workEndTime;
+  return {
+    startTime: isValidHhMm(startTime)
+      ? startTime
+      : (settings.defaultShift?.startTime ?? fallback.startTime),
+    endTime: isValidHhMm(endTime) ? endTime : (settings.defaultShift?.endTime ?? fallback.endTime),
+    gracePeriodMinutes:
+      settings.gracePeriodMinutes ??
+      settings.defaultShift?.gracePeriodMinutes ??
+      fallback.gracePeriodMinutes,
+    lateThresholdMinutes:
+      settings.lateThresholdMinutes ??
+      settings.defaultShift?.lateThresholdMinutes ??
+      fallback.lateThresholdMinutes,
+  };
+}
+
 export function getActiveShiftForDate(
   settings: CompanySettings,
   date: Date = new Date()
@@ -63,7 +83,7 @@ export function getActiveShiftForDate(
   if (isSeasonalDate(date, settings)) {
     return settings.seasonalShift;
   }
-  return settings.defaultShift;
+  return getEffectiveDefaultShift(settings);
 }
 
 export function resolveEmployeeAttendanceMode(
@@ -169,9 +189,11 @@ export function evaluateCheckIn(
 
   // Handle night shifts that cross midnight (e.g. 22:00 - 06:00).
   // A check-in after midnight (e.g. 01:58) needs to be compared to the
-  // previous day's start time.
+  // previous day's start time. We treat any early-morning check-in that is
+  // more than 6 hours before the shift start as the next day.
   const shiftSpansMidnight = startMinutes > endMinutes;
-  if (shiftSpansMidnight && checkInMinutes <= endMinutes) {
+  const nightWindowMinutes = 6 * 60;
+  if (shiftSpansMidnight && checkInMinutes < startMinutes - nightWindowMinutes) {
     checkInMinutes += 24 * 60;
   }
 
@@ -181,10 +203,11 @@ export function evaluateCheckIn(
   if (checkInMinutes <= graceEnd) {
     return { status: "present", lateMinutes: 0 };
   }
-  const lateMinutes = Math.max(0, checkInMinutes - startMinutes);
   if (checkInMinutes <= lateEnd) {
+    const lateMinutes = Math.max(0, checkInMinutes - startMinutes);
     return { status: "late", lateMinutes };
   }
+  const lateMinutes = Math.max(0, checkInMinutes - startMinutes);
   return { status: "late", lateMinutes };
 }
 

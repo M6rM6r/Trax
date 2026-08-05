@@ -358,8 +358,9 @@ export const createCompany = functions.https.onCall(async (data, context) => {
       password: admin_password,
       displayName: admin_name?.trim() || email.split("@")[0],
     });
-  } catch (err: any) {
-    if (err.code === "auth/email-already-exists") {
+  } catch (err: unknown) {
+    const error = err as { code?: string };
+    if (error.code === "auth/email-already-exists") {
       throw new functions.https.HttpsError("already-exists", "Admin email already in use");
     }
     throw err;

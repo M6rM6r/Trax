@@ -4,10 +4,10 @@ import { useMemo, type ComponentType } from "react";
 import MainLayout from "@/components/shared/MainLayout";
 import FullPageHead from "@/components/shared/FullPageHead";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { BarChart3, TrendingUp, FileText, FileSpreadsheet } from "lucide-react";
+import { BarChart3, TrendingUp, FileSpreadsheet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAttendanceReports, useEmployees, useRetentionInsights } from "@/hooks/useApi";
-import { exportAttendanceToCSV, exportAttendanceToPDF } from "@/lib/utils/exportUtils";
+import { exportAttendanceToCSV } from "@/lib/utils/exportUtils";
 import { useToast } from "@/hooks/use-toast";
 import { LoadingSkeleton, ErrorState } from "@/components/shared/StateViews";
 import dynamic from "next/dynamic";
@@ -217,17 +217,6 @@ export default function AttendanceReportsPage() {
               >
                 <FileSpreadsheet className="w-4 h-4" />
                 CSV
-              </Button>
-              <Button
-                variant="outline"
-                className="flex items-center gap-2"
-                onClick={async () => {
-                  await exportAttendanceToPDF(attendance);
-                  toast({ description: t("pdfExported") });
-                }}
-              >
-                <FileText className="w-4 h-4" />
-                PDF
               </Button>
             </div>
           }

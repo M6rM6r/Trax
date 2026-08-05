@@ -82,6 +82,46 @@ export default function DashboardPage() {
     [geofences, employees]
   );
 
+  const handleExportCSV = useCallback(() => {
+    if (!attendanceData?.length) return;
+    const h = ["Employee", "Date", "Check In", "Check Out", "Status", "Late", "Location"];
+    const formatLate = (minutes: number) => {
+      if (minutes <= 0) return "";
+      const h = Math.floor(minutes / 60);
+      const m = minutes % 60;
+      return h > 0 ? `${h}h ${m}m` : `${m}m`;
+    };
+    const e = (v: unknown) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+    const rows = attendanceData.map((r) => [
+      e(r.employeeName),
+      e(r.date),
+      e(r.checkInTime ?? "-"),
+      e(r.checkOutTime ?? "-"),
+      e(r.status),
+      e(formatLate(r.lateMinutes ?? 0)),
+      e(resolveLocationName(r) || "-"),
+    ]);
+    const sum = attendanceData.reduce((s, r) => s + (r.lateMinutes ?? 0), 0);
+    const formatSum = (minutes: number) => {
+      const h = Math.floor(minutes / 60);
+      const m = minutes % 60;
+      return h > 0 ? `${h}h ${m}m` : `${m}m`;
+    };
+    const csv = [
+      h.join(","),
+      ...rows.map((r) => r.join(",")),
+      `"Total","","","","","${formatSum(sum)}",""`,
+    ].join("\n");
+    const b = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+    const u = URL.createObjectURL(b);
+    const a = document.createElement("a");
+    a.href = u;
+    a.download = `attendance_${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(u);
+    toastSuccess(t("exported"));
+  }, [attendanceData, resolveLocationName, t]);
+
   const formatDate = useCallback(
     (dateStr: string | null | undefined) => {
       if (!dateStr) return "-";
@@ -289,7 +329,7 @@ export default function DashboardPage() {
             </div>
 
             <div className="space-y-8 animate-fade-in">
-              <AttendancePieChart data={attendanceDistribution} />
+              <AttendancePieChart data={attendanceDistribution} exportToCSV={handleExportCSV} />
 
               <Card className="border border-border/50 bg-card">
                 <CardHeader className="pb-4">
@@ -305,6 +345,9 @@ export default function DashboardPage() {
                         </p>
                       </div>
                     </div>
+                    <button onClick={handleExportCSV} className="text-sm text-primary">
+                      {t("export")}
+                    </button>
                   </div>
                 </CardHeader>
                 <CardContent>
