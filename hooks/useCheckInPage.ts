@@ -24,9 +24,6 @@ import { auth } from "@/lib/config/firebase";
 import {
   addToOfflineQueue,
   addToOfflineCheckOutQueue,
-  processOfflineQueue,
-  hasOfflineQueue,
-  hasOfflineCheckOutQueue,
   type QueuedCheckIn,
   type QueuedCheckOut,
 } from "@/lib/utils/offlineQueue";
@@ -121,6 +118,14 @@ export function useCheckInPage() {
   const { data: currentEmployee } = useEmployee(employeeId ? String(employeeId) : null);
   const geofencesQuery = useGeofences();
   const geofences = useMemo(() => geofencesQuery.data ?? [], [geofencesQuery.data]);
+  const assignedGeofenceId = currentEmployee?.geofenceId ?? null;
+  const allowedGeofences = useMemo(
+    () =>
+      assignedGeofenceId
+        ? geofences.filter((g) => String(g.id) === String(assignedGeofenceId))
+        : geofences,
+    [geofences, assignedGeofenceId]
+  );
   const geofencesLoading = !!(geofencesQuery.isLoading || geofencesQuery.isFetching);
   const geofencesReady = !geofencesLoading;
   const { data: todayRecords = [] } = useMyAttendance(employeeId ? String(employeeId) : null);
@@ -135,6 +140,7 @@ export function useCheckInPage() {
         ? {
             attendanceMode: currentEmployee.attendanceMode,
             shiftOverride: currentEmployee.shiftOverride,
+            geofenceId: currentEmployee.geofenceId ?? null,
           }
         : null,
     [currentEmployee]
@@ -151,7 +157,7 @@ export function useCheckInPage() {
     isWithinRange,
     isLocating,
     error: locationError,
-  } = useGeolocation({ geofences, enabled: true });
+  } = useGeolocation({ geofences: allowedGeofences, enabled: true });
 
   const [isOnline, setIsOnline] = useState(true);
   const [showCheckoutConfirm, setShowCheckoutConfirm] = useState(false);
@@ -160,7 +166,6 @@ export function useCheckInPage() {
   const [locationPermissionDenied, setLocationPermissionDenied] = useState(false);
 
   const autoCheckInTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const offlineSyncInProgress = useRef(false);
   const burstTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const checkInGuardRef = useRef(false);
   const checkOutGuardRef = useRef(false);
@@ -228,8 +233,8 @@ export function useCheckInPage() {
     ) {
       return true;
     }
-    // If geofence is required but none are configured, deny check-in
-    if (geofences.length === 0) {
+    // If geofence is required but none are configured/assigned, deny check-in
+    if (allowedGeofences.length === 0) {
       return false;
     }
     if (trustedIsWithinRange) return true;
@@ -239,7 +244,7 @@ export function useCheckInPage() {
     trustedIsWithinRange,
     effectiveCompanySettings.allowCheckInOutsideGeofence,
     effectiveCompanySettings.requireGeofenceForCheckIn,
-    geofences.length,
+    allowedGeofences.length,
   ]);
 
   const statusMeta = useMemo(() => {
@@ -277,23 +282,7 @@ export function useCheckInPage() {
     [companyId, employeeId, today]
   );
 
-  // Sync any pending offline records when back online
-  useEffect(() => {
-    if (!isOnline || (!hasOfflineQueue() && !hasOfflineCheckOutQueue())) return;
-    if (offlineSyncInProgress.current) return;
-    offlineSyncInProgress.current = true;
-
-    processOfflineQueue()
-      .then(({ processed, failed }) => {
-        offlineSyncInProgress.current = false;
-        qc.invalidateQueries({ queryKey: queryKeys.attendance });
-        if (processed > 0) toastSuccess(t("synced", { count: processed }));
-        if (failed > 0) toastError(t("syncFailed", { count: failed }));
-      })
-      .catch(() => {
-        offlineSyncInProgress.current = false;
-      });
-  }, [isOnline, qc, t]);
+  // Offline queue sync is handled globally by OfflineSyncManager component
 
   const createOfflineCheckInRecord = useCallback(
     (
@@ -349,8 +338,8 @@ export function useCheckInPage() {
         !effectiveCompanySettings.requireGeofenceForCheckIn
       ) {
         allowed = true;
-      } else if (geofences.length === 0) {
-        // Geofence required but none configured - deny
+      } else if (allowedGeofences.length === 0) {
+        // Geofence required but none configured/assigned - deny
         allowed = false;
       } else if (trustedIsWithinRange) {
         allowed = true;
@@ -465,8 +454,7 @@ export function useCheckInPage() {
       todayRecord?.checkInTime,
       checkInMutation,
       effectiveCompanySettings,
-      geofences.length,
-      geofencesReady,
+      allowedGeofences.length,
       today,
       qc,
       todayCacheKey,

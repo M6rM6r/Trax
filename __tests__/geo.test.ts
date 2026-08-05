@@ -47,34 +47,34 @@ describe("geo utils", () => {
 describe("geofence guards", () => {
   it("ignores zero-radius geofence (not within)", () => {
     const g = mk("z", 24.7136, 46.6753, 0);
-    const r = isWithinAnyGeofence(24.7136, 46.6753, [g], GEOFENCE_DISTANCE_BUFFER_METERS);
+    const r = isWithinAnyGeofence(24.7136, 46.6753, [g]);
     expect(r.isWithinRange).toBe(false);
     expect(r.nearestGeofence).toBeNull();
   });
 
   it("ignores negative-radius geofence", () => {
     const g = mk("neg", 24.7136, 46.6753, -10);
-    const r = isWithinAnyGeofence(24.7136, 46.6753, [g], GEOFENCE_DISTANCE_BUFFER_METERS);
+    const r = isWithinAnyGeofence(24.7136, 46.6753, [g]);
     expect(r.isWithinRange).toBe(false);
   });
 
-  it("skips invalid lat/lng and treats no valid as within (no geofence configured)", () => {
+  it("skips invalid lat/lng and denies check-in when all geofences are malformed", () => {
     const bad = mk("bad", 999, 999, 100);
-    const r = isWithinAnyGeofence(24.7136, 46.6753, [bad], GEOFENCE_DISTANCE_BUFFER_METERS);
-    expect(r.isWithinRange).toBe(true);
+    const r = isWithinAnyGeofence(24.7136, 46.6753, [bad]);
+    expect(r.isWithinRange).toBe(false);
     expect(r.nearestGeofence).toBeNull();
   });
 
   it("returns within when inside valid geofence (no buffer needed)", () => {
     const g = mk("ok", 24.7136, 46.6753, 100);
-    const r = isWithinAnyGeofence(24.7136, 46.6753, [g], GEOFENCE_DISTANCE_BUFFER_METERS);
+    const r = isWithinAnyGeofence(24.7136, 46.6753, [g]);
     expect(r.isWithinRange).toBe(true);
     expect(r.nearestGeofence?.geofence.id).toBe("ok");
   });
 
   it("returns not within when outside valid geofence", () => {
     const g = mk("ok", 24.7136, 46.6753, 10);
-    const r = isWithinAnyGeofence(24.72, 46.68, [g], GEOFENCE_DISTANCE_BUFFER_METERS);
+    const r = isWithinAnyGeofence(24.72, 46.68, [g]);
     expect(r.isWithinRange).toBe(false);
     expect(r.nearestGeofence?.geofence.id).toBe("ok");
   });

@@ -11,12 +11,14 @@ export default function CompanySettingsLoader() {
   const user = useAuthStore((s) => s.user);
   const { data: firestoreSettings } = useCompanySettings({ enabled: !!user });
   const setOnce = useRef(false);
+  const lastUserId = useRef<number | null>(null);
 
   useEffect(() => {
-    if (!user || setOnce.current) return;
+    const currentUserId = user?.id ?? null;
+    if (!user || (setOnce.current && lastUserId.current === currentUserId)) return;
 
     const store = useCompanySettingsStore.getState();
-    if (store.loaded) {
+    if (store.loaded && lastUserId.current === currentUserId) {
       setOnce.current = true;
       return;
     }
@@ -40,6 +42,7 @@ export default function CompanySettingsLoader() {
     }
     setLoaded();
     setOnce.current = true;
+    lastUserId.current = currentUserId;
   }, [user, firestoreSettings]);
 
   return null;

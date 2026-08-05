@@ -64,7 +64,7 @@ export function useCheckIn() {
       accuracy?: number;
       geofenceId?: string | null;
       companySettings?: Record<string, unknown>;
-      employee?: Pick<Employee, "attendanceMode" | "shiftOverride"> | null;
+      employee?: Pick<Employee, "attendanceMode" | "shiftOverride" | "geofenceId"> | null;
       checkInTimestamp?: number;
     }) => {
       return firebaseData.attendance.checkIn(payload);

@@ -2,9 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import type { Geofence } from "@/lib/types/trackingTypes";
-import { calculateDistance, GEOFENCE_DISTANCE_BUFFER_METERS } from "@/lib/utils/geo";
-
-export const LOCATION_ACCURACY_THRESHOLD_METERS = 100;
+import { calculateDistance } from "@/lib/utils/geo";
 export const LOCATION_DEBOUNCE_MS = 500;
 export const LOCATION_TIMEOUT_MS = 15000;
 export const POSITION_MAX_AGE_MS = 30000;
@@ -22,8 +20,6 @@ export interface GeolocationState {
 
 interface UseGeolocationOptions {
   geofences: Geofence[];
-  bufferMeters?: number;
-  accuracyThreshold?: number;
   enabled?: boolean;
 }
 
@@ -58,7 +54,6 @@ function isWithinAnyGeofence(
   lat: number,
   lng: number,
   geofences: Geofence[],
-  bufferMeters: number,
   gpsAccuracy: number = 0
 ): { nearestGeofence: { geofence: Geofence; distance: number } | null; isWithinRange: boolean } {
   let closest: { geofence: Geofence; distance: number } | null = null;
@@ -84,26 +79,21 @@ function isWithinAnyGeofence(
     if (!closest || dist < closest.distance) {
       closest = { geofence: geo, distance: dist };
     }
-    if (dist <= geo.radius + bufferMeters + gpsAccuracy) {
+    if (dist <= geo.radius + gpsAccuracy) {
       withinRange = true;
     }
   }
 
   if (geofences.length > 0 && !hasConfiguredGeofence) {
-    // All geofences were malformed; treat as if no geofence is configured
-    return { nearestGeofence: null, isWithinRange: true };
+    // All geofences were malformed; do not allow check-in against invalid data.
+    return { nearestGeofence: null, isWithinRange: false };
   }
 
   return { nearestGeofence: closest, isWithinRange: withinRange };
 }
 
 export function useGeolocation(options: UseGeolocationOptions): GeolocationState {
-  const {
-    geofences,
-    bufferMeters = GEOFENCE_DISTANCE_BUFFER_METERS,
-    accuracyThreshold = LOCATION_ACCURACY_THRESHOLD_METERS,
-    enabled = true,
-  } = options;
+  const { geofences, enabled = true } = options;
 
   const [position, setPosition] = useState<{ lat: number; lng: number; accuracy: number } | null>(
     null
@@ -123,18 +113,10 @@ export function useGeolocation(options: UseGeolocationOptions): GeolocationState
   const hasPositionRef = useRef(false);
   const positionRef = useRef<{ lat: number; lng: number; accuracy: number } | null>(null);
   const geofencesRef = useRef(geofences);
-  const bufferMetersRef = useRef(bufferMeters);
-  const accuracyThresholdRef = useRef(accuracyThreshold);
 
   useEffect(() => {
     geofencesRef.current = geofences;
   }, [geofences]);
-  useEffect(() => {
-    bufferMetersRef.current = bufferMeters;
-  }, [bufferMeters]);
-  useEffect(() => {
-    accuracyThresholdRef.current = accuracyThreshold;
-  }, [accuracyThreshold]);
 
   const updatePosition = useCallback((pos: GeolocationPosition) => {
     const { latitude, longitude, accuracy: accRaw } = pos.coords;
@@ -177,7 +159,6 @@ export function useGeolocation(options: UseGeolocationOptions): GeolocationState
       latitude,
       longitude,
       geofencesRef.current,
-      bufferMetersRef.current,
       accuracy
     );
     setNearestGeofence(nearest);
@@ -274,7 +255,7 @@ export function useGeolocation(options: UseGeolocationOptions): GeolocationState
     };
   }, [enabled, handlePosition, handleError]);
 
-  // Recompute geofence match when the geofence list or thresholds change
+  // Recompute geofence match when the geofence list changes
   useEffect(() => {
     if (!position) return;
     if (geofences.length === 0) {
@@ -286,12 +267,11 @@ export function useGeolocation(options: UseGeolocationOptions): GeolocationState
       position.lat,
       position.lng,
       geofences,
-      bufferMeters,
       position.accuracy
     );
     setNearestGeofence(nearest);
     setIsWithinRange(within);
-  }, [position, geofences, bufferMeters]);
+  }, [position, geofences]);
 
   return useMemo(
     () => ({

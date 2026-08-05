@@ -125,53 +125,12 @@ export const attendanceApi = {
     accuracy?: number;
     geofenceId?: string | null;
     companySettings?: Record<string, unknown>;
-    employee?: Pick<Employee, "attendanceMode" | "shiftOverride"> | null;
+    employee?: Pick<Employee, "attendanceMode" | "shiftOverride" | "geofenceId"> | null;
     checkInTimestamp?: number;
   }): Promise<AttendanceRecord> {
     const currentUser = await ensureAuth();
     const companyId = requireCompanyId();
     const gpsAccuracy = payload.accuracy ?? 0;
-    let geofence: Geofence | null = null;
-    if (payload.geofenceId) {
-      try {
-        const geofenceDoc = await getDoc(doc(requireDb(), "geofences", String(payload.geofenceId)));
-        if (geofenceDoc.exists()) {
-          const candidate = mapGeofence(geofenceDoc.id, geofenceDoc.data());
-          if (candidate.active !== false) {
-            geofence = candidate;
-          }
-        }
-      } catch {
-        // Geofence lookup failed — proceed without geofence name
-      }
-    }
-
-    if (!geofence) {
-      try {
-        const companyGeofencesRaw = await queryByCompanyId(
-          collection(requireDb(), "geofences"),
-          [where("active", "==", true)],
-          mapGeofence
-        );
-        const companyGeofences = companyGeofencesRaw.filter(
-          (g) => Number.isFinite(g.radius) && g.radius > 0
-        );
-        if (payload.geofenceId) {
-          geofence =
-            companyGeofences.find((g) => String(g.id) === String(payload.geofenceId)) ?? null;
-        }
-        if (!geofence) {
-          geofence =
-            companyGeofences.find(
-              (g) =>
-                calculateDistance(payload.lat, payload.lng, g.lat, g.lng) <=
-                g.radius + GEOFENCE_DISTANCE_BUFFER_METERS + gpsAccuracy
-            ) ?? null;
-        }
-      } catch {
-        // proceed without geofence
-      }
-    }
 
     const settings = {
       ...defaultCompanySettings,
@@ -181,34 +140,84 @@ export const attendanceApi = {
     const requireGeofence = Boolean(settings.requireGeofenceForCheckIn);
     const allowOutside = Boolean(settings.allowCheckInOutsideGeofence);
 
+    // Load employee to enforce the assigned geofence, falling back to payload data when offline.
+    let employee: Employee | null = null;
+    try {
+      employee = await employeesApi.getById(payload.employeeId);
+    } catch {
+      employee = null;
+    }
+    const assignedGeofenceId = payload.employee?.geofenceId ?? employee?.geofenceId ?? null;
+    const requestedGeofenceId = assignedGeofenceId ?? payload.geofenceId ?? null;
+
+    let geofence: Geofence | null = null;
+    if (requestedGeofenceId) {
+      try {
+        const geofenceDoc = await getDoc(
+          doc(requireDb(), "geofences", String(requestedGeofenceId))
+        );
+        if (geofenceDoc.exists()) {
+          const raw = geofenceDoc.data() as Record<string, unknown>;
+          const candidate = mapGeofence(geofenceDoc.id, raw);
+          if (
+            candidate.active !== false &&
+            String(raw.company_id ?? candidate.id) === String(companyId) &&
+            (!assignedGeofenceId || String(candidate.id) === String(assignedGeofenceId))
+          ) {
+            geofence = candidate;
+          }
+        }
+      } catch {
+        // Geofence lookup failed
+      }
+    }
+
+    if (!geofence && !assignedGeofenceId) {
+      try {
+        const companyGeofencesRaw = await queryByCompanyId(
+          collection(requireDb(), "geofences"),
+          [where("active", "==", true)],
+          mapGeofence
+        );
+        const companyGeofences = companyGeofencesRaw.filter(
+          (g) => Number.isFinite(g.radius) && g.radius > 0
+        );
+        geofence =
+          companyGeofences.find(
+            (g) =>
+              calculateDistance(payload.lat, payload.lng, g.lat, g.lng) <=
+              g.radius + GEOFENCE_DISTANCE_BUFFER_METERS + gpsAccuracy
+          ) ?? null;
+      } catch {
+        // proceed without geofence
+      }
+    }
+
     if (geofence) {
       const dist = calculateDistance(payload.lat, payload.lng, geofence.lat, geofence.lng);
       const within = dist <= geofence.radius + GEOFENCE_DISTANCE_BUFFER_METERS + gpsAccuracy;
       if (!within && requireGeofence && !allowOutside) {
         throw new Error("Check-in location is outside the allowed geofence area");
       }
-    } else {
-      if (payload.geofenceId) {
-        if (requireGeofence && !allowOutside) {
-          throw new Error("Geofence not found or inactive");
-        }
-      } else if (requireGeofence && !allowOutside) {
-        const activeSnap = await getDocs(
-          query(
-            collection(requireDb(), "geofences"),
-            where("company_id", "==", companyId),
-            where("active", "==", true),
-            limit(50)
-          )
-        );
-        const hasValid = activeSnap.docs.some((d) => {
-          const r = d.get("radius") ?? d.get("radiusMeters");
-          const n = typeof r === "number" ? r : Number(r);
-          return Number.isFinite(n) && n > 0;
-        });
-        if (hasValid) {
-          throw new Error("Check-in requires a geofence and none was provided");
-        }
+    } else if (requireGeofence && !allowOutside) {
+      if (assignedGeofenceId) {
+        throw new Error("Assigned geofence not found or inactive");
+      }
+      const activeSnap = await getDocs(
+        query(
+          collection(requireDb(), "geofences"),
+          where("company_id", "==", companyId),
+          where("active", "==", true),
+          limit(50)
+        )
+      );
+      const hasValid = activeSnap.docs.some((d) => {
+        const r = d.get("radius") ?? d.get("radiusMeters");
+        const n = typeof r === "number" ? r : Number(r);
+        return Number.isFinite(n) && n > 0;
+      });
+      if (hasValid) {
+        throw new Error("Check-in requires a geofence and none was provided");
       }
     }
 
@@ -217,7 +226,7 @@ export const attendanceApi = {
     const checkInTime = now.toTimeString().slice(0, 5);
 
     const { mode, shift, slot } = resolveEmployeeShift(
-      payload.employee ?? {},
+      employee ?? payload.employee ?? {},
       settings as typeof defaultCompanySettings,
       now,
       null,
