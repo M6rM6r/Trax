@@ -94,8 +94,8 @@ export const onAttendanceWritten = functions.firestore
       const lateMissing = after.lateMinutes === undefined || after.lateMinutes === null;
       if (checkInTime && (statusMissing || lateMissing)) {
         const shiftStart = settings?.workStartTime ?? "08:00";
-        const grace = Number(settings?.gracePeriodMinutes ?? 15);
-        const threshold = Number(settings?.lateThresholdMinutes ?? 15);
+        const grace = Number(settings?.gracePeriodMinutes ?? 30);
+        const threshold = Number(settings?.lateThresholdMinutes ?? 30);
 
         const [startH, startM] = String(shiftStart).split(":").map(Number);
         const [checkH, checkM] = String(checkInTime).split(":").map(Number);

@@ -7,6 +7,7 @@ import { CheckCircle2 } from "lucide-react";
 import * as Yup from "yup";
 import { toastSuccess, toastError } from "@/hooks/use-toast";
 import { useSearchParams, useRouter } from "next/navigation";
+import { Link } from "@/i18n/navigation";
 import { useMemo, useState } from "react";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useTranslations } from "next-intl";
@@ -21,7 +22,7 @@ import {
 } from "firebase/auth";
 import { auth } from "@/lib/config/firebase";
 import { getFirebaseUserProfile } from "@/lib/services/firebaseData";
-import { resolveUserRole, normalizeUserRole } from "@/lib/utils/auth";
+import { resolveUserRole } from "@/lib/utils/auth";
 
 interface LoginValues {
   identifier: string;
@@ -75,16 +76,17 @@ const Page = () => {
     }
 
     const { user, company } = resp.data;
-    const hasCompany = user.company_id !== null && user.company_id !== undefined;
-    const hasEmployeeId = user.employee_id !== null && user.employee_id !== undefined;
-    let role;
-    if (hasEmployeeId) {
-      role = "employee";
-    } else if (hasCompany) {
-      role = "company";
-    } else {
-      role = normalizeUserRole(user.role);
-    }
+    // Single source of truth with AuthProvider — never force employee solely because employee_id exists
+    // (company admins may carry linkage metadata without being field staff).
+    const role = resolveUserRole(
+      {
+        role: user.role,
+        company_id: user.company_id,
+        employee_id: user.employee_id,
+      },
+      undefined,
+      user.email
+    );
 
     setUser(
       {
@@ -100,7 +102,7 @@ const Page = () => {
       },
       idToken,
       role,
-      user.company_id,
+      user.company_id || undefined,
       company?.name ?? user.company_name
     );
 
@@ -160,12 +162,18 @@ const Page = () => {
         tokenResult.claims,
         credential.user.email ?? values.identifier
       );
-      const isEmployee = role === "employee";
 
       const companyId = profileData.company_id ?? companyProfile?.id ?? null;
       const companyName = String(profileData.company_name ?? companyProfile?.name ?? "");
 
-      const resolvedCompanyId: string = String(companyId);
+      const resolvedCompanyIdRaw =
+        typeof companyId === "string" || typeof companyId === "number" ? String(companyId) : "";
+      const resolvedCompanyId =
+        resolvedCompanyIdRaw &&
+        resolvedCompanyIdRaw !== "null" &&
+        resolvedCompanyIdRaw !== "undefined"
+          ? resolvedCompanyIdRaw
+          : "";
 
       const hasEmployeeId =
         profileData.employee_id !== null && profileData.employee_id !== undefined;
@@ -181,11 +189,8 @@ const Page = () => {
             email: String(profileData.email ?? credential.user.email ?? values.identifier),
             role,
             company_id: resolvedCompanyId,
-            employee_id: hasEmployeeId
-              ? String(profileData.employee_id)
-              : isEmployee
-                ? String(numericId)
-                : null,
+            // Never invent employee_id from a hash of the auth uid.
+            employee_id: hasEmployeeId ? String(profileData.employee_id) : null,
             assigned_geofence_id:
               profileData.assigned_geofence_id === null ||
               profileData.assigned_geofence_id === undefined
@@ -286,6 +291,16 @@ const Page = () => {
                   )}
                   {props.isSubmitting ? t("loading") : t("login")}
                 </Button>
+
+                <p className="text-center text-sm text-muted-foreground pt-1">
+                  {t("noAccount")}{" "}
+                  <Link
+                    href="/register"
+                    className="font-semibold text-primary underline-offset-2 hover:underline"
+                  >
+                    {t("createCompanyAccount")}
+                  </Link>
+                </p>
               </Form>
             </div>
           )}

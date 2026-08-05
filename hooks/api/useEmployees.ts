@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { firebaseData } from "@/lib/services/firebaseData";
 import type { Employee, AttendanceMode } from "@/lib/types/trackingTypes";
@@ -37,26 +38,22 @@ export function useEmployee(employeeId?: string | null) {
 }
 
 export function useInactiveEmployees() {
-  const companyId = useAuthStore((state) => state.companyId);
-  const { data: employees = [] } = useEmployees();
-
-  return useQuery<Employee[]>({
-    queryKey: [...queryKeys.employeesInactive, companyId ?? "unassigned", employees.length],
-    enabled: Boolean(companyId),
-    queryFn: () => employees.filter((employee) => employee.status === "inactive"),
-  });
+  const { data: employees = [], isLoading, isError, refetch } = useEmployees();
+  const data = useMemo(
+    () => employees.filter((employee) => employee.status === "inactive"),
+    [employees]
+  );
+  return { data, isLoading, isError, refetch };
 }
 
 export function useEmployeesByMode(mode: AttendanceMode) {
-  const companyId = useAuthStore((state) => state.companyId);
-  const { data: employees = [] } = useEmployees();
-
-  return useQuery<Employee[]>({
-    queryKey: [...queryKeys.employees, "mode", mode, companyId ?? "unassigned", employees.length],
-    enabled: Boolean(companyId),
-    queryFn: () =>
+  const { data: employees = [], isLoading, isError, refetch } = useEmployees();
+  const data = useMemo(
+    () =>
       employees.filter((e) => e.attendanceMode === mode || (!e.attendanceMode && mode === "field")),
-  });
+    [employees, mode]
+  );
+  return { data, isLoading, isError, refetch };
 }
 
 export function useCreateEmployee() {

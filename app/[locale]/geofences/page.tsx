@@ -67,7 +67,7 @@ function defaultShift(
   startTime = "08:00",
   endTime = "17:00"
 ): NonNullable<Geofence["shifts"]>["defaultShift"] {
-  return { startTime, endTime, gracePeriodMinutes: 15, lateThresholdMinutes: 15 };
+  return { startTime, endTime, gracePeriodMinutes: 30, lateThresholdMinutes: 30 };
 }
 
 function GeofenceShiftsSection({

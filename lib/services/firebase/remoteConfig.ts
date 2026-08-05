@@ -123,7 +123,7 @@ export const FeatureFlags = {
     return getFeatureFlag("enable_offline_mode", true);
   },
   get attendanceGracePeriodMinutes() {
-    return getConfigNumber("attendance_grace_period_minutes", 15);
+    return getConfigNumber("attendance_grace_period_minutes", 30);
   },
   get locationUpdateIntervalSeconds() {
     return getConfigNumber("location_update_interval_seconds", 60);

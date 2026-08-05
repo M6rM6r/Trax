@@ -146,7 +146,7 @@ const Index = ({
   }
 
   return (
-    <section className="min-h-screen bg-background">
+    <section className="min-h-screen overflow-x-hidden bg-background">
       <a href="#main-content" className="skip-to-content" aria-label={t("skipToMain")}>
         {t("skipToContent")}
       </a>
@@ -248,7 +248,7 @@ const Index = ({
         id="main-content"
         tabIndex={-1}
         className={cn(
-          "flex min-h-screen w-full flex-col transition-all scroll-mt-16 focus:outline-none",
+          "flex min-h-screen w-full max-w-[100vw] flex-col overflow-x-hidden transition-all scroll-mt-16 focus:outline-none",
           bare ? "pt-0 pb-0" : "pt-16 pb-24 lg:pb-8",
           showSidebar && !bare && "lg:ms-64 lg:w-[calc(100%-16rem)]"
         )}
@@ -258,7 +258,7 @@ const Index = ({
             <Breadcrumb />
           </div>
         )}
-        <div className="w-full max-w-[110rem]">{children}</div>
+        <div className="w-full max-w-[min(100%,110rem)] min-w-0 px-0">{children}</div>
         {!bare && <MobileBottomNav />}
       </main>
       <CommandPalette />

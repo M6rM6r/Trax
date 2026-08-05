@@ -18,22 +18,36 @@ export const onUserCreated = functions.auth.user().onCreate(async (user) => {
     return;
   }
 
+  // Brief wait: client self-register / MasterMind createCompany often write the
+  // authoritative users/{uid} doc right after Auth create. Avoid racing them with
+  // a default employee profile (role/company_id are client-immutable under rules).
+  await new Promise((r) => setTimeout(r, 2500));
+  const again = await db.collection("users").doc(uid).get();
+  if (again.exists) {
+    functions.logger.info(`User profile appeared for ${uid} after wait, skipping auto-create`);
+    return;
+  }
+
   // Create minimal profile — company assignment happens during registration
+  // merge:true so a late client write of company admin is not fully clobbered if both race.
   await db
     .collection("users")
     .doc(uid)
-    .set({
-      name: user.displayName ?? email.split("@")[0] ?? "User",
-      email: email.toLowerCase(),
-      role: "employee",
-      employee_id: null,
-      assigned_geofence_id: null,
-      company_id: null,
-      company_name: null,
-      permissions: [],
-      created_at: admin.firestore.FieldValue.serverTimestamp(),
-      profile_image: "",
-    });
+    .set(
+      {
+        name: user.displayName ?? email.split("@")[0] ?? "User",
+        email: email.toLowerCase(),
+        role: "employee",
+        employee_id: null,
+        assigned_geofence_id: null,
+        company_id: null,
+        company_name: null,
+        permissions: [],
+        created_at: admin.firestore.FieldValue.serverTimestamp(),
+        profile_image: "",
+      },
+      { merge: true }
+    );
 
   functions.logger.info(`Created user profile for ${uid}`);
 });

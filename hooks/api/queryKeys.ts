@@ -1,3 +1,5 @@
+import { DEFAULT_COMPANY_TIMEZONE, formatCompanyDate } from "@/lib/utils/companyDate";
+
 export const queryKeys = {
   employees: ["employees"] as const,
   employeesInactive: ["employees", "inactive"] as const,
@@ -11,15 +13,34 @@ export const queryKeys = {
   companySettings: ["company-settings"] as const,
 };
 
+/** Must match useMyAttendance + check-in optimistic cache writes (include company day). */
+export function myAttendanceQueryKey(
+  companyId: string | null | undefined,
+  employeeId: string | number | null | undefined,
+  todayYmd: string
+) {
+  return [
+    ...queryKeys.attendance,
+    "my",
+    companyId ?? "unassigned",
+    employeeId ?? "none",
+    todayYmd,
+  ] as const;
+}
+
 export interface DashboardDateRange {
   from?: Date;
   to?: Date;
 }
 
-export function toApiDate(value?: Date): string | undefined {
+/**
+ * Calendar day for API/query keys in company timezone (default Asia/Riyadh).
+ * Avoid browser-local getFullYear/Month/Date — those diverge near midnight for KSA product.
+ */
+export function toApiDate(
+  value?: Date,
+  timeZone: string = DEFAULT_COMPANY_TIMEZONE
+): string | undefined {
   if (!value) return undefined;
-  const y = value.getFullYear();
-  const m = String(value.getMonth() + 1).padStart(2, "0");
-  const d = String(value.getDate()).padStart(2, "0");
-  return `${y}-${m}-${d}`;
+  return formatCompanyDate(value, timeZone);
 }

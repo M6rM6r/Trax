@@ -193,9 +193,9 @@ export default function CompanySettingsPage() {
   const checkoutReferenceMinutes = (() => {
     const start = parseTimeToMinutes(local.workStartTime);
     const checkout = parseTimeToMinutes(local.checkoutStartTime);
-    return Number.isFinite(start) && Number.isFinite(checkout) && checkout >= start
-      ? checkout - start
-      : 0;
+    // Default 30 minutes after work start when unset/invalid (matches defaultCompanySettings).
+    if (!Number.isFinite(start) || !Number.isFinite(checkout) || checkout < start) return 30;
+    return checkout - start;
   })();
 
   const handleCheckoutReferenceChange = (minutes: number) => {

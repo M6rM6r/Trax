@@ -13,12 +13,14 @@ export function useDashboardData(dateRange?: DashboardDateRange) {
   const companyId = useAuthStore((state) => state.companyId);
   const workStartTime = useCompanySettingsStore((state) => state.workStartTime);
   const gracePeriodMinutes = useCompanySettingsStore((state) => state.gracePeriodMinutes);
+  const timezone = useCompanySettingsStore((state) => state.timezone);
+  const weekendDays = useCompanySettingsStore((state) => state.weekendDays);
   const from = toApiDate(dateRange?.from);
   const to = toApiDate(dateRange?.to);
 
   const companySettings = useMemo(
-    () => ({ workStartTime, gracePeriodMinutes }),
-    [workStartTime, gracePeriodMinutes]
+    () => ({ workStartTime, gracePeriodMinutes, timezone, weekendDays }),
+    [workStartTime, gracePeriodMinutes, timezone, weekendDays]
   );
 
   return useQuery<{ stats: DashboardStats; trends: DashboardTrendsSchema }>({
@@ -29,6 +31,9 @@ export function useDashboardData(dateRange?: DashboardDateRange) {
       to ?? "all",
       workStartTime ?? "",
       String(gracePeriodMinutes ?? ""),
+      timezone ?? "",
+      // Weekend policy affects present/absent buckets — must bust cache on change.
+      JSON.stringify(weekendDays ?? []),
     ],
     staleTime: 60 * 1000,
     refetchInterval: 60 * 1000,

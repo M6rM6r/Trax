@@ -76,7 +76,6 @@
     "admin": "Admin",
     "plan": "Plan",
     "trialPlan": "Free Trial — 14 days",
-    "previous": "Previous",
     "next": "Next",
     "createAccount": "Create Account",
     "hasAccount": "Already have an account?",
@@ -120,7 +119,18 @@
       "proFeature1": "100 employees",
       "proFeature2": "Full API",
       "proFeature3": "24/7 support"
-    }
+    },
+    "noAccount": "Don't have an account?",
+    "createCompanyAccount": "Create company account",
+    "selfSignupSubtitle": "Company name, contact number, email, password — then add people and places.",
+    "selfSignupHint": "Four fields. You run attendance; MasterMind only watches the network.",
+    "contactPhone": "Contact number",
+    "contactPhonePlaceholder": "05xxxxxxxx",
+    "contactPhoneRequired": "Contact number is required",
+    "contactPhoneInvalid": "Enter a valid phone number",
+    "selfSignupNextStep": "Next: add a geofence and employees. They check in and out — that becomes your attendance data.",
+    "emailInUse": "This email is already in use",
+    "weakPassword": "Password is too weak"
   },
   "Employees": {
     "title": "Employee Management",
@@ -177,7 +187,6 @@
     "deleteSelected": "Delete selected",
     "confirmDeleteTitle": "Confirm Delete",
     "confirmDeleteDescription": "Are you sure you want to delete {name}? This action cannot be undone.",
-    "cancel": "Cancel",
     "addEmployeeTitle": "Add New Employee",
     "addEmployeeDescription": "Enter the new employee details",
     "save": "Save",
@@ -207,14 +216,13 @@
     "passwordChangeFailed": "Failed to change password",
     "fillRequired": "Please fill in name, email, and password",
     "passwordMin": "Password must be at least 8 characters",
-    "invalidEmail": "Invalid email",
     "employeeUpdated": "Employee details updated successfully",
     "employeeUpdateFailed": "Error updating employee details",
     "noEmployeeSelected": "No employee selected",
     "employeesDeleted": "Deleted {count} employees",
     "cannotUndo": "Cannot undo — please re-add the employees manually",
     "deletePartialSuccess": "Deleted {success} employees, failed to delete {failed} employees",
-    "deleteFailed": "Could not delete selected employees",
+    "deleteFailed": "Could not delete employee",
     "noEmployeeSelectedExport": "No employee selected for export",
     "noEmployeesReport": "No employees to export the report",
     "exportSuccess": "Exported {count} employees",
@@ -247,17 +255,9 @@
     "contact": "Contact",
     "searchByNameOrDepartment": "Search by name or department...",
     "employeeProfile": "Employee Profile",
-    "employees": "Employees",
     "updated": "Employee data updated",
     "updateError": "An error occurred while updating",
     "deleted": "Employee {name} deleted",
-    "deleteFailed": "Could not delete employee",
-    "active": "Active",
-    "inactive": "Inactive",
-    "edit": "Edit",
-    "delete": "Delete",
-    "email": "Email",
-    "geofence": "Geofence",
     "presentDays": "Present days (7 days)",
     "lateDays": "Late days (7 days)",
     "absentDays": "Absent days (7 days)",
@@ -272,7 +272,6 @@
     "date": "Date",
     "checkInTime": "Check-in Time",
     "checkOutTime": "Check-out Time",
-    "status": "Status",
     "noRecord": "No record",
     "workedHours": "Worked Hours",
     "hours": "hours",
@@ -282,12 +281,8 @@
     "confirmDelete": "Confirm Delete",
     "deleteConfirmDescription": "Are you sure you want to delete {name}? This action cannot be undone.",
     "deleteConfirmLabel": "Delete",
-    "cancel": "Cancel",
     "editEmployee": "Edit: {name}",
     "updateEmployeeDescription": "Update employee data",
-    "saveChanges": "Save Changes",
-    "name": "Name",
-    "employeeNamePlaceholder": "Employee name",
     "selectGeofence": "Choose",
     "phone": "Phone",
     "department": "Department"
@@ -422,7 +417,12 @@
     "checkingOut": "Checking out...",
     "checkedInWithTime": "Checked in · {time}",
     "readyToCheckIn": "Ready to check in",
+    "readyAtLocation": "Ready at {name}",
     "outsideGeofenceShort": "Outside geofence",
+    "outsideAssignedLocation": "Outside assigned location ({name})",
+    "noAssignedLocation": "No work location assigned — contact your manager",
+    "locationPermissionDenied": "Location permission denied — enable GPS access",
+    "locationUnavailable": "Waiting for GPS fix",
     "todayRecord": "Today's Record",
     "checkInLabel": "Check-in",
     "checkOutLabel": "Check-out",
@@ -607,13 +607,28 @@
     "tableName": "Name",
     "tableIndustry": "Industry",
     "tablePlan": "Plan",
-    "tableId": "ID"
+    "tableId": "ID",
+    "contactPhone": "Contact phone",
+    "contactPhonePlaceholder": "05xxxxxxxx",
+    "tablePhone": "Phone",
+    "tableEmail": "Email",
+    "tableCreated": "Created",
+    "tableEmployees": "Employees",
+    "tableGeofences": "Geofences",
+    "tableSource": "Source",
+    "sourceSelf": "Self-signup",
+    "sourceMastermind": "MasterMind",
+    "sourceUnknown": "—",
+    "overviewHint": "Companies create accounts, add staff and geofences, employees check in. You sit back and watch the network.",
+    "totalCompanies": "Companies",
+    "totalEmployees": "Employees",
+    "totalGeofences": "Geofences",
+    "selfSignups": "Self-signups"
   },
   "Error": {
-    "pageError": "An error occurred in the page",
-    "unexpectedError": "An unexpected error occurred",
-    "reloadPage": "Reload page",
-    "retry": "Try again"
+    "pageError": "An unexpected error occurred",
+    "retry": "Try again",
+    "reloadPage": "Reload page"
   },
   "Metadata": {
     "title": "Trax — Employee Tracking System",
@@ -691,7 +706,9 @@
       "custom": "Custom",
       "chooseDateRange": "Choose date range",
       "from": "From",
-      "to": "To"
+      "to": "To",
+      "installAppDescriptionIOS": "Tap the Share button, then 'Add to Home Screen'",
+      "gotIt": "Got it"
     },
     "dataTable": {
       "searchPlaceholder": "Search...",
@@ -1185,34 +1202,5 @@
       "large": "Large"
     },
     "saved": "Settings saved"
-  },
-  "Common": {
-    "state": {
-      "installApp": "Install Trax",
-      "installAppDescription": "Add Trax to your home screen for quick access",
-      "installAppDescriptionIOS": "Tap the Share button, then 'Add to Home Screen'",
-      "install": "Install",
-      "gotIt": "Got it",
-      "close": "Close"
-    },
-    "dataTable": {
-      "searchPlaceholder": "Search...",
-      "search": "Search",
-      "clearSearch": "Clear search",
-      "showing": "Showing {count} of {total}",
-      "selectAll": "Select all",
-      "selectRow": "Select row {id}",
-      "noResults": "No results found",
-      "show": "Show",
-      "ofTotal": "of {total}",
-      "rowsPerPage": "Rows per page",
-      "previousPage": "Previous page",
-      "nextPage": "Next page"
-    }
-  },
-  "Error": {
-    "pageError": "An unexpected error occurred",
-    "retry": "Try again",
-    "reloadPage": "Reload page"
   }
 }

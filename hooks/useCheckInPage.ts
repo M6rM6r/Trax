@@ -11,7 +11,7 @@ import {
   useEmployee,
   useMyAttendance,
 } from "@/hooks/useApi";
-import { queryKeys, toApiDate } from "@/hooks/api/queryKeys";
+import { myAttendanceQueryKey, toApiDate } from "@/hooks/api/queryKeys";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useCompanySettingsStore } from "@/stores/useCompanySettingsStore";
 import { useGeolocation } from "@/hooks/useGeolocation";
@@ -29,23 +29,19 @@ import {
 } from "@/lib/utils/offlineQueue";
 import type { AttendanceRecord } from "@/lib/types/trackingTypes";
 import { type CompanySettings, defaultCompanySettings } from "@/lib/types/companySettings";
+import {
+  assertClientAssignedCheckInAllowed,
+  isInsideAssignedGeofence,
+  resolveAssignedGeofenceId,
+} from "@/lib/utils/assignedGeofence";
+import {
+  companyWallClockToUtcMs,
+  DEFAULT_COMPANY_TIMEZONE,
+  formatCompanyDate,
+} from "@/lib/utils/companyDate";
 
 const AUTO_CHECKIN_DEBOUNCE_MS = 1500;
 const BURST_DURATION_MS = 600;
-
-function buildTodayCacheKey(
-  companyId: string | null,
-  employeeId: string | number | null,
-  today: string
-) {
-  return [
-    ...queryKeys.attendance,
-    "my",
-    companyId ?? "unassigned",
-    employeeId ?? "none",
-    today,
-  ] as const;
-}
 
 function buildOfflineCheckInId() {
   return `ci-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -59,13 +55,37 @@ export function useCheckInPage() {
   const t = useTranslations("CheckIn");
   const locale = useLocale();
   const qc = useQueryClient();
-  const today = useMemo(() => toApiDate(new Date()) ?? new Date().toISOString().split("T")[0], []);
+  const settingsTimezone = useCompanySettingsStore((s) => s.timezone);
+  const [today, setToday] = useState(
+    () =>
+      toApiDate(new Date(), settingsTimezone || DEFAULT_COMPANY_TIMEZONE) ??
+      formatCompanyDate(new Date(), settingsTimezone || DEFAULT_COMPANY_TIMEZONE)
+  );
+  // Recompute company "today" so SPA sessions past midnight don't stick on yesterday.
+  useEffect(() => {
+    const refresh = () => {
+      const tz = settingsTimezone || DEFAULT_COMPANY_TIMEZONE;
+      const next = toApiDate(new Date(), tz) ?? formatCompanyDate(new Date(), tz);
+      setToday((prev) => (prev === next ? prev : next));
+    };
+    refresh();
+    const id = setInterval(refresh, 60_000);
+    const onVis = () => {
+      if (document.visibilityState === "visible") refresh();
+    };
+    document.addEventListener("visibilitychange", onVis);
+    return () => {
+      clearInterval(id);
+      document.removeEventListener("visibilitychange", onVis);
+    };
+  }, [settingsTimezone]);
 
   const companyId = useAuthStore((state) => state.companyId);
   const companyName = useAuthStore((state) => state.companyName);
   const clearUser = useAuthStore((state) => state.clearUser);
   const employeeId = useAuthStore((state) => state.user?.employee_id ?? null);
   const employeeNameFromAuth = useAuthStore((state) => state.user?.name ?? "");
+  const authAssignedGeofenceId = useAuthStore((state) => state.user?.assigned_geofence_id ?? null);
 
   const settingsState = useCompanySettingsStore();
   const companySettings = useMemo<Partial<CompanySettings>>(
@@ -115,21 +135,54 @@ export function useCheckInPage() {
     [companySettings]
   );
 
-  const { data: currentEmployee } = useEmployee(employeeId ? String(employeeId) : null);
+  const { data: currentEmployee, isLoading: employeeLoading } = useEmployee(
+    employeeId ? String(employeeId) : null
+  );
   const geofencesQuery = useGeofences();
   const geofences = useMemo(() => geofencesQuery.data ?? [], [geofencesQuery.data]);
-  const assignedGeofenceId = currentEmployee?.geofenceId ?? null;
+  // Employees may only check in at their assigned location — never company-wide geofences.
+  // Prefer employee doc; fall back to auth profile assignment when employee row lags.
+  const assignedGeofenceId = useMemo(
+    () => resolveAssignedGeofenceId(currentEmployee?.geofenceId ?? null, authAssignedGeofenceId),
+    [currentEmployee?.geofenceId, authAssignedGeofenceId]
+  );
+  const assignedGeofence = useMemo(
+    () =>
+      assignedGeofenceId
+        ? (geofences.find((g) => String(g.id) === String(assignedGeofenceId)) ?? null)
+        : null,
+    [geofences, assignedGeofenceId]
+  );
   const allowedGeofences = useMemo(
     () =>
       assignedGeofenceId
         ? geofences.filter((g) => String(g.id) === String(assignedGeofenceId))
-        : geofences,
+        : [],
     [geofences, assignedGeofenceId]
   );
-  const geofencesLoading = !!(geofencesQuery.isLoading || geofencesQuery.isFetching);
+  // Don't treat background refetch as "not ready" — that flickers the check-in gate.
+  const geofencesLoading = !!(
+    employeeLoading ||
+    (geofencesQuery.isLoading && !geofencesQuery.data)
+  );
   const geofencesReady = !geofencesLoading;
-  const { data: todayRecords = [] } = useMyAttendance(employeeId ? String(employeeId) : null);
-  const todayRecord = todayRecords[0] ?? null;
+  const {
+    data: todayRecords = [],
+    isLoading: attendanceLoading,
+    isFetching: attendanceFetching,
+  } = useMyAttendance(employeeId ? String(employeeId) : null);
+  // Prefer open session if duplicate legacy rows; else latest by check-in time.
+  const todayRecord = useMemo(() => {
+    if (!todayRecords.length) return null;
+    const open = todayRecords.find((r) => r.checkInTime && !r.checkOutTime);
+    if (open) return open;
+    return [...todayRecords].sort((a, b) => {
+      const at = a.checkInTime ?? "";
+      const bt = b.checkInTime ?? "";
+      return bt.localeCompare(at);
+    })[0];
+  }, [todayRecords]);
+  const attendancePending = attendanceLoading || (attendanceFetching && !todayRecord);
 
   const checkInMutation = useCheckIn();
   const checkOutMutation = useCheckOut();
@@ -190,12 +243,13 @@ export function useCheckInPage() {
     };
   }, []);
 
-  // Worked-time ticker
+  // Worked-time ticker — parse company wall clock, not browser-local Date.
   const checkInTimestamp = useMemo(() => {
     if (!todayRecord?.checkInTime || !todayRecord?.date) return null;
-    const d = new Date(`${todayRecord.date}T${todayRecord.checkInTime}`);
-    return isNaN(d.getTime()) ? null : d.getTime();
-  }, [todayRecord?.checkInTime, todayRecord?.date]);
+    const tz =
+      (effectiveCompanySettings as { timezone?: string }).timezone || DEFAULT_COMPANY_TIMEZONE;
+    return companyWallClockToUtcMs(todayRecord.date, todayRecord.checkInTime, tz);
+  }, [todayRecord?.checkInTime, todayRecord?.date, effectiveCompanySettings]);
 
   useEffect(() => {
     if (!checkInTimestamp || todayRecord?.checkOutTime) return;
@@ -222,29 +276,55 @@ export function useCheckInPage() {
     [todayRecord?.checkInTime, todayRecord?.checkOutTime]
   );
 
-  // Do not trust isWithinRange derived from a transient empty geofences list while loading under enforcement.
+  // Do not trust isWithinRange while assignment/geofences are still loading.
   const trustedIsWithinRange = geofencesReady ? isWithinRange : false;
 
+  // Hard rule: assigned location only. Company "allow outside" does not waive assignment.
   const canCheckIn = useMemo(() => {
-    if (!currentLocation) return false;
-    if (
-      effectiveCompanySettings.allowCheckInOutsideGeofence ||
-      !effectiveCompanySettings.requireGeofenceForCheckIn
-    ) {
-      return true;
-    }
-    // If geofence is required but none are configured/assigned, deny check-in
-    if (allowedGeofences.length === 0) {
-      return false;
-    }
-    if (trustedIsWithinRange) return true;
-    return false;
+    if (!geofencesReady || attendancePending) return false;
+    if (todayRecord?.checkInTime || todayRecord?.checkOutTime) return false;
+    const gate = assertClientAssignedCheckInAllowed({
+      assignedGeofenceId,
+      allowedGeofencesCount: allowedGeofences.length,
+      isWithinAssignedGeofence: trustedIsWithinRange,
+      hasLocation: Boolean(currentLocation),
+    });
+    return gate.ok;
   }, [
+    geofencesReady,
+    attendancePending,
+    todayRecord?.checkInTime,
+    todayRecord?.checkOutTime,
     currentLocation,
     trustedIsWithinRange,
-    effectiveCompanySettings.allowCheckInOutsideGeofence,
-    effectiveCompanySettings.requireGeofenceForCheckIn,
+    assignedGeofenceId,
     allowedGeofences.length,
+  ]);
+
+  const checkInBlockReason = useMemo(():
+    | "loading"
+    | "no_assignment"
+    | "no_location"
+    | "permission"
+    | "outside"
+    | null => {
+    if (checkedIn || dayComplete || canCheckIn) return null;
+    if (!geofencesReady || isLocating || attendancePending) return "loading";
+    if (locationPermissionDenied) return "permission";
+    if (!assignedGeofenceId || allowedGeofences.length === 0) return "no_assignment";
+    if (!currentLocation) return "no_location";
+    return "outside";
+  }, [
+    checkedIn,
+    dayComplete,
+    canCheckIn,
+    geofencesReady,
+    isLocating,
+    attendancePending,
+    locationPermissionDenied,
+    assignedGeofenceId,
+    allowedGeofences.length,
+    currentLocation,
   ]);
 
   const statusMeta = useMemo(() => {
@@ -278,9 +358,16 @@ export function useCheckInPage() {
   }, [showBurst]);
 
   const todayCacheKey = useMemo(
-    () => buildTodayCacheKey(companyId, employeeId, today),
+    () => myAttendanceQueryKey(companyId, employeeId, today),
     [companyId, employeeId, today]
   );
+
+  // Keep local "today" aligned with company TZ used by useMyAttendance query key.
+  useEffect(() => {
+    const tz = settingsTimezone || DEFAULT_COMPANY_TIMEZONE;
+    const next = toApiDate(new Date(), tz) ?? formatCompanyDate(new Date(), tz);
+    setToday((prev) => (prev === next ? prev : next));
+  }, [settingsTimezone]);
 
   // Offline queue sync is handled globally by OfflineSyncManager component
 
@@ -295,6 +382,7 @@ export function useCheckInPage() {
       employeeName,
       lat: location.lat,
       lng: location.lng,
+      accuracy: location.accuracy,
       geofenceId: geofence?.id ?? null,
       geofenceName: geofence?.name ?? null,
       timestamp,
@@ -326,37 +414,53 @@ export function useCheckInPage() {
         toastError(t("locationNotDetermined"));
         return;
       }
-      if (todayRecord?.checkInTime) return;
+      // Wait for today's attendance so we don't double-submit against an open session.
+      if (attendancePending) return;
+      // Terminal day after any check-in (open or checked out).
+      if (todayRecord?.checkInTime || todayRecord?.checkOutTime) return;
       if (checkInMutation.isPending) return;
       if (checkInGuardRef.current) return;
       checkInGuardRef.current = true;
 
-      const geofence = nearestGeofence?.geofence ?? null;
-      let allowed: boolean;
-      if (
-        effectiveCompanySettings.allowCheckInOutsideGeofence ||
-        !effectiveCompanySettings.requireGeofenceForCheckIn
-      ) {
-        allowed = true;
-      } else if (allowedGeofences.length === 0) {
-        // Geofence required but none configured/assigned - deny
-        allowed = false;
-      } else if (trustedIsWithinRange) {
-        allowed = true;
-      } else {
-        allowed = false;
-      }
+      // Only the assigned geofence is valid — ignore any other nearby zones.
+      const geofence =
+        allowedGeofences.find((g) => String(g.id) === String(assignedGeofenceId)) ??
+        (nearestGeofence?.geofence &&
+        String(nearestGeofence.geofence.id) === String(assignedGeofenceId)
+          ? nearestGeofence.geofence
+          : null);
 
-      if (!allowed) {
+      const gate = assertClientAssignedCheckInAllowed({
+        assignedGeofenceId,
+        allowedGeofencesCount: allowedGeofences.length,
+        isWithinAssignedGeofence: Boolean(
+          trustedIsWithinRange && geofence && String(geofence.id) === String(assignedGeofenceId)
+        ),
+        hasLocation: Boolean(currentLocation),
+      });
+
+      if (!gate.ok) {
         checkInGuardRef.current = false;
         hapticError();
-        toastError(t("outsideGeofence"));
+        if (gate.reason === "no_assignment") {
+          toastError(t("noGeofenceDescription"));
+        } else if (gate.reason === "no_location") {
+          toastError(t("locationNotDetermined"));
+        } else {
+          toastError(t("outsideGeofence"));
+        }
         return;
       }
 
       const nowDate = new Date();
-      const checkInTime = nowDate.toTimeString().slice(0, 5);
       const timestamp = nowDate.getTime();
+      const { formatCompanyTime, formatCompanyDate, DEFAULT_COMPANY_TIMEZONE } =
+        await import("@/lib/utils/companyDate");
+      const tz =
+        (effectiveCompanySettings as { timezone?: string }).timezone || DEFAULT_COMPANY_TIMEZONE;
+      const checkInTime = formatCompanyTime(nowDate, tz);
+      // Keep offline synthetic date aligned with server company day.
+      const companyToday = formatCompanyDate(nowDate, tz);
 
       const { mode, shift, slot } = resolveEmployeeShift(
         employeeForApi ?? {},
@@ -379,13 +483,13 @@ export function useCheckInPage() {
           id: queued.id,
           employeeId: String(employeeId),
           employeeName,
-          date: today,
+          date: companyToday,
           checkInTime,
           checkOutTime: null,
           status,
           checkInLat: currentLocation.lat,
           checkInLng: currentLocation.lng,
-          geofenceId: geofence?.id ?? null,
+          geofenceId: geofence?.id ?? assignedGeofenceId,
           geofenceName: geofence?.name ?? null,
           lateMinutes,
           workedHours: 0,
@@ -408,7 +512,7 @@ export function useCheckInPage() {
           lat: currentLocation.lat,
           lng: currentLocation.lng,
           accuracy: currentLocation.accuracy,
-          geofenceId: geofence?.id ?? null,
+          geofenceId: assignedGeofenceId,
           companySettings: effectiveCompanySettings as unknown as Record<string, unknown>,
           employee: employeeForApi,
         });
@@ -432,6 +536,16 @@ export function useCheckInPage() {
           }, 1500);
         } else if (errMsg === "NO_COMPANY") {
           toastError(t("noCompany"));
+        } else if (errMsg === "EMPLOYEE_HAS_NO_ASSIGNED_GEOFENCE") {
+          toastError(t("noGeofenceDescription"));
+        } else if (
+          errMsg === "ASSIGNED_GEOFENCE_NOT_FOUND_OR_INACTIVE" ||
+          errMsg === "CHECK_IN_GEOFENCE_MISMATCH" ||
+          errMsg.includes("outside the assigned geofence")
+        ) {
+          toastError(t("outsideGeofence"));
+        } else if (errMsg === "ALREADY_CHECKED_OUT") {
+          toastError(t("shiftDoneStatus"));
         } else if (
           errMsg.includes("Missing or insufficient permissions") ||
           errMsg.includes("permission-denied")
@@ -451,11 +565,13 @@ export function useCheckInPage() {
       currentLocation,
       trustedIsWithinRange,
       nearestGeofence,
+      assignedGeofenceId,
+      allowedGeofences,
       todayRecord?.checkInTime,
+      todayRecord?.checkOutTime,
+      attendancePending,
       checkInMutation,
       effectiveCompanySettings,
-      allowedGeofences.length,
-      today,
       qc,
       todayCacheKey,
       t,
@@ -463,17 +579,31 @@ export function useCheckInPage() {
     ]
   );
 
-  // Auto check-in when entering geofence
+  // Auto check-in only at the assigned geofence
   useEffect(() => {
     if (!companySettings.autoCheckInEnabled) return;
     if (autoCheckInAttempted.current) return;
-    if (todayRecord?.checkInTime) return;
-    if (!currentLocation || !nearestGeofence?.geofence) return;
+    if (todayRecord?.checkInTime || todayRecord?.checkOutTime) return;
+    if (!currentLocation || !nearestGeofence?.geofence || !assignedGeofenceId) return;
+    if (String(nearestGeofence.geofence.id) !== String(assignedGeofenceId)) return;
     if (!canCheckIn) return;
 
-    const isWithinAutoRange =
-      nearestGeofence.distance <=
-      nearestGeofence.geofence.radius + (companySettings.autoCheckInRadiusOffset ?? 0);
+    const accuracy =
+      currentLocation.accuracy && Number.isFinite(currentLocation.accuracy)
+        ? currentLocation.accuracy
+        : 0;
+    const offset = companySettings.autoCheckInRadiusOffset ?? 0;
+    // Same inside rule as manual/server (+ optional auto radius offset).
+    const isWithinAutoRange = isInsideAssignedGeofence(
+      currentLocation.lat,
+      currentLocation.lng,
+      {
+        lat: nearestGeofence.geofence.lat,
+        lng: nearestGeofence.geofence.lng,
+        radius: nearestGeofence.geofence.radius + offset,
+      },
+      accuracy
+    );
 
     if (isWithinAutoRange) {
       if (autoCheckInTimerRef.current) return;
@@ -499,8 +629,10 @@ export function useCheckInPage() {
     companySettings.autoCheckInEnabled,
     companySettings.autoCheckInRadiusOffset,
     todayRecord?.checkInTime,
+    todayRecord?.checkOutTime,
     currentLocation,
     nearestGeofence,
+    assignedGeofenceId,
     canCheckIn,
     handleCheckIn,
   ]);
@@ -518,8 +650,11 @@ export function useCheckInPage() {
     checkOutGuardRef.current = true;
 
     const nowDate = new Date();
-    const checkOutTime = nowDate.toTimeString().slice(0, 5);
     const timestamp = nowDate.getTime();
+    const { formatCompanyTime, DEFAULT_COMPANY_TIMEZONE } = await import("@/lib/utils/companyDate");
+    const tz =
+      (effectiveCompanySettings as { timezone?: string }).timezone || DEFAULT_COMPANY_TIMEZONE;
+    const checkOutTime = formatCompanyTime(nowDate, tz);
 
     if (!navigator.onLine) {
       const queued = createOfflineCheckOutRecord(timestamp);
@@ -565,6 +700,9 @@ export function useCheckInPage() {
         toastError(t("noPermission"));
       } else if (errMsg === "No open attendance record") {
         toastError(t("noCheckInToday"));
+      } else if (errMsg === "ALREADY_CHECKED_OUT") {
+        toastError(t("shiftDoneStatus"));
+        void qc.invalidateQueries({ queryKey: todayCacheKey });
       } else {
         toastError(t("checkOutFailed"));
       }
@@ -581,6 +719,7 @@ export function useCheckInPage() {
     qc,
     t,
     createOfflineCheckOutRecord,
+    effectiveCompanySettings,
   ]);
 
   const handleSignOut = useCallback(async () => {
@@ -605,6 +744,9 @@ export function useCheckInPage() {
     hasLocation: Boolean(currentLocation),
     locationPermissionDenied,
     nearestGeofence,
+    assignedGeofenceId,
+    assignedGeofence,
+    checkInBlockReason,
     canCheckIn,
     isLoadingGeofences: geofencesLoading,
     dayComplete,

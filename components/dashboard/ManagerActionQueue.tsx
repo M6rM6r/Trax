@@ -4,6 +4,8 @@ import { useMemo } from "react";
 import { AlertCircle, Clock, MapPin, UserX, ShieldAlert } from "lucide-react";
 import type { AttendanceRecord, Employee, LiveTrackingEmployee } from "@/lib/types/trackingTypes";
 import { useTranslations } from "next-intl";
+import { DEFAULT_COMPANY_TIMEZONE, formatCompanyDate } from "@/lib/utils/companyDate";
+import { useCompanySettingsStore } from "@/stores/useCompanySettingsStore";
 
 interface ManagerActionQueueProps {
   attendanceData?: AttendanceRecord[];
@@ -27,7 +29,8 @@ export default function ManagerActionQueue({
   liveTracking = [],
 }: ManagerActionQueueProps) {
   const t = useTranslations("Dashboard");
-  const today = new Date().toISOString().split("T")[0];
+  const timezone = useCompanySettingsStore((s) => s.timezone) || DEFAULT_COMPANY_TIMEZONE;
+  const today = formatCompanyDate(new Date(), timezone);
 
   const actions = useMemo<ActionItem[]>(() => {
     const list: ActionItem[] = [];

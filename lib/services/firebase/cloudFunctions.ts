@@ -68,6 +68,7 @@ export const cloudFunctionsApi = {
     admin_password: string;
     plan?: string;
     maxEmployees?: number;
+    contact_phone?: string;
   }): Promise<{ companyId: string; adminUid: string; email: string; adminPassword: string }> {
     const fn = httpsCallable(requireFunctions(), "createCompany");
     const result = await fn(payload);

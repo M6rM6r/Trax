@@ -1,6 +1,7 @@
 import { describe, expect, it } from "@jest/globals";
-import { getActiveShiftForDate, resolveEmployeeShift } from "@/lib/utils/shifts";
+import { evaluateCheckIn, getActiveShiftForDate, resolveEmployeeShift } from "@/lib/utils/shifts";
 import type { CompanySettings } from "@/lib/types/companySettings";
+import type { WorkShift } from "@/lib/types/trackingTypes";
 
 const settings: CompanySettings = {
   workStartTime: "08:00",
@@ -70,5 +71,39 @@ describe("shift utilities", () => {
     const result = resolveEmployeeShift({}, settings, new Date("2024-01-15T09:00:00Z"));
     expect(result.shift.startTime).toBe("08:00");
     expect(result.slot).toBeNull();
+  });
+});
+
+/** Windsurf late rule: after start + grace => late with minutes from shift start. */
+describe("evaluateCheckIn late after grace", () => {
+  const shift: WorkShift = {
+    startTime: "08:00",
+    endTime: "17:00",
+    gracePeriodMinutes: 15,
+    lateThresholdMinutes: 15,
+  };
+
+  it("is present within grace", () => {
+    expect(evaluateCheckIn("08:15", shift)).toEqual({ status: "present", lateMinutes: 0 });
+  });
+
+  it("marks late right after grace ends", () => {
+    expect(evaluateCheckIn("08:16", shift)).toEqual({ status: "late", lateMinutes: 16 });
+  });
+
+  it("marks late well after allowed window", () => {
+    expect(evaluateCheckIn("09:30", shift)).toEqual({ status: "late", lateMinutes: 90 });
+  });
+
+  it("handles night shift check-in after midnight", () => {
+    const night: WorkShift = {
+      startTime: "22:00",
+      endTime: "06:00",
+      gracePeriodMinutes: 15,
+      lateThresholdMinutes: 15,
+    };
+    expect(evaluateCheckIn("22:10", night)).toEqual({ status: "present", lateMinutes: 0 });
+    expect(evaluateCheckIn("22:20", night)).toEqual({ status: "late", lateMinutes: 20 });
+    expect(evaluateCheckIn("01:00", night)).toEqual({ status: "late", lateMinutes: 180 });
   });
 });

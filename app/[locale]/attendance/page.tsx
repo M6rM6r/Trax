@@ -175,14 +175,19 @@ export default function AttendancePage() {
   const stats = useMemo(() => {
     let present = 0,
       late = 0,
-      absent = 0;
+      absent = 0,
+      checkedOut = 0;
     for (const r of filteredAttendance) {
-      const isLate = r.status !== "absent" && (r.lateMinutes ?? 0) > 0;
-      if (r.status === "absent") absent++;
-      else if (isLate) late++;
+      if (r.status === "absent" && !r.checkInTime) {
+        absent++;
+        continue;
+      }
+      if (!r.checkInTime) continue;
+      if ((r.lateMinutes ?? 0) > 0 || r.status === "late") late++;
       else present++;
+      if (r.status === "checked_out" || r.checkOutTime) checkedOut++;
     }
-    return { present, late, absent, total: filteredAttendance.length };
+    return { present, late, absent, checkedOut, total: filteredAttendance.length };
   }, [filteredAttendance]);
 
   const activeFilterCount =

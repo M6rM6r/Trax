@@ -347,7 +347,7 @@ export default function EmployeesPage() {
   if (role === "employee") {
     return (
       <MainLayout>
-        <div className="p-6 min-h-screen">
+        <div className="min-h-screen p-3 sm:p-4 md:p-6">
           <AccessDeniedCard icon={Users} message={t("accessDenied")} ctaHref="/check-in" />
         </div>
       </MainLayout>
@@ -356,27 +356,27 @@ export default function EmployeesPage() {
 
   return (
     <MainLayout>
-      <div className="p-6 space-y-6 min-h-screen">
+      <div className="min-h-screen space-y-4 p-3 sm:space-y-6 sm:p-4 md:p-6">
         <FullPageHead
           head={t("title")}
           description={t("description")}
           Icon={<Users className="w-7 h-7" />}
           LeftSection={
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center">
               <Button
                 variant="outline"
                 onClick={() => setShowBulkImport(true)}
-                className="flex items-center gap-2"
+                className="flex h-11 w-full items-center justify-center gap-2 sm:h-10 sm:w-auto"
               >
-                <Upload className="w-4 h-4" />
+                <Upload className="h-4 w-4 shrink-0" />
                 {t("importCsv")}
               </Button>
               <Button
                 variant="primary"
                 onClick={() => setShowAddForm(!showAddForm)}
-                className="flex items-center gap-2"
+                className="flex h-11 w-full items-center justify-center gap-2 sm:h-10 sm:w-auto"
               >
-                <UserPlus className="w-4 h-4" />
+                <UserPlus className="h-4 w-4 shrink-0" />
                 {t("addEmployee")}
               </Button>
             </div>
@@ -575,6 +575,7 @@ export default function EmployeesPage() {
                   header: t("employee"),
                   sortable: true,
                   filterable: true,
+                  mobilePrimary: true,
                   sortValue: (emp) => emp.name,
                   cell: (emp) => (
                     <Link href={`/employees/${emp.id}`} className="hover:underline">
@@ -635,30 +636,32 @@ export default function EmployeesPage() {
                   key: "actions",
                   header: t("actions"),
                   cell: (emp) => (
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1 sm:gap-2">
                       <Link
                         href={`/employees/${emp.id}`}
-                        className="p-1.5 rounded-lg text-primary hover:bg-primary/10"
+                        className="inline-flex h-10 w-10 items-center justify-center rounded-lg text-primary hover:bg-primary/10 sm:h-8 sm:w-8 sm:p-1.5"
                         title={t("viewProfile")}
                         aria-label={t("viewProfile")}
                       >
-                        <Eye className="w-4 h-4" aria-hidden />
+                        <Eye className="h-4 w-4" aria-hidden />
                       </Link>
                       <button
+                        type="button"
                         onClick={() => handleEdit(emp)}
-                        className="p-1.5 rounded-lg text-primary hover:bg-primary/10"
+                        className="inline-flex h-10 w-10 items-center justify-center rounded-lg text-primary hover:bg-primary/10 sm:h-8 sm:w-8"
                         title={t("edit")}
                         aria-label={t("edit")}
                       >
-                        <Edit className="w-4 h-4" aria-hidden />
+                        <Edit className="h-4 w-4" aria-hidden />
                       </button>
                       <button
+                        type="button"
                         onClick={() => handleDelete(emp)}
-                        className="p-1.5 rounded-lg text-destructive hover:bg-destructive/10"
+                        className="inline-flex h-10 w-10 items-center justify-center rounded-lg text-destructive hover:bg-destructive/10 sm:h-8 sm:w-8"
                         title={t("delete")}
                         aria-label={t("delete")}
                       >
-                        <Trash2 className="w-4 h-4" aria-hidden />
+                        <Trash2 className="h-4 w-4" aria-hidden />
                       </button>
                     </div>
                   ),
@@ -680,32 +683,38 @@ export default function EmployeesPage() {
               initial={{ opacity: 0, y: 50 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 50 }}
-              className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-card rounded-2xl shadow-2xl border border-border px-6 py-3 flex items-center gap-4"
+              className="fixed bottom-[calc(4.5rem+env(safe-area-inset-bottom))] left-3 right-3 z-50 flex max-w-lg flex-wrap items-center justify-between gap-2 rounded-2xl border border-border bg-card px-3 py-2.5 shadow-2xl sm:left-1/2 sm:right-auto sm:w-auto sm:max-w-none sm:-translate-x-1/2 sm:flex-nowrap sm:gap-4 sm:px-6 sm:py-3 lg:bottom-6"
             >
               <span className="text-sm font-medium text-foreground">
                 {selectedIds.length} {t("selected")}
               </span>
-              <div className="h-6 w-px bg-muted" />
-              <button
-                onClick={handleBulkExport}
-                className="flex items-center gap-1.5 text-sm text-primary hover:bg-primary/5 hover:bg-primary/10 px-3 py-1.5 rounded-lg transition-colors"
-              >
-                <Download className="w-4 h-4" />
-                {t("exportSelected")}
-              </button>
-              <button
-                onClick={handleBulkDelete}
-                className="flex items-center gap-1.5 text-sm text-destructive hover:bg-destructive/5 dark:hover:bg-destructive/10 px-3 py-1.5 rounded-lg transition-colors"
-              >
-                <Trash2 className="w-4 h-4" />
-                {t("deleteSelected")}
-              </button>
-              <button
-                onClick={() => setSelectedIds([])}
-                className="text-sm text-muted-foreground hover:text-muted-foreground dark:hover:text-foreground px-2"
-              >
-                <X className="w-4 h-4" />
-              </button>
+              <div className="hidden h-6 w-px bg-muted sm:block" />
+              <div className="flex flex-1 flex-wrap items-center justify-end gap-1 sm:flex-none sm:gap-2">
+                <button
+                  type="button"
+                  onClick={handleBulkExport}
+                  className="flex min-h-10 items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm text-primary transition-colors hover:bg-primary/10"
+                >
+                  <Download className="h-4 w-4 shrink-0" />
+                  <span className="hidden xs:inline sm:inline">{t("exportSelected")}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={handleBulkDelete}
+                  className="flex min-h-10 items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm text-destructive transition-colors hover:bg-destructive/10"
+                >
+                  <Trash2 className="h-4 w-4 shrink-0" />
+                  <span className="hidden sm:inline">{t("deleteSelected")}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSelectedIds([])}
+                  className="inline-flex h-10 w-10 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted"
+                  aria-label={t("cancel")}
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
             </motion.div>
           )}
         </AnimatePresence>

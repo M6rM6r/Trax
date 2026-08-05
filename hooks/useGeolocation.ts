@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import type { Geofence } from "@/lib/types/trackingTypes";
-import { calculateDistance } from "@/lib/utils/geo";
+import { calculateDistance, GEOFENCE_DISTANCE_BUFFER_METERS } from "@/lib/utils/geo";
 export const LOCATION_DEBOUNCE_MS = 500;
 export const LOCATION_TIMEOUT_MS = 15000;
 export const POSITION_MAX_AGE_MS = 30000;
@@ -79,7 +79,8 @@ function isWithinAnyGeofence(
     if (!closest || dist < closest.distance) {
       closest = { geofence: geo, distance: dist };
     }
-    if (dist <= geo.radius + gpsAccuracy) {
+    // Align client gate with server attendance check-in: radius + fixed buffer + GPS accuracy.
+    if (dist <= geo.radius + GEOFENCE_DISTANCE_BUFFER_METERS + gpsAccuracy) {
       withinRange = true;
     }
   }
@@ -150,8 +151,9 @@ export function useGeolocation(options: UseGeolocationOptions): GeolocationState
     }
 
     if (geofencesRef.current.length === 0) {
+      // Empty list means no allowed zones — never treat as unrestricted.
       setNearestGeofence(null);
-      setIsWithinRange(true);
+      setIsWithinRange(false);
       return;
     }
 
@@ -260,7 +262,7 @@ export function useGeolocation(options: UseGeolocationOptions): GeolocationState
     if (!position) return;
     if (geofences.length === 0) {
       setNearestGeofence(null);
-      setIsWithinRange(true);
+      setIsWithinRange(false);
       return;
     }
     const { nearestGeofence: nearest, isWithinRange: within } = isWithinAnyGeofence(

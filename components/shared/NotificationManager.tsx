@@ -9,18 +9,31 @@ import { useMyAttendance } from "@/hooks/api/useAttendance";
 import { useTranslations } from "next-intl";
 import { requestFCMToken } from "@/lib/services/firebase/messaging";
 import type { AttendanceRecord, Employee } from "@/lib/types/trackingTypes";
+import {
+  companyMinutesSinceMidnight,
+  companyWallClockToUtcMs,
+  companyWeekday,
+  DEFAULT_COMPANY_TIMEZONE,
+  formatCompanyDate,
+} from "@/lib/utils/companyDate";
 
 const LAST_REMINDER_KEY = "trax_last_reminder_date";
 const LAST_LATE_PUSH_KEY = "trax_last_late_push_date";
+
+function wallClockIso(dateYmd: string, timeHm: string, timeZone: string): string {
+  const ms = companyWallClockToUtcMs(dateYmd, timeHm, timeZone);
+  return ms !== null ? new Date(ms).toISOString() : new Date().toISOString();
+}
 
 function buildAttendanceNotifications(
   attendance: AttendanceRecord[],
   role: "company" | "employee" | "mastermind" | null,
   employeeId: string | number | null,
-  t: (key: string, values?: Record<string, string | number>) => string
+  t: (key: string, values?: Record<string, string | number>) => string,
+  timeZone: string = DEFAULT_COMPANY_TIMEZONE
 ): AppNotification[] {
   const notifications: AppNotification[] = [];
-  const today = new Date().toLocaleDateString("sv-SE");
+  const today = formatCompanyDate(new Date(), timeZone);
 
   for (const record of attendance) {
     if (!record.checkInTime) continue;
@@ -38,7 +51,7 @@ function buildAttendanceNotifications(
         type: "late_arrival",
         title: t("lateArrivalTitle"),
         message: t("lateArrivalMessage", { name }),
-        timestamp: new Date(`${record.date}T${record.checkInTime}`).toISOString(),
+        timestamp: wallClockIso(record.date, record.checkInTime, timeZone),
         read: false,
         employeeId: record.employeeId,
         employeeName: record.employeeName,
@@ -50,7 +63,7 @@ function buildAttendanceNotifications(
         type: "check_in",
         title: t("checkIn"),
         message: t("checkInMessage", { name, time: record.checkInTime }),
-        timestamp: new Date(`${record.date}T${record.checkInTime}`).toISOString(),
+        timestamp: wallClockIso(record.date, record.checkInTime, timeZone),
         read: false,
         employeeId: record.employeeId,
         employeeName: record.employeeName,
@@ -65,7 +78,7 @@ function buildAttendanceNotifications(
           type: "check_out_early",
           title: t("checkOutEarlyTitle"),
           message: t("checkOutEarlyMessage", { name, time: record.checkOutTime }),
-          timestamp: new Date(`${record.date}T${record.checkOutTime}`).toISOString(),
+          timestamp: wallClockIso(record.date, record.checkOutTime, timeZone),
           read: false,
           employeeId: record.employeeId,
           employeeName: record.employeeName,
@@ -77,7 +90,7 @@ function buildAttendanceNotifications(
           type: "check_out",
           title: t("checkOutTitle"),
           message: t("checkOutMessage", { name, time: record.checkOutTime }),
-          timestamp: new Date(`${record.date}T${record.checkOutTime}`).toISOString(),
+          timestamp: wallClockIso(record.date, record.checkOutTime, timeZone),
           read: false,
           employeeId: record.employeeId,
           employeeName: record.employeeName,
@@ -98,28 +111,31 @@ function buildAdminLateNotifications(
   workStartTime: string,
   gracePeriodMinutes: number,
   weekendDays: number[],
-  t: (key: string, values?: Record<string, string | number>) => string
+  t: (key: string, values?: Record<string, string | number>) => string,
+  timeZone: string = DEFAULT_COMPANY_TIMEZONE
 ): AppNotification[] {
   const now = new Date();
-  if (weekendDays.includes(now.getDay())) return [];
+  if (weekendDays.includes(companyWeekday(now, timeZone))) return [];
 
   const startMinutes = parseTimeToMinutes(workStartTime);
   if (!Number.isFinite(startMinutes)) return [];
   const lateThreshold =
     startMinutes + (Number.isFinite(gracePeriodMinutes) ? gracePeriodMinutes : 0);
-  const nowMinutes = now.getHours() * 60 + now.getMinutes();
+  const nowMinutes = companyMinutesSinceMidnight(now, timeZone);
   if (nowMinutes < lateThreshold) return [];
 
-  const today = now.toLocaleDateString("sv-SE");
+  const today = formatCompanyDate(now, timeZone);
   const checkedInToday = new Set(
     attendance
       .filter((r) => r.date === today && r.checkInTime !== null)
       .map((r) => String(r.employeeId))
   );
 
-  const lateTime = new Date(`${today}T${workStartTime}`);
-  lateTime.setMinutes(lateTime.getMinutes() + gracePeriodMinutes);
-  const timestamp = lateTime.toISOString();
+  const grace = Number.isFinite(gracePeriodMinutes) ? gracePeriodMinutes : 0;
+  const thresholdMin = startMinutes + grace;
+  const thH = String(Math.floor(thresholdMin / 60) % 24).padStart(2, "0");
+  const thM = String(thresholdMin % 60).padStart(2, "0");
+  const timestamp = wallClockIso(today, `${thH}:${thM}`, timeZone);
 
   return employees
     .filter((emp) => emp.status === "active" && !checkedInToday.has(String(emp.id)))
@@ -159,6 +175,7 @@ export default function NotificationManager() {
   const lateAlertsEnabled = useCompanySettingsStore((s) => s.lateAlertsEnabled);
   const attendanceAlertsEnabled = useCompanySettingsStore((s) => s.attendanceAlertsEnabled);
   const checkoutAlertsEnabled = useCompanySettingsStore((s) => s.checkoutAlertsEnabled);
+  const timezone = useCompanySettingsStore((s) => s.timezone) || DEFAULT_COMPANY_TIMEZONE;
 
   const isAdmin = role === "company" || role === "mastermind";
   const { data: companyAttendance = [] } = useAttendance({ enabled: isAdmin });
@@ -175,7 +192,8 @@ export default function NotificationManager() {
       attendance,
       role,
       user?.employee_id ?? null,
-      t
+      t,
+      timezone
     ).filter((n) => {
       if (n.type === "check_in" && !attendanceAlertsEnabled) return false;
       if (n.type === "late_arrival" && !lateAlertsEnabled) return false;
@@ -192,7 +210,8 @@ export default function NotificationManager() {
         workStartTime,
         gracePeriodMinutes,
         weekendDays,
-        t
+        t,
+        timezone
       );
       syncNotifications(adminNotifs);
     }
@@ -212,6 +231,7 @@ export default function NotificationManager() {
     workStartTime,
     gracePeriodMinutes,
     weekendDays,
+    timezone,
   ]);
 
   useEffect(() => {
@@ -260,15 +280,16 @@ export default function NotificationManager() {
 
     const checkReminder = () => {
       const now = new Date();
-      const nowMinutes = now.getHours() * 60 + now.getMinutes();
-      const today = now.toLocaleDateString("sv-SE");
-      const lastReminder = localStorage.getItem(LAST_REMINDER_KEY);
+      const nowMinutes = companyMinutesSinceMidnight(now, timezone);
+      const today = formatCompanyDate(now, timezone);
+      const scopeKey = `${LAST_REMINDER_KEY}:${companyId ?? "none"}:${user?.id ?? "anon"}`;
+      const lastReminder = localStorage.getItem(scopeKey);
 
       if (lastReminder === today) return;
-      if (weekendDays.includes(now.getDay())) return;
+      if (weekendDays.includes(companyWeekday(now, timezone))) return;
 
       if (nowMinutes >= reminderMinutes && nowMinutes < lateMinutes + 30) {
-        localStorage.setItem(LAST_REMINDER_KEY, today);
+        localStorage.setItem(scopeKey, today);
         const title = t("checkInReminderTitle");
         const body = t("checkInReminderBody");
 
@@ -290,6 +311,7 @@ export default function NotificationManager() {
   }, [
     user,
     role,
+    companyId,
     addNotification,
     notificationsEnabled,
     checkInReminderEnabled,
@@ -298,6 +320,7 @@ export default function NotificationManager() {
     gracePeriodMinutes,
     pushNotificationsEnabled,
     weekendDays,
+    timezone,
     t,
   ]);
 
@@ -314,20 +337,22 @@ export default function NotificationManager() {
         workStartTime,
         gracePeriodMinutes,
         weekendDays,
-        t
+        t,
+        timezone
       );
       syncNotifications(adminNotifs);
 
       // Show one push notification per day
       if (adminNotifs.length > 0 && typeof window !== "undefined" && "Notification" in window) {
-        const today = new Date().toLocaleDateString("sv-SE");
-        const lastPush = localStorage.getItem(LAST_LATE_PUSH_KEY);
+        const today = formatCompanyDate(new Date(), timezone);
+        const lateKey = `${LAST_LATE_PUSH_KEY}:${companyId ?? "none"}`;
+        const lastPush = localStorage.getItem(lateKey);
         if (
           lastPush !== today &&
           pushNotificationsEnabled &&
           Notification.permission === "granted"
         ) {
-          localStorage.setItem(LAST_LATE_PUSH_KEY, today);
+          localStorage.setItem(lateKey, today);
           const title = t("lateEmployeesTitle", { count: adminNotifs.length });
           const body =
             adminNotifs.length === 1
@@ -343,6 +368,7 @@ export default function NotificationManager() {
     return () => clearInterval(interval);
   }, [
     isAdmin,
+    companyId,
     employees,
     attendance,
     syncNotifications,
@@ -352,6 +378,7 @@ export default function NotificationManager() {
     gracePeriodMinutes,
     pushNotificationsEnabled,
     weekendDays,
+    timezone,
     t,
   ]);
 

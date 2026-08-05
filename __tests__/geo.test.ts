@@ -79,6 +79,19 @@ describe("geofence guards", () => {
     expect(r.nearestGeofence?.geofence.id).toBe("ok");
   });
 
+  it("applies fixed buffer + GPS accuracy consistent with server check-in", () => {
+    // Point ~40m north of center; radius 10 + buffer 50 + accuracy 0 => within
+    const g = mk("buf", 24.7136, 46.6753, 10);
+    const northLat = 24.7136 + 40 / 111320;
+    const insideWithBuffer = isWithinAnyGeofence(northLat, 46.6753, [g], 0);
+    expect(insideWithBuffer.isWithinRange).toBe(true);
+
+    // Far outside even with buffer
+    const farLat = 24.7136 + 200 / 111320;
+    const outside = isWithinAnyGeofence(farLat, 46.6753, [g], 0);
+    expect(outside.isWithinRange).toBe(false);
+  });
+
   it("findNearestGeofence skips invalid and returns valid nearest", () => {
     const bad = mk("bad", 0, 0, 0);
     const ok = mk("ok", 24.7136, 46.6753, 100);

@@ -17,9 +17,6 @@ import {
   CheckCircle,
   XCircle,
   AlertCircle,
-  Key,
-  Eye,
-  EyeOff,
 } from "lucide-react";
 import { useRouter, Link } from "@/i18n/navigation";
 import {
@@ -57,7 +54,6 @@ export default function EmployeeProfilePage({ params }: { params: { id: string }
   const updateEmployee = useUpdateEmployee();
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showEditForm, setShowEditForm] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
   const [editEmployee, setEditEmployee] = useState<{
     name: string;
     email: string;
@@ -102,7 +98,7 @@ export default function EmployeeProfilePage({ params }: { params: { id: string }
   if (empLoading) {
     return (
       <MainLayout>
-        <div className="p-6">
+        <div className="p-3 sm:p-4 md:p-6">
           <LoadingSkeleton variant="list" />
         </div>
       </MainLayout>
@@ -112,7 +108,7 @@ export default function EmployeeProfilePage({ params }: { params: { id: string }
   if (empError || !employee) {
     return (
       <MainLayout>
-        <div className="p-6">
+        <div className="p-3 sm:p-4 md:p-6">
           <ErrorState onRetry={() => router.push(`/employees`)} />
         </div>
       </MainLayout>
@@ -164,7 +160,7 @@ export default function EmployeeProfilePage({ params }: { params: { id: string }
 
   return (
     <MainLayout>
-      <div className="p-6 space-y-6 min-h-screen">
+      <div className="min-h-screen space-y-4 p-3 sm:space-y-6 sm:p-4 md:p-6">
         {/* Breadcrumb */}
         <div className="flex items-center gap-2 text-sm">
           <Link
@@ -226,7 +222,7 @@ export default function EmployeeProfilePage({ params }: { params: { id: string }
 
               {/* Contact Info Grid */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-6">
-                <div className="flex items-center gap-3 p-3 rounded-xl bg-muted/50">
+                <div className="flex min-w-0 items-center gap-3 rounded-xl bg-muted/50 p-3">
                   <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
                     <Mail className="w-5 h-5 text-primary" />
                   </div>
@@ -239,7 +235,7 @@ export default function EmployeeProfilePage({ params }: { params: { id: string }
                     </p>
                   </div>
                 </div>
-                <div className="flex items-center gap-3 p-3 rounded-xl bg-muted/50">
+                <div className="flex min-w-0 items-center gap-3 rounded-xl bg-muted/50 p-3">
                   <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
                     <MapPin className="w-5 h-5 text-primary" />
                   </div>
@@ -248,7 +244,7 @@ export default function EmployeeProfilePage({ params }: { params: { id: string }
                     <p className="text-sm font-medium text-foreground">{geofenceName}</p>
                   </div>
                 </div>
-                <div className="flex items-center gap-3 p-3 rounded-xl bg-muted/50">
+                <div className="flex min-w-0 items-center gap-3 rounded-xl bg-muted/50 p-3">
                   <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
                     <Phone className="w-5 h-5 text-primary" />
                   </div>
@@ -259,39 +255,7 @@ export default function EmployeeProfilePage({ params }: { params: { id: string }
                     </p>
                   </div>
                 </div>
-                <div className="flex items-center gap-3 p-3 rounded-xl bg-muted/50">
-                  <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                    <Key className="w-5 h-5 text-primary" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs text-muted-foreground">{t("employeePassword")}</p>
-                    {employee.password ? (
-                      <div className="flex items-center gap-2">
-                        <input
-                          type={showPassword ? "text" : "password"}
-                          value={employee.password}
-                          readOnly
-                          dir="ltr"
-                          className="bg-transparent text-sm font-medium text-foreground outline-none w-full"
-                          style={{ unicodeBidi: "plaintext" }}
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setShowPassword((s) => !s)}
-                          className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-                        >
-                          {showPassword ? (
-                            <EyeOff className="w-4 h-4" />
-                          ) : (
-                            <Eye className="w-4 h-4" />
-                          )}
-                        </button>
-                      </div>
-                    ) : (
-                      <p className="text-sm font-medium text-foreground">-</p>
-                    )}
-                  </div>
-                </div>
+                {/* Passwords are never stored on employee docs — reset only from employees list. */}
               </div>
             </CardContent>
           </Card>
@@ -393,7 +357,7 @@ export default function EmployeeProfilePage({ params }: { params: { id: string }
                   return (
                     <div
                       key={i}
-                      className={`w-9 h-9 rounded-lg ${bg} flex items-center justify-center transition-all duration-200 hover:scale-110 cursor-default`}
+                      className={`flex h-8 w-8 items-center justify-center rounded-lg sm:h-9 sm:w-9 ${bg} cursor-default transition-all duration-200 hover:scale-110`}
                       title={`${dayLabel} — ${label}`}
                     >
                       <span

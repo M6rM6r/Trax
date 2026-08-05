@@ -5,6 +5,7 @@ import { getIdTokenResult, onAuthStateChanged } from "firebase/auth";
 import { auth } from "@/lib/config/firebase";
 import { getFirebaseUserProfile } from "@/lib/services/firebaseData";
 import { useAuthStore, type UserRole } from "@/stores/useAuthStore";
+import { useCompanySettingsStore } from "@/stores/useCompanySettingsStore";
 import { resolveUserRole } from "@/lib/utils/auth";
 import useSessionTimeout from "@/hooks/useSessionTimeout";
 
@@ -34,6 +35,8 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
       if (!firebaseUser) {
         if (userRef.current) {
           clearUser();
+          // Prevent cross-tenant settings bleed after logout/session expiry.
+          useCompanySettingsStore.getState().resetSettings();
           console.warn("[auth] Firebase session expired");
         }
 
@@ -56,85 +59,80 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
           hasRedirected.current = false;
         }
 
-        const shouldRestore =
-          !userRef.current || !tokenRef.current || userRef.current.role === "employee";
-        if (shouldRestore) {
+        // Always rehydrate from Firestore/token claims so companyId, employee_id, and role stay authoritative.
+        try {
+          let profile: Record<string, unknown> | null = null;
           try {
-            let profile: Record<string, unknown> | null = null;
-            try {
-              profile = await getFirebaseUserProfile(firebaseUser.uid, firebaseUser.email ?? "");
-            } catch (e) {
-              console.warn("[auth] Firestore profile lookup failed, using token claims:", e);
-            }
-            const tokenResult = await getIdTokenResult(firebaseUser);
-            const profileData = (profile ?? {}) as Record<string, unknown> & {
-              company?: { id?: unknown; name?: unknown };
-            };
-            const companyProfile = profileData.company;
-            const role = resolveUserRole(profileData, tokenResult.claims, firebaseUser.email ?? "");
-
-            if (!profile) {
-              console.warn(
-                "[auth] No profile resolved for Firebase user; continuing with inferred defaults",
-                {
-                  uid: firebaseUser.uid,
-                  email: firebaseUser.email,
-                  resolvedRole: role,
-                }
-              );
-            }
-
-            const numericId = Array.from(firebaseUser.uid).reduce(
-              (total, character) => (total * 31 + character.charCodeAt(0)) % 2147483647,
-              0
-            );
-            const companyIdValue = profileData.company_id ?? companyProfile?.id ?? null;
-            const resolvedCompanyIdRaw =
-              typeof companyIdValue === "string" || typeof companyIdValue === "number"
-                ? String(companyIdValue)
-                : undefined;
-            const resolvedCompanyId: string | undefined =
-              resolvedCompanyIdRaw &&
-              resolvedCompanyIdRaw !== "null" &&
-              resolvedCompanyIdRaw !== "undefined"
-                ? resolvedCompanyIdRaw
-                : undefined;
-            const resolvedCompanyName = String(
-              profileData.company_name ?? companyProfile?.name ?? ""
-            );
-            const isEmployee = role === "employee";
-            const resolvedEmployeeId =
-              profileData.employee_id === null || profileData.employee_id === undefined
-                ? isEmployee
-                  ? String(numericId)
-                  : null
-                : String(profileData.employee_id);
-            const resolvedAssignedGeofenceId =
-              profileData.assigned_geofence_id === null ||
-              profileData.assigned_geofence_id === undefined
-                ? null
-                : String(profileData.assigned_geofence_id);
-            const appUser = {
-              id: Number(profileData.id ?? numericId),
-              name: String(
-                profileData.name ??
-                  firebaseUser.displayName ??
-                  firebaseUser.email?.split("@")[0] ??
-                  "User"
-              ),
-              email: String(profileData.email ?? firebaseUser.email ?? ""),
-              role,
-              employee_id: resolvedEmployeeId,
-              assigned_geofence_id: resolvedAssignedGeofenceId,
-              permissions: [],
-              created_at: new Date().toISOString(),
-              profile_image: String(profileData.profile_image ?? ""),
-            };
-            const idToken = await firebaseUser.getIdToken();
-            setUser(appUser, idToken, role, resolvedCompanyId, resolvedCompanyName);
-          } catch (err) {
-            console.warn("[auth] Failed to restore Firebase session:", err);
+            profile = await getFirebaseUserProfile(firebaseUser.uid, firebaseUser.email ?? "");
+          } catch (e) {
+            console.warn("[auth] Firestore profile lookup failed, using token claims:", e);
           }
+          const tokenResult = await getIdTokenResult(firebaseUser);
+          const profileData = (profile ?? {}) as Record<string, unknown> & {
+            company?: { id?: unknown; name?: unknown };
+          };
+          const companyProfile = profileData.company;
+          const role = resolveUserRole(profileData, tokenResult.claims, firebaseUser.email ?? "");
+
+          if (!profile) {
+            console.warn(
+              "[auth] No profile resolved for Firebase user; continuing with inferred defaults",
+              {
+                uid: firebaseUser.uid,
+                email: firebaseUser.email,
+                resolvedRole: role,
+              }
+            );
+          }
+
+          const numericId = Array.from(firebaseUser.uid).reduce(
+            (total, character) => (total * 31 + character.charCodeAt(0)) % 2147483647,
+            0
+          );
+          const companyIdValue = profileData.company_id ?? companyProfile?.id ?? null;
+          const resolvedCompanyIdRaw =
+            typeof companyIdValue === "string" || typeof companyIdValue === "number"
+              ? String(companyIdValue)
+              : undefined;
+          const resolvedCompanyId: string | undefined =
+            resolvedCompanyIdRaw &&
+            resolvedCompanyIdRaw !== "null" &&
+            resolvedCompanyIdRaw !== "undefined"
+              ? resolvedCompanyIdRaw
+              : undefined;
+          const resolvedCompanyName = String(
+            profileData.company_name ?? companyProfile?.name ?? ""
+          );
+          // Never invent employee_id. Missing linkage must surface as no-employee, not a ghost id.
+          const resolvedEmployeeId =
+            profileData.employee_id === null || profileData.employee_id === undefined
+              ? null
+              : String(profileData.employee_id);
+          const resolvedAssignedGeofenceId =
+            profileData.assigned_geofence_id === null ||
+            profileData.assigned_geofence_id === undefined
+              ? null
+              : String(profileData.assigned_geofence_id);
+          const appUser = {
+            id: Number(profileData.id ?? numericId),
+            name: String(
+              profileData.name ??
+                firebaseUser.displayName ??
+                firebaseUser.email?.split("@")[0] ??
+                "User"
+            ),
+            email: String(profileData.email ?? firebaseUser.email ?? ""),
+            role,
+            employee_id: resolvedEmployeeId,
+            assigned_geofence_id: resolvedAssignedGeofenceId,
+            permissions: [],
+            created_at: new Date().toISOString(),
+            profile_image: String(profileData.profile_image ?? ""),
+          };
+          const idToken = await firebaseUser.getIdToken();
+          setUser(appUser, idToken, role, resolvedCompanyId, resolvedCompanyName);
+        } catch (err) {
+          console.warn("[auth] Failed to restore Firebase session:", err);
         }
       }
     });

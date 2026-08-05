@@ -7,7 +7,7 @@ export interface QueuedCheckIn {
   id: string;
   employeeId: string;
   employeeName?: string;
-  employeeSnapshot?: Pick<Employee, "attendanceMode" | "shiftOverride"> | null;
+  employeeSnapshot?: Pick<Employee, "attendanceMode" | "shiftOverride" | "geofenceId"> | null;
   lat: number;
   lng: number;
   accuracy?: number;

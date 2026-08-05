@@ -14,7 +14,7 @@ import {
 import type { AttendanceRecord, Employee, Geofence } from "@/lib/types/trackingTypes";
 import { defaultCompanySettings, type CompanySettings } from "@/lib/types/companySettings";
 import { resolveEmployeeShift, evaluateCheckIn, calculateWorkedHours } from "@/lib/utils/shifts";
-import { calculateDistance, GEOFENCE_DISTANCE_BUFFER_METERS } from "@/lib/utils/geo";
+import { isInsideAssignedGeofence, resolveAssignedGeofenceId } from "@/lib/utils/assignedGeofence";
 import {
   ensureAuth,
   getCompanyId,
@@ -24,9 +24,7 @@ import {
   mapGeofence,
   queryByCompanyId,
 } from "./helpers";
-import { companiesApi } from "./companies";
 import { employeesApi } from "./employees";
-import { geofencesApi } from "./geofences";
 
 export const attendanceApi = {
   async list(
@@ -43,67 +41,15 @@ export const attendanceApi = {
     const base = collection(requireDb(), "attendance");
     const extraFilters: ReturnType<typeof where>[] = [];
     if (employeeId) extraFilters.push(where("employeeId", "==", employeeId));
+    // Status/lateMinutes written at check-in are authoritative historical facts.
+    // Do not re-fetch employees/geofences/settings and rewrite history on every list —
+    // that caused a 3x Firestore stampede on dashboard + attendance pages.
     let records = await queryByCompanyId(
       base,
       extraFilters,
       mapAttendance,
       orderBy("date", "desc")
     );
-
-    // Recompute status/late/worked from the latest company settings + employee + geofence,
-    // so the dashboard and notifications always reflect the current rules rather than
-    // whatever shift was cached on the record at check-in time.
-    try {
-      const [settingsRaw, employees, geofences] = await Promise.all([
-        companiesApi.getSettings(),
-        employeesApi.list(),
-        geofencesApi.list(),
-      ]);
-      const settings = { ...defaultCompanySettings, ...(settingsRaw ?? {}) } as CompanySettings;
-      const employeeMap = new Map(employees.map((e) => [String(e.id), e]));
-      const geofenceMap = new Map(geofences.map((g) => [String(g.id), g]));
-
-      records = records.map((record) => {
-        if (!record.checkInTime) return record;
-
-        const employee = employeeMap.get(record.employeeId) ?? {
-          attendanceMode: record.attendanceMode,
-          shiftOverride: null,
-        };
-        const geofence = record.geofenceId ? geofenceMap.get(record.geofenceId) : null;
-        const recordDate = new Date(`${record.date}T${record.checkInTime}`);
-        const { shift } = resolveEmployeeShift(
-          employee,
-          settings,
-          recordDate,
-          record.shiftSlot,
-          geofence?.shifts ?? null
-        );
-
-        const evalResult = evaluateCheckIn(record.checkInTime, shift);
-        const next: AttendanceRecord = {
-          ...record,
-          status: evalResult.status,
-          lateMinutes: evalResult.lateMinutes,
-          appliedShift: shift,
-        };
-
-        if (record.checkOutTime) {
-          next.expectedCheckoutTime =
-            settings.checkoutTimeRangeEnabled && settings.checkoutStartTime
-              ? settings.checkoutStartTime
-              : (shift.endTime ?? null);
-          next.workedHours = calculateWorkedHours(record.checkInTime, record.checkOutTime);
-          next.earlyCheckout = Boolean(
-            next.expectedCheckoutTime && record.checkOutTime < next.expectedCheckoutTime
-          );
-        }
-
-        return next;
-      });
-    } catch (err) {
-      console.warn("[attendance.list] failed to recompute records:", err);
-    }
 
     if (dateRange?.from || dateRange?.to) {
       records = records.filter((record) => {
@@ -137,93 +83,69 @@ export const attendanceApi = {
       ...(payload.companySettings ?? {}),
     };
 
-    const requireGeofence = Boolean(settings.requireGeofenceForCheckIn);
-    const allowOutside = Boolean(settings.allowCheckInOutsideGeofence);
-
-    // Load employee to enforce the assigned geofence, falling back to payload data when offline.
+    // Load employee to enforce assigned geofence. Server employee doc is authoritative.
     let employee: Employee | null = null;
     try {
       employee = await employeesApi.getById(payload.employeeId);
     } catch {
       employee = null;
     }
-    const assignedGeofenceId = payload.employee?.geofenceId ?? employee?.geofenceId ?? null;
-    const requestedGeofenceId = assignedGeofenceId ?? payload.geofenceId ?? null;
+
+    // Prefer Firestore employee.geofenceId so clients cannot spoof a different location.
+    const assignedGeofenceId = resolveAssignedGeofenceId(
+      employee?.geofenceId,
+      employee ? null : (payload.employee?.geofenceId ?? null)
+    );
+
+    if (!assignedGeofenceId) {
+      throw new Error("EMPLOYEE_HAS_NO_ASSIGNED_GEOFENCE");
+    }
+
+    // Reject client-supplied geofence that does not match the assignment.
+    if (
+      payload.geofenceId !== null &&
+      payload.geofenceId !== undefined &&
+      String(payload.geofenceId).trim() !== "" &&
+      String(payload.geofenceId) !== String(assignedGeofenceId)
+    ) {
+      throw new Error("CHECK_IN_GEOFENCE_MISMATCH");
+    }
 
     let geofence: Geofence | null = null;
-    if (requestedGeofenceId) {
-      try {
-        const geofenceDoc = await getDoc(
-          doc(requireDb(), "geofences", String(requestedGeofenceId))
-        );
-        if (geofenceDoc.exists()) {
-          const raw = geofenceDoc.data() as Record<string, unknown>;
-          const candidate = mapGeofence(geofenceDoc.id, raw);
-          if (
-            candidate.active !== false &&
-            String(raw.company_id ?? candidate.id) === String(companyId) &&
-            (!assignedGeofenceId || String(candidate.id) === String(assignedGeofenceId))
-          ) {
-            geofence = candidate;
-          }
+    try {
+      const geofenceDoc = await getDoc(doc(requireDb(), "geofences", String(assignedGeofenceId)));
+      if (geofenceDoc.exists()) {
+        const raw = geofenceDoc.data() as Record<string, unknown>;
+        const candidate = mapGeofence(geofenceDoc.id, raw);
+        const ownsGeofence =
+          raw.company_id !== null &&
+          raw.company_id !== undefined &&
+          String(raw.company_id) === String(companyId);
+        if (candidate.active !== false && ownsGeofence) {
+          geofence = candidate;
         }
-      } catch {
-        // Geofence lookup failed
       }
+    } catch {
+      geofence = null;
     }
 
-    if (!geofence && !assignedGeofenceId) {
-      try {
-        const companyGeofencesRaw = await queryByCompanyId(
-          collection(requireDb(), "geofences"),
-          [where("active", "==", true)],
-          mapGeofence
-        );
-        const companyGeofences = companyGeofencesRaw.filter(
-          (g) => Number.isFinite(g.radius) && g.radius > 0
-        );
-        geofence =
-          companyGeofences.find(
-            (g) =>
-              calculateDistance(payload.lat, payload.lng, g.lat, g.lng) <=
-              g.radius + GEOFENCE_DISTANCE_BUFFER_METERS + gpsAccuracy
-          ) ?? null;
-      } catch {
-        // proceed without geofence
-      }
+    if (!geofence) {
+      throw new Error("ASSIGNED_GEOFENCE_NOT_FOUND_OR_INACTIVE");
     }
 
-    if (geofence) {
-      const dist = calculateDistance(payload.lat, payload.lng, geofence.lat, geofence.lng);
-      const within = dist <= geofence.radius + GEOFENCE_DISTANCE_BUFFER_METERS + gpsAccuracy;
-      if (!within && requireGeofence && !allowOutside) {
-        throw new Error("Check-in location is outside the allowed geofence area");
-      }
-    } else if (requireGeofence && !allowOutside) {
-      if (assignedGeofenceId) {
-        throw new Error("Assigned geofence not found or inactive");
-      }
-      const activeSnap = await getDocs(
-        query(
-          collection(requireDb(), "geofences"),
-          where("company_id", "==", companyId),
-          where("active", "==", true),
-          limit(50)
-        )
-      );
-      const hasValid = activeSnap.docs.some((d) => {
-        const r = d.get("radius") ?? d.get("radiusMeters");
-        const n = typeof r === "number" ? r : Number(r);
-        return Number.isFinite(n) && n > 0;
-      });
-      if (hasValid) {
-        throw new Error("Check-in requires a geofence and none was provided");
-      }
+    // Hard rule: physical presence inside the assigned geofence only.
+    // Company flags cannot waive assignment-bound check-in.
+    if (!isInsideAssignedGeofence(payload.lat, payload.lng, geofence, gpsAccuracy)) {
+      throw new Error("Check-in location is outside the assigned geofence area");
     }
 
     const now = payload.checkInTimestamp ? new Date(payload.checkInTimestamp) : new Date();
-    const date = now.toLocaleDateString("sv-SE");
-    const checkInTime = now.toTimeString().slice(0, 5);
+    const { formatCompanyDate, formatCompanyTime, DEFAULT_COMPANY_TIMEZONE, attendanceDocId } =
+      await import("@/lib/utils/companyDate");
+    const tz =
+      (settings as { timezone?: string } | null | undefined)?.timezone || DEFAULT_COMPANY_TIMEZONE;
+    const date = formatCompanyDate(now, tz);
+    const checkInTime = formatCompanyTime(now, tz);
 
     const { mode, shift, slot } = resolveEmployeeShift(
       employee ?? payload.employee ?? {},
@@ -234,55 +156,23 @@ export const attendanceApi = {
     );
     const { status, lateMinutes } = evaluateCheckIn(checkInTime, shift);
 
-    const existing = await getDocs(
-      query(
-        collection(requireDb(), "attendance"),
-        where("company_id", "==", companyId),
-        where("employeeId", "==", payload.employeeId),
-        where("date", "==", date),
-        limit(1)
-      )
-    );
-    const existingDoc = existing.docs[0];
-    if (existingDoc) {
-      const existingData = existingDoc.data();
+    // One attendance doc per employee per company day (deterministic id — no double rows).
+    const docId = attendanceDocId(companyId, payload.employeeId, date);
+    const reference = doc(requireDb(), "attendance", docId);
+    const existingSnap = await getDoc(reference);
+    if (existingSnap.exists()) {
+      const existingData = existingSnap.data();
+      // Day is terminal after checkout — do not reopen / wipe checkout.
       if (existingData.checkOutTime) {
-        const resolvedGeofenceId = geofence?.id ?? payload.geofenceId ?? null;
-        const resolvedGeofenceName = geofence?.name ?? null;
-        await updateDoc(existingDoc.ref, {
-          checkInTime,
-          checkInLat: payload.lat,
-          checkInLng: payload.lng,
-          geofenceId: resolvedGeofenceId,
-          geofenceName: resolvedGeofenceName,
-          status,
-          lateMinutes,
-          checkOutTime: null,
-          checkOutLat: null,
-          checkOutLng: null,
-          checkOutStatus: null,
-          workedHours: 0,
-        });
-        const record = mapAttendance(existingDoc.id, {
-          ...existingData,
-          checkInTime,
-          checkInLat: payload.lat,
-          checkInLng: payload.lng,
-          geofenceId: resolvedGeofenceId,
-          geofenceName: resolvedGeofenceName,
-          status,
-          lateMinutes,
-          checkOutTime: null,
-          workedHours: 0,
-        });
-        return record;
+        throw new Error("ALREADY_CHECKED_OUT");
       }
-      return mapAttendance(existingDoc.id, existingData);
+      if (existingData.checkInTime) {
+        return mapAttendance(existingSnap.id, existingData);
+      }
     }
 
-    const reference = doc(collection(requireDb(), "attendance"));
     const record = {
-      id: reference.id,
+      id: docId,
       ownerUid: currentUser.uid,
       company_id: companyId,
       employeeId: payload.employeeId,
@@ -295,8 +185,8 @@ export const attendanceApi = {
       checkInLng: payload.lng,
       checkOutLat: null,
       checkOutLng: null,
-      geofenceId: geofence?.id ?? payload.geofenceId ?? null,
-      geofenceName: geofence?.name ?? null,
+      geofenceId: String(geofence.id),
+      geofenceName: geofence.name ?? null,
       lateMinutes,
       workedHours: 0,
       checkOutStatus: null,
@@ -318,20 +208,46 @@ export const attendanceApi = {
     await ensureAuth();
     const checkoutCompanyId = requireCompanyId();
     const checkoutNow = checkOutTimestamp ? new Date(checkOutTimestamp) : new Date();
-    const today = checkoutNow.toLocaleDateString("sv-SE");
-    const snapshot = await getDocs(
-      query(
-        collection(requireDb(), "attendance"),
-        where("company_id", "==", checkoutCompanyId),
-        where("employeeId", "==", employeeId),
-        where("date", "==", today),
-        limit(1)
-      )
+    const { formatCompanyDate, formatCompanyTime, DEFAULT_COMPANY_TIMEZONE } =
+      await import("@/lib/utils/companyDate");
+    const { attendanceDocId } = await import("@/lib/utils/companyDate");
+    const checkoutTz =
+      (companySettings as { timezone?: string } | null | undefined)?.timezone ||
+      DEFAULT_COMPANY_TIMEZONE;
+    const today = formatCompanyDate(checkoutNow, checkoutTz);
+    const checkOutTime = formatCompanyTime(checkoutNow, checkoutTz);
+
+    // Prefer deterministic doc; fall back to legacy random-id rows.
+    const preferredRef = doc(
+      requireDb(),
+      "attendance",
+      attendanceDocId(checkoutCompanyId, employeeId, today)
     );
-    const openDoc = snapshot.docs.find((d) => !d.data().checkOutTime);
-    if (!openDoc) throw new Error("No open attendance record");
-    const current = mapAttendance(openDoc.id, openDoc.data());
-    const checkOutTime = checkoutNow.toTimeString().slice(0, 5);
+    let targetRef = preferredRef;
+    let currentData: Record<string, unknown> | null = null;
+    const preferredSnap = await getDoc(preferredRef);
+    if (preferredSnap.exists()) {
+      currentData = preferredSnap.data() as Record<string, unknown>;
+    } else {
+      const snapshot = await getDocs(
+        query(
+          collection(requireDb(), "attendance"),
+          where("company_id", "==", checkoutCompanyId),
+          where("employeeId", "==", employeeId),
+          where("date", "==", today),
+          limit(5)
+        )
+      );
+      const openDoc = snapshot.docs.find((d) => !d.data().checkOutTime && d.data().checkInTime);
+      if (!openDoc) throw new Error("No open attendance record");
+      targetRef = openDoc.ref;
+      currentData = openDoc.data() as Record<string, unknown>;
+    }
+
+    if (!currentData?.checkInTime) throw new Error("No open attendance record");
+    if (currentData.checkOutTime) throw new Error("ALREADY_CHECKED_OUT");
+
+    const current = mapAttendance(targetRef.id, currentData);
     const workedHours = current.checkInTime
       ? calculateWorkedHours(current.checkInTime, checkOutTime)
       : 0;
@@ -340,9 +256,16 @@ export const attendanceApi = {
       companySettings?.checkoutTimeRangeEnabled && companySettings?.checkoutStartTime
         ? companySettings.checkoutStartTime
         : (current.appliedShift?.endTime ?? null);
-    const earlyCheckout = Boolean(expectedCheckoutTime && checkOutTime < expectedCheckoutTime);
+    // Compare via minutes so overnight shifts don't lie on string compare.
+    const { parseTimeToMinutes } = await import("@/lib/utils/shifts");
+    const earlyCheckout = Boolean(
+      expectedCheckoutTime &&
+      Number.isFinite(parseTimeToMinutes(checkOutTime)) &&
+      Number.isFinite(parseTimeToMinutes(expectedCheckoutTime)) &&
+      parseTimeToMinutes(checkOutTime) < parseTimeToMinutes(expectedCheckoutTime)
+    );
 
-    await updateDoc(openDoc.ref, {
+    await updateDoc(targetRef, {
       checkOutTime,
       status: "checked_out",
       checkOutStatus: "present",

@@ -44,7 +44,19 @@ export const employeesApi = {
   async getById(id: string): Promise<Employee | null> {
     await ensureAuth();
     const snapshot = await getDoc(doc(requireDb(), "employees", String(id)));
-    return snapshot.exists() ? mapEmployee(snapshot.id, snapshot.data()) : null;
+    if (!snapshot.exists()) return null;
+    const data = snapshot.data();
+    const companyId = getCompanyId();
+    // Defense in depth: never return another tenant's employee even if rules slip.
+    if (
+      companyId &&
+      data.company_id !== null &&
+      data.company_id !== undefined &&
+      String(data.company_id) !== String(companyId)
+    ) {
+      return null;
+    }
+    return mapEmployee(snapshot.id, data);
   },
 
   async create(employee: Omit<Employee, "id"> & { password?: string }): Promise<Employee> {
@@ -65,10 +77,13 @@ export const employeesApi = {
         authUser = credential.user;
       }
 
+      // Never persist plaintext passwords in Firestore. Auth credentials live in Firebase Auth only.
+      const assignedGeofence = employee.geofenceId ?? null;
       const reference = await addDoc(collection(database, "employees"), {
         ...employeeData,
+        geofenceId: assignedGeofence,
+        assigned_geofence_id: assignedGeofence,
         ...(authUser ? { authUid: authUser.uid } : {}),
-        ...(password ? { password } : {}),
         company_id: companyId,
         createdAt: serverTimestamp(),
       });
@@ -87,7 +102,7 @@ export const employeesApi = {
         });
       }
 
-      return mapEmployee(reference.id, { ...employeeData, password, id: reference.id });
+      return mapEmployee(reference.id, { ...employeeData, id: reference.id });
     } catch (error) {
       if (employeeDocId) {
         await deleteDoc(doc(database, "employees", employeeDocId)).catch(() => undefined);
@@ -99,9 +114,50 @@ export const employeesApi = {
     }
   },
 
-  async update(id: string, employee: Partial<Employee>): Promise<void> {
+  async update(id: string, employee: Partial<Employee> & { password?: string }): Promise<void> {
     await ensureAuth();
-    await updateDoc(doc(requireDb(), "employees", String(id)), cleanPayload(employee));
+    const database = requireDb();
+    // Never write credentials into employee documents.
+    const { password: _password, ...rest } = employee as Partial<Employee> & { password?: string };
+    void _password;
+
+    const payload = cleanPayload({ ...rest }) as Record<string, unknown>;
+    // Dual-write assignment fields so check-in + auth profile stay aligned.
+    if ("geofenceId" in rest || "assigned_geofence_id" in (rest as object)) {
+      const assigned =
+        rest.geofenceId !== undefined
+          ? (rest.geofenceId ?? null)
+          : ((rest as { assigned_geofence_id?: string | null }).assigned_geofence_id ?? null);
+      payload.geofenceId = assigned;
+      payload.assigned_geofence_id = assigned;
+    }
+    delete payload.password;
+
+    await updateDoc(
+      doc(database, "employees", String(id)),
+      payload as {
+        [key: string]: import("firebase/firestore").FieldValue | Partial<unknown> | undefined;
+      }
+    );
+
+    // Keep linked user profile geofence in sync when assignment changes.
+    if ("geofenceId" in rest || "assigned_geofence_id" in (rest as object)) {
+      try {
+        const snap = await getDoc(doc(database, "employees", String(id)));
+        const authUid = snap.exists() ? (snap.data().authUid as string | undefined) : undefined;
+        if (authUid) {
+          const assigned = (payload.geofenceId as string | null | undefined) ?? null;
+          await updateDoc(doc(database, "users", authUid), {
+            assigned_geofence_id: assigned,
+            ...(rest.attendanceMode !== undefined
+              ? { attendanceMode: rest.attendanceMode ?? null }
+              : {}),
+          });
+        }
+      } catch {
+        // Non-fatal: employee doc is source of truth for check-in server path.
+      }
+    }
   },
 
   async delete(id: string): Promise<void> {

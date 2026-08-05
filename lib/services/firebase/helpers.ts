@@ -53,6 +53,7 @@ export async function queryByCompanyId<T>(
 ): Promise<T[]> {
   const cidStr = getCompanyId();
   if (!cidStr) return [];
+  // Some legacy docs stored company_id as number — try both shapes (Windsurf pipeline).
   const cidNum = Number(cidStr);
   const isNumeric = String(cidNum) === cidStr;
 
@@ -170,7 +171,8 @@ export function mapEmployee(id: string, value: Record<string, unknown>): Employe
         ? null
         : toNumber(value.batteryLevel),
     employeeNumber: (value.employeeNumber as string | null | undefined) ?? null,
-    password: (value.password as string | undefined) ?? undefined,
+    // Never surface credentials from Firestore documents.
+    password: undefined,
     attendanceMode: (value.attendanceMode as Employee["attendanceMode"]) ?? null,
     shiftOverride: (value.shiftOverride as Employee["shiftOverride"]) ?? null,
   };
@@ -212,8 +214,8 @@ function defaultShift(startTime = "08:00", endTime = "17:00"): WorkShift {
   return {
     startTime,
     endTime,
-    gracePeriodMinutes: 15,
-    lateThresholdMinutes: 15,
+    gracePeriodMinutes: 30,
+    lateThresholdMinutes: 30,
   };
 }
 
@@ -226,22 +228,31 @@ function mapShift(value: unknown): WorkShift | null {
   return {
     startTime,
     endTime,
-    gracePeriodMinutes: toNumber(s.gracePeriodMinutes, 15),
-    lateThresholdMinutes: toNumber(s.lateThresholdMinutes, 15),
+    gracePeriodMinutes: toNumber(s.gracePeriodMinutes, 30),
+    lateThresholdMinutes: toNumber(s.lateThresholdMinutes, 30),
   };
 }
 
 export function mapAttendance(id: string, value: Record<string, unknown>): AttendanceRecord {
-  const derived = (() => {
-    const checkInTime = (value.checkInTime as string | null | undefined) ?? null;
-    const appliedShift = (value.appliedShift as AttendanceRecord["appliedShift"]) ?? null;
-    if (checkInTime && appliedShift) {
-      return evaluateCheckIn(checkInTime, appliedShift);
+  const storedStatus = (value.status as AttendanceRecord["status"]) ?? "absent";
+  const checkOutTime = (value.checkOutTime as string | null | undefined) ?? null;
+  const checkInTime = (value.checkInTime as string | null | undefined) ?? null;
+  const appliedShift = (value.appliedShift as AttendanceRecord["appliedShift"]) ?? null;
+  // Windsurf: mark late from shift start + grace via evaluateCheckIn.
+  // Prefer values written at check-in; only backfill missing legacy fields.
+  const derived = checkInTime && appliedShift ? evaluateCheckIn(checkInTime, appliedShift) : null;
+  const hasStoredLate = value.lateMinutes !== null && value.lateMinutes !== undefined;
+  const lateMinutes = hasStoredLate
+    ? toNumber(value.lateMinutes)
+    : (derived?.lateMinutes ?? toNumber(value.lateMinutes));
+
+  const status: AttendanceRecord["status"] = (() => {
+    if (checkOutTime || storedStatus === "checked_out") return "checked_out";
+    if (storedStatus === "present" || storedStatus === "late" || storedStatus === "absent") {
+      return storedStatus;
     }
-    return {
-      status: (value.status as AttendanceRecord["status"]) ?? "absent",
-      lateMinutes: toNumber(value.lateMinutes),
-    };
+    if (derived) return derived.status;
+    return storedStatus;
   })();
 
   return {
@@ -249,9 +260,9 @@ export function mapAttendance(id: string, value: Record<string, unknown>): Atten
     employeeId: String((value.employeeId as string | number | undefined) ?? ""),
     employeeName: String(value.employeeName ?? ""),
     date: String(value.date ?? ""),
-    checkInTime: (value.checkInTime as string | null | undefined) ?? null,
-    checkOutTime: (value.checkOutTime as string | null | undefined) ?? null,
-    status: derived.status,
+    checkInTime,
+    checkOutTime,
+    status,
     checkInLat:
       value.checkInLat === null || value.checkInLat === undefined
         ? null
@@ -271,7 +282,7 @@ export function mapAttendance(id: string, value: Record<string, unknown>): Atten
     geofenceId:
       value.geofenceId === null || value.geofenceId === undefined ? null : String(value.geofenceId),
     geofenceName: (value.geofenceName as string | null | undefined) ?? null,
-    lateMinutes: derived.lateMinutes,
+    lateMinutes,
     workedHours:
       value.workedHours === null || value.workedHours === undefined
         ? null

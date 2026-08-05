@@ -41,9 +41,15 @@ service cloud.firestore {
         uid == request.auth.uid
         || sameCompany(resource)
       );
-      allow create: if signedIn() && (uid == request.auth.uid || sameCompany(request.resource));
-      allow update: if signedIn() && (uid == request.auth.uid || sameCompany(resource));
-      allow delete: if signedIn() && (uid == request.auth.uid || sameCompany(resource));
+      // Self-create only. Cross-user user docs are written by Admin SDK / Cloud Functions.
+      allow create: if signedIn() && uid == request.auth.uid;
+      // Self may update non-privileged fields only. Role / company / employee linkage are immutable from clients.
+      allow update: if signedIn() && uid == request.auth.uid
+        && (!('role' in request.resource.data) || request.resource.data.role == resource.data.role)
+        && (!('admin_role' in request.resource.data) || request.resource.data.admin_role == resource.data.get('admin_role', null))
+        && (!('company_id' in request.resource.data) || request.resource.data.company_id == resource.data.get('company_id', null))
+        && (!('employee_id' in request.resource.data) || request.resource.data.employee_id == resource.data.get('employee_id', null));
+      allow delete: if signedIn() && uid == request.auth.uid;
     }
 
     match /companies/{companyId} {
@@ -59,24 +65,28 @@ service cloud.firestore {
     }
 
     match /employees/{employeeId} {
+      // No bare email match — that allowed cross-tenant reads when emails collided.
       allow read: if signedIn() && (
         sameCompany(resource)
         || resource.data.authUid == request.auth.uid
-        || resource.data.email == request.auth.token.email
         || ('company_id' in resource.data && isCompanyOwner(resource.data.company_id))
+        || isMastermind(request.auth.uid)
       );
-      allow create: if sameCompany(request.resource);
-      allow update, delete: if sameCompany(resource);
+      allow create: if sameCompany(request.resource)
+        && !('password' in request.resource.data);
+      allow update: if sameCompany(resource)
+        && !('password' in request.resource.data);
+      allow delete: if sameCompany(resource);
     }
 
     match /geofences/{geofenceId} {
-      allow read: if signedIn() && (sameCompany(resource) || ('company_id' in resource.data && isCompanyOwner(resource.data.company_id)));
+      allow read: if signedIn() && (sameCompany(resource) || ('company_id' in resource.data && isCompanyOwner(resource.data.company_id)) || isMastermind(request.auth.uid));
       allow create: if sameCompany(request.resource);
       allow update, delete: if sameCompany(resource);
     }
 
     match /attendance/{attendanceId} {
-      allow read: if signedIn() && (sameCompany(resource) || ('company_id' in resource.data && isCompanyOwner(resource.data.company_id)));
+      allow read: if signedIn() && (sameCompany(resource) || ('company_id' in resource.data && isCompanyOwner(resource.data.company_id)) || isMastermind(request.auth.uid));
       allow create: if signedIn()
         && request.resource.data.ownerUid == request.auth.uid
         && sameCompany(request.resource);
@@ -110,7 +120,7 @@ service cloud.firestore {
     }
 
     match /attendance_summaries/{summaryId} {
-      allow read: if signedIn() && (sameCompany(resource) || ('company_id' in resource.data && isCompanyOwner(resource.data.company_id)));
+      allow read: if signedIn() && (sameCompany(resource) || ('company_id' in resource.data && isCompanyOwner(resource.data.company_id)) || isMastermind(request.auth.uid));
       allow write: if false;
     }
 

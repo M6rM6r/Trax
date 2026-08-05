@@ -7,43 +7,47 @@ import { useCompanySettings } from "@/hooks/useApi";
 import { defaultCompanySettings } from "@/lib/types/companySettings";
 import { getEffectiveDefaultShift } from "@/lib/utils/shifts";
 
+function mergeCompanySettings(firestoreSettings: Record<string, unknown> | null | undefined) {
+  const merged = { ...defaultCompanySettings };
+  if (!firestoreSettings) return merged;
+  for (const key of Object.keys(
+    defaultCompanySettings
+  ) as (keyof typeof defaultCompanySettings)[]) {
+    if (key in firestoreSettings && firestoreSettings[key] !== undefined) {
+      (merged as Record<string, unknown>)[key] = firestoreSettings[key];
+    }
+  }
+  merged.defaultShift = getEffectiveDefaultShift(merged);
+  return merged;
+}
+
 export default function CompanySettingsLoader() {
   const user = useAuthStore((s) => s.user);
-  const { data: firestoreSettings } = useCompanySettings({ enabled: !!user });
-  const setOnce = useRef(false);
-  const lastUserId = useRef<number | null>(null);
+  const companyId = useAuthStore((s) => s.companyId);
+  const {
+    data: firestoreSettings,
+    isFetched,
+    isError,
+  } = useCompanySettings({ enabled: Boolean(user && companyId) });
+  const lastAppliedKey = useRef<string | null>(null);
 
   useEffect(() => {
-    const currentUserId = user?.id ?? null;
-    if (!user || (setOnce.current && lastUserId.current === currentUserId)) return;
-
-    const store = useCompanySettingsStore.getState();
-    if (store.loaded && lastUserId.current === currentUserId) {
-      setOnce.current = true;
+    if (!user) {
+      lastAppliedKey.current = null;
       return;
     }
 
-    const setSettings = store.setSettings;
-    const setLoaded = store.setLoaded;
+    // Keep previous company settings until the new company query settles.
+    if (!companyId || (!isFetched && !isError)) return;
 
-    if (firestoreSettings) {
-      const merged = { ...defaultCompanySettings };
-      for (const key of Object.keys(
-        defaultCompanySettings
-      ) as (keyof typeof defaultCompanySettings)[]) {
-        if (key in firestoreSettings && firestoreSettings[key] !== undefined) {
-          (merged as Record<string, unknown>)[key] = firestoreSettings[key];
-        }
-      }
-      merged.defaultShift = getEffectiveDefaultShift(merged);
-      setSettings(merged);
-    } else {
-      setSettings(defaultCompanySettings);
-    }
-    setLoaded();
-    setOnce.current = true;
-    lastUserId.current = currentUserId;
-  }, [user, firestoreSettings]);
+    const payloadKey = `${user.id}:${companyId}:${JSON.stringify(firestoreSettings ?? null)}`;
+    if (lastAppliedKey.current === payloadKey) return;
+
+    const store = useCompanySettingsStore.getState();
+    store.setSettings(mergeCompanySettings(firestoreSettings));
+    store.setLoaded();
+    lastAppliedKey.current = payloadKey;
+  }, [user, companyId, firestoreSettings, isFetched, isError]);
 
   return null;
 }

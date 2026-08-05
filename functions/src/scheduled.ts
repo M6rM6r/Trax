@@ -19,6 +19,16 @@ function getTimeInTimezone(timezone: string): string {
   return `${hour}:${minute}`;
 }
 
+/** YYYY-MM-DD in company timezone — never UTC server day. */
+function getDateInTimezone(timezone: string, value: Date = new Date()): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: timezone || "Asia/Riyadh",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(value);
+}
+
 function hoursBetween(start: string, end: string): number {
   const [sh, sm] = start.split(":").map(Number);
   const [eh, em] = end.split(":").map(Number);
@@ -87,7 +97,13 @@ export const dailyAttendanceSummary = functions.pubsub
   .schedule("every day 22:00")
   .timeZone("Asia/Riyadh")
   .onRun(async () => {
-    const today = new Date().toISOString().split("T")[0];
+    // Schedule is Asia/Riyadh — bucket attendance by Riyadh calendar day, not UTC.
+    const today = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Asia/Riyadh",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(new Date());
 
     // Get all active companies
     const companies = await db.collection("companies").where("active", "==", true).get();
@@ -212,8 +228,6 @@ export const cleanupStaleLocations = functions.pubsub
 export const autoCheckoutEmployees = functions.pubsub
   .schedule("every 15 minutes")
   .onRun(async () => {
-    const today = new Date().toISOString().split("T")[0];
-
     const settingsSnap = await db
       .collection("company_settings")
       .where("autoSignOutEnabled", "==", true)
@@ -228,6 +242,9 @@ export const autoCheckoutEmployees = functions.pubsub
 
       const currentTime = getTimeInTimezone(timezone);
       if (currentTime < autoSignOutTime) continue;
+
+      // Attendance rows are keyed by company-local calendar day.
+      const today = getDateInTimezone(timezone);
 
       const openRecords = await db
         .collection("attendance")

@@ -2,8 +2,8 @@ export interface CompanySettings {
   // Work hours
   workStartTime: string; // "08:00"
   workEndTime: string; // "17:00"
-  gracePeriodMinutes: number; // 15
-  lateThresholdMinutes: number; // 15
+  gracePeriodMinutes: number; // 30
+  lateThresholdMinutes: number; // 30
 
   // Attendance modes & shifts
   attendanceMode: "field" | "office_two_shift" | "hourly";
@@ -130,6 +130,7 @@ export const defaultCompanySettings: CompanySettings = {
   autoSignOutTime: "18:00",
 
   checkoutTimeRangeEnabled: false,
+  // Default reference checkout = workStart + 30 minutes (matches UI "Reference Checkout").
   checkoutStartTime: "08:30",
   checkoutEndTime: "17:00",
 

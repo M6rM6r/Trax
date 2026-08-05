@@ -15,7 +15,7 @@ export default function InactiveEmployeesPage() {
 
   return (
     <MainLayout>
-      <div className="p-6 space-y-6 min-h-screen">
+      <div className="min-h-screen space-y-4 p-3 sm:space-y-6 sm:p-4 md:p-6">
         <FullPageHead
           head={t("inactiveEmployees")}
           description={t("inactiveEmployeesDescription")}

@@ -331,7 +331,16 @@ async function requireMastermind(context: { auth?: { uid?: string } }): Promise<
 }
 
 export const createCompany = functions.https.onCall(async (data, context) => {
-  const { name, industry, admin_email, admin_name, admin_password, plan, maxEmployees } = data as {
+  const {
+    name,
+    industry,
+    admin_email,
+    admin_name,
+    admin_password,
+    plan,
+    maxEmployees,
+    contact_phone,
+  } = data as {
     name: string;
     industry?: string;
     admin_email: string;
@@ -339,6 +348,7 @@ export const createCompany = functions.https.onCall(async (data, context) => {
     admin_password: string;
     plan?: string;
     maxEmployees?: number;
+    contact_phone?: string;
   };
 
   if (!name?.trim() || !admin_email?.trim() || !admin_password) {
@@ -351,6 +361,7 @@ export const createCompany = functions.https.onCall(async (data, context) => {
   await requireMastermind(context);
 
   const email = normalizeEmail(admin_email);
+  const phone = (contact_phone ?? "").trim();
   let userRecord;
   try {
     userRecord = await auth.createUser({
@@ -375,10 +386,14 @@ export const createCompany = functions.https.onCall(async (data, context) => {
     id: companyId,
     name: name.trim(),
     industry: industry?.trim() ?? "",
+    contactPhone: phone,
+    adminEmail: email,
+    adminName,
     plan: plan?.trim() ?? "trial",
     maxEmployees: maxEmployees ?? 10,
     active: true,
     ownerId: userRecord.uid,
+    signupSource: "mastermind",
     createdAt: admin.firestore.FieldValue.serverTimestamp(),
   });
 
@@ -386,6 +401,7 @@ export const createCompany = functions.https.onCall(async (data, context) => {
     id: userRecord.uid,
     name: adminName,
     email,
+    phone,
     role: "company",
     company_id: companyId,
     company_name: name.trim(),

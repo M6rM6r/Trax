@@ -5,14 +5,14 @@ import {
 } from "@/lib/utils/onboardingRules";
 
 describe("company onboarding rules", () => {
-  it("blocks direct company self-registration", () => {
-    expect(shouldAllowCompanySelfRegistration()).toBe(false);
+  it("allows company self-registration", () => {
+    expect(shouldAllowCompanySelfRegistration()).toBe(true);
   });
 
-  it("explains that MasterMind owns company onboarding", () => {
+  it("describes self-serve company onboarding", () => {
     const copy = getCompanyOnboardingCopy();
-    expect(copy.title).toContain("MasterMind");
-    expect(copy.description).toContain("الشركات");
-    expect(copy.cta).toContain("MasterMind");
+    expect(copy.title.toLowerCase()).toContain("company");
+    expect(copy.description.toLowerCase()).toMatch(/employee|geofence|mastermind/);
+    expect(copy.cta.toLowerCase()).toMatch(/phone|password|email|company/);
   });
 });

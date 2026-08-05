@@ -69,10 +69,17 @@ export function subscribeRealtimeEvents(callbacks: RealtimeCallbacks): () => voi
 
   // Only count as a live connection if we attach at least one listener
   let attached = 0;
+  // Normalize company_id comparison: historical docs may store number or string.
+  const companyIdVariants: Array<string | number> = [companyId];
+  const asNumber = Number(companyId);
+  if (String(asNumber) === companyId && Number.isFinite(asNumber)) {
+    companyIdVariants.push(asNumber);
+  }
 
   if (callbacks.onLocationUpdate) {
     const base = collection(db, "locations");
-    const locationsQuery = query(base, where("company_id", "==", companyId), limit(500));
+    // Prefer string company_id (canonical). Numeric fallback is handled by initial snapshot fetch.
+    const locationsQuery = query(base, where("company_id", "==", companyIdVariants[0]), limit(500));
     const unsubLocations = onSnapshot(
       locationsQuery,
       (snapshot) => {
@@ -167,6 +174,10 @@ export function subscribeRealtimeEvents(callbacks: RealtimeCallbacks): () => voi
     );
     unsubscribers.push(unsubNotifications);
     attached++;
+  }
+
+  if (attached > 0) {
+    connectionCount += 1;
   }
 
   return () => {

@@ -21,7 +21,9 @@ const FullPageHead: FC<IProps> = ({ head, description, Icon, LeftSection }) => {
       </div>
 
       {LeftSection && (
-        <div className="flex shrink-0 flex-wrap items-center gap-2 sm:gap-3">{LeftSection}</div>
+        <div className="flex w-full shrink-0 flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center sm:gap-3">
+          {LeftSection}
+        </div>
       )}
     </div>
   );

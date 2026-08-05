@@ -71,6 +71,7 @@ export default function OfflineSyncManager() {
               employeeName: item.employeeName,
               lat: item.lat,
               lng: item.lng,
+              accuracy: item.accuracy,
               geofenceId: item.geofenceId,
               companySettings: item.settings,
               employee: item.employeeSnapshot ?? null,
@@ -82,6 +83,16 @@ export default function OfflineSyncManager() {
             console.error("[offline-sync] check-in failed for item", item.id, err);
             const errMsg = err instanceof Error ? err.message : String(err);
             if (errMsg === "AUTH_EXPIRED") break;
+            // Already applied on server (or terminal day) — drop stale queue entry.
+            if (
+              errMsg === "ALREADY_CHECKED_OUT" ||
+              errMsg.includes("already") ||
+              errMsg === "EMPLOYEE_HAS_NO_ASSIGNED_GEOFENCE" ||
+              errMsg === "CHECK_IN_GEOFENCE_MISMATCH" ||
+              errMsg.includes("outside the assigned geofence")
+            ) {
+              removeFromOfflineQueue(item.id);
+            }
           }
         }
 
@@ -96,10 +107,14 @@ export default function OfflineSyncManager() {
             console.error("[offline-sync] check-out failed for item", item.id, err);
             const errMsg = err instanceof Error ? err.message : String(err);
             if (errMsg === "AUTH_EXPIRED") break;
+            if (errMsg === "ALREADY_CHECKED_OUT" || errMsg === "No open attendance record") {
+              removeFromOfflineCheckOutQueue(item.id);
+            }
           }
         }
 
         qc.invalidateQueries({ queryKey: queryKeys.attendance });
+        qc.invalidateQueries({ queryKey: queryKeys.dashboard });
       } finally {
         if (lockIntervalRef.current) {
           clearInterval(lockIntervalRef.current);

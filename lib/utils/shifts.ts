@@ -2,14 +2,15 @@
 
 import { defaultCompanySettings, type CompanySettings } from "@/lib/types/companySettings";
 import type { AttendanceMode, Employee, WorkShift } from "@/lib/types/trackingTypes";
+import { companyMinutesSinceMidnight, DEFAULT_COMPANY_TIMEZONE } from "@/lib/utils/companyDate";
 
 const HH_MM_REGEX = /^([01]\d|2[0-3]):([0-5]\d)$/;
 
 const FALLBACK_SHIFT: WorkShift = {
   startTime: "08:00",
   endTime: "17:00",
-  gracePeriodMinutes: 15,
-  lateThresholdMinutes: 15,
+  gracePeriodMinutes: 30,
+  lateThresholdMinutes: 30,
 };
 
 function isValidHhMm(time: string | null | undefined): time is string {
@@ -115,8 +116,9 @@ export function resolveEmployeeShift(
   if (mode === "office_two_shift") {
     baseShift = slot === "evening" ? shifts.eveningShift : shifts.morningShift;
     if (!slot) {
-      // Decide slot by current time
-      const nowMinutes = date.getHours() * 60 + date.getMinutes();
+      // Company wall-clock minutes — never browser-local getHours (wrong shift near TZ edges).
+      const tz = (settings as { timezone?: string }).timezone || DEFAULT_COMPANY_TIMEZONE;
+      const nowMinutes = companyMinutesSinceMidnight(date, tz);
       const morningEnd = parseTimeToMinutes(shifts.morningShift.endTime);
       const eveningStart = parseTimeToMinutes(shifts.eveningShift.startTime);
       let threshold: number;

@@ -1,6 +1,12 @@
 import type { DashboardStats } from "@/lib/types/trackingTypes";
 import type { DashboardTrendsSchema } from "@/lib/schemas/dashboard.schema";
 import type { CompanySettings } from "@/lib/types/companySettings";
+import {
+  companyMinutesSinceMidnight,
+  companyWeekday,
+  DEFAULT_COMPANY_TIMEZONE,
+  formatCompanyDate,
+} from "@/lib/utils/companyDate";
 import { employeesApi } from "./employees";
 import { attendanceApi } from "./attendance";
 import { geofencesApi } from "./geofences";
@@ -40,9 +46,22 @@ function isPastCheckInDeadline(
   if (!settings?.workStartTime) return true;
   const [hours, minutes] = settings.workStartTime.split(":").map(Number);
   if (Number.isNaN(hours) || Number.isNaN(minutes)) return true;
-  const deadline = new Date(referenceDate);
-  deadline.setHours(hours, minutes + (settings.gracePeriodMinutes ?? 0), 0, 0);
-  return referenceDate >= deadline;
+  const tz = settings.timezone || DEFAULT_COMPANY_TIMEZONE;
+  const nowMinutes = companyMinutesSinceMidnight(referenceDate, tz);
+  const deadlineMinutes = hours * 60 + minutes + (settings.gracePeriodMinutes ?? 0);
+  return nowMinutes >= deadlineMinutes;
+}
+
+/** Arrival outcome for metrics — checked_out still has present/late from lateMinutes. */
+function arrivalBucket(record: {
+  status: string;
+  lateMinutes?: number | null;
+  checkInTime?: string | null;
+}): "present" | "late" | "absent" | "none" {
+  if (!record.checkInTime && record.status === "absent") return "absent";
+  if (!record.checkInTime) return "none";
+  if ((record.lateMinutes ?? 0) > 0 || record.status === "late") return "late";
+  return "present";
 }
 
 export const dashboardApi = {
@@ -79,13 +98,15 @@ export const dashboardApi = {
     else console.warn("[dashboard] attendance fetch failed:", attRes.reason);
     if (geoRes.status === "fulfilled") geofences = geoRes.value;
     else console.warn("[dashboard] geofences fetch failed:", geoRes.reason);
+    const tz =
+      (companySettings as { timezone?: string } | null | undefined)?.timezone ||
+      DEFAULT_COMPANY_TIMEZONE;
     const toStr = typeof to === "string" ? to : undefined;
     const fromStr = typeof from === "string" ? from : undefined;
-    const referenceDate = toStr ? new Date(`${toStr}T00:00:00`) : new Date();
-    const todayStr = toStr || referenceDate.toLocaleDateString("sv-SE");
-
+    const referenceDate = toStr ? new Date(`${toStr}T12:00:00`) : new Date();
+    const todayStr = toStr || formatCompanyDate(referenceDate, tz);
     const now = new Date();
-    const isToday = todayStr === now.toLocaleDateString("sv-SE");
+    const isToday = todayStr === formatCompanyDate(now, tz);
     const deadlineDate = isToday
       ? now
       : (() => {
@@ -100,16 +121,12 @@ export const dashboardApi = {
         ? attendance.filter((record) => record.date >= fromStr && record.date <= toStr)
         : attendance;
     const activeEmployees = employees.filter((employee) => employee.status === "active");
-    const presentToday = todayRecords.filter(
-      (record) =>
-        record.status === "present" ||
-        (record.status === "checked_out" && !(record.lateMinutes > 0))
+    // One bucket per record: present/late are arrival outcomes; checkedOut is session state (can overlap).
+    const presentToday = todayRecords.filter((r) => arrivalBucket(r) === "present").length;
+    const lateToday = todayRecords.filter((r) => arrivalBucket(r) === "late").length;
+    const checkedOutToday = todayRecords.filter(
+      (record) => record.status === "checked_out" || Boolean(record.checkOutTime)
     ).length;
-    const lateToday = todayRecords.filter(
-      (record) =>
-        record.status === "late" || (record.status === "checked_out" && record.lateMinutes > 0)
-    ).length;
-    const checkedOutToday = todayRecords.filter((record) => record.status === "checked_out").length;
     const earlyCheckoutsToday = todayRecords.filter((record) => record.earlyCheckout).length;
     const worked = todayRecords
       .map((record) => record.workedHours)
@@ -122,14 +139,23 @@ export const dashboardApi = {
     const medianCheckIn =
       checkInTimes.length > 0 ? checkInTimes[Math.floor(checkInTimes.length / 2)] : "N/A";
 
+    const absTz = companySettings?.timezone || DEFAULT_COMPANY_TIMEZONE;
+    const weekend = companySettings?.weekendDays ?? [5, 6];
+    const isWeekend = weekend.includes(companyWeekday(deadlineDate, absTz));
+    const checkedInIds = new Set(
+      todayRecords.filter((r) => r.checkInTime).map((r) => String(r.employeeId))
+    );
+    const absentToday =
+      !isWeekend && isPastCheckInDeadline(companySettings, deadlineDate)
+        ? Math.max(0, activeEmployees.length - checkedInIds.size)
+        : 0;
+
     const stats: DashboardStats = {
       totalEmployees: employees.length,
       activeEmployees: employees.filter((employee) => employee.status === "active").length,
       inactiveEmployees: employees.filter((employee) => employee.status === "inactive").length,
       presentToday,
-      absentToday: isPastCheckInDeadline(companySettings, deadlineDate)
-        ? Math.max(0, activeEmployees.length - todayRecords.length)
-        : 0,
+      absentToday,
       lateToday,
       checkedOutToday,
       earlyCheckoutsToday,
@@ -156,7 +182,7 @@ export const dashboardApi = {
     for (let i = 6; i >= 0; i--) {
       const d = new Date(referenceDate);
       d.setDate(d.getDate() - i);
-      const dateStr = d.toLocaleDateString("sv-SE");
+      const dateStr = formatCompanyDate(d, tz);
       const dayRecords = attendance.filter((r) => r.date === dateStr);
       const present = dayRecords.filter(
         (r) => r.status === "present" || (r.status === "checked_out" && !(r.lateMinutes > 0))

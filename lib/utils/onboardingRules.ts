@@ -1,12 +1,12 @@
 export function shouldAllowCompanySelfRegistration(): boolean {
-  return false;
+  return true;
 }
 
 export function getCompanyOnboardingCopy() {
   return {
-    title: "إنشاء شركة عبر MasterMind",
+    title: "Create your company",
     description:
-      "يتم إنشاء الشركات وإدارة الحسابات الإدارية من خلال MasterMind، ثم تتولى الشركة لاحقاً إنشاء وإدارة حسابات الموظفين من داخل حسابها.",
-    cta: "استخدم بوابة MasterMind لإنشاء الشركة والحساب الإداري الأول.",
+      "Companies sign up themselves. You add employees and geofences; staff check in and out. MasterMind only observes the network.",
+    cta: "Start free — company name, phone, email, password.",
   };
 }
