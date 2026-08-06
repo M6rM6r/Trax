@@ -30,7 +30,3 @@ env:
     value: "G-QD1KMM7KTF"
   - variable: NEXT_PUBLIC_FIREBASE_FUNCTIONS_URL
     value: "https://us-central1-trax-ae.cloudfunctions.net"
-
-  # Optional: set real DSN in Firebase App Hosting console / secrets
-  - variable: NEXT_PUBLIC_SENTRY_DSN
-    value: ""
