@@ -1,4 +1,4 @@
-package com.trax.employee
+package trax.app
 
 import io.flutter.embedding.android.FlutterActivity
 

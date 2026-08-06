@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "651185247129",
+    "project_id": "trax-ae",
+    "storage_bucket": "trax-ae.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:651185247129:android:fe285ac9eb70d9f89ef908",
+        "android_client_info": {
+          "package_name": "trax.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCZQdYKLoQh5-a16au9oxUdmFlHw6lDqJ0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

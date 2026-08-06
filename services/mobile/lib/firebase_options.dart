@@ -30,11 +30,10 @@ class DefaultFirebaseOptions {
     measurementId: 'G-QD1KMM7KTF',
   );
 
-  /// Android uses the web app id until a dedicated Android app is registered
-  /// in Firebase Console (then drop google-services.json + update appId).
+  /// Android app trax.app — from google-services.json (Firebase Console).
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyAn53rxOqZzUMmcnDqsRrc7RCj-W2jb46o',
-    appId: '1:651185247129:web:75c1a8bfd7821ca89ef908',
+    apiKey: 'AIzaSyCZQdYKLoQh5-a16au9oxUdmFlHw6lDqJ0',
+    appId: '1:651185247129:android:fe285ac9eb70d9f89ef908',
     messagingSenderId: '651185247129',
     projectId: 'trax-ae',
     authDomain: 'trax-ae.firebaseapp.com',
