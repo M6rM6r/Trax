@@ -1,15 +1,12 @@
 import 'dart:async';
-import 'dart:convert';
 
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_background_geolocation/flutter_background_geolocation.dart'
     as bg;
-import 'package:http/http.dart' as http;
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../config/env.dart';
-
+/// Live map spine: `locations/{employeeId}` only — same docs as the web dashboard.
 class BackgroundTrackingService {
   static final BackgroundTrackingService _instance =
       BackgroundTrackingService._internal();
@@ -22,6 +19,8 @@ class BackgroundTrackingService {
   bool _isRunning = false;
   String? _employeeName;
   String? _companyId;
+  DateTime? _lastWriteAt;
+  static const Duration _minWriteInterval = Duration(seconds: 8);
 
   bool get isRunning => _isRunning;
 
@@ -37,8 +36,8 @@ class BackgroundTrackingService {
         enableHeadless: true,
         foregroundService: true,
         notification: bg.Notification(
-          title: 'Trax موقع الموظف',
-          text: 'يتم تتبع موقعك لأغراض الحضور والسلامة',
+          title: 'Trax',
+          text: 'Location tracking for attendance',
           channelName: 'Trax Location Tracking',
         ),
         debug: false,
@@ -55,11 +54,15 @@ class BackgroundTrackingService {
     _initialized = true;
   }
 
-  Future<void> start({required int employeeId, String? employeeName, String? companyId}) async {
+  Future<void> start({
+    required String employeeId,
+    String? employeeName,
+    String? companyId,
+  }) async {
     await initialize();
 
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt('tracking_employee_id', employeeId);
+    await prefs.setString('tracking_employee_id', employeeId);
     await prefs.setBool('tracking_enabled', true);
     if (employeeName != null) {
       await prefs.setString('tracking_employee_name', employeeName);
@@ -86,9 +89,8 @@ class BackgroundTrackingService {
 
     _isRunning = false;
 
-    // Mark employee as offline in Firestore
-    final employeeId = prefs.getInt('tracking_employee_id');
-    if (employeeId != null) {
+    final employeeId = prefs.getString('tracking_employee_id');
+    if (employeeId != null && employeeId.isNotEmpty) {
       await _updateFirestoreLocation(
         employeeId: employeeId,
         lat: null,
@@ -106,10 +108,11 @@ class BackgroundTrackingService {
       await initialize();
       await bg.BackgroundGeolocation.start();
       _isRunning = true;
+      _employeeName = prefs.getString('tracking_employee_name');
+      _companyId = prefs.getString('tracking_company_id');
     }
   }
 
-  /// Called by the OS when the app is terminated on Android.
   @pragma('vm:entry-point')
   Future<void> headlessLocationHandler(bg.HeadlessEvent headlessEvent) async {
     if (headlessEvent.name == bg.Event.LOCATION) {
@@ -119,29 +122,36 @@ class BackgroundTrackingService {
   }
 
   void _onLocation(bg.Location location) {
-    _postLocationUpdate(location);
+    unawaited(_postLocationUpdate(location));
   }
 
-  void _onLocationError(bg.LocationError error) {
-    // Silently ignore transient GPS errors to avoid spam.
-  }
+  void _onLocationError(bg.LocationError error) {}
 
   void _onMotionChange(bg.Location location) {
-    _postLocationUpdate(location);
+    unawaited(_postLocationUpdate(location));
   }
 
-  void _onProviderChange(bg.ProviderChangeEvent event) {
-    // Could surface permission issues to the UI if needed.
-  }
+  void _onProviderChange(bg.ProviderChangeEvent event) {}
 
   Future<void> _postLocationUpdate(bg.Location location) async {
     try {
+      final now = DateTime.now();
+      if (_lastWriteAt != null &&
+          now.difference(_lastWriteAt!) < _minWriteInterval) {
+        return;
+      }
+      _lastWriteAt = now;
+
       final prefs = await SharedPreferences.getInstance();
-      final employeeId = prefs.getInt('tracking_employee_id');
+      var employeeId = prefs.getString('tracking_employee_id');
+      if (employeeId == null || employeeId.isEmpty) {
+        try {
+          final legacy = prefs.getInt('tracking_employee_id');
+          if (legacy != null) employeeId = legacy.toString();
+        } catch (_) {}
+      }
+      if (employeeId == null || employeeId.isEmpty) return;
 
-      if (employeeId == null) return;
-
-      // Write directly to Firestore for real-time dashboard updates
       await _updateFirestoreLocation(
         employeeId: employeeId,
         lat: location.coords.latitude,
@@ -149,41 +159,11 @@ class BackgroundTrackingService {
         accuracy: location.coords.accuracy,
         status: 'online',
       );
-
-      // Also send to Laravel API for server-side processing
-      String? token = await _freshToken();
-      if (token == null || token.isEmpty) {
-        token = prefs.getString('auth_token');
-      }
-      if (token == null || token.isEmpty) return;
-
-      final coords = location.coords;
-      final body = jsonEncode(<String, dynamic>{
-        'employee_id': employeeId,
-        'lat': coords.latitude,
-        'lng': coords.longitude,
-        'accuracy': coords.accuracy,
-        'timestamp': DateTime.now().toIso8601String(),
-      });
-
-      await http
-          .post(
-        Uri.parse('${Env.apiBaseUrl}/tracking/location'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-          'Accept': 'application/json',
-        },
-        body: body,
-      )
-          .timeout(const Duration(seconds: 15));
-    } catch (_) {
-      // Offline tolerance: Firestore will sync when connectivity returns.
-    }
+    } catch (_) {}
   }
 
   Future<void> _updateFirestoreLocation({
-    required int employeeId,
+    required String employeeId,
     double? lat,
     double? lng,
     double? accuracy,
@@ -195,14 +175,17 @@ class BackgroundTrackingService {
 
       final prefs = await SharedPreferences.getInstance();
       final companyId = _companyId ?? prefs.getString('tracking_company_id');
-      final employeeName = _employeeName ?? prefs.getString('tracking_employee_name') ?? '';
+      final employeeName =
+          _employeeName ?? prefs.getString('tracking_employee_name') ?? '';
 
       final data = <String, dynamic>{
-        'employeeId': employeeId.toString(),
+        'employeeId': employeeId,
         'name': employeeName,
         'status': status,
         'lastSeen': DateTime.now().toIso8601String(),
+        'updatedAt': FieldValue.serverTimestamp(),
         'ownerUid': user.uid,
+        'source': 'mobile',
       };
       if (companyId != null) data['company_id'] = companyId;
       if (lat != null) data['lat'] = lat;
@@ -211,25 +194,8 @@ class BackgroundTrackingService {
 
       await FirebaseFirestore.instance
           .collection('locations')
-          .doc(employeeId.toString())
+          .doc(employeeId)
           .set(data, SetOptions(merge: true));
-    } catch (_) {
-      // Firestore write failed — non-critical, will retry on next location update
-    }
-  }
-
-  /// Try to refresh the Firebase ID token from the current user.
-  Future<String?> _freshToken() async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return null;
-    try {
-      final token = await user.getIdToken(true);
-      final prefs = await SharedPreferences.getInstance();
-      if (token != null) await prefs.setString('auth_token', token);
-      return token;
-    } catch (_) {
-      return null;
-    }
+    } catch (_) {}
   }
 }
-

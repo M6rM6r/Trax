@@ -68,9 +68,13 @@ class HomeScreen extends StatelessWidget {
               subtitle: "عرض سجل الحضور والانصراف",
               color: const Color(0xFF3C7EE7),
               onTap: () async {
-                final token = await auth.ensureToken();
-                if (token == null) return;
-                await attendance.fetchHistory(token);
+                await auth.ensureToken();
+                if (auth.hasEmployeeProfile) {
+                  await attendance.fetchHistory(
+                    companyId: auth.companyId!,
+                    employeeId: auth.employeeId!,
+                  );
+                }
                 if (context.mounted) {
                   unawaited(Navigator.pushNamed(context, "/history"));
                 }
@@ -112,8 +116,8 @@ class HomeScreen extends StatelessWidget {
                 trailing: Switch(
                   value: location.isTracking,
                   onChanged: (value) async {
-                    final employeeId = auth.employeeId ?? 0;
-                    if (employeeId == 0) return;
+                    final employeeId = auth.employeeId ?? '';
+                    if (employeeId.isEmpty) return;
 
                     if (value) {
                       final granted = await location.requestPermission();

@@ -24,7 +24,6 @@ class LocationProvider extends ChangeNotifier {
   bool get isTracking => _isTracking;
   String? get error => _error;
 
-  /// True if last fix is fresher than [maxAge].
   bool isFresh({Duration maxAge = const Duration(seconds: 30)}) {
     if (_locationAt == null || _lat == null || _lng == null) return false;
     return DateTime.now().difference(_locationAt!) <= maxAge;
@@ -33,7 +32,6 @@ class LocationProvider extends ChangeNotifier {
   Future<bool> requestPermission() async {
     final permission = await Permission.location.request();
     if (!permission.isGranted) return false;
-    // Background optional — foreground check-in still works without Always.
     await Permission.locationAlways.request();
     return true;
   }
@@ -93,11 +91,11 @@ class LocationProvider extends ChangeNotifier {
   }
 
   Future<void> startTracking({
-    required int employeeId,
+    required String employeeId,
     String? employeeName,
     String? companyId,
   }) async {
-    if (employeeId <= 0) {
+    if (employeeId.isEmpty) {
       _error = "Missing employee id for tracking";
       notifyListeners();
       return;

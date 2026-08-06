@@ -7,8 +7,9 @@ import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
 
 import '../config/env.dart';
+import 'firestore_attendance_service.dart';
 
-/// SQLite offline queue with single-flight sync, max retries, and Env base URL.
+/// Offline queue: Firestore ops (fs://) + optional HTTP fallback.
 class OfflineSyncService {
   static final OfflineSyncService _instance = OfflineSyncService._internal();
   factory OfflineSyncService() => _instance;
@@ -18,6 +19,7 @@ class OfflineSyncService {
   StreamSubscription<List<ConnectivityResult>>? _connectivitySub;
   Future<void>? _syncInFlight;
   bool _started = false;
+  final FirestoreAttendanceService _fs = FirestoreAttendanceService();
 
   static const String _tableName = "pending_actions";
   static const int _maxRetries = 8;
@@ -58,7 +60,9 @@ class OfflineSyncService {
       onUpgrade: (db, oldVersion, newVersion) async {
         if (oldVersion < 2) {
           try {
-            await db.execute("ALTER TABLE $_tableName ADD COLUMN dedupe_key TEXT");
+            await db.execute(
+              "ALTER TABLE $_tableName ADD COLUMN dedupe_key TEXT",
+            );
           } catch (_) {}
           await db.execute(
             "CREATE INDEX IF NOT EXISTS idx_pending_created ON $_tableName(created_at)",
@@ -71,7 +75,6 @@ class OfflineSyncService {
     );
   }
 
-  /// Call once from app start: listen for reconnect and flush queue.
   Future<void> start() async {
     if (_started) return;
     _started = true;
@@ -139,20 +142,16 @@ class OfflineSyncService {
 
   Future<void> _syncPendingActionsImpl() async {
     if (!await isOnline()) return;
-
     final actions = await getPendingActions();
     if (actions.isEmpty) return;
-
     for (final action in actions) {
       final id = (action["id"] as num?)?.toInt();
       if (id == null) continue;
-
       final retries = (action["retry_count"] as num?)?.toInt() ?? 0;
       if (retries >= _maxRetries) {
         await _deleteAction(id);
         continue;
       }
-
       final success = await _sendAction(action);
       if (success) {
         await _deleteAction(id);
@@ -165,6 +164,17 @@ class OfflineSyncService {
   Future<bool> _sendAction(Map<String, dynamic> action) async {
     try {
       final endpoint = action["endpoint"]?.toString() ?? "";
+      final method = action["method"]?.toString().toUpperCase() ?? "";
+      final bodyRaw = action["body"] as String? ?? "{}";
+      final decoded = jsonDecode(bodyRaw);
+      final body = decoded is Map<String, dynamic>
+          ? decoded
+          : <String, dynamic>{};
+
+      if (endpoint.startsWith("fs://") || method == "FS") {
+        return await _sendFirestore(endpoint, body);
+      }
+
       final path = endpoint.startsWith("http")
           ? endpoint
           : "$_baseUrl/${endpoint.replaceFirst(RegExp(r'^/+'), '')}";
@@ -177,18 +187,16 @@ class OfflineSyncService {
         headers["Authorization"] = "Bearer ${action["token"]}";
       }
 
-      final body = action["body"] as String? ?? "{}";
       late http.Response response;
-
-      switch (action["method"]?.toString().toUpperCase()) {
+      switch (method) {
         case "POST":
           response = await http
-              .post(url, headers: headers, body: body)
+              .post(url, headers: headers, body: bodyRaw)
               .timeout(_httpTimeout);
           break;
         case "PUT":
           response = await http
-              .put(url, headers: headers, body: body)
+              .put(url, headers: headers, body: bodyRaw)
               .timeout(_httpTimeout);
           break;
         case "DELETE":
@@ -199,13 +207,62 @@ class OfflineSyncService {
           return false;
       }
 
-      // Idempotent success / already processed
       if (response.statusCode < 400) return true;
       if (response.statusCode == 409) return true;
       final lower = response.body.toLowerCase();
       if (lower.contains("already") || lower.contains("no open")) return true;
       return false;
     } catch (_) {
+      return false;
+    }
+  }
+
+  Future<bool> _sendFirestore(String endpoint, Map<String, dynamic> body) async {
+    try {
+      final op = body["op"]?.toString() ??
+          (endpoint.contains("check-out") ? "check_out" : "check_in");
+      final companyId = body["companyId"]?.toString() ?? "";
+      final employeeId = body["employeeId"]?.toString() ?? "";
+      if (companyId.isEmpty || employeeId.isEmpty) return true;
+
+      final atRaw = body["at"]?.toString();
+      final at = atRaw != null ? DateTime.tryParse(atRaw) : null;
+      final lat = (body["lat"] as num?)?.toDouble();
+      final lng = (body["lng"] as num?)?.toDouble();
+      final accuracy = (body["accuracy"] as num?)?.toDouble();
+
+      if (op == "check_out") {
+        await _fs.checkOut(
+          companyId: companyId,
+          employeeId: employeeId,
+          lat: lat,
+          lng: lng,
+          at: at,
+        );
+        return true;
+      }
+
+      await _fs.checkIn(
+        companyId: companyId,
+        employeeId: employeeId,
+        employeeName: body["employeeName"]?.toString() ?? "",
+        lat: lat ?? 0,
+        lng: lng ?? 0,
+        accuracy: accuracy,
+        at: at,
+      );
+      return true;
+    } catch (e) {
+      final s = e.toString();
+      if (s.contains("ALREADY") ||
+          s.contains("NO_OPEN") ||
+          s.contains("OUTSIDE_GEOFENCE") ||
+          s.contains("EMPLOYEE_HAS_NO") ||
+          s.contains("ASSIGNED_GEOFENCE") ||
+          s.contains("MISSING_PROFILE") ||
+          s.contains("NOT_SIGNED_IN")) {
+        return true;
+      }
       return false;
     }
   }

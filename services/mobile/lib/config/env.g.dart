@@ -10,15 +10,15 @@ part of 'env.dart';
 // ignore_for_file: type=lint
 // generated_from: .env
 final class _Env {
-  static const String apiBaseUrl = 'http://10.0.2.2:8000/api';
+  static const String apiBaseUrl = 'https://unused.local/api';
 
-  static const String aiServiceUrl = 'http://10.0.2.2:8001';
+  static const String aiServiceUrl = 'https://unused.local';
 
-  static const String wsUrl = 'ws://10.0.2.2:8080';
+  static const String wsUrl = 'wss://unused.local';
 
   static const String sentryDsn = '';
 
-  static const String appEnv = 'development';
+  static const String appEnv = 'production';
 
   static const String appVersion = '0.1.0';
 }
