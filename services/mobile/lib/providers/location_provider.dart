@@ -1,6 +1,7 @@
 import "package:flutter/foundation.dart";
 import "package:geolocator/geolocator.dart";
 import "package:permission_handler/permission_handler.dart";
+import "dart:async";
 
 import "../services/background_tracking_service.dart";
 
@@ -8,24 +9,38 @@ class LocationProvider extends ChangeNotifier {
   double? _lat;
   double? _lng;
   double? _accuracy;
+  DateTime? _locationAt;
   bool _isTracking = false;
   String? _error;
+  StreamSubscription<Position>? _positionSub;
+  bool _getting = false;
+
+  static const Duration _gpsTimeout = Duration(seconds: 15);
 
   double? get lat => _lat;
   double? get lng => _lng;
   double? get accuracy => _accuracy;
+  DateTime? get locationAt => _locationAt;
   bool get isTracking => _isTracking;
   String? get error => _error;
+
+  /// True if last fix is fresher than [maxAge].
+  bool isFresh({Duration maxAge = const Duration(seconds: 30)}) {
+    if (_locationAt == null || _lat == null || _lng == null) return false;
+    return DateTime.now().difference(_locationAt!) <= maxAge;
+  }
 
   Future<bool> requestPermission() async {
     final permission = await Permission.location.request();
     if (!permission.isGranted) return false;
-
-    final backgroundPermission = await Permission.locationAlways.request();
-    return backgroundPermission.isGranted;
+    // Background optional — foreground check-in still works without Always.
+    await Permission.locationAlways.request();
+    return true;
   }
 
-  Future<bool> getCurrentLocation() async {
+  Future<bool> getCurrentLocation({bool force = false}) async {
+    if (_getting && !force) return _lat != null;
+    _getting = true;
     try {
       final serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
@@ -51,19 +66,29 @@ class LocationProvider extends ChangeNotifier {
       }
 
       final position = await Geolocator.getCurrentPosition(
-        locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
-      );
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+          timeLimit: Duration(seconds: 15),
+        ),
+      ).timeout(_gpsTimeout);
 
       _lat = position.latitude;
       _lng = position.longitude;
       _accuracy = position.accuracy;
+      _locationAt = position.timestamp;
       _error = null;
       notifyListeners();
       return true;
+    } on TimeoutException {
+      _error = "GPS timed out. Try again outdoors.";
+      notifyListeners();
+      return false;
     } catch (e) {
       _error = "Failed to get location: $e";
       notifyListeners();
       return false;
+    } finally {
+      _getting = false;
     }
   }
 
@@ -72,6 +97,11 @@ class LocationProvider extends ChangeNotifier {
     String? employeeName,
     String? companyId,
   }) async {
+    if (employeeId <= 0) {
+      _error = "Missing employee id for tracking";
+      notifyListeners();
+      return;
+    }
     final service = BackgroundTrackingService();
     await service.start(
       employeeId: employeeId,
@@ -89,6 +119,8 @@ class LocationProvider extends ChangeNotifier {
   }
 
   Future<void> stopTracking() async {
+    await _positionSub?.cancel();
+    _positionSub = null;
     final service = BackgroundTrackingService();
     await service.stop();
     _isTracking = service.isRunning;
@@ -96,7 +128,8 @@ class LocationProvider extends ChangeNotifier {
   }
 
   void _listenToPositionUpdates() {
-    Geolocator.getPositionStream(
+    _positionSub?.cancel();
+    _positionSub = Geolocator.getPositionStream(
       locationSettings: const LocationSettings(
         accuracy: LocationAccuracy.high,
         distanceFilter: 10,
@@ -105,6 +138,7 @@ class LocationProvider extends ChangeNotifier {
       _lat = position.latitude;
       _lng = position.longitude;
       _accuracy = position.accuracy;
+      _locationAt = position.timestamp;
       notifyListeners();
     });
   }
@@ -112,5 +146,11 @@ class LocationProvider extends ChangeNotifier {
   double distanceTo(double targetLat, double targetLng) {
     if (_lat == null || _lng == null) return double.infinity;
     return Geolocator.distanceBetween(_lat!, _lng!, targetLat, targetLng);
+  }
+
+  @override
+  void dispose() {
+    _positionSub?.cancel();
+    super.dispose();
   }
 }

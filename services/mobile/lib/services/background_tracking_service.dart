@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter_background_geolocation/flutter_background_geolocation.dart'
@@ -165,7 +166,8 @@ class BackgroundTrackingService {
         'timestamp': DateTime.now().toIso8601String(),
       });
 
-      await http.post(
+      await http
+          .post(
         Uri.parse('${Env.apiBaseUrl}/tracking/location'),
         headers: {
           'Content-Type': 'application/json',
@@ -173,7 +175,8 @@ class BackgroundTrackingService {
           'Accept': 'application/json',
         },
         body: body,
-      );
+      )
+          .timeout(const Duration(seconds: 15));
     } catch (_) {
       // Offline tolerance: Firestore will sync when connectivity returns.
     }
@@ -229,3 +232,4 @@ class BackgroundTrackingService {
     }
   }
 }
+

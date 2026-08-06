@@ -16,17 +16,27 @@ class CheckInScreen extends StatefulWidget {
 
 class _CheckInScreenState extends State<CheckInScreen> {
   int _pendingCount = 0;
+  bool _busy = false;
   final LocalAuthentication _localAuth = LocalAuthentication();
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
       final location = Provider.of<LocationProvider>(context, listen: false);
-      location.requestPermission().then((granted) {
-        if (granted) location.getCurrentLocation();
-      });
-      _loadPendingCount();
+      final attendance = Provider.of<AttendanceProvider>(context, listen: false);
+      final auth = Provider.of<AuthProvider>(context, listen: false);
+
+      final granted = await location.requestPermission();
+      if (granted) await location.getCurrentLocation();
+
+      final token = await auth.ensureToken();
+      if (token != null && token.isNotEmpty) {
+        await attendance.fetchHistory(token);
+      }
+
+      await OfflineSyncService().syncPendingActions();
+      await _loadPendingCount();
     });
   }
 
@@ -36,8 +46,11 @@ class _CheckInScreenState extends State<CheckInScreen> {
       final isDeviceSupported = await _localAuth.isDeviceSupported();
       if (!canCheck && !isDeviceSupported) return true;
       return await _localAuth.authenticate(
-        localizedReason: 'تأكيد هويتك لتسجيل الحضور',
-        options: const AuthenticationOptions(biometricOnly: false, stickyAuth: true),
+        localizedReason: "تأكيد هويتك لتسجيل الحضور",
+        options: const AuthenticationOptions(
+          biometricOnly: false,
+          stickyAuth: true,
+        ),
       );
     } on PlatformException {
       return true;
@@ -46,9 +59,8 @@ class _CheckInScreenState extends State<CheckInScreen> {
 
   Future<int?> _getBatteryLevel() async {
     try {
-      const channel = MethodChannel('com.trax.battery');
-      final level = await channel.invokeMethod<int>('getBatteryLevel');
-      return level;
+      const channel = MethodChannel("com.trax.battery");
+      return await channel.invokeMethod<int>("getBatteryLevel");
     } catch (_) {
       return null;
     }
@@ -71,10 +83,10 @@ class _CheckInScreenState extends State<CheckInScreen> {
 
   Future<void> _confirmCheckOut(
     AttendanceProvider attendance,
-    String token,
-    int employeeId,
+    AuthProvider auth,
+    LocationProvider location,
   ) async {
-    final location = Provider.of<LocationProvider>(context, listen: false);
+    if (_busy) return;
     final scaffold = ScaffoldMessenger.of(context);
 
     final confirmed = await showDialog<bool>(
@@ -83,21 +95,121 @@ class _CheckInScreenState extends State<CheckInScreen> {
         title: const Text("تأكيد الانصراف"),
         content: const Text("هل أنت متأكد من تسجيل الانصراف؟"),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text("إلغاء")),
-          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text("تأكيد")),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text("إلغاء"),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text("تأكيد"),
+          ),
         ],
       ),
     );
 
-    if (confirmed == true) {
-      final success = await attendance.checkOut(token, employeeId);
+    if (confirmed != true || !mounted) return;
+
+    setState(() => _busy = true);
+    try {
+      final token = await auth.ensureToken();
+      final employeeId = auth.employeeId ?? 0;
+      if (token == null || employeeId <= 0) {
+        scaffold.showSnackBar(
+          const SnackBar(content: Text("Session invalid. Sign in again.")),
+        );
+        return;
+      }
+
+      final success = await attendance.checkOut(
+        token,
+        employeeId,
+        lat: location.lat,
+        lng: location.lng,
+      );
       if (!mounted) return;
       if (success) {
         await location.stopTracking();
+        await OfflineSyncService().syncPendingActions();
+        await _loadPendingCount();
         scaffold.showSnackBar(
           const SnackBar(content: Text("تم تسجيل الانصراف بنجاح")),
         );
       }
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _doCheckIn(
+    AuthProvider auth,
+    AttendanceProvider attendance,
+    LocationProvider location,
+  ) async {
+    if (_busy) return;
+    setState(() => _busy = true);
+    final scaffold = ScaffoldMessenger.of(context);
+
+    try {
+      final authenticated = await _authenticateBiometric();
+      if (!authenticated || !mounted) return;
+
+      // Fresh GPS before punch
+      await location.getCurrentLocation(force: true);
+      if (!mounted) return;
+      if (location.lat == null || location.lng == null) {
+        scaffold.showSnackBar(
+          SnackBar(content: Text(location.error ?? "GPS unavailable")),
+        );
+        return;
+      }
+      if (!location.isFresh()) {
+        scaffold.showSnackBar(
+          const SnackBar(content: Text("GPS stale — refresh and try again")),
+        );
+        return;
+      }
+
+      final token = await auth.ensureToken();
+      if (token == null || !mounted) return;
+      final employeeId = auth.employeeId ?? 0;
+      if (employeeId <= 0) {
+        scaffold.showSnackBar(
+          const SnackBar(content: Text("Missing employee profile")),
+        );
+        return;
+      }
+
+      final battery = await _getBatteryLevel();
+      final success = await attendance.checkIn(
+        token,
+        employeeId,
+        location.lat!,
+        location.lng!,
+        null,
+        batteryLevel: battery,
+        accuracy: location.accuracy,
+        locationTimestamp: location.locationAt,
+      );
+
+      if (!mounted) return;
+      if (success) {
+        try {
+          await location.startTracking(
+            employeeId: employeeId,
+            employeeName: auth.userName,
+            companyId: auth.companyId?.toString(),
+          );
+        } catch (_) {}
+        await OfflineSyncService().syncPendingActions();
+        await _loadPendingCount();
+        if (mounted) {
+          scaffold.showSnackBar(
+            const SnackBar(content: Text("تم تسجيل الحضور بنجاح")),
+          );
+        }
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
     }
   }
 
@@ -106,6 +218,7 @@ class _CheckInScreenState extends State<CheckInScreen> {
     final location = Provider.of<LocationProvider>(context);
     final attendance = Provider.of<AttendanceProvider>(context);
     final auth = Provider.of<AuthProvider>(context);
+    final loading = attendance.isLoading || _busy;
 
     return Scaffold(
       appBar: AppBar(title: const Text("تسجيل الحضور")),
@@ -131,14 +244,47 @@ class _CheckInScreenState extends State<CheckInScreen> {
                 padding: const EdgeInsets.all(20),
                 child: Column(
                   children: [
-                    const Icon(Icons.location_on, size: 48, color: Color(0xFF3C7EE7)),
+                    const Icon(
+                      Icons.location_on,
+                      size: 48,
+                      color: Color(0xFF3C7EE7),
+                    ),
                     const SizedBox(height: 12),
                     if (location.lat != null && location.lng != null) ...[
                       Text("Latitude: ${location.lat!.toStringAsFixed(6)}"),
                       Text("Longitude: ${location.lng!.toStringAsFixed(6)}"),
-                      Text("Accuracy: ±${location.accuracy?.toStringAsFixed(0)}m"),
+                      Text(
+                        "Accuracy: ±${location.accuracy?.toStringAsFixed(0) ?? "?"}m",
+                      ),
+                      if (location.locationAt != null)
+                        Text(
+                          location.isFresh()
+                              ? "GPS fresh"
+                              : "GPS aging — tap refresh",
+                          style: TextStyle(
+                            color: location.isFresh()
+                                ? const Color(0xFF16A34A)
+                                : const Color(0xFFF59E0B),
+                            fontSize: 12,
+                          ),
+                        ),
+                      TextButton.icon(
+                        onPressed: loading
+                            ? null
+                            : () => location.getCurrentLocation(force: true),
+                        icon: const Icon(Icons.my_location, size: 18),
+                        label: const Text("تحديث الموقع"),
+                      ),
                     ] else if (location.error != null) ...[
-                      Text(location.error!, style: const TextStyle(color: Colors.red), textAlign: TextAlign.center),
+                      Text(
+                        location.error!,
+                        style: const TextStyle(color: Colors.red),
+                        textAlign: TextAlign.center,
+                      ),
+                      TextButton(
+                        onPressed: () => location.getCurrentLocation(force: true),
+                        child: const Text("إعادة المحاولة"),
+                      ),
                     ] else ...[
                       const CircularProgressIndicator(),
                       const SizedBox(height: 8),
@@ -149,21 +295,31 @@ class _CheckInScreenState extends State<CheckInScreen> {
               ),
             ),
             const SizedBox(height: 24),
-            if (attendance.todayStatus == "present" || attendance.todayStatus == "late") ...[
+            if (attendance.todayStatus == "present" ||
+                attendance.todayStatus == "late") ...[
               Card(
                 child: Padding(
                   padding: const EdgeInsets.all(20),
                   child: Column(
                     children: [
                       Icon(
-                        attendance.todayStatus == "late" ? Icons.access_time : Icons.check_circle,
+                        attendance.todayStatus == "late"
+                            ? Icons.access_time
+                            : Icons.check_circle,
                         size: 48,
-                        color: attendance.todayStatus == "late" ? const Color(0xFFF59E0B) : const Color(0xFF16A34A),
+                        color: attendance.todayStatus == "late"
+                            ? const Color(0xFFF59E0B)
+                            : const Color(0xFF16A34A),
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        attendance.todayStatus == "late" ? "تم تسجيل الحضور (متأخر)" : "تم تسجيل الحضور",
-                        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                        attendance.todayStatus == "late"
+                            ? "تم تسجيل الحضور (متأخر)"
+                            : "تم تسجيل الحضور",
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ],
                   ),
@@ -171,17 +327,16 @@ class _CheckInScreenState extends State<CheckInScreen> {
               ),
               const SizedBox(height: 16),
               FilledButton.tonalIcon(
-                onPressed: attendance.isLoading
+                onPressed: loading
                     ? null
-                    : () async {
-                        final token = await auth.ensureToken();
-                        if (token == null) return;
-                        if (!context.mounted) return;
-                        await _confirmCheckOut(attendance, token, auth.employeeId ?? 0);
-                      },
+                    : () => _confirmCheckOut(attendance, auth, location),
                 icon: const Icon(Icons.logout),
-                label: attendance.isLoading
-                    ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator())
+                label: loading
+                    ? const SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(),
+                      )
                     : const Text("تسجيل الانصراف"),
               ),
             ] else if (attendance.todayStatus == "checked_out") ...[
@@ -192,52 +347,39 @@ class _CheckInScreenState extends State<CheckInScreen> {
                     children: [
                       Icon(Icons.task_alt, size: 48, color: Color(0xFF64748B)),
                       SizedBox(height: 8),
-                      Text("تم تسجيل الانصراف", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                      Text(
+                        "تم تسجيل الانصراف",
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                     ],
                   ),
                 ),
               ),
             ] else ...[
               FilledButton.icon(
-                onPressed: (location.lat == null || attendance.isLoading)
+                onPressed: (location.lat == null || loading)
                     ? null
-                    : () async {
-                        final authenticated = await _authenticateBiometric();
-                        if (!authenticated || !context.mounted) return;
-                        final token = await auth.ensureToken();
-                        if (token == null || !context.mounted) return;
-                        final battery = await _getBatteryLevel();
-                        final employeeId = auth.employeeId ?? 0;
-                        final success = await attendance.checkIn(
-                          token,
-                          employeeId,
-                          location.lat!,
-                          location.lng!,
-                          null,
-                          batteryLevel: battery,
-                        );
-                        if (success && context.mounted) {
-                          await location.startTracking(
-                            employeeId: employeeId,
-                            employeeName: auth.userName,
-                            companyId: auth.companyId?.toString(),
-                          );
-                          if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text("تم تسجيل الحضور بنجاح")),
-                            );
-                          }
-                        }
-                      },
-                icon: attendance.isLoading
-                    ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white))
+                    : () => _doCheckIn(auth, attendance, location),
+                icon: loading
+                    ? const SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(color: Colors.white),
+                      )
                     : const Icon(Icons.login),
                 label: const Text("تسجيل الحضور الآن"),
               ),
             ],
             if (attendance.error != null) ...[
               const SizedBox(height: 16),
-              Text(attendance.error!, style: const TextStyle(color: Colors.red), textAlign: TextAlign.center),
+              Text(
+                attendance.error!,
+                style: const TextStyle(color: Colors.red),
+                textAlign: TextAlign.center,
+              ),
             ],
           ],
         ),

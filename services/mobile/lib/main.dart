@@ -9,12 +9,12 @@ import "providers/attendance_provider.dart";
 import "providers/location_provider.dart";
 import "providers/theme_provider.dart";
 import "providers/notifications_provider.dart";
-import "widgets/notification_initializer.dart";
 import "package:flutter_background_geolocation/flutter_background_geolocation.dart" as bg;
 
 import "services/api_service.dart";
 import "services/background_tracking_service.dart";
 import "services/notification_service.dart";
+import "services/offline_sync_service.dart";
 import "screens/login_screen.dart";
 import "screens/home_screen.dart";
 import "screens/check_in_screen.dart";
@@ -42,6 +42,9 @@ void main() async {
     await Firebase.initializeApp();
   } catch (_) {}
   await NotificationService().initialize();
+  try {
+    await OfflineSyncService().start();
+  } catch (_) {}
   final prefs = await SharedPreferences.getInstance();
   final hasSession = prefs.getString("auth_token") != null;
 
@@ -137,3 +140,4 @@ class TraxEmployeeApp extends StatelessWidget {
     );
   }
 }
+

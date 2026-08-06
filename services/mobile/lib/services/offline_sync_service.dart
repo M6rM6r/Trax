@@ -1,17 +1,29 @@
-import "dart:convert";
-import "package:sqflite/sqflite.dart";
-import "package:path/path.dart";
-import "package:connectivity_plus/connectivity_plus.dart";
-import "package:http/http.dart" as http;
+import 'dart:async';
+import 'dart:convert';
 
+import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:http/http.dart' as http;
+import 'package:path/path.dart';
+import 'package:sqflite/sqflite.dart';
+
+import '../config/env.dart';
+
+/// SQLite offline queue with single-flight sync, max retries, and Env base URL.
 class OfflineSyncService {
   static final OfflineSyncService _instance = OfflineSyncService._internal();
   factory OfflineSyncService() => _instance;
   OfflineSyncService._internal();
 
   Database? _db;
+  StreamSubscription<List<ConnectivityResult>>? _connectivitySub;
+  Future<void>? _syncInFlight;
+  bool _started = false;
+
   static const String _tableName = "pending_actions";
-  static const String _baseUrl = "http://localhost:8000/api";
+  static const int _maxRetries = 8;
+  static const Duration _httpTimeout = Duration(seconds: 20);
+
+  static String get _baseUrl => Env.apiBaseUrl;
 
   Future<Database> get database async {
     _db ??= await _initDb();
@@ -22,7 +34,7 @@ class OfflineSyncService {
     final dbPath = await getDatabasesPath();
     return openDatabase(
       join(dbPath, "trax_offline.db"),
-      version: 1,
+      version: 2,
       onCreate: (db, version) async {
         await db.execute("""
           CREATE TABLE $_tableName (
@@ -32,11 +44,53 @@ class OfflineSyncService {
             body TEXT NOT NULL,
             token TEXT,
             created_at TEXT NOT NULL,
-            retry_count INTEGER DEFAULT 0
+            retry_count INTEGER DEFAULT 0,
+            dedupe_key TEXT
           )
         """);
+        await db.execute(
+          "CREATE INDEX IF NOT EXISTS idx_pending_created ON $_tableName(created_at)",
+        );
+        await db.execute(
+          "CREATE INDEX IF NOT EXISTS idx_pending_dedupe ON $_tableName(dedupe_key)",
+        );
+      },
+      onUpgrade: (db, oldVersion, newVersion) async {
+        if (oldVersion < 2) {
+          try {
+            await db.execute("ALTER TABLE $_tableName ADD COLUMN dedupe_key TEXT");
+          } catch (_) {}
+          await db.execute(
+            "CREATE INDEX IF NOT EXISTS idx_pending_created ON $_tableName(created_at)",
+          );
+          await db.execute(
+            "CREATE INDEX IF NOT EXISTS idx_pending_dedupe ON $_tableName(dedupe_key)",
+          );
+        }
       },
     );
+  }
+
+  /// Call once from app start: listen for reconnect and flush queue.
+  Future<void> start() async {
+    if (_started) return;
+    _started = true;
+    await database;
+    _connectivitySub ??= Connectivity().onConnectivityChanged.listen((results) {
+      final online = !results.contains(ConnectivityResult.none);
+      if (online) {
+        unawaited(syncPendingActions());
+      }
+    });
+    if (await isOnline()) {
+      unawaited(syncPendingActions());
+    }
+  }
+
+  Future<void> dispose() async {
+    await _connectivitySub?.cancel();
+    _connectivitySub = null;
+    _started = false;
   }
 
   Future<bool> isOnline() async {
@@ -49,8 +103,16 @@ class OfflineSyncService {
     required String method,
     required Map<String, dynamic> body,
     String? token,
+    String? dedupeKey,
   }) async {
     final db = await database;
+    if (dedupeKey != null && dedupeKey.isNotEmpty) {
+      await db.delete(
+        _tableName,
+        where: "dedupe_key = ?",
+        whereArgs: [dedupeKey],
+      );
+    }
     await db.insert(_tableName, {
       "endpoint": endpoint,
       "method": method,
@@ -58,6 +120,7 @@ class OfflineSyncService {
       "token": token,
       "created_at": DateTime.now().toIso8601String(),
       "retry_count": 0,
+      "dedupe_key": dedupeKey,
     });
   }
 
@@ -66,16 +129,31 @@ class OfflineSyncService {
     return db.query(_tableName, orderBy: "created_at ASC");
   }
 
-  Future<void> syncPendingActions() async {
+  Future<void> syncPendingActions() {
+    if (_syncInFlight != null) return _syncInFlight!;
+    _syncInFlight = _syncPendingActionsImpl().whenComplete(() {
+      _syncInFlight = null;
+    });
+    return _syncInFlight!;
+  }
+
+  Future<void> _syncPendingActionsImpl() async {
     if (!await isOnline()) return;
 
     final actions = await getPendingActions();
     if (actions.isEmpty) return;
 
     for (final action in actions) {
-      final success = await _sendAction(action);
       final id = (action["id"] as num?)?.toInt();
       if (id == null) continue;
+
+      final retries = (action["retry_count"] as num?)?.toInt() ?? 0;
+      if (retries >= _maxRetries) {
+        await _deleteAction(id);
+        continue;
+      }
+
+      final success = await _sendAction(action);
       if (success) {
         await _deleteAction(id);
       } else {
@@ -86,30 +164,47 @@ class OfflineSyncService {
 
   Future<bool> _sendAction(Map<String, dynamic> action) async {
     try {
-      final url = Uri.parse("$_baseUrl/${action["endpoint"]}");
-      final headers = {"Content-Type": "application/json", "Accept": "application/json"};
-      if (action["token"] != null) {
+      final endpoint = action["endpoint"]?.toString() ?? "";
+      final path = endpoint.startsWith("http")
+          ? endpoint
+          : "$_baseUrl/${endpoint.replaceFirst(RegExp(r'^/+'), '')}";
+      final url = Uri.parse(path);
+      final headers = {
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+      };
+      if (action["token"] != null && action["token"].toString().isNotEmpty) {
         headers["Authorization"] = "Bearer ${action["token"]}";
       }
 
-      final body = action["body"] as String;
-      http.Response response;
+      final body = action["body"] as String? ?? "{}";
+      late http.Response response;
 
-      switch (action["method"]) {
+      switch (action["method"]?.toString().toUpperCase()) {
         case "POST":
-          response = await http.post(url, headers: headers, body: body);
+          response = await http
+              .post(url, headers: headers, body: body)
+              .timeout(_httpTimeout);
           break;
         case "PUT":
-          response = await http.put(url, headers: headers, body: body);
+          response = await http
+              .put(url, headers: headers, body: body)
+              .timeout(_httpTimeout);
           break;
         case "DELETE":
-          response = await http.delete(url, headers: headers);
+          response =
+              await http.delete(url, headers: headers).timeout(_httpTimeout);
           break;
         default:
           return false;
       }
 
-      return response.statusCode < 400;
+      // Idempotent success / already processed
+      if (response.statusCode < 400) return true;
+      if (response.statusCode == 409) return true;
+      final lower = response.body.toLowerCase();
+      if (lower.contains("already") || lower.contains("no open")) return true;
+      return false;
     } catch (_) {
       return false;
     }
@@ -130,8 +225,9 @@ class OfflineSyncService {
 
   Future<int> pendingCount() async {
     final db = await database;
-    final result = await db.rawQuery("SELECT COUNT(*) as count FROM $_tableName");
-    return result.first["count"] as int;
+    final result =
+        await db.rawQuery("SELECT COUNT(*) as count FROM $_tableName");
+    return (result.first["count"] as num?)?.toInt() ?? 0;
   }
 
   Future<void> clearAll() async {
