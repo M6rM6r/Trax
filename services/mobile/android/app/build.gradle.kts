@@ -6,6 +6,9 @@ plugins {
     id("com.google.gms.google-services")
 }
 
+import java.util.Properties
+import java.io.FileInputStream
+
 android {
     // Must match Firebase Android app package_name in google-services.json
     namespace = "trax.app"
@@ -24,7 +27,7 @@ android {
 
     defaultConfig {
         applicationId = "trax.app"
-        minSdk = flutter.minSdkVersion
+        minSdk = maxOf(flutter.minSdkVersion, 24)
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
@@ -32,26 +35,52 @@ android {
     }
 
     signingConfigs {
-        // Optional Play upload keystore via env (PLAY_KEYSTORE_PATH, PLAY_KEYSTORE_PASSWORD, PLAY_KEY_ALIAS, PLAY_KEY_PASSWORD)
+        // Prefer env PLAY_KEYSTORE_*; else android/key.properties (local, gitignored).
         create("release") {
+            val keystorePropertiesFile = rootProject.file("key.properties")
+            val keystoreProperties = Properties()
+            if (keystorePropertiesFile.exists()) {
+                keystoreProperties.load(FileInputStream(keystorePropertiesFile))
+            }
+
             val ksPath = System.getenv("PLAY_KEYSTORE_PATH")
-            if (ksPath != null) {
-                storeFile = file(ksPath)
-                storePassword = System.getenv("PLAY_KEYSTORE_PASSWORD")
-                keyAlias = System.getenv("PLAY_KEY_ALIAS")
-                keyPassword = System.getenv("PLAY_KEY_PASSWORD")
+                ?: keystoreProperties.getProperty("storeFile")
+            val storePass = System.getenv("PLAY_KEYSTORE_PASSWORD")
+                ?: keystoreProperties.getProperty("storePassword")
+            val alias = System.getenv("PLAY_KEY_ALIAS")
+                ?: keystoreProperties.getProperty("keyAlias")
+            val keyPass = System.getenv("PLAY_KEY_PASSWORD")
+                ?: keystoreProperties.getProperty("keyPassword")
+
+            if (ksPath != null && storePass != null && alias != null && keyPass != null) {
+                val ksFile = file(ksPath)
+                if (ksFile.isAbsolute) {
+                    storeFile = ksFile
+                } else {
+                    storeFile = rootProject.file(ksPath)
+                }
+                storePassword = storePass
+                keyAlias = alias
+                keyPassword = keyPass
             }
         }
     }
 
     buildTypes {
         release {
-            // Use release keystore when PLAY_KEYSTORE_PATH is set; otherwise debug for local smoke AAB.
-            signingConfig = if (System.getenv("PLAY_KEYSTORE_PATH") != null) {
+            val hasReleaseSigning = signingConfigs.getByName("release").storeFile != null
+            signingConfig = if (hasReleaseSigning) {
                 signingConfigs.getByName("release")
             } else {
+                // Local smoke only — Play upload requires real upload keystore.
                 signingConfigs.getByName("debug")
             }
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro",
+            )
         }
     }
 }

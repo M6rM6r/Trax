@@ -60,6 +60,22 @@ class ErrorMonitor {
     if (process.env.NODE_ENV === "development") {
       console.error("[ErrorMonitor]", report);
     }
+
+    // Prefer Sentry when DSN is configured (production monitoring).
+    if (process.env.NEXT_PUBLIC_SENTRY_DSN) {
+      void import("@sentry/nextjs")
+        .then((Sentry) => {
+          Sentry.captureMessage(report.message, {
+            level: "error",
+            extra: {
+              stack: report.stack,
+              ...report.context,
+              url: report.url,
+            },
+          });
+        })
+        .catch(() => {});
+    }
   }
 
   flush() {

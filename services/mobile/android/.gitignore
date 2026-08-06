@@ -12,3 +12,5 @@ GeneratedPluginRegistrant.java
 key.properties
 **/*.keystore
 **/*.jks
+# Firebase Android config is machine/CI-specific; keep a local copy from Console.
+google-services.json

@@ -1,6 +1,7 @@
 "use client";
 
 import { AdminUser } from "@/lib/types/responseTypes";
+import { clearTraxSessionCookie, setTraxSessionCookie } from "@/lib/auth/sessionCookie";
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 
@@ -27,7 +28,7 @@ interface AuthState {
 
 export const useAuthStore = create<AuthState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       user: null,
       token: null,
       role: null,
@@ -58,10 +59,12 @@ export const useAuthStore = create<AuthState>()(
           companyId: cid,
           companyName: companyName ?? null,
         });
+        setTraxSessionCookie(get().rememberMe);
       },
       setRole: (role) => set({ role }),
       setRememberMe: (rememberMe) => set({ rememberMe }),
       clearUser: () => {
+        clearTraxSessionCookie();
         set({
           user: null,
           token: null,
@@ -75,6 +78,12 @@ export const useAuthStore = create<AuthState>()(
     {
       name: "auth-storage",
       storage: createJSONStorage(() => localStorage),
+      onRehydrateStorage: () => (state) => {
+        // Restore middleware cookie after hard refresh when Zustand rehydrates.
+        if (state?.token) {
+          setTraxSessionCookie(state.rememberMe);
+        }
+      },
     }
   )
 );

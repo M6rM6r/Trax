@@ -138,6 +138,7 @@ const Page = () => {
       await setPersistence(auth, persistence);
       const credential = await signInWithEmailAndPassword(auth, values.identifier, values.password);
       const idToken = await credential.user.getIdToken();
+      // Persist rememberMe before setUser so session cookie Max-Age is correct.
       setRememberMe(values.rememberMe);
 
       // Firebase-first: Firestore profile is the primary source of truth.

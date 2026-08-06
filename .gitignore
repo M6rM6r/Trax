@@ -68,3 +68,11 @@ storage/
 /dist/
 services/mobile/build/
 
+
+# Local secrets (upload keystore, credentials)
+/secrets/
+
+
+# Mobile Firebase Android config (use Console download + CI secret)
+**/google-services.json
+

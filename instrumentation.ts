@@ -1,3 +1,23 @@
 export async function register() {
-  // No-op: monitoring disabled
+  if (process.env.NEXT_RUNTIME === "nodejs") {
+    await import("./sentry.server.config");
+  }
+  if (process.env.NEXT_RUNTIME === "edge") {
+    await import("./sentry.edge.config");
+  }
 }
+
+export const onRequestError = async (
+  err: unknown,
+  request: { path: string },
+  context: { routerKind?: string; routePath?: string }
+) => {
+  const Sentry = await import("@sentry/nextjs");
+  Sentry.captureException(err, {
+    extra: {
+      path: request?.path,
+      routerKind: context?.routerKind,
+      routePath: context?.routePath,
+    },
+  });
+};
