@@ -14,8 +14,8 @@ const messaging = firebase.messaging();
 
 messaging.onBackgroundMessage((payload) => {
   const { title, body } = payload.notification ?? {};
-  const icon = payload.data?.icon ?? "/icons/icon-192x192.png";
-  const badge = "/icons/icon-72x72.png";
+  const icon = payload.data?.icon ?? "/images/icon-192.png?v=3";
+  const badge = "/images/icon-192.png?v=3";
 
   self.registration.showNotification(title ?? "Trax", {
     body: body ?? "",

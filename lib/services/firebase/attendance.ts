@@ -6,9 +6,9 @@ import {
   limit,
   orderBy,
   query,
+  runTransaction,
   serverTimestamp,
   setDoc,
-  updateDoc,
   where,
 } from "firebase/firestore";
 import type { AttendanceRecord, Employee, Geofence } from "@/lib/types/trackingTypes";
@@ -25,6 +25,31 @@ import {
   queryByCompanyId,
 } from "./helpers";
 import { employeesApi } from "./employees";
+
+/** In-flight mutex so offline replay + UI cannot double-submit the same punch. */
+const attendanceOpLocks = new Map<string, Promise<unknown>>();
+
+async function withAttendanceLock<T>(key: string, fn: () => Promise<T>): Promise<T> {
+  const prev = attendanceOpLocks.get(key) ?? Promise.resolve();
+  let release!: () => void;
+  const gate = new Promise<void>((r) => {
+    release = r;
+  });
+  const held = prev.then(() => gate);
+  attendanceOpLocks.set(
+    key,
+    held.catch(() => undefined)
+  );
+  await prev.catch(() => undefined);
+  try {
+    return await fn();
+  } finally {
+    release();
+    if (attendanceOpLocks.get(key) === held) {
+      attendanceOpLocks.delete(key);
+    }
+  }
+}
 
 export const attendanceApi = {
   async list(
@@ -71,6 +96,22 @@ export const attendanceApi = {
   },
 
   async checkIn(payload: {
+    employeeId: string;
+    employeeName?: string;
+    lat: number;
+    lng: number;
+    accuracy?: number;
+    geofenceId?: string | null;
+    companySettings?: Record<string, unknown>;
+    employee?: Pick<Employee, "attendanceMode" | "shiftOverride" | "geofenceId"> | null;
+    checkInTimestamp?: number;
+  }): Promise<AttendanceRecord> {
+    const companyIdEarly = requireCompanyId();
+    const lockKey = `in:${companyIdEarly}:${String(payload.employeeId)}`;
+    return withAttendanceLock(lockKey, () => this._checkInUnlocked(payload));
+  },
+
+  async _checkInUnlocked(payload: {
     employeeId: string;
     employeeName?: string;
     lat: number;
@@ -166,17 +207,6 @@ export const attendanceApi = {
     // One attendance doc per employee per company day (deterministic id — no double rows).
     const docId = attendanceDocId(companyId, payload.employeeId, date);
     const reference = doc(requireDb(), "attendance", docId);
-    const existingSnap = await getDoc(reference);
-    if (existingSnap.exists()) {
-      const existingData = existingSnap.data();
-      // Day is terminal after checkout — do not reopen / wipe checkout.
-      if (existingData.checkOutTime) {
-        throw new Error("ALREADY_CHECKED_OUT");
-      }
-      if (existingData.checkInTime) {
-        return mapAttendance(existingSnap.id, existingData);
-      }
-    }
 
     // Always write company_id as string so rules match stringified profile ids
     // and dual-type legacy docs (see firestore.rules companyIdsMatch).
@@ -204,12 +234,38 @@ export const attendanceApi = {
       shiftSlot: slot,
       createdAt: serverTimestamp(),
     } satisfies Record<string, unknown>;
-    await setDoc(reference, record);
-    const mappedRecord = mapAttendance(reference.id, record);
-    return mappedRecord;
+
+    // Atomic create-or-return so offline replay + double-tap cannot race two writers.
+    const mapped = await runTransaction(requireDb(), async (tx) => {
+      const snap = await tx.get(reference);
+      if (snap.exists()) {
+        const existingData = snap.data() as Record<string, unknown>;
+        if (existingData.checkOutTime) {
+          throw new Error("ALREADY_CHECKED_OUT");
+        }
+        if (existingData.checkInTime) {
+          return mapAttendance(snap.id, existingData);
+        }
+      }
+      tx.set(reference, record);
+      return mapAttendance(reference.id, record);
+    });
+    return mapped;
   },
 
   async checkOut(
+    employeeId: string,
+    companySettings?: Partial<CompanySettings>,
+    checkOutTimestamp?: number
+  ): Promise<AttendanceRecord> {
+    const checkoutCompanyId = requireCompanyId();
+    const lockKey = `out:${checkoutCompanyId}:${String(employeeId)}`;
+    return withAttendanceLock(lockKey, () =>
+      this._checkOutUnlocked(employeeId, companySettings, checkOutTimestamp)
+    );
+  },
+
+  async _checkOutUnlocked(
     employeeId: string,
     companySettings?: Partial<CompanySettings>,
     checkOutTimestamp?: number
@@ -295,107 +351,133 @@ export const attendanceApi = {
     if (!currentData || !currentData.checkInTime) throw new Error("No open attendance record");
     if (currentData.checkOutTime) throw new Error("ALREADY_CHECKED_OUT");
 
-    const current = mapAttendance(targetRef.id, currentData);
-    const workedHours = current.checkInTime
-      ? calculateWorkedHours(current.checkInTime, checkOutTime)
-      : 0;
-
     const expectedCheckoutTime =
       companySettings?.checkoutTimeRangeEnabled && companySettings?.checkoutStartTime
         ? companySettings.checkoutStartTime
-        : (current.appliedShift?.endTime ?? null);
+        : ((currentData.appliedShift as { endTime?: string } | undefined)?.endTime ?? null);
     const { parseTimeToMinutes } = await import("@/lib/utils/shifts");
-    const earlyCheckout = Boolean(
-      expectedCheckoutTime &&
-      Number.isFinite(parseTimeToMinutes(checkOutTime)) &&
-      Number.isFinite(parseTimeToMinutes(expectedCheckoutTime)) &&
-      parseTimeToMinutes(checkOutTime) < parseTimeToMinutes(expectedCheckoutTime)
-    );
 
-    // Checkout fields + ensure company roster can still query this row.
-    const patch: {
-      checkOutTime: string;
-      status: string;
-      checkOutStatus: string;
-      workedHours: number;
-      expectedCheckoutTime: string | null;
-      earlyCheckout: boolean;
-      ownerUid?: string;
-      company_id?: string;
-      employeeId?: string;
-      date?: string;
-    } = {
-      checkOutTime,
-      status: "checked_out",
-      checkOutStatus: "present",
-      workedHours,
-      expectedCheckoutTime,
-      earlyCheckout,
-    };
-    if (
-      currentData.ownerUid === null ||
-      currentData.ownerUid === undefined ||
-      currentData.ownerUid === ""
-    ) {
-      patch.ownerUid = currentUser.uid;
-    }
-    // Normalize identity so company list (where company_id == …) always finds the punch.
-    const existingCid = currentData.company_id;
-    if (
-      existingCid === null ||
-      existingCid === undefined ||
-      existingCid === "" ||
-      String(existingCid) !== String(checkoutCompanyId)
-    ) {
-      patch.company_id = String(checkoutCompanyId);
-    }
-    if (
-      currentData.employeeId === null ||
-      currentData.employeeId === undefined ||
-      String(currentData.employeeId) !== empId
-    ) {
-      patch.employeeId = empId;
-    }
-    if (
-      currentData.date === null ||
-      currentData.date === undefined ||
-      String(currentData.date) !== today
-    ) {
-      patch.date = today;
-    }
+    // Atomic read-check-write: prevents double checkout races across tabs/devices.
+    const result = await runTransaction(db, async (tx) => {
+      const fresh = await tx.get(targetRef);
+      if (!fresh.exists()) throw new Error("No open attendance record");
+      const data = fresh.data() as Record<string, unknown>;
+      if (!data.checkInTime) throw new Error("No open attendance record");
+      if (data.checkOutTime) throw new Error("ALREADY_CHECKED_OUT");
 
-    try {
-      await updateDoc(targetRef, patch);
-    } catch (err) {
+      const current = mapAttendance(targetRef.id, data);
+      const workedHours = current.checkInTime
+        ? calculateWorkedHours(current.checkInTime, checkOutTime)
+        : 0;
+      const earlyCheckout = Boolean(
+        expectedCheckoutTime &&
+        Number.isFinite(parseTimeToMinutes(checkOutTime)) &&
+        Number.isFinite(parseTimeToMinutes(expectedCheckoutTime)) &&
+        parseTimeToMinutes(checkOutTime) < parseTimeToMinutes(expectedCheckoutTime)
+      );
+
+      const patch: {
+        checkOutTime: string;
+        status: string;
+        checkOutStatus: string;
+        workedHours: number;
+        expectedCheckoutTime: string | null;
+        earlyCheckout: boolean;
+        ownerUid?: string;
+        company_id?: string;
+        employeeId?: string;
+        date?: string;
+      } = {
+        checkOutTime,
+        status: "checked_out",
+        checkOutStatus: "present",
+        workedHours,
+        expectedCheckoutTime,
+        earlyCheckout,
+      };
+      if (data.ownerUid === null || data.ownerUid === undefined || data.ownerUid === "") {
+        patch.ownerUid = currentUser.uid;
+      }
+      const existingCid = data.company_id;
+      if (
+        existingCid === null ||
+        existingCid === undefined ||
+        existingCid === "" ||
+        String(existingCid) !== String(checkoutCompanyId)
+      ) {
+        patch.company_id = String(checkoutCompanyId);
+      }
+      if (
+        data.employeeId === null ||
+        data.employeeId === undefined ||
+        String(data.employeeId) !== empId
+      ) {
+        patch.employeeId = empId;
+      }
+      if (data.date === null || data.date === undefined || String(data.date) !== today) {
+        patch.date = today;
+      }
+
+      tx.update(targetRef, patch);
+      return {
+        ...current,
+        checkOutTime,
+        status: "checked_out" as const,
+        checkOutStatus: "present" as const,
+        workedHours,
+        expectedCheckoutTime,
+        earlyCheckout,
+      };
+    }).catch(async (err: unknown) => {
       const msg = err instanceof Error ? err.message : String(err);
-      // Last resort: setDoc merge (same security evaluation, sometimes clearer for rules).
       if (
         msg.includes("permission") ||
         msg.includes("PERMISSION") ||
         msg.includes("Missing or insufficient")
       ) {
-        console.warn("[checkOut] updateDoc denied, retrying setDoc merge:", msg);
-        await setDoc(
-          targetRef,
-          {
-            ...patch,
-            ownerUid: currentUser.uid,
-          },
-          { merge: true }
+        // Rules path sometimes allows merge when update fails on legacy docs.
+        console.warn("[checkOut] transaction denied, retrying setDoc merge:", msg);
+        const fresh = await getDoc(targetRef);
+        if (!fresh.exists()) throw new Error("No open attendance record");
+        const data = fresh.data() as Record<string, unknown>;
+        if (!data.checkInTime) throw new Error("No open attendance record");
+        if (data.checkOutTime) throw new Error("ALREADY_CHECKED_OUT");
+        const current = mapAttendance(targetRef.id, data);
+        const workedHours = current.checkInTime
+          ? calculateWorkedHours(current.checkInTime, checkOutTime)
+          : 0;
+        const earlyCheckout = Boolean(
+          expectedCheckoutTime &&
+          Number.isFinite(parseTimeToMinutes(checkOutTime)) &&
+          Number.isFinite(parseTimeToMinutes(expectedCheckoutTime)) &&
+          parseTimeToMinutes(checkOutTime) < parseTimeToMinutes(expectedCheckoutTime)
         );
-      } else {
-        throw err;
+        const patch = {
+          checkOutTime,
+          status: "checked_out",
+          checkOutStatus: "present",
+          workedHours,
+          expectedCheckoutTime,
+          earlyCheckout,
+          ownerUid: currentUser.uid,
+          company_id: String(checkoutCompanyId),
+          employeeId: empId,
+          date: today,
+        };
+        await setDoc(targetRef, patch, { merge: true });
+        return {
+          ...current,
+          checkOutTime,
+          status: "checked_out" as const,
+          checkOutStatus: "present" as const,
+          workedHours,
+          expectedCheckoutTime,
+          earlyCheckout,
+        };
       }
-    }
+      throw err;
+    });
 
-    return {
-      ...current,
-      checkOutTime,
-      status: "checked_out",
-      checkOutStatus: "present",
-      workedHours,
-      expectedCheckoutTime,
-      earlyCheckout,
-    };
+    return result;
   },
 };

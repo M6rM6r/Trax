@@ -634,9 +634,9 @@
     "reloadPage": "Reload page"
   },
   "Metadata": {
-    "title": "Trax — Employee Tracking System",
-    "description": "Employee tracking and attendance management system in real time with location and geofencing",
-    "keywords": "trax, attendance, employees, tracking, geofence"
+    "title": "Trax — Smart Attendance System",
+    "description": "Real-time attendance management with location and geofencing",
+    "keywords": "trax, attendance, employees, smart attendance, geofence"
   },
   "Navigation": {
     "dashboard": "Dashboard",

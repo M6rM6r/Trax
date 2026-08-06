@@ -311,6 +311,8 @@ export default function NotificationManager() {
   // Build live feed whenever attendance / settings change.
   useEffect(() => {
     if (!role || !companyId || !user) return;
+    // Drop stale rebuilds if auth role flipped mid-effect (logout / re-login).
+    if (useAuthStore.getState().role !== role) return;
     // Wait for settings hydration so we don't clear the feed with default false flags.
     if (!settingsLoaded && typeof window !== "undefined") {
       // persist may still hydrate — don't wipe; skip one frame
@@ -441,7 +443,11 @@ export default function NotificationManager() {
         const body = t("checkInReminderBody");
 
         if (pushNotificationsEnabled && Notification.permission === "granted") {
-          new Notification(title, { body, icon: "/images/icon-192.png", tag: "check-in-reminder" });
+          new Notification(title, {
+            body,
+            icon: "/images/icon-192.png?v=3",
+            tag: "check-in-reminder",
+          });
         }
 
         addNotification({
@@ -503,7 +509,7 @@ export default function NotificationManager() {
     localStorage.setItem(scopeKey, today);
     new Notification(t("lateEmployeesTitle", { count: missingCount }), {
       body: t("lateEmployeesBody", { count: missingCount }),
-      icon: "/images/icon-192.png",
+      icon: "/images/icon-192.png?v=3",
       tag: "missing-check-in-summary",
     });
   }, [

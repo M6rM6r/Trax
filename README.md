@@ -1,8 +1,8 @@
-# Trax — Boss/Employee Tracking System
+# Trax — Smart Attendance System
 
 ## Overview
 
-Trax is a real-time employee tracking and attendance management system built with Next.js 14, featuring geofence-based check-in, live map tracking, and comprehensive attendance analytics.
+Trax is a smart real-time employee attendance management system built with Next.js 14, featuring geofence-based check-in, live map presence, and comprehensive attendance analytics.
 
 ## Tech Stack
 

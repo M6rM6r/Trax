@@ -3,23 +3,23 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: {
-    default: "Trax — نظام تتبع الموظفين",
+    default: "Trax — نظام تحضير الموظفين",
     template: "%s | Trax",
   },
-  description:
-    "نظام تتبع الموظفين وإدارة الحضور في الوقت الفعلي مع الموقع الجغرافي والمناطق الجغرافية",
-  keywords: ["trax", "حضور", "موظفين", "تتبع", "geofence", "attendance", "employee tracking"],
+  description: "نظام إدارة الحضور في الوقت الفعلي مع الموقع الجغرافي والمناطق الجغرافية",
+  keywords: ["trax", "حضور", "موظفين", "تحضير", "geofence", "attendance", "smart attendance"],
   authors: [{ name: "Trax" }],
   creator: "Trax",
   publisher: "Trax",
   applicationName: "Trax",
-  manifest: "/manifest.json",
+  manifest: "/manifest.json?v=3",
   icons: {
     icon: [
-      { url: "/images/icon-192.png", sizes: "192x192", type: "image/png" },
-      { url: "/images/icon-512.png", sizes: "512x512", type: "image/png" },
+      { url: "/favicon.ico", sizes: "any" },
+      { url: "/images/icon-192.png?v=3", sizes: "192x192", type: "image/png" },
+      { url: "/images/icon-512.png?v=3", sizes: "512x512", type: "image/png" },
     ],
-    apple: "/images/icon-192.png",
+    apple: [{ url: "/images/apple-touch-icon.png?v=3", sizes: "180x180", type: "image/png" }],
   },
   appleWebApp: {
     capable: true,
@@ -32,14 +32,14 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     locale: "ar_SA",
-    title: "Trax — نظام تتبع الموظفين",
-    description: "نظام تتبع الموظفين وإدارة الحضور في الوقت الفعلي",
+    title: "Trax — نظام تحضير الموظفين",
+    description: "نظام إدارة الحضور في الوقت الفعلي",
     siteName: "Trax",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Trax — نظام تتبع الموظفين",
-    description: "نظام تتبع الموظفين وإدارة الحضور في الوقت الفعلي",
+    title: "Trax — نظام تحضير الموظفين",
+    description: "نظام إدارة الحضور في الوقت الفعلي",
   },
   robots: {
     index: true,
@@ -72,7 +72,7 @@ export default function RootLayout({
               name: "Trax",
               applicationCategory: "BusinessApplication",
               operatingSystem: "Web, Android, iOS",
-              description: "Employee tracking and attendance management system",
+              description: "Smart real-time employee attendance management system",
               offers: {
                 "@type": "Offer",
                 price: "0",

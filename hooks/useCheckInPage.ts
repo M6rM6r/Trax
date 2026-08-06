@@ -41,6 +41,7 @@ import {
 } from "@/lib/utils/companyDate";
 
 const AUTO_CHECKIN_DEBOUNCE_MS = 1500;
+const LOCATION_MAX_AGE_MS = 8_000;
 const BURST_DURATION_MS = 600;
 
 function buildOfflineCheckInId() {
@@ -223,6 +224,14 @@ export function useCheckInPage() {
   const checkInGuardRef = useRef(false);
   const checkOutGuardRef = useRef(false);
   const autoCheckInAttempted = useRef(false);
+  /** Last time GPS position object changed — used to reject stale auto check-in. */
+  const lastLocationAtRef = useRef<number>(0);
+
+  useEffect(() => {
+    if (currentLocation) {
+      lastLocationAtRef.current = Date.now();
+    }
+  }, [currentLocation]);
 
   useEffect(() => {
     if (locationError?.code === GeolocationPositionError.PERMISSION_DENIED) {
@@ -412,6 +421,10 @@ export function useCheckInPage() {
       if (!currentLocation) {
         hapticError();
         toastError(t("locationNotDetermined"));
+        return;
+      }
+      // Auto path: require a fresh fix so debounce doesn't punch with edge-stale GPS.
+      if (source === "auto" && Date.now() - lastLocationAtRef.current > LOCATION_MAX_AGE_MS) {
         return;
       }
       // Wait for today's attendance so we don't double-submit against an open session.

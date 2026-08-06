@@ -238,7 +238,7 @@ export default function AttendancePage() {
                       <select
                         value={filters.employeeId}
                         onChange={(e) => setFilters({ ...filters, employeeId: e.target.value })}
-                        className="w-full px-3 py-2 border border-input rounded-lg bg-transparent bg-background text-foreground text-sm"
+                        className="w-full px-3 py-2 border border-input rounded-lg bg-background text-foreground text-sm"
                       >
                         <option value="">{t("all")}</option>
                         {employees.map((e) => (

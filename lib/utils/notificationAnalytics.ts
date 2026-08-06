@@ -171,7 +171,8 @@ export function calculateAnalytics(
     if (event.status === "delivered" || event.status === "opened") day.delivered++;
     if (event.status === "opened") day.opened++;
 
-    // Employee tracking
+    // Employee attendance
+
     if (event.employeeId) {
       if (!employeeMap.has(event.employeeId)) {
         employeeMap.set(event.employeeId, {

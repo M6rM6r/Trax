@@ -37,13 +37,19 @@ export function useDashboardData(dateRange?: DashboardDateRange) {
       // Weekend policy affects present/absent buckets — must bust cache on change.
       JSON.stringify(weekendDays ?? []),
     ],
-    staleTime: 60 * 1000,
-    refetchInterval: 60 * 1000,
-    refetchOnWindowFocus: false,
+    // Align with attendance roster (~15s) so KPIs don't lag punches by a full minute.
+    staleTime: 15 * 1000,
+    refetchInterval: 20 * 1000,
+    refetchOnWindowFocus: true,
     refetchIntervalInBackground: false,
     // Company admin pipeline only — employees/mastermind must not stampede Firestore.
     enabled: Boolean(companyId) && role === "company",
-    queryFn: async () => firebaseData.dashboard.getDashboardData({ from, to }, companySettings),
+    queryFn: async () => {
+      if (useAuthStore.getState().role !== "company") {
+        throw new Error("UNAUTHORIZED_DASHBOARD");
+      }
+      return firebaseData.dashboard.getDashboardData({ from, to }, companySettings);
+    },
   });
 }
 

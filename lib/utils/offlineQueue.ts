@@ -95,44 +95,92 @@ export function hasOfflineCheckOutQueue(): boolean {
   return getOfflineCheckOutQueue().length > 0;
 }
 
+/** Prevent concurrent processOfflineQueue runs (online event + interval + resume). */
+let offlineSyncInFlight: Promise<{ processed: number; failed: number }> | null = null;
+
 export async function processOfflineQueue(): Promise<{
   processed: number;
   failed: number;
 }> {
-  const checkIns = getOfflineQueue();
-  const checkOuts = getOfflineCheckOutQueue();
-  let processed = 0;
-  let failed = 0;
+  if (offlineSyncInFlight) return offlineSyncInFlight;
 
-  for (const item of checkIns) {
-    try {
-      await firebaseData.attendance.checkIn({
-        employeeId: item.employeeId,
-        employeeName: item.employeeName,
-        lat: item.lat,
-        lng: item.lng,
-        accuracy: item.accuracy,
-        geofenceId: item.geofenceId,
-        companySettings: item.settings,
-        employee: item.employeeSnapshot ?? null,
-        checkInTimestamp: item.timestamp,
-      });
-      removeFromOfflineQueue(item.id);
-      processed++;
-    } catch {
-      failed++;
+  offlineSyncInFlight = (async () => {
+    const checkIns = getOfflineQueue();
+    let processed = 0;
+    let failed = 0;
+
+    // One punch per employee: keep earliest check-in / latest check-out in queue.
+    const checkInByEmp = new Map<string, QueuedCheckIn>();
+    for (const item of checkIns) {
+      const key = String(item.employeeId);
+      const prev = checkInByEmp.get(key);
+      if (!prev || item.timestamp < prev.timestamp) checkInByEmp.set(key, item);
+      else removeFromOfflineQueue(item.id);
     }
-  }
 
-  for (const item of checkOuts) {
-    try {
-      await firebaseData.attendance.checkOut(item.employeeId, item.settings, item.timestamp);
-      removeFromOfflineCheckOutQueue(item.id);
-      processed++;
-    } catch {
-      failed++;
+    const uniqueCheckIns = Array.from(checkInByEmp.values());
+    for (const item of uniqueCheckIns) {
+      try {
+        await firebaseData.attendance.checkIn({
+          employeeId: item.employeeId,
+          employeeName: item.employeeName,
+          lat: item.lat,
+          lng: item.lng,
+          accuracy: item.accuracy,
+          geofenceId: item.geofenceId,
+          companySettings: item.settings,
+          employee: item.employeeSnapshot ?? null,
+          checkInTimestamp: item.timestamp,
+        });
+        removeFromOfflineQueue(item.id);
+        processed++;
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        // Idempotent day already punched — drop queue item.
+        if (msg === "ALREADY_CHECKED_OUT" || msg.includes("already")) {
+          removeFromOfflineQueue(item.id);
+          processed++;
+        } else {
+          failed++;
+        }
+      }
     }
-  }
 
-  return { processed, failed };
+    const checkOutByEmp = new Map<string, QueuedCheckOut>();
+    for (const item of getOfflineCheckOutQueue()) {
+      const key = String(item.employeeId);
+      const prev = checkOutByEmp.get(key);
+      if (!prev || item.timestamp > prev.timestamp) {
+        if (prev) removeFromOfflineCheckOutQueue(prev.id);
+        checkOutByEmp.set(key, item);
+      } else {
+        removeFromOfflineCheckOutQueue(item.id);
+      }
+    }
+
+    const uniqueCheckOuts = Array.from(checkOutByEmp.values());
+    for (const item of uniqueCheckOuts) {
+      try {
+        await firebaseData.attendance.checkOut(item.employeeId, item.settings, item.timestamp);
+        removeFromOfflineCheckOutQueue(item.id);
+        processed++;
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        if (msg === "ALREADY_CHECKED_OUT" || msg === "No open attendance record") {
+          removeFromOfflineCheckOutQueue(item.id);
+          processed++;
+        } else {
+          failed++;
+        }
+      }
+    }
+
+    return { processed, failed };
+  })();
+
+  try {
+    return await offlineSyncInFlight;
+  } finally {
+    offlineSyncInFlight = null;
+  }
 }
