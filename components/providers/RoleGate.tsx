@@ -14,11 +14,17 @@ export default function RoleGate({ children }: { children: React.ReactNode }) {
   const token = useAuthStore((s) => s.token);
   const pathname = usePathname();
   const router = useRouter();
-  const [hydrated, setHydrated] = useState(() => useAuthStore.persist.hasHydrated());
+  // persist API is client-only; SSR must not touch useAuthStore.persist
+  const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
-    const unsub = useAuthStore.persist.onFinishHydration(() => setHydrated(true));
-    if (useAuthStore.persist.hasHydrated()) setHydrated(true);
+    const api = useAuthStore.persist;
+    if (!api) {
+      setHydrated(true);
+      return;
+    }
+    const unsub = api.onFinishHydration(() => setHydrated(true));
+    if (api.hasHydrated()) setHydrated(true);
     return unsub;
   }, []);
 
