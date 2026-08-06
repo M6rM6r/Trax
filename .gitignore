@@ -63,3 +63,8 @@ DOCUMENTATION/TASKS.md
 
 # Local Firebase service account and runtime storage
 storage/
+
+# Local release binaries
+/dist/
+services/mobile/build/
+
