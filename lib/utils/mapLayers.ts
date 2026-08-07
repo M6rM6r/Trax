@@ -1,45 +1,59 @@
 import TileLayer from "ol/layer/Tile";
 import XYZ from "ol/source/XYZ";
+import OSM from "ol/source/OSM";
 
 const imageryAttribution = "Esri, Maxar, Earthstar Geographics";
 const streetAttribution = "Esri, HERE, Garmin, USGS, NPS";
 
-/**
- * Hybrid satellite layers: Esri imagery + road/label overlays.
- * Improved with Esri World_Reference for Google Maps-like place labels and POIs.
- */
-export function createHybridSatelliteLayers(): TileLayer<XYZ>[] {
+function esriXyz(url: string, attributions: string) {
+  return new XYZ({
+    url,
+    attributions,
+    maxZoom: 19,
+    crossOrigin: "anonymous",
+    transition: 0,
+    wrapX: true,
+  });
+}
+
+export function createHybridSatelliteLayers(): TileLayer[] {
   return [
     new TileLayer({
-      source: new XYZ({
-        url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
-        attributions: imageryAttribution,
-        maxZoom: 19,
-      }),
+      source: esriXyz(
+        "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+        imageryAttribution
+      ),
+      preload: 2,
     }),
     new TileLayer({
-      source: new XYZ({
-        url: "https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}",
-        attributions: imageryAttribution,
-        maxZoom: 19,
-      }),
+      source: esriXyz(
+        "https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}",
+        imageryAttribution
+      ),
       zIndex: 10,
+      preload: 1,
     }),
   ];
 }
 
-/**
- * Google Maps-like street map using Esri World_Street_Map.
- * Clean road labeling, place names, and POIs similar to Google Maps.
- */
-export function createStreetMapLayers(): TileLayer<XYZ>[] {
+export function createStreetMapLayers(): TileLayer[] {
   return [
     new TileLayer({
-      source: new XYZ({
-        url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}",
-        attributions: streetAttribution,
-        maxZoom: 19,
+      source: new OSM({
+        crossOrigin: "anonymous",
+        transition: 0,
       }),
+      preload: 1,
+      opacity: 1,
+      zIndex: 0,
+    }),
+    new TileLayer({
+      source: esriXyz(
+        "https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}",
+        streetAttribution
+      ),
+      preload: 2,
+      zIndex: 1,
     }),
   ];
 }

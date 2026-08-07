@@ -762,7 +762,7 @@ export default function GeofencesPage() {
             </div>
             <div
               ref={drawerMapRef}
-              className="w-full h-64 rounded-xl border border-border overflow-hidden"
+              className="w-full h-64 min-h-[16rem] rounded-xl border border-border overflow-hidden bg-muted/40 [&_.ol-viewport]:h-full [&_.ol-viewport]:w-full"
             />
             <div className="flex items-center justify-between rounded-lg border border-border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
               <span className="flex items-center gap-1.5">
@@ -1004,7 +1004,7 @@ export default function GeofencesPage() {
               </div>
               <div
                 ref={editDrawerMapRef}
-                className="w-full h-64 rounded-xl border border-border overflow-hidden"
+                className="w-full h-64 min-h-[16rem] rounded-xl border border-border overflow-hidden bg-muted/40 [&_.ol-viewport]:h-full [&_.ol-viewport]:w-full"
               />
               <p className="text-xs text-muted-foreground">
                 {editDrawMode ? t("drawHint") : t("clickHint")}

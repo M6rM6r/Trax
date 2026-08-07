@@ -506,7 +506,7 @@ export default function LiveMapPage() {
                   <div ref={mapContainerRef} className="relative group">
                     <div
                       ref={mapRef}
-                      className="h-[600px] w-full dark:[&_.ol-layer]:filter dark:[&_.ol-layer]:invert-[1] dark:[&_.ol-layer]:hue-rotate-180 dark:[&_.ol-layer]:brightness-[0.9] dark:[&_.ol-layer]:contrast-[0.9]"
+                      className="h-[600px] w-full bg-muted/40 [&_.ol-viewport]:bg-muted/40"
                     />
                     {/* Map Controls */}
                     <div className="absolute top-3 left-3 flex flex-col gap-2 z-10">

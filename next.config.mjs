@@ -12,7 +12,8 @@ const nextConfig = {
   compress: true,
 
   experimental: {
-    optimizePackageImports: ["lucide-react", "recharts", "date-fns", "framer-motion", "ol", "@radix-ui/react-dialog", "@radix-ui/react-popover"],
+    // Do not put "ol" here — OpenLayers tree-shaking breaks XYZ tile layers at runtime.
+    optimizePackageImports: ["lucide-react", "recharts", "date-fns", "framer-motion", "@radix-ui/react-dialog", "@radix-ui/react-popover"],
   },
 
   // Removed manual redirects as next-intl handles this automatically
@@ -25,11 +26,12 @@ const nextConfig = {
       "object-src 'none'",
       "frame-ancestors 'none'",
       "form-action 'self'",
-      "img-src 'self' data: blob: https://firebasestorage.googleapis.com https://*.googleusercontent.com https://www.google-analytics.com https://www.googletagmanager.com",
+      // OpenLayers basemaps use Esri XYZ tiles (geofences, live-map, MapComponent).
+      "img-src 'self' data: blob: https://firebasestorage.googleapis.com https://*.googleusercontent.com https://www.google-analytics.com https://www.googletagmanager.com https://server.arcgisonline.com https://services.arcgisonline.com https://*.arcgisonline.com https://*.openstreetmap.org https://tile.openstreetmap.org",
       "font-src 'self' data: https://fonts.gstatic.com",
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
       "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.googletagmanager.com https://www.google-analytics.com https://apis.google.com https://*.firebaseio.com https://www.gstatic.com https://www.google.com https://js.sentry-cdn.com https://browser.sentry-cdn.com",
-      "connect-src 'self' https://*.googleapis.com https://*.firebaseio.com https://*.cloudfunctions.net https://*.firebaseapp.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firestore.googleapis.com https://firebasestorage.googleapis.com https://fcmregistrations.googleapis.com https://firebaseinstallations.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://*.sentry.io wss://*.firebaseio.com https://*.hosted.app",
+      "connect-src 'self' https://*.googleapis.com https://*.firebaseio.com https://*.cloudfunctions.net https://*.firebaseapp.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firestore.googleapis.com https://firebasestorage.googleapis.com https://fcmregistrations.googleapis.com https://firebaseinstallations.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://*.sentry.io wss://*.firebaseio.com https://*.hosted.app https://server.arcgisonline.com https://services.arcgisonline.com https://*.arcgisonline.com https://*.openstreetmap.org",
       "frame-src 'self' https://*.firebaseapp.com https://accounts.google.com https://www.google.com",
       "worker-src 'self' blob:",
       "manifest-src 'self'",
