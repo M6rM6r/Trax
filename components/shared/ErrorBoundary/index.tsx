@@ -2,6 +2,7 @@
 
 import { Component, ErrorInfo, ReactNode } from "react";
 import { useTranslations } from "next-intl";
+import { isChunkLoadError, recoverFromChunkLoadError } from "@/lib/utils/chunkLoadRecovery";
 
 interface State {
   hasError: boolean;
@@ -15,6 +16,7 @@ interface Props {
 
 function ErrorFallback({ error, onRetry }: { error: Error | null; onRetry: () => void }) {
   const t = useTranslations("Error");
+  const chunkError = isChunkLoadError(error);
   return (
     <div className="flex flex-col items-center justify-center min-h-screen p-8 bg-background">
       <div className="max-w-md w-full bg-card border border-border rounded-2xl p-8 text-center">
@@ -33,15 +35,21 @@ function ErrorFallback({ error, onRetry }: { error: Error | null; onRetry: () =>
             />
           </svg>
         </div>
-        <h1 className="text-xl font-bold text-foreground mb-2">{t("unexpectedError")}</h1>
-        <p className="text-sm text-muted-foreground mb-6">{error?.message || t("reloadPage")}</p>
+        <h1 className="text-xl font-bold text-foreground mb-2">
+          {chunkError ? t("updateAvailable") : t("pageError")}
+        </h1>
+        <p className="text-sm text-muted-foreground mb-6">
+          {chunkError ? t("updateAvailableHint") : error?.message || t("reloadPage")}
+        </p>
         <div className="flex gap-3">
-          <button
-            onClick={onRetry}
-            className="flex-1 py-3 px-4 bg-muted text-muted-foreground rounded-xl font-medium hover:bg-muted/80 transition-colors"
-          >
-            {t("retry")}
-          </button>
+          {!chunkError && (
+            <button
+              onClick={onRetry}
+              className="flex-1 py-3 px-4 bg-muted text-muted-foreground rounded-xl font-medium hover:bg-muted/80 transition-colors"
+            >
+              {t("retry")}
+            </button>
+          )}
           <button
             onClick={() => window.location.reload()}
             className="flex-1 py-3 px-4 bg-primary text-primary-foreground rounded-xl font-medium hover:bg-primary/90 transition-colors"
@@ -65,6 +73,7 @@ class ErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo): void {
+    if (recoverFromChunkLoadError(error)) return;
     console.error("ErrorBoundary caught:", error, errorInfo);
   }
 

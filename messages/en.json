@@ -650,7 +650,9 @@
   "Error": {
     "pageError": "An unexpected error occurred",
     "retry": "Try again",
-    "reloadPage": "Reload page"
+    "reloadPage": "Reload page",
+    "updateAvailable": "App update available",
+    "updateAvailableHint": "A new version was deployed. Reload the page to continue."
   },
   "Metadata": {
     "title": "Trax — Smart Attendance System",

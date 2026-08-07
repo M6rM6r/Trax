@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { AlertTriangle, RefreshCw } from "lucide-react";
+import { isChunkLoadError, recoverFromChunkLoadError } from "@/lib/utils/chunkLoadRecovery";
 
 export default function Error({
   error,
@@ -10,7 +11,10 @@ export default function Error({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  const chunkError = isChunkLoadError(error);
+
   useEffect(() => {
+    if (recoverFromChunkLoadError(error)) return;
     console.error("App error:", error);
   }, [error]);
 
@@ -21,15 +25,23 @@ export default function Error({
           <AlertTriangle className="w-8 h-8 text-destructive" aria-hidden />
         </div>
         <h1 className="text-xl font-bold text-foreground mb-2">
-          حدث خطأ في التطبيق
+          {chunkError ? "يتوفر تحديث للتطبيق" : "حدث خطأ في التطبيق"}
         </h1>
-        <p className="text-sm text-muted-foreground mb-6">{error.message}</p>
+        <p className="text-sm text-muted-foreground mb-6">
+          {chunkError ? "تم نشر إصدار جديد. أعد تحميل الصفحة للمتابعة." : error.message}
+        </p>
         <button
-          onClick={reset}
+          onClick={() => {
+            if (chunkError) {
+              window.location.reload();
+              return;
+            }
+            reset();
+          }}
           className="w-full py-3 px-4 bg-primary text-primary-foreground rounded-xl font-medium hover:bg-primary/90 transition-colors flex items-center justify-center gap-2"
         >
           <RefreshCw className="w-4 h-4" />
-          إعادة المحاولة
+          {chunkError ? "إعادة تحميل الصفحة" : "إعادة المحاولة"}
         </button>
       </div>
     </div>

@@ -58,18 +58,36 @@ export async function revokeFCMToken(token: string): Promise<void> {
 async function storeFCMToken(token: string): Promise<void> {
   if (!db) return;
 
+  // Rules require signedIn() + sameCompany(request.resource). Skip until
+  // company_id is known — otherwise getToken succeeds and setDoc throws
+  // "Missing or insufficient permissions".
   const companyId = getCompanyId();
+  if (!companyId) {
+    console.warn("[FCM] skip token store — company_id not ready yet");
+    return;
+  }
+
   const { user, role } = useAuthStore.getState();
-  await setDoc(doc(db, "fcm_tokens", token), {
-    token,
-    company_id: companyId,
-    user_id: user?.id ?? null,
-    role: role ?? null,
-    platform: getPlatform(),
-    user_agent: navigator.userAgent,
-    created_at: serverTimestamp(),
-    updated_at: serverTimestamp(),
-  });
+  if (!user?.id) {
+    console.warn("[FCM] skip token store — user not ready yet");
+    return;
+  }
+
+  await setDoc(
+    doc(db, "fcm_tokens", token),
+    {
+      token,
+      company_id: companyId,
+      user_id: user.id,
+      ownerUid: user.id,
+      role: role ?? null,
+      platform: getPlatform(),
+      user_agent: navigator.userAgent,
+      created_at: serverTimestamp(),
+      updated_at: serverTimestamp(),
+    },
+    { merge: true }
+  );
 }
 
 function getPlatform(): string {

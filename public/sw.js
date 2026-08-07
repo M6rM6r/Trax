@@ -1,5 +1,7 @@
-const CACHE_NAME = "trax-v5";
-const STATIC_ASSETS = ["/", "/manifest.json", "/ar/check-in", "/en/check-in"];
+// Bump on deploy-related SW policy changes so activate purges old HTML shells.
+const CACHE_NAME = "trax-v6-static";
+// Only truly static, non-hashed shell assets. Never cache HTML/RSC/chunks.
+const STATIC_ASSETS = ["/manifest.json"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -19,6 +21,13 @@ self.addEventListener("activate", (event) => {
   self.clients.claim();
 });
 
+// Allow the page to force-activate a waiting worker after deploy.
+self.addEventListener("message", (event) => {
+  if (event.data && event.data.type === "SKIP_WAITING") {
+    self.skipWaiting();
+  }
+});
+
 self.addEventListener("fetch", (event) => {
   const { request } = event;
 
@@ -26,36 +35,30 @@ self.addEventListener("fetch", (event) => {
 
   const url = new URL(request.url);
 
-  // Never cache Next.js internals/app chunks or API calls.
-  // These must always come from network to avoid stale RSC payloads.
-  if (url.pathname.startsWith("/_next/") || url.pathname.startsWith("/api/")) {
-    return;
-  }
-
-  // Navigational requests: network-first with offline fallback to cached page.
-  // Login/register pages should never be served from cache because they change
-  // frequently and the credentials are not real email addresses.
+  // Never intercept Next.js builds, APIs, or document navigations.
+  // Caching HTML shells after deploy causes ChunkLoadError (stale chunk hashes).
   if (
+    url.pathname.startsWith("/_next/") ||
+    url.pathname.startsWith("/api/") ||
+    request.mode === "navigate" ||
+    request.destination === "document" ||
     url.pathname.includes("/login") ||
     url.pathname.includes("/register")
   ) {
     return;
   }
 
-  if (request.mode === "navigate") {
-    event.respondWith(
-      fetch(request)
-        .then((response) => {
-          const responseClone = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(request, responseClone));
-          return response;
-        })
-        .catch(() => caches.match(request).then((cached) => cached || caches.match("/")))
-    );
-    return;
-  }
-
-  if (url.origin === location.origin) {
+  // Same-origin static media only (icons, images, fonts) — cache-first.
+  if (
+    url.origin === location.origin &&
+    (url.pathname.startsWith("/images/") ||
+      url.pathname.startsWith("/icons/") ||
+      url.pathname.endsWith(".png") ||
+      url.pathname.endsWith(".ico") ||
+      url.pathname.endsWith(".svg") ||
+      url.pathname.endsWith(".webp") ||
+      url.pathname === "/manifest.json")
+  ) {
     event.respondWith(
       caches.match(request).then((cached) => {
         const fetchPromise = fetch(request)

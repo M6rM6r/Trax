@@ -650,7 +650,9 @@
   "Error": {
     "pageError": "حدث خطأ غير متوقع",
     "retry": "إعادة المحاولة",
-    "reloadPage": "إعادة تحميل الصفحة"
+    "reloadPage": "إعادة تحميل الصفحة",
+    "updateAvailable": "يتوفر تحديث للتطبيق",
+    "updateAvailableHint": "تم نشر إصدار جديد. أعد تحميل الصفحة للمتابعة."
   },
   "Metadata": {
     "title": "Trax — نظام تحضير الموظفين",

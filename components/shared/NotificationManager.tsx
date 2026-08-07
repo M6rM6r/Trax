@@ -393,6 +393,8 @@ export default function NotificationManager() {
   ]);
 
   useEffect(() => {
+    // Rules need auth + company_id on fcm_tokens writes — wait for both.
+    if (!user?.id || !companyId) return;
     if (permissionRequested.current) return;
     if (typeof window === "undefined" || !("Notification" in window)) return;
     if (!pushNotificationsEnabled) return;
@@ -408,9 +410,10 @@ export default function NotificationManager() {
       }, 5000);
       return () => clearTimeout(timer);
     } else if (Notification.permission === "granted") {
+      permissionRequested.current = true;
       requestFCMToken().catch((err) => console.warn("[FCM] token registration failed:", err));
     }
-  }, [pushNotificationsEnabled]);
+  }, [pushNotificationsEnabled, user?.id, companyId]);
 
   // Check-in reminder for employees only
   useEffect(() => {
