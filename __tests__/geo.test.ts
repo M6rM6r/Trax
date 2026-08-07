@@ -1,7 +1,11 @@
 import { describe, it, expect } from "@jest/globals";
-import { calculateDistance, GEOFENCE_DISTANCE_BUFFER_METERS } from "@/lib/utils/geo";
+import {
+  calculateDistance,
+  GEOFENCE_DISTANCE_BUFFER_METERS,
+  resolveAttendanceLocation,
+} from "@/lib/utils/geo";
 import { isWithinAnyGeofence, findNearestGeofence } from "@/hooks/useGeolocation";
-import type { Geofence } from "@/lib/types/trackingTypes";
+import type { Employee, Geofence } from "@/lib/types/trackingTypes";
 
 const mk = (id: string, lat: number, lng: number, radius: number): Geofence => ({
   id,
@@ -97,5 +101,70 @@ describe("geofence guards", () => {
     const ok = mk("ok", 24.7136, 46.6753, 100);
     const n = findNearestGeofence(24.7136, 46.6753, [bad, ok]);
     expect(n?.geofence.id).toBe("ok");
+  });
+});
+
+describe("resolveAttendanceLocation", () => {
+  const dahiyah = { ...mk("g1", 24.71, 46.67, 200), name: "الضاحية" };
+  const waha = { ...mk("g2", 24.72, 46.68, 200), name: "الواحة" };
+  const fences = [dahiyah, waha];
+
+  it("uses punch geofenceId name, not nearest GPS fence", () => {
+    // GPS sits inside الواحة, but punch was recorded against الضاحية assignment.
+    const name = resolveAttendanceLocation(
+      {
+        employeeId: "e1",
+        geofenceId: "g1",
+        geofenceName: null,
+        checkInLat: waha.lat,
+        checkInLng: waha.lng,
+      },
+      fences
+    );
+    expect(name).toBe("الضاحية");
+  });
+
+  it("does not invent nearest fence when punch has no geofence", () => {
+    const name = resolveAttendanceLocation(
+      {
+        employeeId: "e1",
+        geofenceId: null,
+        geofenceName: null,
+        checkInLat: dahiyah.lat,
+        checkInLng: dahiyah.lng,
+      },
+      fences
+    );
+    expect(name).toBeUndefined();
+  });
+
+  it("falls back to employee assigned geofence for absents", () => {
+    const employees = [{ id: "e9", geofenceId: "g2", name: "Ahmad" } as Employee];
+    const name = resolveAttendanceLocation(
+      {
+        employeeId: "e9",
+        geofenceId: null,
+        geofenceName: null,
+        checkInLat: null,
+        checkInLng: null,
+      },
+      fences,
+      employees
+    );
+    expect(name).toBe("الواحة");
+  });
+
+  it("ignores bare numeric geofenceName labels", () => {
+    const name = resolveAttendanceLocation(
+      {
+        employeeId: "e1",
+        geofenceId: "3404",
+        geofenceName: "3404",
+        checkInLat: null,
+        checkInLng: null,
+      },
+      fences
+    );
+    expect(name).toBeUndefined();
   });
 });

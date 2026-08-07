@@ -7,6 +7,7 @@ import type { AttendanceRecord, Employee } from "@/lib/types/trackingTypes";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useCompanySettingsStore } from "@/stores/useCompanySettingsStore";
 import { DEFAULT_COMPANY_TIMEZONE, formatCompanyDate } from "@/lib/utils/companyDate";
+import { defaultAttendanceWindow } from "@/lib/utils/attendanceWindow";
 import { queryKeys, toApiDate, myAttendanceQueryKey } from "./queryKeys";
 
 export function useAttendance(options?: {
@@ -15,15 +16,23 @@ export function useAttendance(options?: {
 }) {
   const companyId = useAuthStore((state) => state.companyId);
   const role = useAuthStore((state) => state.role);
-  const from = options?.dateRange?.from;
-  const to = options?.dateRange?.to;
+  const timezone = useCompanySettingsStore((s) => s.timezone) || DEFAULT_COMPANY_TIMEZONE;
+  // Never unbounded: missing range → last 30 company days (same as Attendance "all" / reports).
+  const boundedRange = useMemo(() => {
+    if (options?.dateRange?.from && options?.dateRange?.to) {
+      return { from: options.dateRange.from, to: options.dateRange.to };
+    }
+    return defaultAttendanceWindow(timezone);
+  }, [options?.dateRange?.from, options?.dateRange?.to, timezone]);
+  const from = boundedRange.from;
+  const to = boundedRange.to;
 
   return useQuery<AttendanceRecord[]>({
-    queryKey: [...queryKeys.attendance, companyId ?? "unassigned", from ?? "all", to ?? "all"],
-    // Keep company roster fresh so check-in/out + late feed stay in sync.
-    staleTime: 15 * 1000,
+    queryKey: [...queryKeys.attendance, companyId ?? "unassigned", from, to],
+    // Fresh enough for boss view without 15s Firestore stampede.
+    staleTime: 30 * 1000,
     refetchOnWindowFocus: true,
-    refetchInterval: 15 * 1000,
+    refetchInterval: 30 * 1000,
     refetchIntervalInBackground: false,
     // Company-admin roster list. Employees use useMyAttendance only.
     enabled: Boolean(companyId) && role === "company" && (options?.enabled ?? true),
@@ -31,13 +40,17 @@ export function useAttendance(options?: {
       if (useAuthStore.getState().role !== "company") {
         throw new Error("UNAUTHORIZED_ATTENDANCE_LIST");
       }
-      return firebaseData.attendance.list(undefined, options?.dateRange);
+      return firebaseData.attendance.list(undefined, boundedRange);
     },
   });
 }
 
+/** Reports default to last 30 company days (bounded, not unbounded history). */
 export function useAttendanceReports() {
-  return useAttendance();
+  const timezone = useCompanySettingsStore((s) => s.timezone) || DEFAULT_COMPANY_TIMEZONE;
+  const dateRange = useMemo(() => defaultAttendanceWindow(timezone), [timezone]);
+  const query = useAttendance({ dateRange });
+  return { ...query, dateRange };
 }
 
 function useCompanyTodayYmd(): string {
@@ -64,10 +77,14 @@ function useCompanyTodayYmd(): string {
   return today;
 }
 
-export function useMyAttendance(employeeId?: string | null) {
+export function useMyAttendance(employeeId?: string | null, options?: { enabled?: boolean }) {
   const companyId = useAuthStore((state) => state.companyId);
+  const role = useAuthStore((state) => state.role);
   const timezone = useCompanySettingsStore((s) => s.timezone) || DEFAULT_COMPANY_TIMEZONE;
   const today = useCompanyTodayYmd();
+  // Field staff only — company dashboards use useAttendance roster, not this path.
+  const enabled =
+    Boolean(companyId && employeeId) && role === "employee" && (options?.enabled ?? true);
 
   return useQuery<AttendanceRecord[]>({
     // Include company calendar day so optimistic check-in cache hits this query.
@@ -76,7 +93,7 @@ export function useMyAttendance(employeeId?: string | null) {
       const day = toApiDate(new Date(), timezone) ?? formatCompanyDate(new Date(), timezone);
       return firebaseData.attendance.list(employeeId ?? undefined, { from: day, to: day });
     },
-    enabled: Boolean(companyId && employeeId),
+    enabled,
     staleTime: 15 * 1000,
     refetchInterval: 30 * 1000,
     refetchOnWindowFocus: true,

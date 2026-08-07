@@ -28,6 +28,17 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import type { AttendanceRecord } from "@/lib/types/trackingTypes";
 import { CountUp } from "@/components/shared/CountUp";
 import { useLocale, useTranslations } from "next-intl";
+import { useCompanySettingsStore } from "@/stores/useCompanySettingsStore";
+import {
+  buildAttendancePipeline,
+  displayOutcome,
+  formatLateMinutes,
+  formatWorkedHours,
+  isLateArrival,
+  matchesStatusFilter,
+} from "@/lib/utils/attendancePipeline";
+import { DEFAULT_COMPANY_TIMEZONE, formatCompanyDate } from "@/lib/utils/companyDate";
+import { defaultAttendanceWindow } from "@/lib/utils/attendanceWindow";
 
 function useAttendanceStatusLabels() {
   const t = useTranslations("Attendance");
@@ -44,39 +55,45 @@ function useAttendanceStatusLabels() {
 
 type DateRange = "all" | "today" | "yesterday" | "week" | "month" | "thisMonth" | "lastMonth";
 
-function getDateRange(range: DateRange, today: string) {
+/** Inclusive company-calendar range. Dates walk via UTC noon so YYYY-MM-DD stays stable. */
+function getDateRange(
+  range: DateRange,
+  today: string,
+  timeZone: string = DEFAULT_COMPANY_TIMEZONE
+) {
   if (range === "all") return null;
   if (range === "today") return { start: today, end: today };
 
-  const now = new Date(`${today}T12:00:00+03:00`);
-  const formatRiyadh = (d: Date) => d.toLocaleDateString("en-CA", { timeZone: "Asia/Riyadh" });
+  const formatInTz = (d: Date) =>
+    d.toLocaleDateString("en-CA", { timeZone: timeZone || DEFAULT_COMPANY_TIMEZONE });
+  const anchor = new Date(`${today}T12:00:00Z`);
 
   if (range === "yesterday") {
-    const d = new Date(now);
-    d.setDate(d.getDate() - 1);
-    const yesterday = formatRiyadh(d);
+    const d = new Date(anchor);
+    d.setUTCDate(d.getUTCDate() - 1);
+    const yesterday = formatInTz(d);
     return { start: yesterday, end: yesterday };
   }
 
   if (range === "week") {
-    const start = new Date(now);
-    start.setDate(start.getDate() - 6);
-    return { start: formatRiyadh(start), end: today };
+    const start = new Date(anchor);
+    start.setUTCDate(start.getUTCDate() - 6);
+    return { start: formatInTz(start), end: today };
   }
 
   if (range === "month") {
-    const start = new Date(now);
-    start.setDate(start.getDate() - 29);
-    return { start: formatRiyadh(start), end: today };
+    const start = new Date(anchor);
+    start.setUTCDate(start.getUTCDate() - 29);
+    return { start: formatInTz(start), end: today };
   }
 
   if (range === "thisMonth") {
     const dtf = new Intl.DateTimeFormat("en-CA", {
-      timeZone: "Asia/Riyadh",
+      timeZone: timeZone || DEFAULT_COMPANY_TIMEZONE,
       year: "numeric",
       month: "2-digit",
     });
-    const parts = dtf.formatToParts(now);
+    const parts = dtf.formatToParts(new Date(`${today}T12:00:00Z`));
     const year = parts.find((p) => p.type === "year")?.value;
     const month = parts.find((p) => p.type === "month")?.value;
     return { start: `${year}-${month}-01`, end: today };
@@ -84,11 +101,11 @@ function getDateRange(range: DateRange, today: string) {
 
   if (range === "lastMonth") {
     const dtf = new Intl.DateTimeFormat("en-CA", {
-      timeZone: "Asia/Riyadh",
+      timeZone: timeZone || DEFAULT_COMPANY_TIMEZONE,
       year: "numeric",
       month: "2-digit",
     });
-    const parts = dtf.formatToParts(now);
+    const parts = dtf.formatToParts(new Date(`${today}T12:00:00Z`));
     let year = Number(parts.find((p) => p.type === "year")?.value);
     let month = Number(parts.find((p) => p.type === "month")?.value);
     month -= 1;
@@ -97,9 +114,8 @@ function getDateRange(range: DateRange, today: string) {
       year -= 1;
     }
     const start = `${year}-${String(month).padStart(2, "0")}-01`;
-    const end = new Date(Date.UTC(year, month, 0)).toLocaleDateString("en-CA", {
-      timeZone: "Asia/Riyadh",
-    });
+    // Last calendar day of previous month (UTC date math on Y-M).
+    const end = new Date(Date.UTC(year, month, 0)).toISOString().slice(0, 10);
     return { start, end };
   }
 
@@ -112,6 +128,14 @@ export default function AttendancePage() {
   const statusLabels = useAttendanceStatusLabels();
   const { data: employees = [] } = useEmployees();
   const { data: geofences = [] } = useGeofences();
+  const workStartTime = useCompanySettingsStore((s) => s.workStartTime);
+  const gracePeriodMinutes = useCompanySettingsStore((s) => s.gracePeriodMinutes);
+  const timezone = useCompanySettingsStore((s) => s.timezone) || DEFAULT_COMPANY_TIMEZONE;
+  const weekendDays = useCompanySettingsStore((s) => s.weekendDays);
+  const companySettingsSlice = useMemo(
+    () => ({ workStartTime, gracePeriodMinutes, timezone, weekendDays }),
+    [workStartTime, gracePeriodMinutes, timezone, weekendDays]
+  );
 
   const resolveLocationName = useCallback(
     (record: AttendanceRecord) => resolveAttendanceLocation(record, geofences, employees),
@@ -132,22 +156,27 @@ export default function AttendancePage() {
     [locale]
   );
 
-  const today = useMemo(
-    () => new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Riyadh" }),
-    []
-  );
+  const today = useMemo(() => formatCompanyDate(new Date(), timezone), [timezone]);
 
   const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = useState({
     employeeId: "",
     statuses: [] as string[],
-    dateRange: "month" as DateRange,
+    // Single day by default — KPI cards are headcounts for one day, not month totals.
+    dateRange: "today" as DateRange,
   });
 
-  const attendanceDateRange = useMemo(() => {
-    const range = getDateRange(filters.dateRange, today);
-    return range ? { from: range.start, to: range.end } : undefined;
-  }, [filters.dateRange, today]);
+  /**
+   * Always bound fetch + KPIs + table to the same window.
+   * "all" → last 30 company days (never unbounded list stampede).
+   */
+  const coverageWindow = useMemo(() => {
+    const range = getDateRange(filters.dateRange, today, timezone);
+    if (range?.start && range?.end) {
+      return { from: range.start, to: range.end };
+    }
+    return defaultAttendanceWindow(timezone, new Date(`${today}T12:00:00Z`));
+  }, [filters.dateRange, today, timezone]);
 
   const {
     data: attendance = [],
@@ -155,53 +184,46 @@ export default function AttendancePage() {
     isError,
     refetch,
   } = useAttendance({
-    dateRange: attendanceDateRange,
+    dateRange: coverageWindow,
   });
 
-  const filteredAttendance = useMemo(() => {
-    return attendance
-      .filter((r) => {
-        if (filters.employeeId && String(r.employeeId) !== String(filters.employeeId)) return false;
-        if (filters.statuses.length > 0 && !filters.statuses.includes(r.status)) return false;
-        return true;
-      })
-      .map((r) => ({ ...r, geofenceName: resolveLocationName(r) || "-" }))
-      .sort((a, b) => {
-        // Newest company-day first, then most recent punch (checkout > check-in).
-        const byDate = b.date.localeCompare(a.date);
-        if (byDate !== 0) return byDate;
-        const aAct = a.checkOutTime || a.checkInTime || "";
-        const bAct = b.checkOutTime || b.checkInTime || "";
-        return bAct.localeCompare(aAct);
-      });
-  }, [attendance, filters, resolveLocationName]);
+  /**
+   * Single pipeline: dedupe → coverage KPIs → table rows (+ synthetic absents).
+   * Cards and grid share the same person-day math — no dual paths.
+   */
+  const pipeline = useMemo(
+    () =>
+      buildAttendancePipeline({
+        employees,
+        attendance,
+        fromYmd: coverageWindow.from,
+        toYmd: coverageWindow.to,
+        settings: companySettingsSlice,
+        employeeId: filters.employeeId || null,
+      }),
+    [employees, attendance, coverageWindow, companySettingsSlice, filters.employeeId]
+  );
 
-  const stats = useMemo(() => {
-    let present = 0,
-      late = 0,
-      absent = 0,
-      checkedOut = 0;
-    for (const r of filteredAttendance) {
-      if (r.status === "absent" && !r.checkInTime) {
-        absent++;
-        continue;
-      }
-      if (!r.checkInTime) continue;
-      if ((r.lateMinutes ?? 0) > 0 || r.status === "late") late++;
-      else present++;
-      if (r.status === "checked_out" || r.checkOutTime) checkedOut++;
-    }
-    return { present, late, absent, checkedOut, total: filteredAttendance.length };
-  }, [filteredAttendance]);
+  const stats = pipeline.coverage;
+
+  const filteredAttendance = useMemo(() => {
+    return pipeline.rows
+      .filter((r) => matchesStatusFilter(r, filters.statuses))
+      .map((r) => {
+        // Assigned fence / punch fence only — never nearest-GPS invent.
+        const name = resolveLocationName(r) || "-";
+        return { ...r, geofenceName: name };
+      });
+  }, [pipeline.rows, filters.statuses, resolveLocationName]);
 
   const activeFilterCount =
     (filters.employeeId ? 1 : 0) +
     filters.statuses.length +
-    (filters.dateRange !== "month" ? 1 : 0);
+    (filters.dateRange !== "today" ? 1 : 0);
 
   const clearFilters = () => {
     hapticTap();
-    setFilters({ employeeId: "", statuses: [], dateRange: "month" });
+    setFilters({ employeeId: "", statuses: [], dateRange: "today" });
   };
 
   return (
@@ -318,20 +340,33 @@ export default function AttendancePage() {
                     return;
                   }
                   try {
-                    const rows = filteredAttendance.map((record) => ({
-                      employeeName: record.employeeName || "-",
-                      date: "'" + record.date,
-                      checkInTime: record.checkInTime ?? "-",
-                      checkOutTime: record.checkOutTime ?? "-",
-                      status:
-                        statusLabels[record.status as keyof typeof statusLabels] || record.status,
-                      lateMinutes: record.lateMinutes ?? 0,
-                      workedHours:
-                        typeof record.workedHours === "number"
-                          ? record.workedHours.toFixed(2)
-                          : "-",
-                      geofenceName: record.geofenceName || "-",
-                    }));
+                    const rows = filteredAttendance.map((record) => {
+                      const outcome = displayOutcome(record);
+                      const late = isLateArrival(record);
+                      const statusLabel =
+                        outcome === "checked_out"
+                          ? late
+                            ? `${statusLabels.checked_out} · ${statusLabels.late}`
+                            : statusLabels.checked_out
+                          : outcome === "late"
+                            ? statusLabels.late
+                            : outcome === "present"
+                              ? statusLabels.present
+                              : statusLabels.absent;
+                      return {
+                        employeeName: record.employeeName || "-",
+                        date: "'" + record.date,
+                        checkInTime: record.checkInTime ?? "-",
+                        checkOutTime: record.checkOutTime ?? "-",
+                        status: statusLabel,
+                        lateMinutes: record.lateMinutes ?? 0,
+                        workedHours:
+                          typeof record.workedHours === "number"
+                            ? record.workedHours.toFixed(2)
+                            : "-",
+                        geofenceName: record.geofenceName || "-",
+                      };
+                    });
                     exportToCSV(rows, "attendance_report", [
                       { key: "employeeName", label: "Employee" },
                       { key: "date", label: "Date" },
@@ -387,8 +422,9 @@ export default function AttendancePage() {
                 stagger: "animate-stagger-3",
               },
               {
-                label: t("total"),
-                count: stats.total,
+                label: t("expectedSlots"),
+                // expected === total by law; prefer expected so cards never drift from engine field.
+                count: stats.expected,
                 Icon: Users,
                 color: "text-slate-400",
                 bg: "bg-slate-400/10",
@@ -491,17 +527,12 @@ export default function AttendancePage() {
                 sortable: true,
                 sortValue: (r) => r.workedHours ?? -1,
                 cell: (r) => {
-                  const hours = r.workedHours;
-                  if (hours === null || hours === undefined) return "-";
-                  const totalMinutes = Math.round(hours * 60);
-                  const h = Math.floor(totalMinutes / 60);
-                  const m = totalMinutes % 60;
-                  return h > 0 ? (
-                    <span className="text-sm font-medium text-foreground">
-                      {h}h {m}m
-                    </span>
+                  if (r.status === "absent" && !r.checkInTime) return "—";
+                  const label = formatWorkedHours(r.workedHours);
+                  return label ? (
+                    <span className="text-sm font-medium text-foreground">{label}</span>
                   ) : (
-                    <span className="text-sm font-medium text-foreground">{m}m</span>
+                    "-"
                   );
                 },
               },
@@ -509,18 +540,14 @@ export default function AttendancePage() {
                 key: "lateMinutes",
                 header: t("lateMinutes"),
                 sortable: true,
-                sortValue: (r) => r.lateMinutes,
+                sortValue: (r) => r.lateMinutes ?? 0,
                 cell: (r) => {
-                  const minutes = r.lateMinutes ?? 0;
-                  if (minutes <= 0) return "-";
-                  const hours = Math.floor(minutes / 60);
-                  const mins = minutes % 60;
-                  return hours > 0 ? (
-                    <span className="text-[hsl(48_96%_53%)] font-medium">
-                      {hours}h {mins}m
-                    </span>
+                  if (r.status === "absent" && !r.checkInTime) return "—";
+                  const label = formatLateMinutes(r.lateMinutes);
+                  return label ? (
+                    <span className="text-[hsl(48_96%_53%)] font-medium">{label}</span>
                   ) : (
-                    <span className="text-[hsl(48_96%_53%)] font-medium">{mins}m</span>
+                    "-"
                   );
                 },
               },
@@ -541,36 +568,34 @@ export default function AttendancePage() {
                 key: "status",
                 header: t("status"),
                 sortable: true,
-                sortValue: (r) => r.status,
+                sortValue: (r) => displayOutcome(r),
                 cell: (r) => {
-                  const isCheckedOut = r.status === "checked_out" || Boolean(r.checkOutTime);
-                  const isLate =
-                    !isCheckedOut &&
-                    r.status !== "absent" &&
-                    ((r.lateMinutes ?? 0) > 0 || r.status === "late");
-                  const isPresent = !isCheckedOut && r.status !== "absent" && !isLate;
-                  // Checkout is the terminal state — do not hide it behind "late".
-                  const label = isCheckedOut
-                    ? statusLabels.checked_out
-                    : isLate
-                      ? statusLabels.late
-                      : statusLabels[r.status as keyof typeof statusLabels] || r.status;
+                  const outcome = displayOutcome(r);
+                  const late = isLateArrival(r);
+                  const label =
+                    outcome === "checked_out"
+                      ? statusLabels.checked_out
+                      : outcome === "late"
+                        ? statusLabels.late
+                        : outcome === "present"
+                          ? statusLabels.present
+                          : statusLabels.absent;
                   return (
                     <span
                       className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                        isCheckedOut
+                        outcome === "checked_out"
                           ? "bg-slate-500/15 text-slate-700 dark:text-slate-200"
-                          : isPresent
+                          : outcome === "present"
                             ? "bg-primary/10 text-primary"
-                            : isLate
+                            : outcome === "late"
                               ? "bg-[hsl(48_96%_53%/0.15)] text-[hsl(48_96%_53%)]"
                               : "bg-destructive/10 text-destructive"
                       }`}
                     >
                       {label}
-                      {isCheckedOut && ((r.lateMinutes ?? 0) > 0 || r.status === "late") && (
+                      {outcome === "checked_out" && late ? (
                         <span className="opacity-80">· {statusLabels.late}</span>
-                      )}
+                      ) : null}
                     </span>
                   );
                 },

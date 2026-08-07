@@ -42,5 +42,18 @@ export default function RoleGate({ children }: { children: React.ReactNode }) {
     }
   }, [hydrated, role, token, pathname, router]);
 
+  // Hold protected shells until auth rehydrate finishes — prevents one-frame wrong-role flash.
+  if (!hydrated && pathname && !isPublicPath(pathname)) {
+    return (
+      <div
+        className="min-h-[40vh] flex items-center justify-center"
+        aria-busy="true"
+        aria-label="Loading"
+      >
+        <div className="h-8 w-8 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+      </div>
+    );
+  }
+
   return <>{children}</>;
 }

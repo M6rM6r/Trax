@@ -369,11 +369,15 @@ export default function LiveMapPage() {
     }
   }, [showRoute, routeHistory, selectedEmployee]);
 
-  if (role === "employee") {
+  if (role && role !== "company") {
     return (
       <MainLayout>
         <div className="p-6 min-h-screen">
-          <AccessDeniedCard icon={MapPin} message={t("accessDenied")} ctaHref="/check-in" />
+          <AccessDeniedCard
+            icon={MapPin}
+            message={t("accessDenied")}
+            ctaHref={role === "employee" ? "/check-in" : "/mastermind/companies"}
+          />
         </div>
       </MainLayout>
     );
@@ -506,7 +510,8 @@ export default function LiveMapPage() {
                   <div ref={mapContainerRef} className="relative group">
                     <div
                       ref={mapRef}
-                      className="h-[600px] w-full bg-muted/40 [&_.ol-viewport]:bg-muted/40"
+                      dir="ltr"
+                      className="h-[600px] w-full bg-muted/40 [&_.ol-viewport]:!h-full [&_.ol-viewport]:!w-full [&_.ol-layer]:!w-full"
                     />
                     {/* Map Controls */}
                     <div className="absolute top-3 left-3 flex flex-col gap-2 z-10">

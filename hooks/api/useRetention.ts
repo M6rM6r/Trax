@@ -1,9 +1,11 @@
 "use client";
 
+import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { buildRetentionFeatures, type RetentionFeatures } from "@/lib/utils/retentionFeatures";
 import type { AttendanceRecord, Employee } from "@/lib/types/trackingTypes";
 import { useAuthStore } from "@/stores/useAuthStore";
+import { useCompanySettingsStore } from "@/stores/useCompanySettingsStore";
 import { firebaseData } from "@/lib/services/firebaseData";
 import { queryKeys } from "./queryKeys";
 
@@ -38,18 +40,38 @@ function computeRetentionInsightLocal(features: RetentionFeatures): RetentionIns
   };
 }
 
-export function useRetentionInsights(attendance: AttendanceRecord[], employees: Employee[]) {
+export function useRetentionInsights(
+  attendance: AttendanceRecord[],
+  employees: Employee[],
+  window?: { from?: string; to?: string } | null
+) {
   const companyId = useAuthStore((state) => state.companyId);
+  const workStartTime = useCompanySettingsStore((s) => s.workStartTime);
+  const gracePeriodMinutes = useCompanySettingsStore((s) => s.gracePeriodMinutes);
+  const timezone = useCompanySettingsStore((s) => s.timezone);
+  const weekendDays = useCompanySettingsStore((s) => s.weekendDays);
+  const settings = useMemo(
+    () => ({ workStartTime, gracePeriodMinutes, timezone, weekendDays }),
+    [workStartTime, gracePeriodMinutes, timezone, weekendDays]
+  );
+  const from = window?.from ?? "";
+  const to = window?.to ?? "";
 
   return useQuery<RetentionInsightResponse>({
     queryKey: [
       ...queryKeys.aiRetention,
       companyId ?? "unassigned",
+      from,
+      to,
       attendance.length,
       employees.length,
+      workStartTime ?? "",
+      String(gracePeriodMinutes ?? ""),
+      timezone ?? "",
+      JSON.stringify(weekendDays ?? []),
     ],
     queryFn: async () => {
-      const features = buildRetentionFeatures(attendance, employees);
+      const features = buildRetentionFeatures(attendance, employees, settings, window);
       try {
         const result = await firebaseData.cloudFunctions.analyzeRetention(
           features as unknown as Record<string, unknown>
@@ -59,7 +81,7 @@ export function useRetentionInsights(attendance: AttendanceRecord[], employees: 
         return computeRetentionInsightLocal(features);
       }
     },
-    enabled: Boolean(companyId) && attendance.length > 0,
+    enabled: Boolean(companyId) && (attendance.length > 0 || employees.length > 0),
     staleTime: 5 * 60 * 1000,
     retry: 0,
   });

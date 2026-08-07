@@ -66,6 +66,11 @@ export const attendanceApi = {
     const base = collection(requireDb(), "attendance");
     const extraFilters: ReturnType<typeof where>[] = [];
     if (employeeId) extraFilters.push(where("employeeId", "==", employeeId));
+    // Push date bounds into Firestore when possible (cuts 500-doc client waste).
+    // Field is `date` (YYYY-MM-DD). Composite index: company_id + date desc.
+    // If index is missing, queryByCompanyId falls back to unordered + client filter below.
+    if (dateRange?.from) extraFilters.push(where("date", ">=", dateRange.from));
+    if (dateRange?.to) extraFilters.push(where("date", "<=", dateRange.to));
     // Status/lateMinutes written at check-in are authoritative historical facts.
     // Do not re-fetch employees/geofences/settings and rewrite history on every list —
     // that caused a 3x Firestore stampede on dashboard + attendance pages.
@@ -76,6 +81,7 @@ export const attendanceApi = {
       orderBy("date", "desc")
     );
 
+    // Defense in depth if unordered fallback returned extra days.
     if (dateRange?.from || dateRange?.to) {
       records = records.filter((record) => {
         if (dateRange.from && record.date < dateRange.from) return false;
@@ -85,7 +91,8 @@ export const attendanceApi = {
     }
 
     // Most recent first: day desc, then latest punch (checkout beats check-in).
-    records.sort((a, b) => {
+    // Copy before sort — never mutate mapper output / shared refs.
+    records = [...records].sort((a, b) => {
       const byDate = b.date.localeCompare(a.date);
       if (byDate !== 0) return byDate;
       const aAct = a.checkOutTime || a.checkInTime || "";

@@ -164,10 +164,14 @@ export default function NotificationCenter() {
         </button>
       </PopoverTrigger>
       <PopoverContent
-        className="w-[min(520px,95vw)] max-h-[80vh] rounded-2xl p-0 overflow-hidden bg-popover border-border shadow-xl"
+        className="z-[60] w-[min(360px,calc(100vw-1.5rem))] max-h-[min(70vh,520px)] rounded-2xl p-0 overflow-hidden bg-popover border-border shadow-xl"
         align="end"
+        side="bottom"
+        sideOffset={8}
+        collisionPadding={12}
+        avoidCollisions
       >
-        <div className="flex flex-col h-full max-h-[80vh]">
+        <div className="flex flex-col h-full max-h-[min(70vh,520px)]">
           <div className="flex items-center justify-between gap-3 p-4 border-b border-border">
             <div className="flex items-center gap-3">
               <p className="text-base font-semibold text-foreground">{t("title")}</p>

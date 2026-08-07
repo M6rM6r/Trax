@@ -188,6 +188,8 @@ export const bulkCreateEmployees = functions.https.onCall(async (data, context) 
         company_id: companyId,
         company_name: companyName,
         authUid: userRecord.uid,
+        // Company-admin recoverable credential (UI show/hide). Auth still holds the hash.
+        loginPassword: password,
         status: "active",
         currentLat: null,
         currentLng: null,
@@ -455,7 +457,11 @@ export const setEmployeePassword = functions.https.onCall(async (data, context) 
   }
 
   await auth.updateUser(authUid, { password });
-  await db.collection("employees").doc(employeeId).update({ password });
+  // Company UI reads loginPassword (client rules block field name `password`).
+  await db.collection("employees").doc(employeeId).update({
+    loginPassword: password,
+    password: password,
+  });
 
   return { success: true, data: { employeeId } };
 });

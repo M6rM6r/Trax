@@ -14,6 +14,9 @@ import dynamic from "next/dynamic";
 import { useAuthStore } from "@/stores/useAuthStore";
 import AccessDeniedCard from "@/components/shared/AccessDeniedCard";
 import { useTranslations } from "next-intl";
+import { useCompanySettingsStore } from "@/stores/useCompanySettingsStore";
+import { computeAttendanceCoverage } from "@/lib/utils/attendanceAbsent";
+import { DEFAULT_COMPANY_TIMEZONE } from "@/lib/utils/companyDate";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 const BarChart: ComponentType<any> = dynamic(
@@ -72,47 +75,53 @@ const CustomTooltip = ({ active, payload, label }: CustomTooltipProps) => {
 };
 
 export default function AttendanceReportsPage() {
-  const { data: attendance = [], isLoading, isError, refetch } = useAttendanceReports();
+  const {
+    data: attendance = [],
+    isLoading,
+    isError,
+    refetch,
+    dateRange: reportsWindow,
+  } = useAttendanceReports();
   const { data: employees = [] } = useEmployees();
+  const workStartTime = useCompanySettingsStore((s) => s.workStartTime);
+  const gracePeriodMinutes = useCompanySettingsStore((s) => s.gracePeriodMinutes);
+  const timezone = useCompanySettingsStore((s) => s.timezone) || DEFAULT_COMPANY_TIMEZONE;
+  const weekendDays = useCompanySettingsStore((s) => s.weekendDays);
+  const companySettings = useMemo(
+    () => ({ workStartTime, gracePeriodMinutes, timezone, weekendDays }),
+    [workStartTime, gracePeriodMinutes, timezone, weekendDays]
+  );
   const {
     data: retentionInsights,
     isLoading: isRetentionLoading,
     isError: isRetentionError,
-  } = useRetentionInsights(attendance, employees);
+  } = useRetentionInsights(attendance, employees, reportsWindow);
   const role = useAuthStore((s) => s.role);
   const { toast } = useToast();
   const t = useTranslations("AttendanceReports");
 
+  // Same bounded window as fetch (last 30d) — do not shrink KPIs to min/max punch dates.
+  const coverageWindow = reportsWindow;
+
   const { presentCount, lateCount, absentCount, onTimeRate, avgLateMinutes } = useMemo(() => {
-    let present = 0,
-      late = 0,
-      absent = 0,
-      lateSum = 0,
-      lateCountInner = 0;
-    for (const r of attendance) {
-      const isLate = r.lateMinutes > 0;
-      if (r.status === "absent") {
-        absent++;
-        continue;
-      }
-      if (r.status === "late" || (r.status === "checked_out" && isLate)) {
-        late++;
-        lateSum += r.lateMinutes;
-        lateCountInner++;
-      } else if (r.status === "present" || (r.status === "checked_out" && !isLate)) {
-        present++;
-      }
-    }
-    const rate = attendance.length > 0 ? ((present / attendance.length) * 100).toFixed(1) : "0";
-    const avg = Math.round(lateSum / Math.max(lateCountInner, 1));
+    const cov = computeAttendanceCoverage({
+      employees,
+      attendance,
+      fromYmd: coverageWindow.from,
+      toYmd: coverageWindow.to,
+      settings: companySettings,
+    });
+    const lateRecords = attendance.filter((r) => (r.lateMinutes ?? 0) > 0 && r.checkInTime);
+    const lateSum = lateRecords.reduce((s, r) => s + (r.lateMinutes ?? 0), 0);
+    const avg = Math.round(lateSum / Math.max(lateRecords.length, 1));
     return {
-      presentCount: present,
-      lateCount: late,
-      absentCount: absent,
-      onTimeRate: rate,
+      presentCount: cov.present,
+      lateCount: cov.late,
+      absentCount: cov.absent,
+      onTimeRate: String(cov.attendanceRate),
       avgLateMinutes: avg,
     };
-  }, [attendance]);
+  }, [attendance, employees, coverageWindow, companySettings]);
 
   const chartData = useMemo(
     () => [
@@ -130,7 +139,7 @@ export default function AttendanceReportsPage() {
     >();
 
     attendance.forEach((record) => {
-      if (record.lateMinutes <= 0) return;
+      if ((record.lateMinutes ?? 0) <= 0 || !record.checkInTime) return;
       const key = String(record.employeeId);
       const current = lateMap.get(key) ?? {
         name: record.employeeName,
@@ -139,7 +148,7 @@ export default function AttendanceReportsPage() {
         avgLateMinutes: 0,
       };
       current.lateCount += 1;
-      current.totalLateMinutes += record.lateMinutes;
+      current.totalLateMinutes += record.lateMinutes ?? 0;
       current.avgLateMinutes = Math.round(current.totalLateMinutes / current.lateCount);
       lateMap.set(key, current);
     });
@@ -150,43 +159,33 @@ export default function AttendanceReportsPage() {
   }, [attendance]);
 
   const departmentPerformance = useMemo(() => {
-    const employeeMap = new Map(employees.map((e) => [String(e.id), e]));
-    const departmentMap = new Map<
-      string,
-      { department: string; total: number; presentOrLate: number; absent: number; rate: number }
-    >();
-
-    attendance.forEach((record) => {
-      const emp = employeeMap.get(String(record.employeeId));
-      const department = emp?.department || t("undefinedDepartment");
-      const current = departmentMap.get(department) ?? {
-        department,
-        total: 0,
-        presentOrLate: 0,
-        absent: 0,
-        rate: 0,
-      };
-
-      current.total += 1;
-      if (
-        record.status === "present" ||
-        record.status === "late" ||
-        record.status === "checked_out"
-      ) {
-        current.presentOrLate += 1;
-      }
-      if (record.status === "absent") {
-        current.absent += 1;
-      }
-      current.rate = Math.round((current.presentOrLate / current.total) * 100);
-
-      departmentMap.set(department, current);
-    });
-
-    return Array.from(departmentMap.values())
+    const departments = new Map<string, typeof employees>();
+    for (const e of employees.filter((x) => x.status === "active")) {
+      const dep = e.department || t("undefinedDepartment");
+      const list = departments.get(dep) ?? [];
+      list.push(e);
+      departments.set(dep, list);
+    }
+    return Array.from(departments.entries())
+      .map(([department, roster]) => {
+        const cov = computeAttendanceCoverage({
+          employees: roster,
+          attendance,
+          fromYmd: coverageWindow.from,
+          toYmd: coverageWindow.to,
+          settings: companySettings,
+        });
+        return {
+          department,
+          total: cov.expected,
+          presentOrLate: cov.present + cov.late,
+          absent: cov.absent,
+          rate: Math.round(cov.attendanceRate),
+        };
+      })
       .sort((a, b) => b.rate - a.rate)
       .slice(0, 6);
-  }, [attendance, employees, t]);
+  }, [attendance, employees, t, coverageWindow, companySettings]);
 
   if (role === "employee") {
     return (

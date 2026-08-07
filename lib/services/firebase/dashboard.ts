@@ -1,12 +1,9 @@
 import type { DashboardStats } from "@/lib/types/trackingTypes";
 import type { DashboardTrendsSchema } from "@/lib/schemas/dashboard.schema";
 import type { CompanySettings } from "@/lib/types/companySettings";
-import {
-  companyMinutesSinceMidnight,
-  companyWeekday,
-  DEFAULT_COMPANY_TIMEZONE,
-  formatCompanyDate,
-} from "@/lib/utils/companyDate";
+import { DEFAULT_COMPANY_TIMEZONE, formatCompanyDate } from "@/lib/utils/companyDate";
+import { last7CompanyDays } from "@/lib/utils/attendanceWindow";
+import { computeAttendanceCoverage } from "@/lib/utils/attendanceAbsent";
 import { employeesApi } from "./employees";
 import { attendanceApi } from "./attendance";
 import { geofencesApi } from "./geofences";
@@ -39,30 +36,7 @@ const EMPTY_TRENDS: DashboardTrendsSchema = {
   onTimeRateChange: 0,
 };
 
-function isPastCheckInDeadline(
-  settings?: Partial<CompanySettings>,
-  referenceDate: Date = new Date()
-): boolean {
-  if (!settings?.workStartTime) return true;
-  const [hours, minutes] = settings.workStartTime.split(":").map(Number);
-  if (Number.isNaN(hours) || Number.isNaN(minutes)) return true;
-  const tz = settings.timezone || DEFAULT_COMPANY_TIMEZONE;
-  const nowMinutes = companyMinutesSinceMidnight(referenceDate, tz);
-  const deadlineMinutes = hours * 60 + minutes + (settings.gracePeriodMinutes ?? 0);
-  return nowMinutes >= deadlineMinutes;
-}
-
-/** Arrival outcome for metrics — checked_out still has present/late from lateMinutes. */
-function arrivalBucket(record: {
-  status: string;
-  lateMinutes?: number | null;
-  checkInTime?: string | null;
-}): "present" | "late" | "absent" | "none" {
-  if (!record.checkInTime && record.status === "absent") return "absent";
-  if (!record.checkInTime) return "none";
-  if ((record.lateMinutes ?? 0) > 0 || record.status === "late") return "late";
-  return "present";
-}
+const DAY_NAMES_AR = ["الأحد", "الإثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"];
 
 export const dashboardApi = {
   async getDashboardData(
@@ -72,24 +46,32 @@ export const dashboardApi = {
     stats: DashboardStats;
     trends: DashboardTrendsSchema;
   }> {
-    // Ensure user is authenticated first
     try {
       await ensureAuth();
     } catch {
       return { stats: EMPTY_STATS, trends: EMPTY_TRENDS };
     }
-    // If no company assigned yet, return empty dashboard
     const companyId = getCompanyId();
     if (!companyId) {
       return { stats: EMPTY_STATS, trends: EMPTY_TRENDS };
     }
+
+    const tz = companySettings?.timezone || DEFAULT_COMPANY_TIMEZONE;
+    const now = new Date();
+    const companyToday = formatCompanyDate(now, tz);
+    const toStr = typeof to === "string" && to ? to : companyToday;
+    // Always pull enough history for the 7-day trend, even if the UI range is "today".
+    const weekWindow = last7CompanyDays(tz, new Date(`${toStr}T12:00:00Z`));
+    const weekFrom = weekWindow.from;
+    const fromStr =
+      typeof from === "string" && from ? (from < weekFrom ? from : weekFrom) : weekFrom;
 
     let employees: Awaited<ReturnType<typeof employeesApi.list>> = [];
     let attendance: Awaited<ReturnType<typeof attendanceApi.list>> = [];
     let geofences: Awaited<ReturnType<typeof geofencesApi.list>> = [];
     const [empRes, attRes, geoRes] = await Promise.allSettled([
       employeesApi.list(),
-      attendanceApi.list(undefined, { from, to }),
+      attendanceApi.list(undefined, { from: fromStr, to: toStr }),
       geofencesApi.list(),
     ]);
     if (empRes.status === "fulfilled") employees = empRes.value;
@@ -98,40 +80,28 @@ export const dashboardApi = {
     else console.warn("[dashboard] attendance fetch failed:", attRes.reason);
     if (geoRes.status === "fulfilled") geofences = geoRes.value;
     else console.warn("[dashboard] geofences fetch failed:", geoRes.reason);
-    const tz =
-      (companySettings as { timezone?: string } | null | undefined)?.timezone ||
-      DEFAULT_COMPANY_TIMEZONE;
-    const toStr = typeof to === "string" ? to : undefined;
-    const fromStr = typeof from === "string" ? from : undefined;
-    const referenceDate = toStr ? new Date(`${toStr}T12:00:00`) : new Date();
-    const todayStr = toStr || formatCompanyDate(referenceDate, tz);
-    const now = new Date();
-    const isToday = todayStr === formatCompanyDate(now, tz);
-    const deadlineDate = isToday
-      ? now
-      : (() => {
-          const d = new Date(referenceDate);
-          d.setHours(23, 59, 59, 999);
-          return d;
-        })();
 
+    const todayStr = toStr;
     const todayRecords = attendance.filter((record) => record.date === todayStr);
-    const rangeRecords =
-      fromStr && toStr
-        ? attendance.filter((record) => record.date >= fromStr && record.date <= toStr)
-        : attendance;
+    const rangeRecords = attendance.filter(
+      (record) => record.date >= fromStr && record.date <= toStr
+    );
     const activeEmployees = employees.filter((employee) => employee.status === "active");
-    // One bucket per record: present/late are arrival outcomes; checkedOut is session state (can overlap).
-    const presentToday = todayRecords.filter((r) => arrivalBucket(r) === "present").length;
-    const lateToday = todayRecords.filter((r) => arrivalBucket(r) === "late").length;
-    const checkedOutToday = todayRecords.filter(
-      (record) => record.status === "checked_out" || Boolean(record.checkOutTime)
-    ).length;
+
+    // Single source of truth — same engine as Attendance page KPIs.
+    const todayCoverage = computeAttendanceCoverage({
+      employees,
+      attendance,
+      fromYmd: todayStr,
+      toYmd: todayStr,
+      settings: companySettings,
+      now,
+    });
+
     const earlyCheckoutsToday = todayRecords.filter((record) => record.earlyCheckout).length;
     const worked = todayRecords
       .map((record) => record.workedHours)
       .filter((hours): hours is number => hours !== null && hours > 0);
-    const punctualBase = presentToday + lateToday;
     const checkInTimes = todayRecords
       .map((r) => r.checkInTime)
       .filter((t): t is string => t !== null && t !== undefined)
@@ -139,27 +109,25 @@ export const dashboardApi = {
     const medianCheckIn =
       checkInTimes.length > 0 ? checkInTimes[Math.floor(checkInTimes.length / 2)] : "N/A";
 
-    const absTz = companySettings?.timezone || DEFAULT_COMPANY_TIMEZONE;
-    const weekend = companySettings?.weekendDays ?? [5, 6];
-    const isWeekend = weekend.includes(companyWeekday(deadlineDate, absTz));
-    const checkedInIds = new Set(
-      todayRecords.filter((r) => r.checkInTime).map((r) => String(r.employeeId))
-    );
-    const absentToday =
-      !isWeekend && isPastCheckInDeadline(companySettings, deadlineDate)
-        ? Math.max(0, activeEmployees.length - checkedInIds.size)
-        : 0;
-
     const stats: DashboardStats = {
       totalEmployees: employees.length,
-      activeEmployees: employees.filter((employee) => employee.status === "active").length,
+      activeEmployees: activeEmployees.length,
       inactiveEmployees: employees.filter((employee) => employee.status === "inactive").length,
-      presentToday,
-      absentToday,
-      lateToday,
-      checkedOutToday,
+      presentToday: todayCoverage.present,
+      absentToday: todayCoverage.absent,
+      lateToday: todayCoverage.late,
+      checkedOutToday: todayCoverage.checkedOut,
       earlyCheckoutsToday,
-      onTimeRate: punctualBase > 0 ? Number(((presentToday / punctualBase) * 100).toFixed(1)) : 0,
+      // On-time among arrivals only — not attendance rate (that includes absents).
+      onTimeRate:
+        todayCoverage.present + todayCoverage.late > 0
+          ? Number(
+              (
+                (todayCoverage.present / (todayCoverage.present + todayCoverage.late)) *
+                100
+              ).toFixed(1)
+            )
+          : 0,
       avgCheckInTime: medianCheckIn,
       avgWorkedHours:
         worked.length > 0
@@ -171,7 +139,6 @@ export const dashboardApi = {
       hourlyToday: todayRecords.filter((r) => r.attendanceMode === "hourly").length,
     };
 
-    const dayNames = ["الأحد", "الإثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"];
     const weeklyData: {
       day: string;
       present: number;
@@ -179,26 +146,49 @@ export const dashboardApi = {
       absent: number;
       avgWorkedHours: number;
     }[] = [];
+    // One pass group — avoid O(7n) filter on every dashboard load.
+    const byDate = new Map<string, typeof attendance>();
+    for (const r of attendance) {
+      if (!r.date) continue;
+      const list = byDate.get(r.date);
+      if (list) list.push(r);
+      else byDate.set(r.date, [r]);
+    }
+    const wdMap: Record<string, number> = {
+      Sun: 0,
+      Mon: 1,
+      Tue: 2,
+      Wed: 3,
+      Thu: 4,
+      Fri: 5,
+      Sat: 6,
+    };
     for (let i = 6; i >= 0; i--) {
-      const d = new Date(referenceDate);
-      d.setDate(d.getDate() - i);
+      const d = new Date(`${toStr}T12:00:00Z`);
+      d.setUTCDate(d.getUTCDate() - i);
       const dateStr = formatCompanyDate(d, tz);
-      const dayRecords = attendance.filter((r) => r.date === dateStr);
-      const present = dayRecords.filter(
-        (r) => r.status === "present" || (r.status === "checked_out" && !(r.lateMinutes > 0))
-      ).length;
-      const late = dayRecords.filter(
-        (r) => r.status === "late" || (r.status === "checked_out" && r.lateMinutes > 0)
-      ).length;
-      const absent = Math.max(0, activeEmployees.length - dayRecords.length);
+      const dayRecords = byDate.get(dateStr) ?? [];
+      // Same person-day engine as Attendance page (weekends → expected 0).
+      const dayCov = computeAttendanceCoverage({
+        employees,
+        attendance: dayRecords,
+        fromYmd: dateStr,
+        toYmd: dateStr,
+        settings: companySettings,
+        now,
+      });
       const dayWorked = dayRecords
         .map((r) => r.workedHours)
         .filter((h): h is number => h !== null && h > 0);
+      const wd = new Intl.DateTimeFormat("en-US", {
+        timeZone: tz,
+        weekday: "short",
+      }).format(d);
       weeklyData.push({
-        day: dayNames[d.getDay()],
-        present,
-        late,
-        absent,
+        day: DAY_NAMES_AR[wdMap[wd] ?? 0],
+        present: dayCov.present,
+        late: dayCov.late,
+        absent: dayCov.absent,
         avgWorkedHours:
           dayWorked.length > 0
             ? Number((dayWorked.reduce((s, h) => s + h, 0) / dayWorked.length).toFixed(1))

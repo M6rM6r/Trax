@@ -25,7 +25,11 @@ export function useSaveCompanySettings() {
       await firebaseData.companies.saveSettings(settings as Record<string, unknown>);
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: queryKeys.companySettings });
+      // Settings change grace/weekend/timezone → bust every coverage-dependent surface.
+      void qc.invalidateQueries({ queryKey: queryKeys.companySettings });
+      void qc.invalidateQueries({ queryKey: queryKeys.dashboard, refetchType: "all" });
+      void qc.invalidateQueries({ queryKey: queryKeys.attendance, refetchType: "all" });
+      void qc.invalidateQueries({ queryKey: queryKeys.aiRetention });
     },
   });
 }

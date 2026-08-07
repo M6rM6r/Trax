@@ -6,6 +6,10 @@ import type { AttendanceRecord, Employee, LiveTrackingEmployee } from "@/lib/typ
 import { useTranslations } from "next-intl";
 import { DEFAULT_COMPANY_TIMEZONE, formatCompanyDate } from "@/lib/utils/companyDate";
 import { useCompanySettingsStore } from "@/stores/useCompanySettingsStore";
+import {
+  buildSyntheticAbsentRecords,
+  isPastCheckInDeadlineForDay,
+} from "@/lib/utils/attendanceAbsent";
 
 interface ManagerActionQueueProps {
   attendanceData?: AttendanceRecord[];
@@ -29,7 +33,14 @@ export default function ManagerActionQueue({
   liveTracking = [],
 }: ManagerActionQueueProps) {
   const t = useTranslations("Dashboard");
+  const workStartTime = useCompanySettingsStore((s) => s.workStartTime);
+  const gracePeriodMinutes = useCompanySettingsStore((s) => s.gracePeriodMinutes);
   const timezone = useCompanySettingsStore((s) => s.timezone) || DEFAULT_COMPANY_TIMEZONE;
+  const weekendDays = useCompanySettingsStore((s) => s.weekendDays);
+  const settings = useMemo(
+    () => ({ workStartTime, gracePeriodMinutes, timezone, weekendDays }),
+    [workStartTime, gracePeriodMinutes, timezone, weekendDays]
+  );
   const today = formatCompanyDate(new Date(), timezone);
 
   const actions = useMemo<ActionItem[]>(() => {
@@ -49,8 +60,10 @@ export default function ManagerActionQueue({
         });
       });
 
-    attendanceData
-      .filter((r) => r.date === today && r.status === "late")
+    const todayRows = attendanceData.filter((r) => r.date === today);
+
+    todayRows
+      .filter((r) => r.checkInTime && ((r.lateMinutes ?? 0) > 0 || r.status === "late"))
       .forEach((r) => {
         list.push({
           id: `late-${r.id}`,
@@ -61,17 +74,38 @@ export default function ManagerActionQueue({
         });
       });
 
-    attendanceData
-      .filter((r) => r.date === today && r.status === "absent")
-      .forEach((r) => {
+    // After deadline: one action per missing employee (synthetic covers explicit absent docs too).
+    if (isPastCheckInDeadlineForDay(today, settings)) {
+      const missing = buildSyntheticAbsentRecords({
+        employees,
+        attendance: todayRows,
+        fromYmd: today,
+        toYmd: today,
+        settings,
+      });
+      const absentByEmployee = new Map<string, { title: string }>();
+      for (const r of missing) {
+        absentByEmployee.set(String(r.employeeId), {
+          title: r.employeeName || String(r.employeeId),
+        });
+      }
+      for (const r of todayRows) {
+        if (r.status === "absent" && !r.checkInTime) {
+          absentByEmployee.set(String(r.employeeId), {
+            title: r.employeeName || String(r.employeeId),
+          });
+        }
+      }
+      absentByEmployee.forEach((v, employeeId) => {
         list.push({
-          id: `absent-${r.id}`,
-          title: r.employeeName,
+          id: `absent-${employeeId}`,
+          title: v.title,
           description: t("absentToday"),
           severity: "high",
           icon: UserX,
         });
       });
+    }
 
     employees
       .filter((e) => e.shiftOverride)
@@ -85,8 +119,14 @@ export default function ManagerActionQueue({
         });
       });
 
-    return list;
-  }, [attendanceData, employees, liveTracking, today, t]);
+    // Dedupe by id (synthetic + explicit absent).
+    const seen = new Set<string>();
+    return list.filter((item) => {
+      if (seen.has(item.id)) return false;
+      seen.add(item.id);
+      return true;
+    });
+  }, [attendanceData, employees, liveTracking, today, t, settings]);
 
   if (actions.length === 0) {
     return (

@@ -24,12 +24,17 @@ export function useEmployees(options?: { enabled?: boolean }) {
   });
 }
 
-export function useEmployee(employeeId?: string | null) {
+export function useEmployee(employeeId?: string | null, options?: { enabled?: boolean }) {
   const companyId = useAuthStore((state) => state.companyId);
+  const role = useAuthStore((state) => state.role);
 
   return useQuery<Employee | null>({
     queryKey: [...queryKeys.employees, "byId", employeeId ?? "none", companyId ?? "unassigned"],
-    enabled: Boolean(companyId && employeeId),
+    // Company admin + own employee profile; skip for mastermind / logged-out shells.
+    enabled:
+      Boolean(companyId && employeeId) &&
+      (role === "company" || role === "employee") &&
+      (options?.enabled ?? true),
     staleTime: 60 * 1000,
     refetchOnWindowFocus: false,
     refetchIntervalInBackground: false,
@@ -115,8 +120,36 @@ export function useResetEmployeePassword() {
         throw new Error("Password must be at least 8 characters");
       }
       if (id && password) {
-        await firebaseData.cloudFunctions.setEmployeePassword({ employeeId: id, password });
-        return { id };
+        // 1) Auth + Admin write of loginPassword (requires deployed setEmployeePassword CF).
+        try {
+          await firebaseData.cloudFunctions.setEmployeePassword({ employeeId: id, password });
+        } catch (err) {
+          const code =
+            typeof err === "object" && err !== null && "code" in err
+              ? String((err as { code?: string }).code)
+              : "";
+          const msg = err instanceof Error ? err.message : String(err);
+          // CF missing / not deployed: still store company-visible password, then surface Auth gap.
+          if (
+            code.includes("not-found") ||
+            code.includes("unimplemented") ||
+            msg.toLowerCase().includes("not-found") ||
+            msg.toLowerCase().includes("not found")
+          ) {
+            await firebaseData.employees.setCompanyVisiblePassword(id, password);
+            throw new Error(
+              "PASSWORD_SAVED_AUTH_PENDING: Password saved for company view, but login Auth was not updated. Deploy Cloud Functions (setEmployeePassword), then set the password once more."
+            );
+          }
+          throw err;
+        }
+        // 2) Belt-and-suspenders client write so UI always has loginPassword even if Admin path lags.
+        try {
+          await firebaseData.employees.setCompanyVisiblePassword(id, password);
+        } catch {
+          // CF already wrote it; ignore client permission races.
+        }
+        return { id, password };
       }
       if (email) {
         await firebaseData.employees.resetPassword(email);
@@ -124,7 +157,16 @@ export function useResetEmployeePassword() {
       }
       throw new Error("Employee id or email is required to reset password");
     },
-    onSuccess: () => {
+    onSuccess: (result) => {
+      if (result?.id && result && "password" in result && typeof result.password === "string") {
+        const plain = result.password;
+        qc.setQueriesData<Employee[]>({ queryKey: queryKeys.employees }, (old) => {
+          if (!old) return old;
+          return old.map((e) =>
+            String(e.id) === String(result.id) ? { ...e, password: plain } : e
+          );
+        });
+      }
       qc.invalidateQueries({ queryKey: queryKeys.employees, refetchType: "all" });
     },
   });

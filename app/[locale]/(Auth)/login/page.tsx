@@ -8,9 +8,9 @@ import * as Yup from "yup";
 import { toastSuccess, toastError } from "@/hooks/use-toast";
 import { useSearchParams, useRouter } from "next/navigation";
 import { Link } from "@/i18n/navigation";
-import { useMemo, useState } from "react";
-import { useAuthStore } from "@/stores/useAuthStore";
-import { useTranslations } from "next-intl";
+import { useEffect, useMemo, useState } from "react";
+import { useAuthStore, type UserRole } from "@/stores/useAuthStore";
+import { useLocale, useTranslations } from "next-intl";
 import { hapticSuccess, hapticError } from "@/lib/utils/haptics";
 import {
   getIdTokenResult,
@@ -23,7 +23,28 @@ import {
 import { auth } from "@/lib/config/firebase";
 import { getFirebaseUserProfile } from "@/lib/services/firebaseData";
 import { resolveUserRole } from "@/lib/utils/auth";
-import { homePathForRole } from "@/lib/utils/roleAccess";
+import { canRoleAccessPath, homePathForRole } from "@/lib/utils/roleAccess";
+
+/** Only same-origin app paths — blocks open redirects via ?next=. */
+function safeNextPath(raw: string | null, role: UserRole): string {
+  if (!raw) return homePathForRole(role);
+  let decoded = raw.trim();
+  try {
+    decoded = decodeURIComponent(decoded);
+  } catch {
+    return homePathForRole(role);
+  }
+  if (!decoded.startsWith("/") || decoded.startsWith("//") || decoded.includes("://")) {
+    return homePathForRole(role);
+  }
+  // Strip locale prefix for role check, keep full path for navigation.
+  const stripped = decoded.replace(/^\/(ar|en)(?=\/|$)/, "") || "/";
+  if (!canRoleAccessPath(role, stripped)) {
+    return homePathForRole(role);
+  }
+  // Navigate with current locale via router — return path without locale if present.
+  return stripped === "" ? "/" : stripped;
+}
 
 interface LoginValues {
   identifier: string;
@@ -39,16 +60,48 @@ const loginSchema = (t: ReturnType<typeof useTranslations>) =>
 
 const Page = () => {
   const t = useTranslations("Auth");
+  const locale = useLocale();
   const searchParams = useSearchParams();
   const initialIdentifier = useMemo(
     () => searchParams.get("identifier")?.trim() || "",
     [searchParams]
   );
+  const reason = searchParams.get("reason");
+  const nextParam = searchParams.get("next");
   const setUser = useAuthStore((s) => s.setUser);
   const setRememberMe = useAuthStore((s) => s.setRememberMe);
   const clearUser = useAuthStore((s) => s.clearUser);
+  const token = useAuthStore((s) => s.token);
+  const role = useAuthStore((s) => s.role);
   const router = useRouter();
   const [showSuccess, setShowSuccess] = useState(false);
+  const [hydrated, setHydrated] = useState(false);
+
+  useEffect(() => {
+    const api = useAuthStore.persist;
+    if (!api) {
+      setHydrated(true);
+      return;
+    }
+    const unsub = api.onFinishHydration(() => setHydrated(true));
+    if (api.hasHydrated()) setHydrated(true);
+    return unsub;
+  }, []);
+
+  // Already signed in → bounce to role home (or safe ?next=).
+  useEffect(() => {
+    if (!hydrated || showSuccess) return;
+    if (!token || !role) return;
+    const dest = safeNextPath(nextParam, role);
+    router.replace(`/${locale}${dest === "/" ? "" : dest}`);
+  }, [hydrated, token, role, nextParam, router, locale, showSuccess]);
+
+  const reasonMessage = useMemo(() => {
+    if (reason === "session_expired") return t("sessionExpired");
+    if (reason === "session_timeout") return t("sessionTimeout");
+    if (reason === "unauthenticated") return t("pleaseSignIn");
+    return null;
+  }, [reason, t]);
 
   const applyLoginResponse = async (
     values: LoginValues,
@@ -112,13 +165,9 @@ const Page = () => {
     setShowSuccess(true);
 
     setTimeout(() => {
-      const currentLocale =
-        typeof window !== "undefined" && window.location.pathname.split("/")[1] === "en"
-          ? "en"
-          : "ar";
-      // Exactly 3 homes: mastermind → /mastermind/companies, company → /, employee → /check-in
-      const home = homePathForRole(role);
-      router.push(`/${currentLocale}${home === "/" ? "" : home}` || `/${currentLocale}`);
+      // Exactly 3 homes + optional safe ?next= return path.
+      const dest = safeNextPath(nextParam, role);
+      router.push(`/${locale}${dest === "/" ? "" : dest}`);
     }, 800);
   };
 
@@ -231,6 +280,19 @@ const Page = () => {
     }
   };
 
+  // Hold form while rehydrate / already-auth redirect settles.
+  if (!hydrated || (token && role && !showSuccess)) {
+    return (
+      <section className="w-screen h-screen flex items-center justify-center bg-background">
+        <div
+          className="h-8 w-8 rounded-full border-2 border-primary border-t-transparent animate-spin"
+          aria-busy="true"
+          aria-label={t("loading")}
+        />
+      </section>
+    );
+  }
+
   return (
     <section className="w-screen h-screen flex items-center justify-center bg-background">
       <div className="w-full max-w-[400px] px-6 flex flex-col items-center gap-8">
@@ -257,6 +319,15 @@ const Page = () => {
                 <div className="text-center mb-2">
                   <h1 className="text-xl font-bold text-foreground">{t("loginTitle")}</h1>
                 </div>
+
+                {reasonMessage ? (
+                  <p
+                    role="status"
+                    className="rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-center text-xs font-medium text-amber-800 dark:text-amber-200"
+                  >
+                    {reasonMessage}
+                  </p>
+                ) : null}
 
                 <CustomInput
                   type="email"

@@ -97,7 +97,10 @@ export function NotificationBell() {
       <PopoverContent
         side="bottom"
         align="end"
-        className="w-[min(24rem,95vw)] max-h-[85vh] p-0 overflow-hidden shadow-xl"
+        sideOffset={8}
+        collisionPadding={12}
+        avoidCollisions
+        className="z-[60] w-[min(22rem,calc(100vw-1.25rem))] max-h-[min(70vh,520px)] p-0 overflow-hidden shadow-xl"
       >
         <NotificationCenter />
       </PopoverContent>

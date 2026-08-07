@@ -25,8 +25,13 @@ function mergeByTimestamp(
   return Array.from(map.values());
 }
 
-export function useLiveTrackingSocket(initialData: LiveTrackingEmployee[]) {
+export function useLiveTrackingSocket(
+  initialData: LiveTrackingEmployee[],
+  options?: { enabled?: boolean }
+) {
   const companyId = useAuthStore((state) => state.companyId);
+  const role = useAuthStore((state) => state.role);
+  const enabled = (options?.enabled ?? true) && Boolean(companyId) && role === "company";
   const [employees, setEmployees] = useState<LiveTrackingEmployee[]>(initialData);
   const [isConnected, setIsConnected] = useState(false);
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
@@ -34,16 +39,22 @@ export function useLiveTrackingSocket(initialData: LiveTrackingEmployee[]) {
 
   // Seed or merge initial snapshot without clobbering fresher realtime data
   useEffect(() => {
+    if (!enabled) {
+      setEmployees([]);
+      employeesRef.current = [];
+      setIsConnected(false);
+      return;
+    }
     if (!initialData || initialData.length === 0) return;
     setEmployees((prev) => {
       const merged = mergeByTimestamp(prev, initialData);
       employeesRef.current = merged;
       return merged;
     });
-  }, [initialData]);
+  }, [initialData, enabled]);
 
   useEffect(() => {
-    if (!companyId) return;
+    if (!enabled || !companyId) return;
     const unsubscribe = subscribeRealtimeEvents({
       onLocationUpdate: (data: LocationUpdatePayload) => {
         const incoming: LiveTrackingEmployee = {
@@ -73,7 +84,7 @@ export function useLiveTrackingSocket(initialData: LiveTrackingEmployee[]) {
       unsubscribe();
       clearInterval(interval);
     };
-  }, [companyId]);
+  }, [enabled, companyId]);
 
   const forceRefresh = useCallback(() => {
     logger.info("Force refresh requested for live tracking");

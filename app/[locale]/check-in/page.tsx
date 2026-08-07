@@ -74,6 +74,7 @@ export default function CheckInPage() {
 
   const checkIn = useCheckInPage();
   const {
+    employeeSessionActive,
     employeeName,
     companyName,
     isOnline,
@@ -104,6 +105,20 @@ export default function CheckInPage() {
       <MainLayout>
         <div className="flex min-h-[50vh] items-center justify-center p-6 text-sm text-muted-foreground">
           {t("companyAccountNoCheckIn")}
+        </div>
+      </MainLayout>
+    );
+  }
+
+  // Employee role without staff linkage cannot punch — block before GPS UI.
+  if (role === "employee" && !employeeSessionActive) {
+    return (
+      <MainLayout bare>
+        <div className="mx-auto flex min-h-[50vh] max-w-md flex-col items-center justify-center gap-4 p-6 text-center">
+          <p className="text-sm font-medium text-foreground">{t("noEmployeeId")}</p>
+          <Button variant="outline" onClick={handleSignOut}>
+            {t("signOut")}
+          </Button>
         </div>
       </MainLayout>
     );

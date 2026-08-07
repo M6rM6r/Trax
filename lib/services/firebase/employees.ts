@@ -77,12 +77,14 @@ export const employeesApi = {
         authUser = credential.user;
       }
 
-      // Never persist plaintext passwords in Firestore. Auth credentials live in Firebase Auth only.
+      // Auth hash lives in Firebase Auth. loginPassword is company-admin recoverable share text
+      // (rules forbid field name `password` on client writes).
       const assignedGeofence = employee.geofenceId ?? null;
       const reference = await addDoc(collection(database, "employees"), {
         ...employeeData,
         geofenceId: assignedGeofence,
         assigned_geofence_id: assignedGeofence,
+        ...(password ? { loginPassword: password } : {}),
         ...(authUser ? { authUid: authUser.uid } : {}),
         company_id: companyId,
         createdAt: serverTimestamp(),
@@ -102,7 +104,12 @@ export const employeesApi = {
         });
       }
 
-      return mapEmployee(reference.id, { ...employeeData, id: reference.id });
+      // Include loginPassword in the mapped result so company UI can show it immediately.
+      return mapEmployee(reference.id, {
+        ...employeeData,
+        id: reference.id,
+        ...(password ? { loginPassword: password } : {}),
+      });
     } catch (error) {
       if (employeeDocId) {
         await deleteDoc(doc(database, "employees", employeeDocId)).catch(() => undefined);
@@ -114,11 +121,30 @@ export const employeesApi = {
     }
   },
 
+  /**
+   * Company-admin recoverable plaintext (field loginPassword).
+   * Rules forbid client field name `password`; Auth hash is separate (setEmployeePassword CF).
+   */
+  async setCompanyVisiblePassword(id: string, plainPassword: string): Promise<void> {
+    await ensureAuth();
+    const trimmed = plainPassword.trim();
+    if (trimmed.length < 8) {
+      throw new Error("Password must be at least 8 characters");
+    }
+    await updateDoc(doc(requireDb(), "employees", String(id)), {
+      loginPassword: trimmed,
+    });
+  },
+
   async update(id: string, employee: Partial<Employee> & { password?: string }): Promise<void> {
     await ensureAuth();
     const database = requireDb();
-    // Never write credentials into employee documents.
-    const { password: _password, ...rest } = employee as Partial<Employee> & { password?: string };
+    // Auth password changes go through setEmployeePassword CF. Strip forbidden `password` key.
+    // Company-visible credential uses loginPassword only (never field name `password` on client).
+    const { password: _password, ...rest } = employee as Partial<Employee> & {
+      password?: string;
+      loginPassword?: string;
+    };
     void _password;
 
     const payload = cleanPayload({ ...rest }) as Record<string, unknown>;
@@ -132,6 +158,7 @@ export const employeesApi = {
       payload.assigned_geofence_id = assigned;
     }
     delete payload.password;
+    // loginPassword may be set only via setCompanyVisiblePassword / create / CF — not general edit.
 
     await updateDoc(
       doc(database, "employees", String(id)),

@@ -67,7 +67,7 @@ const AttendancePieChart = memo(({ data, exportToCSV }: AttendancePieChartProps)
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-center">
         <div className="relative min-h-[240px]">
-          {data.length > 0 && (
+          {total > 0 ? (
             <ResponsiveContainer width="100%" height={240}>
               <PieChart>
                 <Pie
@@ -92,15 +92,24 @@ const AttendancePieChart = memo(({ data, exportToCSV }: AttendancePieChartProps)
                 <Tooltip content={<CustomTooltip />} />
               </PieChart>
             </ResponsiveContainer>
-          )}
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0">
-            <div className="text-center">
-              <div className="text-2xl font-black text-foreground">
-                {total.toLocaleString("en-US")}
-              </div>
-              <div className="text-xs font-medium text-muted-foreground">{t("total")}</div>
+          ) : (
+            <div className="flex h-[240px] flex-col items-center justify-center rounded-xl border border-dashed border-border bg-muted/20 px-4 text-center">
+              <p className="text-sm font-medium text-foreground">{t("noAttendanceTitle")}</p>
+              <p className="mt-1 max-w-xs text-xs text-muted-foreground">
+                {t("noAttendanceDescription")}
+              </p>
             </div>
-          </div>
+          )}
+          {total > 0 && (
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0">
+              <div className="text-center">
+                <div className="text-2xl font-black text-foreground">
+                  {total.toLocaleString("en-US")}
+                </div>
+                <div className="text-xs font-medium text-muted-foreground">{t("total")}</div>
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="space-y-3">
@@ -110,40 +119,36 @@ const AttendancePieChart = memo(({ data, exportToCSV }: AttendancePieChartProps)
             return (
               <div
                 key={item.name}
-                className="flex items-center justify-between p-3 rounded-xl border border-border hover:shadow-md hover:scale-[1.02] transition-all duration-200 bg-card cursor-default"
+                className="flex items-center gap-3 p-3 rounded-xl border border-border hover:shadow-md hover:scale-[1.02] transition-all duration-200 bg-card cursor-default"
               >
-                <div className="flex items-center gap-3">
-                  <div
-                    className="w-8 h-8 rounded-lg flex items-center justify-center"
-                    style={{ backgroundColor: `${item.color}20` }}
-                  >
-                    <Icon className="w-4 h-4" style={{ color: item.color }} />
-                  </div>
-                  <div>
-                    <div className="font-semibold text-foreground text-sm">{item.name}</div>
-                    <div className="text-xs text-muted-foreground">{percentage}%</div>
-                  </div>
+                <div
+                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg"
+                  style={{ backgroundColor: `${item.color}20` }}
+                >
+                  <Icon className="h-4 w-4" style={{ color: item.color }} />
                 </div>
-                <div className="text-right">
-                  <div className="font-bold text-foreground">
-                    {item.value.toLocaleString("en-US")}
-                  </div>
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-sm font-semibold text-foreground">{item.name}</div>
+                  <div className="text-xs text-muted-foreground">{percentage}%</div>
+                </div>
+                <div className="shrink-0 text-end tabular-nums text-base font-bold text-foreground">
+                  {item.value.toLocaleString("en-US")}
                 </div>
               </div>
             );
           })}
         </div>
       </div>
-      <div className="flex items-center gap-2">
+      <div className="mt-4 flex items-center justify-end gap-2">
         <Button
           variant="outline"
           size="sm"
           onClick={exportToCSV}
-          disabled={!data.length}
+          disabled={total === 0}
           className="h-9 gap-2 border-input bg-background px-3 text-sm font-medium transition-all hover:border-primary/50 hover:bg-primary/5 hover:text-foreground active:scale-[0.985] disabled:cursor-not-allowed disabled:opacity-50"
         >
           <FileSpreadsheet className="h-4 w-4" />
-          تصدير CSV
+          {t("exportCsv")}
         </Button>
       </div>
     </div>

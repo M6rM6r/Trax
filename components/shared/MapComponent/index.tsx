@@ -299,7 +299,11 @@ export default function OLMap({
 
   return (
     <div className="relative h-[500px] w-full">
-      <div ref={mapRef} className="h-full w-full" />
+      <div
+        ref={mapRef}
+        dir="ltr"
+        className="h-full w-full [&_.ol-viewport]:!h-full [&_.ol-viewport]:!w-full"
+      />
 
       <div className=" flex gap-5 mt-5">
         {currentShape && (

@@ -21,6 +21,7 @@ export {
   bulkCreateEmployees,
   sendCompanyNotification,
   createCompany,
+  setEmployeePassword,
 } from "./callables";
 export { aggregateFunctionMetrics } from "./performance";
 export { serveBundle } from "./bundles";

@@ -1,4 +1,7 @@
 import type { AttendanceRecord, Employee } from "@/lib/types/trackingTypes";
+import type { CompanySettings } from "@/lib/types/companySettings";
+import { computeAttendanceCoverage } from "@/lib/utils/attendanceAbsent";
+import { DEFAULT_COMPANY_TIMEZONE, formatCompanyDate } from "@/lib/utils/companyDate";
 
 export interface RetentionFeatures {
   totalEmployees: number;
@@ -15,11 +18,16 @@ function round(value: number): number {
 
 export function buildRetentionFeatures(
   attendance: AttendanceRecord[],
-  employees: Employee[]
+  employees: Employee[],
+  settings?: Partial<CompanySettings> | null,
+  /** Same fetch window as reports/attendance — never shrink to min/max punch dates. */
+  window?: { from?: string; to?: string } | null
 ): RetentionFeatures {
   const totalEmployees = employees.length;
   const activeEmployees = employees.filter((e) => e.status === "active").length;
+  const tz = settings?.timezone || DEFAULT_COMPANY_TIMEZONE;
 
+  // Empty feed → zero rates (no invented 100% absence from a silent window).
   if (attendance.length === 0) {
     return {
       totalEmployees,
@@ -31,23 +39,38 @@ export function buildRetentionFeatures(
     };
   }
 
-  const presentOrLate = attendance.filter(
-    (r) => r.status === "present" || r.status === "late" || r.status === "checked_out"
-  ).length;
-  const absentCount = attendance.filter((r) => r.status === "absent").length;
-  const checkedOutCount = attendance.filter((r) => Boolean(r.checkOutTime)).length;
+  const dates = attendance.map((r) => r.date).filter(Boolean);
+  const dataTo = dates.length
+    ? dates.reduce((a, b) => (a > b ? a : b))
+    : formatCompanyDate(new Date(), tz);
+  const dataFrom = dates.length ? dates.reduce((a, b) => (a < b ? a : b)) : dataTo;
+  // Prefer caller window (reports = last 30d). Without it, use punch span — never invent a wider empty range.
+  const toYmd = window?.to && window.to.trim() !== "" ? window.to : dataTo;
+  const fromYmd = window?.from && window.from.trim() !== "" ? window.from : dataFrom;
 
-  const lateRecords = attendance.filter((r) => r.lateMinutes > 0);
+  const coverage = computeAttendanceCoverage({
+    employees,
+    attendance,
+    fromYmd,
+    toYmd,
+    settings,
+  });
+
+  const lateRecords = attendance.filter((r) => (r.lateMinutes ?? 0) > 0 && r.checkInTime);
   const avgLateMinutes = lateRecords.length
-    ? lateRecords.reduce((sum, r) => sum + r.lateMinutes, 0) / lateRecords.length
+    ? lateRecords.reduce((sum, r) => sum + (r.lateMinutes ?? 0), 0) / lateRecords.length
     : 0;
+
+  const checkedInSlots = coverage.present + coverage.late;
+  const checkOutCompletionRate =
+    checkedInSlots > 0 ? round((coverage.checkedOut / checkedInSlots) * 100) : 0;
 
   return {
     totalEmployees,
     activeEmployees,
-    attendanceRate: round((presentOrLate / attendance.length) * 100),
+    attendanceRate: coverage.attendanceRate,
     avgLateMinutes: round(avgLateMinutes),
-    absenceRate: round((absentCount / attendance.length) * 100),
-    checkOutCompletionRate: round((checkedOutCount / attendance.length) * 100),
+    absenceRate: coverage.expected > 0 ? round((coverage.absent / coverage.expected) * 100) : 0,
+    checkOutCompletionRate,
   };
 }

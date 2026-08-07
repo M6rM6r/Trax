@@ -18,6 +18,40 @@ export function calculateDistance(lat1: number, lng1: number, lat2: number, lng2
 
 export const GEOFENCE_DISTANCE_BUFFER_METERS = 50;
 
+function isBareGeofenceIdLabel(
+  name: string | null | undefined,
+  geofenceId: string | number | null | undefined
+): boolean {
+  if (!name) return true;
+  const n = String(name).trim();
+  if (!n) return true;
+  // "3404" style labels are ids, not human names.
+  if (geofenceId !== null && geofenceId !== undefined && n === String(geofenceId)) return true;
+  if (/^\d+$/.test(n)) return true;
+  return false;
+}
+
+function geofenceNameById(
+  geofences: Geofence[],
+  id: string | number | null | undefined
+): string | undefined {
+  if (id === null || id === undefined || String(id).trim() === "") return undefined;
+  const name = geofences.find((g) => String(g.id) === String(id))?.name;
+  if (!name || isBareGeofenceIdLabel(name, id)) return undefined;
+  return name;
+}
+
+/**
+ * Attendance table / dashboard location label.
+ *
+ * Never invent a fence from nearest GPS — that shows zones the employee is
+ * not assigned to (e.g. الضاحية / الواحة when assignment is elsewhere).
+ *
+ * Order:
+ *  1. Punch stored geofenceId → roster name (check-in writes assigned fence)
+ *  2. Punch stored geofenceName when it is a real label (not a bare id)
+ *  3. Employee's currently assigned geofence (absents + legacy punches)
+ */
 export function resolveAttendanceLocation(
   record: Pick<
     AttendanceRecord,
@@ -26,52 +60,17 @@ export function resolveAttendanceLocation(
   geofences: Geofence[],
   employees?: Employee[]
 ): string | undefined {
-  const isJustId =
-    record.geofenceName &&
-    /^\d+$/.test(String(record.geofenceName)) &&
-    String(record.geofenceName) === String(record.geofenceId);
+  const fromPunchId = geofenceNameById(geofences, record.geofenceId ?? null);
+  if (fromPunchId) return fromPunchId;
 
-  if (record.geofenceName && !isJustId) return record.geofenceName;
-
-  if (record.geofenceId) {
-    const byId = geofences.find((g) => String(g.id) === String(record.geofenceId))?.name;
-    if (byId) return byId;
+  if (record.geofenceName && !isBareGeofenceIdLabel(record.geofenceName, record.geofenceId)) {
+    return String(record.geofenceName).trim();
   }
 
   if (employees?.length) {
     const employee = employees.find((e) => String(e.id) === String(record.employeeId));
-    if (employee?.geofenceId) {
-      const byAssigned = geofences.find((g) => String(g.id) === String(employee.geofenceId))?.name;
-      if (byAssigned) return byAssigned;
-    }
-  }
-
-  if (
-    record.checkInLat !== null &&
-    record.checkInLat !== undefined &&
-    record.checkInLng !== null &&
-    record.checkInLng !== undefined &&
-    geofences.length > 0
-  ) {
-    const lat = Number(record.checkInLat);
-    const lng = Number(record.checkInLng);
-    const validGeofences = geofences.filter(
-      (g) =>
-        typeof g.lat === "number" &&
-        typeof g.lng === "number" &&
-        typeof g.radius === "number" &&
-        g.radius > 0
-    );
-    if (validGeofences.length > 0) {
-      const [nearest] = validGeofences.sort(
-        (a, b) =>
-          calculateDistance(lat, lng, a.lat, a.lng) - calculateDistance(lat, lng, b.lat, b.lng)
-      );
-      const dist = calculateDistance(lat, lng, nearest.lat, nearest.lng);
-      if (dist <= nearest.radius + GEOFENCE_DISTANCE_BUFFER_METERS) {
-        return nearest.name;
-      }
-    }
+    const fromAssigned = geofenceNameById(geofences, employee?.geofenceId ?? null);
+    if (fromAssigned) return fromAssigned;
   }
 
   return undefined;

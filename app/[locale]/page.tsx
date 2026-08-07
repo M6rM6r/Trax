@@ -27,6 +27,7 @@ import { useCompanySettingsStore } from "@/stores/useCompanySettingsStore";
 import AttendancePieChart from "@/components/dashboard/AttendancePieChart";
 const LiveMapWidget = dynamic(() => import("@/components/dashboard/LiveMapWidget"), { ssr: false });
 import { resolveAttendanceLocation } from "@/lib/utils/geo";
+import { displayOutcome, isLateArrival } from "@/lib/utils/attendancePipeline";
 import { getDefaultDateRange, type DateRange } from "@/components/shared/DateRangePicker";
 import { toastSuccess } from "@/hooks/use-toast";
 import { useTranslations, useLocale } from "next-intl";
@@ -111,15 +112,21 @@ export default function DashboardPage() {
       return h > 0 ? `${h}h ${m}m` : `${m}m`;
     };
     const e = (v: unknown) => `"${String(v ?? "").replace(/"/g, '""')}"`;
-    const rows = attendanceData.map((r) => [
-      e(r.employeeName),
-      e(r.date),
-      e(r.checkInTime ?? "-"),
-      e(r.checkOutTime ?? "-"),
-      e(r.status),
-      e(formatLate(r.lateMinutes ?? 0)),
-      e(resolveLocationName(r) || "-"),
-    ]);
+    const rows = attendanceData.map((r) => {
+      const outcome = displayOutcome(r);
+      const late = isLateArrival(r);
+      const status =
+        outcome === "checked_out" ? (late ? "checked_out · late" : "checked_out") : outcome;
+      return [
+        e(r.employeeName),
+        e(r.date),
+        e(r.checkInTime ?? "-"),
+        e(r.checkOutTime ?? "-"),
+        e(status),
+        e(formatLate(r.lateMinutes ?? 0)),
+        e(resolveLocationName(r) || "-"),
+      ];
+    });
     const sum = attendanceData.reduce((s, r) => s + (r.lateMinutes ?? 0), 0);
     const formatSum = (minutes: number) => {
       const h = Math.floor(minutes / 60);
@@ -408,30 +415,35 @@ export default function DashboardPage() {
                         key: "status",
                         header: t("status"),
                         sortable: true,
-                        sortValue: (r) => r.status,
+                        sortValue: (r) => displayOutcome(r),
                         cell: (r) => {
-                          const isLate = (r.lateMinutes ?? 0) > 0;
-                          const isPresent =
-                            r.status === "present" || (r.status === "checked_out" && !isLate);
-                          const isLateStatus =
-                            r.status === "late" || (r.status === "checked_out" && isLate);
+                          const outcome = displayOutcome(r);
+                          const late = isLateArrival(r);
                           const labels: Record<string, string> = {
                             present: t("statusPresent"),
                             late: t("statusLate"),
                             absent: t("statusAbsent"),
                             checked_out: t("statusCheckedOut"),
                           };
+                          const label =
+                            outcome === "checked_out"
+                              ? late
+                                ? `${labels.checked_out} · ${labels.late}`
+                                : labels.checked_out
+                              : labels[outcome] || r.status;
                           return (
                             <span
                               className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ring-1 ${
-                                isPresent
+                                outcome === "present"
                                   ? "bg-primary/10 text-primary ring-emerald-400/20"
-                                  : isLateStatus
+                                  : outcome === "late"
                                     ? "bg-[hsl(48_96%_53%/0.1)] text-[hsl(48_96%_53%)] ring-amber-400/20"
-                                    : "bg-destructive/10 text-destructive ring-red-400/20"
+                                    : outcome === "checked_out"
+                                      ? "bg-slate-500/15 text-slate-700 dark:text-slate-200 ring-slate-400/20"
+                                      : "bg-destructive/10 text-destructive ring-red-400/20"
                               }`}
                             >
-                              {labels[r.status] || r.status}
+                              {label}
                             </span>
                           );
                         },

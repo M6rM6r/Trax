@@ -285,7 +285,9 @@ export default function NotificationManager() {
     enabled: isAdmin,
     dateRange: isAdmin ? { from: todayYmd, to: todayYmd } : undefined,
   });
-  const { data: myAttendance = [] } = useMyAttendance(user?.employee_id ?? null);
+  const { data: myAttendance = [] } = useMyAttendance(user?.employee_id ?? null, {
+    enabled: role === "employee",
+  });
   const { data: employees = [], isFetching: employeesFetching } = useEmployees({
     enabled: isAdmin,
   });

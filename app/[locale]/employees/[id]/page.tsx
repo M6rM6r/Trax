@@ -33,7 +33,12 @@ import { DataTable } from "@/components/shared/DataTable/DataTable";
 import ConfirmDialog from "@/components/shared/ConfirmDialog";
 import { toastSuccess, toastError, toastWithUndo } from "@/hooks/use-toast";
 import type { AttendanceRecord } from "@/lib/types/trackingTypes";
-import { useTranslations, useLocale } from "next-intl";
+import { useTranslations } from "next-intl";
+import { useCompanySettingsStore } from "@/stores/useCompanySettingsStore";
+import { computeAttendanceCoverage } from "@/lib/utils/attendanceAbsent";
+import { DEFAULT_COMPANY_TIMEZONE } from "@/lib/utils/companyDate";
+import { defaultAttendanceWindow, last7CompanyDays } from "@/lib/utils/attendanceWindow";
+import { displayOutcome, isLateArrival } from "@/lib/utils/attendancePipeline";
 
 const statusLabels = {
   present: "statusPresent",
@@ -44,11 +49,21 @@ const statusLabels = {
 
 export default function EmployeeProfilePage({ params }: { params: { id: string } }) {
   const t = useTranslations("Employees");
-  const locale = useLocale();
   const { id } = params;
   const router = useRouter();
   const { data: employee, isLoading: empLoading, isError: empError } = useEmployee(id);
-  const { data: attendanceData = [] } = useAttendance();
+  const workStartTime = useCompanySettingsStore((s) => s.workStartTime);
+  const gracePeriodMinutes = useCompanySettingsStore((s) => s.gracePeriodMinutes);
+  const timezone = useCompanySettingsStore((s) => s.timezone) || DEFAULT_COMPANY_TIMEZONE;
+  const weekendDays = useCompanySettingsStore((s) => s.weekendDays);
+  const companySettings = useMemo(
+    () => ({ workStartTime, gracePeriodMinutes, timezone, weekendDays }),
+    [workStartTime, gracePeriodMinutes, timezone, weekendDays]
+  );
+  // History: last 30 company days. KPIs: last 7 (subset of same fetch).
+  const last30Range = useMemo(() => defaultAttendanceWindow(timezone), [timezone]);
+  const last7Range = useMemo(() => last7CompanyDays(timezone), [timezone]);
+  const { data: attendanceData = [] } = useAttendance({ dateRange: last30Range });
   const { data: geofences = [] } = useGeofences();
   const deleteEmployee = useDeleteEmployee();
   const updateEmployee = useUpdateEmployee();
@@ -68,6 +83,7 @@ export default function EmployeeProfilePage({ params }: { params: { id: string }
     geofenceId: "",
   });
 
+  // Real punches only — no synthetic “absent every empty day” rows.
   const empAttendance = useMemo(
     () =>
       attendanceData
@@ -76,14 +92,29 @@ export default function EmployeeProfilePage({ params }: { params: { id: string }
     [attendanceData, id]
   );
 
-  const last7Days = empAttendance.slice(0, 7);
-  const presentCount = last7Days.filter(
-    (a) => a.status === "present" || (a.status === "checked_out" && !((a.lateMinutes ?? 0) > 0))
-  ).length;
-  const lateCount = last7Days.filter(
-    (a) => a.status === "late" || (a.status === "checked_out" && (a.lateMinutes ?? 0) > 0)
-  ).length;
-  const absentCount = last7Days.filter((a) => a.status === "absent").length;
+  const roster = useMemo(
+    () =>
+      employee
+        ? [{ id: employee.id, name: employee.name, status: employee.status }]
+        : [{ id, name: "", status: "active" as const }],
+    [employee, id]
+  );
+
+  const { presentCount, lateCount, absentCount } = useMemo(() => {
+    const cov = computeAttendanceCoverage({
+      employees: roster,
+      attendance: empAttendance,
+      fromYmd: last7Range.from,
+      toYmd: last7Range.to,
+      settings: companySettings,
+      employeeId: id,
+    });
+    return {
+      presentCount: cov.present,
+      lateCount: cov.late,
+      absentCount: cov.absent,
+    };
+  }, [roster, empAttendance, last7Range, companySettings, id]);
 
   const geofenceOptions = useMemo(
     () =>
@@ -303,95 +334,11 @@ export default function EmployeeProfilePage({ params }: { params: { id: string }
           </Card>
         </motion.div>
 
-        {/* 30-Day Attendance Heatmap */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3, delay: 0.15 }}
-        >
-          <Card className="border-0 shadow-lg bg-card">
-            <CardHeader>
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-primary/50 flex items-center justify-center">
-                  <Calendar className="w-5 h-5 text-primary-foreground" />
-                </div>
-                <div>
-                  <CardTitle className="text-lg font-bold text-foreground">
-                    {t("attendanceMap")}
-                  </CardTitle>
-                  <p className="text-sm text-muted-foreground">{t("attendanceMapSubtitle")}</p>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="flex flex-wrap gap-1.5">
-                {Array.from({ length: 30 }, (_, i) => {
-                  const d = new Date();
-                  d.setDate(d.getDate() - (29 - i));
-                  const dateStr = d.toLocaleDateString("sv-SE");
-                  const record = empAttendance.find((r) => r.date === dateStr);
-                  const status = record?.status;
-                  const isLate = (record?.lateMinutes ?? 0) > 0;
-                  const bg =
-                    status === "present" || (status === "checked_out" && !isLate)
-                      ? "bg-primary/70"
-                      : status === "late" || (status === "checked_out" && isLate)
-                        ? "bg-[hsl(48_96%_53%/0.7)]"
-                        : status === "absent"
-                          ? "bg-destructive/60"
-                          : "bg-muted/40";
-                  const label =
-                    status && status in statusLabels
-                      ? t(statusLabels[status as keyof typeof statusLabels])
-                      : t("noRecord");
-                  const dateLocale = locale === "ar" ? "ar-SA-u-nu-latn" : "en-US";
-                  const dayLabel = d.toLocaleDateString(dateLocale, {
-                    weekday: "short",
-                    day: "numeric",
-                  });
-                  const hasStatus =
-                    status === "present" ||
-                    status === "checked_out" ||
-                    status === "late" ||
-                    status === "absent";
-                  return (
-                    <div
-                      key={i}
-                      className={`flex h-8 w-8 items-center justify-center rounded-lg sm:h-9 sm:w-9 ${bg} cursor-default transition-all duration-200 hover:scale-110`}
-                      title={`${dayLabel} — ${label}`}
-                    >
-                      <span
-                        className={`text-[10px] font-bold ${hasStatus ? "text-primary-foreground" : "text-muted-foreground"}`}
-                      >
-                        {d.getDate()}
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
-              <div className="flex items-center gap-3 mt-4 text-xs text-muted-foreground flex-wrap">
-                <span className="inline-flex items-center gap-1">
-                  <span className="w-3 h-3 rounded bg-muted/40" /> {t("noRecord")}
-                </span>
-                <span className="inline-flex items-center gap-1">
-                  <span className="w-3 h-3 rounded bg-primary/70" /> {t("statusPresent")}
-                </span>
-                <span className="inline-flex items-center gap-1">
-                  <span className="w-3 h-3 rounded bg-[hsl(48_96%_53%/0.7)]" /> {t("statusLate")}
-                </span>
-                <span className="inline-flex items-center gap-1">
-                  <span className="w-3 h-3 rounded bg-destructive/60" /> {t("statusAbsent")}
-                </span>
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
-
         {/* Attendance History Table */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3, delay: 0.2 }}
+          transition={{ duration: 0.3, delay: 0.15 }}
         >
           <Card className="border-0 shadow-lg bg-card">
             <CardHeader>
@@ -445,26 +392,29 @@ export default function EmployeeProfilePage({ params }: { params: { id: string }
                       key: "status",
                       header: t("status"),
                       sortable: true,
-                      sortValue: (r) => r.status,
+                      sortValue: (r) => displayOutcome(r),
                       cell: (r) => {
-                        const isLate = (r.lateMinutes ?? 0) > 0;
-                        const isPresent =
-                          r.status === "present" || (r.status === "checked_out" && !isLate);
-                        const isLateStatus =
-                          r.status === "late" || (r.status === "checked_out" && isLate);
+                        const outcome = displayOutcome(r);
+                        const late = isLateArrival(r);
+                        const labelKey = statusLabels[outcome];
+                        const label = labelKey
+                          ? outcome === "checked_out" && late
+                            ? `${t(statusLabels.checked_out)} · ${t(statusLabels.late)}`
+                            : t(labelKey)
+                          : r.status;
                         return (
                           <span
                             className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                              isPresent
+                              outcome === "present"
                                 ? "bg-primary/10 text-primary"
-                                : isLateStatus
+                                : outcome === "late"
                                   ? "bg-[hsl(48_96%_53%/0.15)] text-[hsl(48_96%_53%)]"
-                                  : "bg-destructive/10 text-destructive"
+                                  : outcome === "checked_out"
+                                    ? "bg-slate-500/15 text-slate-700 dark:text-slate-200"
+                                    : "bg-destructive/10 text-destructive"
                             }`}
                           >
-                            {r.status && r.status in statusLabels
-                              ? t(statusLabels[r.status as keyof typeof statusLabels])
-                              : r.status}
+                            {label}
                           </span>
                         );
                       },
@@ -472,15 +422,23 @@ export default function EmployeeProfilePage({ params }: { params: { id: string }
                     {
                       key: "workedHours",
                       header: t("workedHours"),
-                      cell: (r) => `${r.workedHours?.toFixed(1) || "0"} ${t("hours")}`,
+                      cell: (r) =>
+                        !r.checkInTime ? "—" : `${r.workedHours?.toFixed(1) || "0"} ${t("hours")}`,
                     },
                     {
                       key: "geofenceName",
                       header: t("location"),
                       cell: (r) => {
+                        if (!r.checkInTime) return "—";
                         const name =
-                          r.geofenceName ||
-                          geofences.find((g) => String(g.id) === String(r.geofenceId))?.name;
+                          (r.geofenceName && !/^\d+$/.test(String(r.geofenceName).trim())
+                            ? r.geofenceName
+                            : null) ||
+                          geofences.find((g) => String(g.id) === String(r.geofenceId))?.name ||
+                          (employee?.geofenceId
+                            ? geofences.find((g) => String(g.id) === String(employee.geofenceId))
+                                ?.name
+                            : null);
                         return name || "-";
                       },
                     },

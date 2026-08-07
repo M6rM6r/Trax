@@ -37,9 +37,9 @@ export function useDashboardData(dateRange?: DashboardDateRange) {
       // Weekend policy affects present/absent buckets — must bust cache on change.
       JSON.stringify(weekendDays ?? []),
     ],
-    // Align with attendance roster (~15s) so KPIs don't lag punches by a full minute.
-    staleTime: 15 * 1000,
-    refetchInterval: 20 * 1000,
+    // Lockstep with useAttendance (30s) — KPIs must not lag roster by a second cadence.
+    staleTime: 30 * 1000,
+    refetchInterval: 30 * 1000,
     refetchOnWindowFocus: true,
     refetchIntervalInBackground: false,
     // Company admin pipeline only — employees/mastermind must not stampede Firestore.

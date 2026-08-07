@@ -198,7 +198,11 @@ export default function CheckInMap({
 
   return (
     <div className={`relative w-full overflow-hidden rounded-xl ${className}`}>
-      <div ref={mapRef} className="absolute inset-0" />
+      <div
+        ref={mapRef}
+        dir="ltr"
+        className="absolute inset-0 [&_.ol-viewport]:!h-full [&_.ol-viewport]:!w-full"
+      />
 
       {/* Map controls */}
       <div className="absolute top-3 right-3 z-10 flex flex-col gap-2">

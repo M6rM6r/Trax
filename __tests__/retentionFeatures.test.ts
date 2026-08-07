@@ -23,7 +23,8 @@ describe("buildRetentionFeatures", () => {
     expect(features.checkOutCompletionRate).toBe(0);
   });
 
-  it("computes retention metrics from attendance records", () => {
+  it("computes retention metrics via person-day coverage", () => {
+    // 3 active on one workday: A on-time+out, B late+out, C no check-in → expected 3
     const features = buildRetentionFeatures(
       [
         {
@@ -31,6 +32,7 @@ describe("buildRetentionFeatures", () => {
           employeeId: "1",
           employeeName: "A",
           date: "2026-01-01",
+          checkInTime: "08:00",
           status: "present",
           lateMinutes: 0,
           workedHours: 8,
@@ -41,19 +43,11 @@ describe("buildRetentionFeatures", () => {
           employeeId: "2",
           employeeName: "B",
           date: "2026-01-01",
+          checkInTime: "08:20",
           status: "late",
           lateMinutes: 12,
           workedHours: 7,
           checkOutTime: "17:10",
-        },
-        {
-          id: "3",
-          employeeId: "3",
-          employeeName: "C",
-          date: "2026-01-01",
-          status: "absent",
-          lateMinutes: 0,
-          workedHours: 0,
         },
       ],
       [
@@ -79,16 +73,24 @@ describe("buildRetentionFeatures", () => {
           email: "c@x.com",
           phone: "3",
           department: "Ops",
-          status: "inactive",
+          status: "active",
         },
-      ]
+      ],
+      {
+        workStartTime: "08:00",
+        gracePeriodMinutes: 0,
+        timezone: "Asia/Riyadh",
+        weekendDays: [5, 6],
+      }
     );
 
     expect(features.totalEmployees).toBe(3);
-    expect(features.activeEmployees).toBe(2);
-    expect(features.attendanceRate).toBeCloseTo(66.67, 2);
-    expect(features.absenceRate).toBeCloseTo(33.33, 2);
+    expect(features.activeEmployees).toBe(3);
+    // present+late = 2 of 3 expected
+    expect(features.attendanceRate).toBeCloseTo(66.7, 1);
+    expect(features.absenceRate).toBeCloseTo(33.3, 1);
     expect(features.avgLateMinutes).toBe(12);
-    expect(features.checkOutCompletionRate).toBeCloseTo(66.67, 2);
+    // 2 checkouts / 2 check-ins
+    expect(features.checkOutCompletionRate).toBeCloseTo(100, 1);
   });
 });

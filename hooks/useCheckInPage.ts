@@ -83,10 +83,13 @@ export function useCheckInPage() {
 
   const companyId = useAuthStore((state) => state.companyId);
   const companyName = useAuthStore((state) => state.companyName);
+  const role = useAuthStore((state) => state.role);
   const clearUser = useAuthStore((state) => state.clearUser);
   const employeeId = useAuthStore((state) => state.user?.employee_id ?? null);
   const employeeNameFromAuth = useAuthStore((state) => state.user?.name ?? "");
   const authAssignedGeofenceId = useAuthStore((state) => state.user?.assigned_geofence_id ?? null);
+  // Hard gate: GPS + attendance reads only for employee role with a linked employee_id.
+  const employeeSessionActive = role === "employee" && Boolean(employeeId);
 
   const settingsState = useCompanySettingsStore();
   const companySettings = useMemo<Partial<CompanySettings>>(
@@ -137,9 +140,10 @@ export function useCheckInPage() {
   );
 
   const { data: currentEmployee, isLoading: employeeLoading } = useEmployee(
-    employeeId ? String(employeeId) : null
+    employeeId ? String(employeeId) : null,
+    { enabled: employeeSessionActive }
   );
-  const geofencesQuery = useGeofences();
+  const geofencesQuery = useGeofences({ enabled: employeeSessionActive });
   const geofences = useMemo(() => geofencesQuery.data ?? [], [geofencesQuery.data]);
   // Employees may only check in at their assigned location — never company-wide geofences.
   // Prefer employee doc; fall back to auth profile assignment when employee row lags.
@@ -171,7 +175,9 @@ export function useCheckInPage() {
     data: todayRecords = [],
     isLoading: attendanceLoading,
     isFetching: attendanceFetching,
-  } = useMyAttendance(employeeId ? String(employeeId) : null);
+  } = useMyAttendance(employeeId ? String(employeeId) : null, {
+    enabled: employeeSessionActive,
+  });
   // Prefer open session if duplicate legacy rows; else latest by check-in time.
   const todayRecord = useMemo(() => {
     if (!todayRecords.length) return null;
@@ -211,7 +217,7 @@ export function useCheckInPage() {
     isWithinRange,
     isLocating,
     error: locationError,
-  } = useGeolocation({ geofences: allowedGeofences, enabled: true });
+  } = useGeolocation({ geofences: allowedGeofences, enabled: employeeSessionActive });
 
   const [isOnline, setIsOnline] = useState(true);
   const [showCheckoutConfirm, setShowCheckoutConfirm] = useState(false);
@@ -595,6 +601,7 @@ export function useCheckInPage() {
 
   // Auto check-in only at the assigned geofence
   useEffect(() => {
+    if (!employeeSessionActive) return;
     if (!companySettings.autoCheckInEnabled) return;
     if (autoCheckInAttempted.current) return;
     if (todayRecord?.checkInTime || todayRecord?.checkOutTime) return;
@@ -640,6 +647,7 @@ export function useCheckInPage() {
       }
     };
   }, [
+    employeeSessionActive,
     companySettings.autoCheckInEnabled,
     companySettings.autoCheckInRadiusOffset,
     todayRecord?.checkInTime,
@@ -751,6 +759,8 @@ export function useCheckInPage() {
   }, [clearUser, locale]);
 
   return {
+    employeeSessionActive,
+    employeeId,
     employeeName,
     companyName,
     isOnline,

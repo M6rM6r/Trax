@@ -61,7 +61,8 @@ export async function queryByCompanyId<T>(
   async function tryFetch(cid: string | number) {
     const constraints: QueryConstraint[] = [where("company_id", "==", cid), ...extraFilters];
     if (orderByConstraint) constraints.push(orderByConstraint);
-    constraints.push(limit(500));
+    // Date-bounded attendance queries need headroom for multi-week person-day history.
+    constraints.push(limit(2000));
     return getDocs(query(base, ...constraints));
   }
 
@@ -83,11 +84,11 @@ export async function queryByCompanyId<T>(
         message
       );
       let snap = await getDocs(
-        query(base, where("company_id", "==", cidStr), ...extraFilters, limit(500))
+        query(base, where("company_id", "==", cidStr), ...extraFilters, limit(2000))
       );
       if (snap.empty && isNumeric) {
         snap = await getDocs(
-          query(base, where("company_id", "==", cidNum), ...extraFilters, limit(500))
+          query(base, where("company_id", "==", cidNum), ...extraFilters, limit(2000))
         );
       }
       return snap.docs.map((item) => mapper(item.id, item.data() as Record<string, unknown>));
@@ -172,8 +173,15 @@ export function mapEmployee(id: string, value: Record<string, unknown>): Employe
         ? null
         : toNumber(value.batteryLevel),
     employeeNumber: (value.employeeNumber as string | null | undefined) ?? null,
-    // Never surface credentials from Firestore documents.
-    password: undefined,
+    // Company-admin recoverable credential (loginPassword preferred; legacy password from Admin SDK).
+    // Not used for Auth — Firebase Auth holds the real hash. Employees never read this via rules alone.
+    password: (() => {
+      const plain =
+        value.loginPassword ?? value.login_password ?? value.password ?? value.tempPassword;
+      if (plain === null || plain === undefined) return undefined;
+      const s = String(plain).trim();
+      return s.length > 0 ? s : undefined;
+    })(),
     attendanceMode: (value.attendanceMode as Employee["attendanceMode"]) ?? null,
     shiftOverride: (value.shiftOverride as Employee["shiftOverride"]) ?? null,
   };
@@ -239,21 +247,25 @@ export function mapAttendance(id: string, value: Record<string, unknown>): Atten
   const checkOutTime = (value.checkOutTime as string | null | undefined) ?? null;
   const checkInTime = (value.checkInTime as string | null | undefined) ?? null;
   const appliedShift = (value.appliedShift as AttendanceRecord["appliedShift"]) ?? null;
-  // Windsurf: mark late from shift start + grace via evaluateCheckIn.
-  // Prefer values written at check-in; only backfill missing legacy fields.
+  // Prefer values written at check-in (historical fact). Only backfill lateMinutes when
+  // the field was never stored — do NOT re-score against live company settings.
   const derived = checkInTime && appliedShift ? evaluateCheckIn(checkInTime, appliedShift) : null;
   const hasStoredLate = value.lateMinutes !== null && value.lateMinutes !== undefined;
-  const lateMinutes = hasStoredLate
-    ? toNumber(value.lateMinutes)
-    : (derived?.lateMinutes ?? toNumber(value.lateMinutes));
+  const lateMinutes = hasStoredLate ? toNumber(value.lateMinutes) : (derived?.lateMinutes ?? 0);
 
+  // Terminal checkout wins for status enum; lateMinutes still carry arrival lateness.
   const status: AttendanceRecord["status"] = (() => {
     if (checkOutTime || storedStatus === "checked_out") return "checked_out";
+    if (!checkInTime && (storedStatus === "absent" || !storedStatus)) return "absent";
     if (storedStatus === "present" || storedStatus === "late" || storedStatus === "absent") {
+      // Keep stored late/present; if legacy missing status but lateMinutes > 0 → late.
+      if (storedStatus === "present" && lateMinutes > 0) return "late";
       return storedStatus;
     }
+    if (lateMinutes > 0) return "late";
     if (derived) return derived.status;
-    return storedStatus;
+    if (checkInTime) return "present";
+    return storedStatus || "absent";
   })();
 
   return {

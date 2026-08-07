@@ -14,6 +14,8 @@ import {
   MapPin,
   Download,
   Eye,
+  EyeOff,
+  Copy,
   X,
   Check,
   Upload,
@@ -70,6 +72,7 @@ export default function EmployeesPage() {
   const resetEmployeePassword = useResetEmployeePassword();
   const [resetPasswordValue, setResetPasswordValue] = useState("");
   const [showResetPassword, setShowResetPassword] = useState(false);
+  const [revealLoginPassword, setRevealLoginPassword] = useState(false);
   const locale = useLocale();
   const role = useAuthStore((s) => s.role);
   const [showAddForm, setShowAddForm] = useState(false);
@@ -184,6 +187,7 @@ export default function EmployeesPage() {
     setEditTarget(emp);
     setResetPasswordValue("");
     setShowResetPassword(false);
+    setRevealLoginPassword(false);
     setEditEmployee({
       name: emp.name,
       email: emp.email,
@@ -774,16 +778,62 @@ export default function EmployeesPage() {
             >
               {geofenceOptions}
             </FormSelect>
-            <FormField
-              label={t("currentPassword")}
-              type="text"
-              value={editEmployee.password}
-              readOnly
-              ltr
-              className="bg-muted/30"
-            />
+            <div className="space-y-1.5">
+              <label className="block text-xs font-medium text-muted-foreground">
+                {t("currentPassword")}
+              </label>
+              {editEmployee.password ? (
+                <div className="space-y-1.5">
+                  <div className="flex items-center gap-2">
+                    <input
+                      type={revealLoginPassword ? "text" : "password"}
+                      readOnly
+                      value={editEmployee.password}
+                      dir="ltr"
+                      className="flex-1 rounded-lg border border-input bg-muted/30 px-3 py-2 font-mono text-sm text-foreground outline-none"
+                      aria-label={t("currentPassword")}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setRevealLoginPassword((v) => !v)}
+                      className="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-lg border border-input px-3 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
+                      aria-label={revealLoginPassword ? t("hidePassword") : t("showPassword")}
+                    >
+                      {revealLoginPassword ? (
+                        <EyeOff className="h-4 w-4" />
+                      ) : (
+                        <Eye className="h-4 w-4" />
+                      )}
+                      <span className="hidden sm:inline">
+                        {revealLoginPassword ? t("hidePassword") : t("showPassword")}
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        try {
+                          await navigator.clipboard.writeText(editEmployee.password);
+                          toastSuccess(t("passwordCopied"));
+                        } catch {
+                          toastError(t("copyFailed"));
+                        }
+                      }}
+                      className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-input text-muted-foreground hover:bg-muted hover:text-foreground"
+                      aria-label={t("copyPassword")}
+                    >
+                      <Copy className="h-4 w-4" />
+                    </button>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground">{t("passwordRevealHint")}</p>
+                </div>
+              ) : (
+                <p className="rounded-lg border border-dashed border-border bg-muted/20 px-3 py-2 text-xs text-muted-foreground">
+                  {t("passwordNotStored")}
+                </p>
+              )}
+            </div>
 
-            {/* Reset password section */}
+            {/* Reset password section — also the only way to store a recoverable password for legacy staff */}
             <div className="pt-3 border-t border-border">
               {!showResetPassword ? (
                 <button
@@ -791,7 +841,7 @@ export default function EmployeesPage() {
                   onClick={() => setShowResetPassword(true)}
                   className="text-xs text-primary hover:underline"
                 >
-                  {t("setNewPassword")}
+                  {editEmployee.password ? t("setNewPassword") : t("setPasswordToReveal")}
                 </button>
               ) : (
                 <div className="space-y-2">
@@ -812,19 +862,40 @@ export default function EmployeesPage() {
                       disabled={resetPasswordValue.length < 8 || resetEmployeePassword.isPending}
                       onClick={() => {
                         if (!editTarget || resetPasswordValue.length < 8) return;
+                        const nextPw = resetPasswordValue.trim();
                         resetEmployeePassword.mutate(
                           {
                             id: editTarget.id,
-                            password: resetPasswordValue,
+                            password: nextPw,
                             email: editTarget.email,
                           },
                           {
                             onSuccess: () => {
                               toastSuccess(t("passwordChanged"));
+                              setEditEmployee((prev) => ({ ...prev, password: nextPw }));
+                              setEditTarget((prev) =>
+                                prev ? { ...prev, password: nextPw } : prev
+                              );
                               setResetPasswordValue("");
                               setShowResetPassword(false);
+                              setRevealLoginPassword(false);
                             },
-                            onError: () => toastError(t("passwordChangeFailed")),
+                            onError: (err) => {
+                              const msg = err instanceof Error ? err.message : String(err);
+                              // Company-visible password was written even if Auth CF is undeployed.
+                              if (msg.startsWith("PASSWORD_SAVED_AUTH_PENDING")) {
+                                setEditEmployee((prev) => ({ ...prev, password: nextPw }));
+                                setEditTarget((prev) =>
+                                  prev ? { ...prev, password: nextPw } : prev
+                                );
+                                setResetPasswordValue("");
+                                setShowResetPassword(false);
+                                setRevealLoginPassword(false);
+                                toastSuccess(t("passwordSavedCompanyOnly"));
+                                return;
+                              }
+                              toastError(t("passwordChangeFailed"));
+                            },
                           }
                         );
                       }}

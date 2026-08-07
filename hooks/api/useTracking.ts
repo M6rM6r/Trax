@@ -5,10 +5,13 @@ import { firebaseData } from "@/lib/services/firebaseData";
 import type { LiveTrackingEmployee } from "@/lib/types/trackingTypes";
 import { useAuthStore } from "@/stores/useAuthStore";
 
-export function useLiveTracking() {
+export function useLiveTracking(options?: { enabled?: boolean }) {
   const companyId = useAuthStore((state) => state.companyId);
+  const role = useAuthStore((state) => state.role);
+  // Company-admin live map only — never stampede locations for employee/mastermind shells.
+  const enabled = (options?.enabled ?? true) && Boolean(companyId) && role === "company";
   const [data, setData] = useState<LiveTrackingEmployee[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(enabled);
   const [isError, setIsError] = useState(false);
   const [refetchKey, setRefetchKey] = useState(0);
 
@@ -16,7 +19,7 @@ export function useLiveTracking() {
 
   useEffect(() => {
     let mounted = true;
-    if (!companyId) {
+    if (!enabled) {
       setData([]);
       setIsLoading(false);
       setIsError(false);
@@ -45,7 +48,7 @@ export function useLiveTracking() {
     return () => {
       mounted = false;
     };
-  }, [companyId, refetchKey]);
+  }, [enabled, companyId, refetchKey]);
 
   return { data, isLoading, isError, refetch };
 }
