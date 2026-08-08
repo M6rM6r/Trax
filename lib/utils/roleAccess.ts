@@ -69,19 +69,17 @@ export function canRoleAccessPath(role: AppRole | null | undefined, pathname: st
     return false;
   }
 
-  // Company admin: management app, never check-in, never mastermind
+  // Company admin: allowlisted management surfaces only (default-deny).
   if (role === "company") {
     if (startsWithPath(path, "/check-in")) return false;
     if (startsWithPath(path, "/mastermind")) return false;
-    // Explicit company surfaces
     if (path === "/") return true;
     if (startsWithPath(path, "/employees")) return true;
     if (startsWithPath(path, "/attendance")) return true;
     if (startsWithPath(path, "/geofences")) return true;
     if (startsWithPath(path, "/live-map")) return true;
     if (startsWithPath(path, "/settings")) return true;
-    // Unknown company path → allow (new company pages) unless blocked above
-    return true;
+    return false;
   }
 
   return false;

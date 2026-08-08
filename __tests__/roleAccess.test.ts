@@ -28,6 +28,9 @@ describe("roleAccess — three roles only", () => {
     expect(canRoleAccessPath("company", "/employees")).toBe(true);
     expect(canRoleAccessPath("company", "/check-in")).toBe(false);
     expect(canRoleAccessPath("company", "/mastermind/companies")).toBe(false);
+    // Default-deny: unlisted company surfaces are closed until allowlisted.
+    expect(canRoleAccessPath("company", "/secret-admin")).toBe(false);
+    expect(canRoleAccessPath("company", "/reports-v2")).toBe(false);
   });
 
   it("mastermind only mastermind area", () => {

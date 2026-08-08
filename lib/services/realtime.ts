@@ -78,34 +78,49 @@ export function subscribeRealtimeEvents(callbacks: RealtimeCallbacks): () => voi
 
   if (callbacks.onLocationUpdate) {
     const base = collection(db, "locations");
-    // Prefer string company_id (canonical). Numeric fallback is handled by initial snapshot fetch.
-    const locationsQuery = query(base, where("company_id", "==", companyIdVariants[0]), limit(500));
-    const unsubLocations = onSnapshot(
-      locationsQuery,
-      (snapshot) => {
-        snapshot.docChanges().forEach((change) => {
-          if (change.type === "removed") return;
-          const data = change.doc.data() as Record<string, unknown>;
-          if (callbacks.onLocationUpdate) {
-            callbacks.onLocationUpdate({
-              employeeId: change.doc.id,
-              employeeName: String(data.name ?? data.employeeName ?? ""),
-              lat: toNumber(data.lat ?? data.currentLat ?? data.latitude),
-              lng: toNumber(data.lng ?? data.currentLng ?? data.longitude),
-              status: getStatus(data),
-              geofenceName: data.geofenceName ? String(data.geofenceName) : undefined,
-              lastSeen: String(data.lastSeen ?? new Date().toISOString()),
-              batteryLevel: data.batteryLevel === undefined ? null : toNumber(data.batteryLevel),
-            });
-          }
-        });
-      },
-      (error) => {
-        console.warn("[realtime] locations listener error:", error);
+    // Dual-type company_id probe (string + numeric legacy) — same law as tracking.ts.
+    const seenLocationKeys = new Set<string>();
+    const emitLocation = (docId: string, data: Record<string, unknown>) => {
+      const lat = toNumber(data.lat ?? data.currentLat ?? data.latitude);
+      const lng = toNumber(data.lng ?? data.currentLng ?? data.longitude);
+      const lastSeen = String(data.lastSeen ?? new Date().toISOString());
+      const dedupeKey = `${docId}|${lat}|${lng}|${lastSeen}`;
+      if (seenLocationKeys.has(dedupeKey)) return;
+      seenLocationKeys.add(dedupeKey);
+      // Bound memory on long-lived live-map sessions.
+      if (seenLocationKeys.size > 2000) {
+        const first = seenLocationKeys.values().next().value;
+        if (first !== undefined) seenLocationKeys.delete(first);
       }
-    );
-    unsubscribers.push(unsubLocations);
-    attached++;
+      callbacks.onLocationUpdate?.({
+        employeeId: docId,
+        employeeName: String(data.name ?? data.employeeName ?? ""),
+        lat,
+        lng,
+        status: getStatus(data),
+        geofenceName: data.geofenceName ? String(data.geofenceName) : undefined,
+        lastSeen,
+        batteryLevel: data.batteryLevel === undefined ? null : toNumber(data.batteryLevel),
+      });
+    };
+
+    for (const cid of companyIdVariants) {
+      const locationsQuery = query(base, where("company_id", "==", cid), limit(500));
+      const unsubLocations = onSnapshot(
+        locationsQuery,
+        (snapshot) => {
+          snapshot.docChanges().forEach((change) => {
+            if (change.type === "removed") return;
+            emitLocation(change.doc.id, change.doc.data() as Record<string, unknown>);
+          });
+        },
+        (error) => {
+          console.warn("[realtime] locations listener error:", error);
+        }
+      );
+      unsubscribers.push(unsubLocations);
+      attached++;
+    }
   }
 
   if (callbacks.onAttendanceCheckIn) {

@@ -77,17 +77,6 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
           const companyProfile = profileData.company;
           const role = resolveUserRole(profileData, tokenResult.claims, firebaseUser.email ?? "");
 
-          if (!profile) {
-            console.warn(
-              "[auth] No profile resolved for Firebase user; continuing with inferred defaults",
-              {
-                uid: firebaseUser.uid,
-                email: firebaseUser.email,
-                resolvedRole: role,
-              }
-            );
-          }
-
           const numericId = Array.from(firebaseUser.uid).reduce(
             (total, character) => (total * 31 + character.charCodeAt(0)) % 2147483647,
             0
@@ -103,6 +92,28 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
             resolvedCompanyIdRaw !== "undefined"
               ? resolvedCompanyIdRaw
               : undefined;
+
+          // Hard-fail incomplete tenants: no silent shell with empty company scope.
+          // Mastermind is platform-scoped and may legitimately lack company_id.
+          if (!profile || (role !== "mastermind" && !resolvedCompanyId)) {
+            console.warn("[auth] Incomplete profile — signing out", {
+              uid: firebaseUser.uid,
+              email: firebaseUser.email,
+              hasProfile: Boolean(profile),
+              role,
+              companyId: resolvedCompanyId ?? null,
+            });
+            const authInstance = auth;
+            if (authInstance) {
+              const { signOut } = await import("firebase/auth");
+              await signOut(authInstance).catch(() => undefined);
+            }
+            clearUser();
+            useCompanySettingsStore.getState().resetSettings();
+            queryClient.clear();
+            return;
+          }
+
           const resolvedCompanyName = String(
             profileData.company_name ?? companyProfile?.name ?? ""
           );

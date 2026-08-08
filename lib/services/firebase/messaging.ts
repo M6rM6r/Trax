@@ -1,6 +1,6 @@
 import { getMessaging, getToken, onMessage, deleteToken, type Messaging } from "firebase/messaging";
 import { doc, setDoc, deleteDoc, serverTimestamp } from "firebase/firestore";
-import app, { db, isFirebaseConfigured } from "@/lib/config/firebase";
+import app, { auth, db, isFirebaseConfigured } from "@/lib/config/firebase";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { getCompanyId } from "./helpers";
 
@@ -73,13 +73,20 @@ async function storeFCMToken(token: string): Promise<void> {
     return;
   }
 
+  // Rules: request.auth.uid == ownerUid. Must be Firebase Auth UID, not app numeric id.
+  const ownerUid = auth?.currentUser?.uid;
+  if (!ownerUid) {
+    console.warn("[FCM] skip token store — Firebase Auth uid missing");
+    return;
+  }
+
   await setDoc(
     doc(db, "fcm_tokens", token),
     {
       token,
       company_id: companyId,
       user_id: user.id,
-      ownerUid: user.id,
+      ownerUid,
       role: role ?? null,
       platform: getPlatform(),
       user_agent: navigator.userAgent,

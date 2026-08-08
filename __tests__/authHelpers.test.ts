@@ -43,15 +43,27 @@ describe("auth utilities", () => {
     expect(resolveUserRole(profile, { role: "employee" })).toBe("employee");
   });
 
-  it("uses a narrow demo-role fallback for known local demo emails", () => {
-    expect(resolveUserRole({}, { role: "employee" }, "boss@trax.com")).toBe("company");
-    expect(resolveUserRole({}, {}, "manager@trax.com")).toBe("company");
+  it("never infers admin roles from email unless explicit demo flag is enabled", () => {
+    // Default: deny-by-default (no NODE_ENV privilege path).
+    expect(resolveUserRole({}, { role: "employee" }, "boss@trax.com")).toBe("employee");
+    expect(resolveUserRole({}, {}, "manager@trax.com")).toBe("employee");
     expect(resolveUserRole({}, {}, "employee@trax.com")).toBe("employee");
-  });
-
-  it("does not infer roles from unrelated email addresses", () => {
     expect(resolveUserRole({}, { role: "employee" }, "boss@evil.com")).toBe("employee");
     expect(resolveUserRole({}, {}, "admin@attacker.test")).toBe("employee");
     expect(resolveUserRole({ role: "employee" }, {}, "manager@foo.com")).toBe("employee");
+  });
+
+  it("infers demo emails only when NEXT_PUBLIC_ENABLE_DEMO_ROLE_INFERENCE=true", () => {
+    const prev = process.env.NEXT_PUBLIC_ENABLE_DEMO_ROLE_INFERENCE;
+    process.env.NEXT_PUBLIC_ENABLE_DEMO_ROLE_INFERENCE = "true";
+    try {
+      expect(resolveUserRole({}, {}, "boss@trax.com")).toBe("company");
+      expect(resolveUserRole({}, {}, "manager@trax.com")).toBe("company");
+      expect(resolveUserRole({}, {}, "employee@trax.com")).toBe("employee");
+      expect(resolveUserRole({}, {}, "boss@evil.com")).toBe("employee");
+    } finally {
+      if (prev === undefined) delete process.env.NEXT_PUBLIC_ENABLE_DEMO_ROLE_INFERENCE;
+      else process.env.NEXT_PUBLIC_ENABLE_DEMO_ROLE_INFERENCE = prev;
+    }
   });
 });

@@ -66,7 +66,6 @@ const Page = () => {
     () => searchParams.get("identifier")?.trim() || "",
     [searchParams]
   );
-  const reason = searchParams.get("reason");
   const nextParam = searchParams.get("next");
   const setUser = useAuthStore((s) => s.setUser);
   const setRememberMe = useAuthStore((s) => s.setRememberMe);
@@ -95,13 +94,6 @@ const Page = () => {
     const dest = safeNextPath(nextParam, role);
     router.replace(`/${locale}${dest === "/" ? "" : dest}`);
   }, [hydrated, token, role, nextParam, router, locale, showSuccess]);
-
-  const reasonMessage = useMemo(() => {
-    if (reason === "session_expired") return t("sessionExpired");
-    if (reason === "session_timeout") return t("sessionTimeout");
-    if (reason === "unauthenticated") return t("pleaseSignIn");
-    return null;
-  }, [reason, t]);
 
   const applyLoginResponse = async (
     values: LoginValues,
@@ -319,15 +311,6 @@ const Page = () => {
                 <div className="text-center mb-2">
                   <h1 className="text-xl font-bold text-foreground">{t("loginTitle")}</h1>
                 </div>
-
-                {reasonMessage ? (
-                  <p
-                    role="status"
-                    className="rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-center text-xs font-medium text-amber-800 dark:text-amber-200"
-                  >
-                    {reasonMessage}
-                  </p>
-                ) : null}
 
                 <CustomInput
                   type="email"

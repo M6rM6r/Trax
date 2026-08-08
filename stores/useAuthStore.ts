@@ -2,6 +2,7 @@
 
 import { AdminUser } from "@/lib/types/responseTypes";
 import { clearTraxSessionCookie, setTraxSessionCookie } from "@/lib/auth/sessionCookie";
+import { normalizeUserRole } from "@/lib/utils/auth";
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 
@@ -79,14 +80,9 @@ export const useAuthStore = create<AuthState>()(
       companyName: null,
       rememberMe: false,
       setUser: (user, token, role, companyId, companyName) => {
+        // Single normalizer — unknown strings collapse to employee (deny-by-default).
         const normalizedRole: UserRole | null =
-          role === "employee"
-            ? "employee"
-            : role === "mastermind"
-              ? "mastermind"
-              : role
-                ? "company"
-                : null;
+          role === null || role === undefined || role === "" ? null : normalizeUserRole(role);
         const cid =
           companyId === null ||
           companyId === undefined ||

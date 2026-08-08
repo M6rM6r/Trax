@@ -82,9 +82,8 @@ export function resolveUserRole(
     return "company";
   }
 
-  const shouldInferFromEmail =
-    process.env.NEXT_PUBLIC_ENABLE_DEMO_ROLE_INFERENCE === "true" ||
-    process.env.NODE_ENV !== "production";
+  // Explicit opt-in only — never elevate from email in staging/preview by NODE_ENV alone.
+  const shouldInferFromEmail = process.env.NEXT_PUBLIC_ENABLE_DEMO_ROLE_INFERENCE === "true";
   const hasExplicitNonEmployeeTokenRole = tokenRole && tokenRole !== "employee";
 
   if (shouldInferFromEmail && !profileRole && !adminRole && !hasExplicitNonEmployeeTokenRole) {

@@ -383,6 +383,8 @@ export const attendanceApi = {
         parseTimeToMinutes(checkOutTime) < parseTimeToMinutes(expectedCheckoutTime)
       );
 
+      // Identity fields (company_id / employeeId / date) are immutable at checkout.
+      // Only fill missing ownerUid for rules ownership — never rewrite person-day keys.
       const patch: {
         checkOutTime: string;
         status: string;
@@ -391,9 +393,6 @@ export const attendanceApi = {
         expectedCheckoutTime: string | null;
         earlyCheckout: boolean;
         ownerUid?: string;
-        company_id?: string;
-        employeeId?: string;
-        date?: string;
       } = {
         checkOutTime,
         status: "checked_out",
@@ -404,25 +403,6 @@ export const attendanceApi = {
       };
       if (data.ownerUid === null || data.ownerUid === undefined || data.ownerUid === "") {
         patch.ownerUid = currentUser.uid;
-      }
-      const existingCid = data.company_id;
-      if (
-        existingCid === null ||
-        existingCid === undefined ||
-        existingCid === "" ||
-        String(existingCid) !== String(checkoutCompanyId)
-      ) {
-        patch.company_id = String(checkoutCompanyId);
-      }
-      if (
-        data.employeeId === null ||
-        data.employeeId === undefined ||
-        String(data.employeeId) !== empId
-      ) {
-        patch.employeeId = empId;
-      }
-      if (data.date === null || data.date === undefined || String(data.date) !== today) {
-        patch.date = today;
       }
 
       tx.update(targetRef, patch);
@@ -459,6 +439,7 @@ export const attendanceApi = {
           Number.isFinite(parseTimeToMinutes(expectedCheckoutTime)) &&
           parseTimeToMinutes(checkOutTime) < parseTimeToMinutes(expectedCheckoutTime)
         );
+        // Merge fallback: outcome fields only — do not rewrite person-day identity.
         const patch = {
           checkOutTime,
           status: "checked_out",
@@ -466,10 +447,9 @@ export const attendanceApi = {
           workedHours,
           expectedCheckoutTime,
           earlyCheckout,
-          ownerUid: currentUser.uid,
-          company_id: String(checkoutCompanyId),
-          employeeId: empId,
-          date: today,
+          ...(data.ownerUid === null || data.ownerUid === undefined || data.ownerUid === ""
+            ? { ownerUid: currentUser.uid }
+            : {}),
         };
         await setDoc(targetRef, patch, { merge: true });
         return {
