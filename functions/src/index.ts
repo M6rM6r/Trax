@@ -14,7 +14,6 @@ export {
   checkTrialExpiry,
   cleanupStaleLocations,
   autoCheckoutEmployees,
-  checkInReminders,
 } from "./scheduled";
 export {
   exportAttendance,

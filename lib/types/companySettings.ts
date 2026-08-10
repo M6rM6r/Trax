@@ -52,7 +52,9 @@ export interface CompanySettings {
   anomalyAlertsEnabled: boolean;
   emailNotificationsEnabled: boolean;
   pushNotificationsEnabled: boolean;
+  /** @deprecated Removed — check-in reminder pushes are disabled system-wide. */
   checkInReminderEnabled: boolean;
+  /** @deprecated Removed — check-in reminder pushes are disabled system-wide. */
   checkInReminderTime: string; // "08:00"
   checkoutAlertsEnabled: boolean;
 
@@ -121,7 +123,7 @@ export const defaultCompanySettings: CompanySettings = {
   anomalyAlertsEnabled: true,
   emailNotificationsEnabled: true,
   pushNotificationsEnabled: true,
-  checkInReminderEnabled: true,
+  checkInReminderEnabled: false,
   checkInReminderTime: "08:00",
   checkoutAlertsEnabled: true,
 

@@ -10,7 +10,6 @@ import { db } from "@/lib/config/firebase";
 import { useTranslations } from "next-intl";
 
 interface NotificationSettings {
-  check_in_reminder: boolean;
   late_check_in_alert: boolean;
   geofence_entry_exit: boolean;
   company_announcement: boolean;
@@ -22,7 +21,6 @@ interface NotificationSettings {
 }
 
 const defaults: NotificationSettings = {
-  check_in_reminder: true,
   late_check_in_alert: true,
   geofence_entry_exit: false,
   company_announcement: true,
@@ -36,12 +34,6 @@ const defaults: NotificationSettings = {
 function useNotificationItems() {
   const t = useTranslations("Notifications");
   return [
-    {
-      key: "check_in_reminder" as const,
-      label: t("checkInReminder"),
-      icon: Clock,
-      desc: t("checkInReminderDesc"),
-    },
     {
       key: "late_check_in_alert" as const,
       label: t("lateCheckInAlert"),
